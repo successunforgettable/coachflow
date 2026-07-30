@@ -1,0 +1,206 @@
+[
+  {
+    "label": "object__coaching__1",
+    "slug": "coaching",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__coaching__2",
+    "slug": "coaching",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__coaching__3",
+    "slug": "coaching",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__coaching__4",
+    "slug": "coaching",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__mindset__1",
+    "slug": "mindset",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__mindset__2",
+    "slug": "mindset",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__mindset__3",
+    "slug": "mindset",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__mindset__4",
+    "slug": "mindset",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__leadership__1",
+    "slug": "leadership",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__leadership__2",
+    "slug": "leadership",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__leadership__3",
+    "slug": "leadership",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__leadership__4",
+    "slug": "leadership",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__career-pivot__1",
+    "slug": "career-pivot",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__career-pivot__2",
+    "slug": "career-pivot",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__career-pivot__3",
+    "slug": "career-pivot",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__career-pivot__4",
+    "slug": "career-pivot",
+    "abstract": true,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__fitness__1",
+    "slug": "fitness",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__fitness__2",
+    "slug": "fitness",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__fitness__3",
+    "slug": "fitness",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__fitness__4",
+    "slug": "fitness",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__dog-training__1",
+    "slug": "dog-training",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__dog-training__2",
+    "slug": "dog-training",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__dog-training__3",
+    "slug": "dog-training",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "object__dog-training__4",
+    "slug": "dog-training",
+    "abstract": false,
+    "style": "object",
+    "ok": true
+  },
+  {
+    "label": "screenshot-control__coaching",
+    "slug": "coaching",
+    "style": "screenshot",
+    "ok": true
+  },
+  {
+    "label": "screenshot-control__mindset",
+    "slug": "mindset",
+    "style": "screenshot",
+    "ok": true
+  },
+  {
+    "label": "screenshot-control__leadership",
+    "slug": "leadership",
+    "style": "screenshot",
+    "ok": true
+  },
+  {
+    "label": "screenshot-control__career-pivot",
+    "slug": "career-pivot",
+    "style": "screenshot",
+    "ok": true
+  },
+  {
+    "label": "screenshot-control__fitness",
+    "slug": "fitness",
+    "style": "screenshot",
+    "ok": true
+  },
+  {
+    "label": "screenshot-control__dog-training",
+    "slug": "dog-training",
+    "style": "screenshot",
+    "ok": true
+  }
+]

@@ -18,17 +18,151 @@ export type GenerateImageOptions = {
     b64Json?: string;
     mimeType?: string;
   }>;
+  /**
+   * The ad-creative variation style for this slot. Drives renderer selection —
+   * see rendererForStyle. Omitted (the legacy call sites) renders on Flux,
+   * which is exactly what those sites did before.
+   */
+  style?: string;
 };
 
 export type GenerateImageResponse = {
   url?: string;
 };
 
+export type ImageRenderer = "flux-1.1-pro" | "gpt-image-1";
+
+/**
+ * ─── THE HYBRID SWITCH ──────────────────────────────────────────────────────
+ * Still-life slots render on gpt-image-1; anything with a person stays on Flux.
+ *
+ * Evidence — 6-niche still-life bake-off, 2026-07-30 (commit d3d7312, images in
+ * docs/screenshots/run-2026-07-30-niches/). On the `object` style:
+ *
+ *   niche relevance   gpt-image-1 medium 6/6   ·   flux-1.1-pro 2/6
+ *   house style       gpt-image-1 medium 6/6   ·   flux-1.1-pro 3/6
+ *   latency (median)  gpt-image-1 medium 18.2s ·   flux-1.1-pro 6.1s
+ *
+ * Both of Flux's two "hits" carried a defect (a garbled brand name; a hand in
+ * frame on a person-free style), and its four misses were generic stock props —
+ * a pink flat-lay with earbuds for strength training, a floral flat-lay for
+ * reactive dogs. The house-style column is the one that actually forces this:
+ * compositeHeadline paints a FIXED #0A0A0E scrim and never inspects the plate,
+ * so a bright plate is a legibility failure, not merely an aesthetic one.
+ *
+ * Person slots stay on Flux deliberately: casting was a 15/15 tie across models
+ * and Flux is ~3× faster, so moving them would buy nothing and cost ~36s.
+ * Two of five slots move ⇒ ~24s added per campaign. Cost is neutral
+ * ($0.042 vs $0.040 per five-creative deck).
+ *
+ * ⚠️ 1:1 ONLY. gpt-image-1 renders 1024x1024 / 1024x1536 / 1536x1024 and cannot
+ * produce 9:16. adCreatives.makeVertical asks for "9:16", so it stays on Flux —
+ * enforced here rather than left for a call site to remember.
+ */
+const STILL_LIFE_STYLES: ReadonlySet<string> = new Set(["object", "screenshot"]);
+
+export function rendererForStyle(style?: string, aspectRatio?: string): ImageRenderer {
+  if (!style || !STILL_LIFE_STYLES.has(style)) return "flux-1.1-pro";
+  const ratio = aspectRatio ?? "1:1";
+  if (ratio !== "1:1") return "flux-1.1-pro";
+  return "gpt-image-1";
+}
+
+/**
+ * ─── THE OPENAI FAILURE PATH — A DECISION, NOT A try/catch ──────────────────
+ *
+ *   On any OpenAI failure the slot RE-RENDERS ON FLUX and the deck stays at five.
+ *
+ * Why fallback rather than failing the slot: a deck missing 2 of 5 is worse for
+ * the coach than two slightly weaker images. It is also what STANDING RULE 1
+ * requires — an ad-creative slot is a required TYPE in a five-deck, not an
+ * interchangeable variant, so the disposition is screen-and-log, never drop.
+ *
+ * Retry policy is deliberately asymmetric:
+ *   - 429 / 5xx / network  → ONE retry, then Flux. These are transient.
+ *   - 4xx (moderation, malformed) → NO retry, straight to Flux. Deterministic:
+ *     the identical request will fail identically, so a retry only adds latency.
+ *
+ * Every fallback logs FALLBACK_LOG_PREFIX with the style and the reason. The
+ * adCreatives table has no column recording which model rendered a row, so the
+ * log line is currently the only record — a `renderer` column is a migration and
+ * migrations stay off logic sprints (CLAUDE.md §5.6). `sceneBrief` is NOT
+ * repurposed for it: that column is editorial-scene-typed and overloading it
+ * would make the schema lie.
+ */
+export const FALLBACK_LOG_PREFIX = "[imageGeneration] FALLBACK gpt-image-1 -> flux-1.1-pro";
+
+const OPENAI_IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations";
+
+/** Renders on gpt-image-1 and returns the PNG bytes. Throws on any failure. */
+async function renderOpenAI(prompt: string): Promise<Buffer> {
+  const apiKey = ENV.openaiApiKey;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
+
+  const attempt = async (): Promise<{ buffer?: Buffer; status: number; detail: string }> => {
+    const resp = await fetch(OPENAI_IMAGE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt,
+        size: "1024x1024",
+        quality: "medium",
+        n: 1,
+      }),
+    });
+    if (!resp.ok) {
+      return { status: resp.status, detail: (await resp.text()).slice(0, 300) };
+    }
+    const json = (await resp.json()) as { data?: Array<{ b64_json?: string }> };
+    const b64 = json?.data?.[0]?.b64_json;
+    // OpenAI returns base64 inline, so there is no CDN round-trip to make here —
+    // one fewer network hop than the Replicate path.
+    if (!b64) return { status: resp.status, detail: "response carried no b64_json" };
+    return { buffer: Buffer.from(b64, "base64"), status: resp.status, detail: "" };
+  };
+
+  let result = await attempt();
+  if (result.buffer) return result.buffer;
+
+  const transient = result.status === 429 || result.status >= 500;
+  if (transient) {
+    console.warn(
+      `[imageGeneration] gpt-image-1 transient failure (${result.status}) — one retry: ${result.detail}`,
+    );
+    await new Promise((r) => setTimeout(r, 1500));
+    result = await attempt();
+    if (result.buffer) return result.buffer;
+  }
+
+  throw new Error(`gpt-image-1 ${result.status}: ${result.detail}`);
+}
+
 export async function generateImage(
   options: GenerateImageOptions
 ): Promise<GenerateImageResponse> {
+  // ── Hybrid switch: still-life slots on gpt-image-1, everything else on Flux ──
+  if (rendererForStyle(options.style, options.aspectRatio) === "gpt-image-1") {
+    try {
+      const t0 = Date.now();
+      const buffer = await renderOpenAI(options.prompt);
+      console.log(
+        `[imageGeneration] gpt-image-1 rendered style=${options.style} in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+      );
+      const { url } = await storagePut(
+        `generated/${Date.now()}-${Math.random().toString(36).substring(7)}.png`,
+        buffer,
+        "image/png",
+      );
+      return { url };
+    } catch (err) {
+      // The recorded decision: keep the deck at five, log loudly, render on Flux.
+      console.error(`${FALLBACK_LOG_PREFIX} style=${options.style} reason=${String((err as Error)?.message ?? err)}`);
+    }
+  }
+
   const apiKey = ENV.replicateApiKey;
-  
+
   console.log("[imageGeneration] API Key check:", {
     exists: !!apiKey,
     length: apiKey?.length,

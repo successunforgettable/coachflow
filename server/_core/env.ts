@@ -9,6 +9,9 @@ export const ENV = {
   pexelsApiKey: process.env.PEXELS_API_KEY ?? "",
   creatomateApiKey: process.env.CREATOMATE_API_KEY ?? "",
   replicateApiKey: process.env.REPLICATE_API_KEY ?? "",
+  // Still-life ad-creative slots render on gpt-image-1 (see imageGeneration.ts).
+  // Present in the Railway production env; absent locally unless exported.
+  openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   // Custom auth (Google OAuth + magic links)
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",

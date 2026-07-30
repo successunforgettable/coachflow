@@ -187,6 +187,82 @@ All five images depict a **man**; the ICP is unambiguously a **mother** (partner
 mothers' group, antenatal group). **The image prompt is not carrying ICP gender.** Also: v1 shows a
 **newborn** when the ICP's baby is 4–12 months, and reads alarming rather than gentle.
 
+### P6b 🔴🔴 THE COACH-FACING IMAGE PATHS NEVER GOT P8 / P6 / THE ZONE — booked as ONE render-required unit
+
+**Found 2026-07-30 while consolidating the duplicated variation array. Full per-site table:
+`docs/handovers/AD_IMAGE_SITE_SWEEP_2026-07-30.md`.**
+
+`STATE.md` claimed P8 and P6 were fixed "at all three batch sites" / "both batch paths". Both claims
+were false. Every miss has the same shape: **the fix landed where it was being tested — Auto Mode,
+because that is what the live harness drives — and not on the sibling loops that duplicate it by hand.**
+
+| | site | missing |
+|---|---|---|
+| 🔴 | `routers/adCreatives.ts:917` `generateAsync` — **the coach's "Generate Ad Images" button** (`V2AdImageCreator.tsx:775`) | **P8 rotation, P6 subject, zone** — all three |
+| | `routers/adCreatives.ts:1063` `generateAdCreativesBatch` (from `campaigns.ts:303`) | zone |
+| | `routers/adCreatives.ts:488` `regenerateSingle` | P6 subject; zone `undefined` on tabloid |
+| | `routers/adCreatives.ts:652` `makeVertical` | P6 subject; zone `undefined` on tabloid |
+| | `routers/adCreatives.ts:~760` `recompositeText` | no zone at all — **re-compositing an EDITORIAL row silently drops its `left` zone** |
+
+**F3 corrected: the `"lower"` zone is passed at EXACTLY ONE tabloid site** (`adCreativesGenerator.ts:567`)
+and is missing at **five** others. An intra-session estimate of "three sites" was wrong; five is the
+measured figure. Editorial (`adCreativesGenerator.ts:674`) correctly passes its own `scene.zone`.
+
+**Disposition, decided 2026-07-30: these ship as a SINGLE render-required unit, never piecemeal.** The
+fixes are parity copies of the proven `adCreativesGenerator.ts` patterns, so they are cheap to write —
+but every one of them changes composited pixels on a path no automated harness drives. **No pixel
+change ships on sites 917 / 1063 / regenerateSingle / makeVertical / recompositeText without Arfeen
+driving a live render of that path.** The still-life model switch is explicitly included in this unit
+for site 917: it is NOT applied there ahead of the rest.
+
+### P6c 🔴🔴 THE COACH'S "GENERATE AD IMAGES" BUTTON IS BROKEN ON PROD TODAY — found 2026-07-30
+
+**Discovered by the first live wizard drive. This is PRE-EXISTING on `785df87`, not introduced by
+the hybrid-switch work — proven by arithmetic below.**
+
+`adCreatives.headline` is `varchar(255)` (`schema.ts:1143`). `generateAsync` builds its headline from
+`mechanism = capturedSvc.uniqueMechanismSuggestion || capturedSvc.name`, and on **service 277** that
+field is a **398-character description**, not a short mechanism name. Every template in
+`HEADLINE_FORMULAS` interpolates it whole, so the INSERT dies on variation 1 with a data-too-long
+error and **the coach gets zero images**.
+
+| template | resulting headline | vs varchar(255) |
+|---|---|---|
+| old (`785df87`) `…: CUT YOUR {NICHE} TIME BY 90%` | **429 chars** | fails |
+| new (this pass) `…: HOW IT WORKS` | **412 chars** | fails |
+
+The new copy is **17 chars shorter** — it neither caused nor fixed this. `checkCompliance` already
+flags *"Headline exceeds 40 characters"* as an advisory and the insert proceeds anyway.
+
+**Fix shape (not built):** the wizard path needs the same length discipline the LLM path has —
+`validateAdHeadlines` enforces ≤38 chars on `generateContextualAdHeadlines` output, but the template
+path is entirely unguarded. Either fit the mechanism before interpolation (the `fitTitle` primitives
+from P9 already exist) or resolve a short mechanism NAME rather than its description. **Do not just
+widen the column** — a 400-char headline is not renderable on a 1080px creative either way.
+
+⚠️ **This blocks the wizard proof of the hybrid switch.** Site 917's P8/P6/zone/model-branch port is
+written and type-checks, but no image can be persisted through that path until this is fixed, so it
+stays **unproven**.
+
+### 🟡 LOGGED, NOT ACTIONED — copy-honesty pass on landing-page / CTA surfaces
+
+Three hardcoded fallbacks carry soft claims. Out of scope for the ad-creative sweep (they are LP/CTA
+surfaces under the frozen-PNG standard §15a); recorded so they are not lost:
+
+- `_core/campaignCta.ts:23` — `"Book a Free Call"` asserts **price**; wrong if a coach charges.
+- `lib/templates/eventImanGadzhi.ts:287` — `"A free live event designed to move you forward."` —
+  price claim + soft outcome claim.
+- `lib/templates/salesLight.ts:146` — `"Here's exactly what you'll be able to do."` — promise framing.
+
+None contains an invented statistic; the fabricated-number class is fully cleared from ad copy.
+
+### 📌 `V2ToolLibrary` IS DEAD CODE
+
+`client/src/v2/V2ToolLibrary.tsx` is imported at `V2Dashboard.tsx:11` and **never rendered** — there
+is no `<V2ToolLibrary` anywhere in the client. The ad-image creator is reachable only via
+`wizard/adCopy` → Images tab (`V2AdCopyResultPanel.tsx:948`). Anything that assumes a Tool Library
+entry point is wrong.
+
 ### P7 ✅ FIX C BUILT + PROVEN ON REAL PROMPTS 2026-07-29 — NOT YET DEPLOYED
 
 **The earlier wording here was wrong: this was a PROMPT defect first, model second.**
@@ -225,10 +301,14 @@ one row. **Prod has 3 `contentType='body'` rows per service** — two generated,
 on every batch.
 
 **Fixed:** new `resolveAdBodyTexts()` returns the deck; `resolveAdBodyText()` kept as a thin wrapper
-so the 6 recomposite / single-creative call sites are untouched. Rotation `bodies[i %
-bodies.length]` applied at **all three** batch sites — the third, `routers/adCreatives.ts:981`
-(wizard batch), carried the identical defect and was **not** in the original P8 report. Zero added
-LLM or image spend.
+so the recomposite / single-creative call sites are untouched. Zero added LLM or image spend.
+
+🔴 **THE "ALL THREE BATCH SITES" CLAIM WAS FALSE — corrected 2026-07-30.** There are **FOUR** photo
+batch sites, not three, and the fourth is the one a coach actually presses:
+**`routers/adCreatives.ts:917` (`generateAsync`, called from `V2AdImageCreator.tsx:775` — the
+"Generate Ad Images" button)** still resolves a single `gaBody` at `:916` and uses it flat at `:949`.
+**P8 is LIVE on the coach-facing wizard path today.** Full per-site evidence:
+**`docs/handovers/AD_IMAGE_SITE_SWEEP_2026-07-30.md`**.
 
 **Still needs a live cascade to prove** — rotation cannot be verified from a raw-plate render.
 
@@ -618,8 +698,17 @@ behind a stronger scrim. Teardown complete (402 → 397, remnants 0, protected 6
 
 ### ✅ P6 CAUSE 2 SHIPPED + PROVEN LIVE 2026-07-29 — the gender resolver (`dac624a`)
 
-`server/_core/subjectDescriptor.ts`. Three tiers, failing to neutral, never to a guess. Wired into
-**both** batch paths (Auto Mode + wizard) via `resolveSubjectForService` → `subjectClausesForBatch`.
+`server/_core/subjectDescriptor.ts`. Three tiers, failing to neutral, never to a guess. Wired via
+`resolveSubjectForService` → `subjectClausesForBatch`.
+
+🔴 **"WIRED INTO BOTH BATCH PATHS" WAS FALSE — corrected 2026-07-30.** It is wired into
+`runAdCreativesGeneration` and `generateAdCreativesBatch` only. **THREE further photo paths call
+`generateAdImagePrompt` without the `subject` argument** and therefore fall back to the neutral
+`"Person (30-45 years old)"` — which is exactly the Flux prior that produced the all-male decks P6
+was opened to fix: `routers/adCreatives.ts:933` (`generateAsync`, the coach's Generate button),
+`:513` (`regenerateSingle`), `:670` (`makeVertical`). **A coach who generates from the wizard,
+regenerates one card, or requests a vertical loses the gender resolution.** Evidence:
+**`docs/handovers/AD_IMAGE_SITE_SWEEP_2026-07-30.md`**.
 
 **Verified live on prod against real ICPs:** clear-female (ICP 247, tier 1) → **all five female,
 all five inspected** · clear-male (synthetic input through the real resolver, tier 1) → all five

@@ -45,6 +45,7 @@ import {
   resolveSubjectDescriptor, subjectClausesForBatch, describeResolution,
   type SubjectResolution,
 } from "./_core/subjectDescriptor";
+import { AD_VARIATIONS } from "./_core/adVariations";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
@@ -453,13 +454,9 @@ export async function resolveSubjectForService(db: any, serviceId: number): Prom
   }
 }
 
-const VARIATIONS = [
-  { style: "person_shocked" as const, formula: "benefit" as const },
-  { style: "screenshot" as const, formula: "social_proof" as const },
-  { style: "person_intense" as const, formula: "curiosity" as const },
-  { style: "object" as const, formula: "contrast" as const },
-  { style: "person_curious" as const, formula: "challenge" as const },
-];
+// One source of truth — see _core/adVariations.ts. Order is load-bearing
+// (index-based body rotation + person-slot alternation) and is unchanged.
+const VARIATIONS = AD_VARIATIONS;
 
 export async function runAdCreativesGeneration(
   input: RunAdCreativesGenerationInput,
@@ -539,7 +536,9 @@ export async function runAdCreativesGeneration(
         `— style=${variation.style} formula=${variation.formula} batchId=${batchId}`,
     );
 
-    const imageResult = await generateImage({ prompt: imagePrompt });
+    // `style` drives renderer selection (see _core/imageGeneration.rendererForStyle):
+    // the two still-life slots render on gpt-image-1, the three person slots on Flux.
+    const imageResult = await generateImage({ prompt: imagePrompt, style: variation.style });
     if (!imageResult.url) {
       throw new Error(
         `Ad creative variation ${i + 1} image generation returned no URL (batchId=${batchId})`,

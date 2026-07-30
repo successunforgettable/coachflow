@@ -29,11 +29,11 @@ export const EDITORIAL_VARIATIONS: EditorialVariation[] = [
   { key: "desk_focus",   formula: "benefit",      mode: "person", zone: "left",
     action: "seated at a dark wood desk in a glass office, reading a printed report, calm and focused" },
   { key: "workspace",    formula: "social_proof", mode: "object", zone: "bottom",
-    action: "a premium desk with a laptop and a printed document under a pool of light, no person" },
+    action: "a premium desk with a laptop and a printed document under a pool of light, photographed as a still life" },
   { key: "lean_in",      formula: "curiosity",    mode: "person", zone: "left",
     action: "leaning forward at a boardroom table, mid-thought, direct and composed" },
   { key: "hero_object",  formula: "contrast",     mode: "object", zone: "bottom",
-    action: "a single symbolic object of the trade resting on a dark surface, dramatically lit, no person" },
+    action: "a single symbolic object of the trade resting on a dark surface, dramatically lit, photographed as a still life" },
   { key: "lobby_walk",   formula: "challenge",    mode: "person", zone: "left",
     action: "walking through a glass corporate lobby at dusk, coat on, purposeful stride" },
 ];
@@ -63,27 +63,42 @@ export function variationToScene(v: EditorialVariation): EditorialScene {
 export function buildEditorialPrompt(scene: EditorialScene, niche: string): string {
   const cleanNiche = (niche || "professionals").replace(/\s+/g, " ").trim();
   const obj = scene.symbolicObject?.trim();
+  // NEGATION SWEEP (2026-07-30) — this function carried FIVE absence-framings.
+  // Diffusion conditioning has no logical NOT, so each named the thing it meant
+  // to exclude and pushed it toward the frame. Every one is now stated as the
+  // picture we want. See docs/handovers/AD_IMAGE_SITE_SWEEP_2026-07-30.md.
   const subjectLine = scene.mode === "person"
-    ? `SUBJECT: one person aged 30-45 dressed sharply for the ${cleanNiche} field, ${scene.action}, not looking at the camera.`
-    : `SUBJECT: ${obj ? `${obj} — ` : ""}${scene.action}, styled for the ${cleanNiche} field, no person in frame.`;
+    ? `SUBJECT: one person aged 30-45 dressed sharply for the ${cleanNiche} field, ${scene.action}, their gaze off to one side.`
+    : `SUBJECT: ${obj ? `${obj} — ` : ""}${scene.action}, styled for the ${cleanNiche} field, an object study only.`;
   const zoneLine = scene.zone === "left"
-    ? `COMPOSITION: place the subject on the RIGHT side of the frame; leave the LEFT third a clean, uncluttered deep-shadow area with no subject or detail, reserved for a text overlay.`
-    : `COMPOSITION: keep the subject in the upper two-thirds; leave the LOWER third a clean, uncluttered deep-shadow area with no subject or detail, reserved for a text overlay.`;
+    ? `COMPOSITION: place the subject on the RIGHT side of the frame; keep the LEFT third a clean, uncluttered deep-shadow area of plain unbroken tone, reserved for a text overlay.`
+    : `COMPOSITION: keep the subject in the upper two-thirds; keep the LOWER third a clean, uncluttered deep-shadow area of plain unbroken tone, reserved for a text overlay.`;
 
   return [
     `A premium editorial advertising photograph, cinematic and magazine-grade.`,
     subjectLine,
-    `LIGHTING: low-key and moody, a near-black deep-charcoal background, with a warm gold rim and edge light shaping the subject. No flat daylight, no bright white studio.`,
+    // The trailing "No flat daylight, no bright white studio." is DELETED rather
+    // than reworded. Everything before it already specifies the dark plate in
+    // full, so this is plate-neutral by construction — which matters, because
+    // compositeHeadline paints a fixed scrim and never inspects the plate, and
+    // the "left" zone ramps to opacity 0 by 72% across. A brighter plate here
+    // would be a legibility regression, so the safe edit is removal, not rewrite.
+    `LIGHTING: low-key and moody, a near-black deep-charcoal background, with a warm gold rim and edge light shaping the subject.`,
     `CAMERA: 85mm lens, shallow depth of field, shot on a full-frame camera.`,
     `COLOR: deep charcoal and near-black with warm gold highlights.`,
     zoneLine,
-    `The scene is entirely free of any text, letters, numbers, words, logos, or graphic overlays.`,
+    // Was: "entirely free of any text, letters, numbers, words, logos, or graphic
+    // overlays" — the deleted tabloid `noText` string in another costume. It
+    // enumerated every token it wanted absent, which is exactly how fix C put
+    // newsprint and garbled book covers in frame. Mirrors the tabloid
+    // cleanPlate wording, which rendered zero in-image text on 5/5.
+    `Every surface in frame is blank and unmarked: plain walls, unbranded plain objects, blank paper, blank screens, plain untitled covers, plain fabric in solid colours.`,
   ].join(" ");
 }
 
 // ─── The headline→scene micro-call (batch: all headlines at once) ─────────────
 const SCENE_SYSTEM_PROMPT =
-  "You are a cinematic art director for premium gold-on-black editorial advertising, in the tradition of emotionally-driven brand campaigns. For each ad headline you design ONE scene that captures the emotional truth of that headline as a real, lived human business moment — a person in the grip of the feeling the headline names: the command of owning a room, the quiet sting of a loss, the focus of someone deciding, the tension before a turn. Show the person experiencing the situation, and let their body language, their expression, the other people in the frame, and the setting carry the meaning. Cast professionals in sharp business wardrobe within believable corporate worlds (glass offices, boardrooms, city towers at dusk, executive floors). You describe only what is in the frame and the emotion on it — you never mention lighting or colour, which are fixed. Vary the human moments so the set feels rich and cinematic while staying one cohesive shoot. Respond with valid JSON.";
+  "You are a cinematic art director for premium gold-on-black editorial advertising, in the tradition of emotionally-driven brand campaigns. For each ad headline you design ONE scene that captures the emotional truth of that headline as a real, lived human business moment — a person in the grip of the feeling the headline names: the command of owning a room, the quiet sting of a loss, the focus of someone deciding, the tension before a turn. Show the person experiencing the situation, and let their body language, their expression, the other people in the frame, and the setting carry the meaning. Cast professionals in sharp business wardrobe within believable corporate worlds (glass offices, boardrooms, city towers at dusk, executive floors). You describe only what is in the frame and the emotion on it; lighting and colour are fixed and handled elsewhere. Vary the human moments so the set feels rich and cinematic while staying one cohesive shoot. Respond with valid JSON.";
 
 const SCENE_RESPONSE_FORMAT = {
   type: "json_schema" as const,

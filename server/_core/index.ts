@@ -113,17 +113,42 @@ async function startServer() {
   // Validate ad-creative font before accepting any traffic — see validateFontAtBoot()
   validateFontAtBoot();
 
-  // Sweep any jobs orphaned by the previous process's restart before we start
-  // accepting client polls — otherwise a reconnecting client polls a row that
-  // nothing will ever update and the UI hangs indefinitely.
-  const reapedAtBoot = await reapStuckJobs();
-  console.log(`[boot] Stuck-job reaper: ${reapedAtBoot} pending job(s) marked failed`);
-  // Ongoing sweep catches handler crashes (hard process death bypasses the
-  // setImmediate try/catch that would otherwise mark the job failed).
-  setInterval(async () => {
-    const reaped = await reapStuckJobs();
-    if (reaped > 0) console.log(`[reapStuckJobs] swept ${reaped} stuck job(s)`);
-  }, 60 * 1000);
+  // ── Local-drive guard (2026-07-30) — OPT-OUT, and that direction is the point.
+  //
+  // A local dev server started with `railway run` receives the PRODUCTION
+  // DATABASE_URL, so without this it would sweep production's jobs table every
+  // 60 s from a developer laptop. The guard exists only to stop that.
+  //
+  // The sweep runs UNLESS an explicit opt-out is present. Absence means enabled,
+  // so this cannot silently switch production off:
+  //   - Production has no ZAP_DISABLE_REAPER variable (verified 2026-07-30
+  //     against all 95 service variables; zero matches for "reaper"), so the
+  //     comparison is false and the reaper runs exactly as it did before.
+  //   - Disabling production would require someone to ADD this variable in the
+  //     Railway dashboard. It is not reachable by pushing code.
+  //   - The comparison is strict `=== "1"`, so an empty or malformed value
+  //     leaves the sweep running rather than disabling it.
+  //
+  // NODE_ENV is deliberately NOT the signal: it is absent from the Railway
+  // service and set only by the `start` script, so it is not a dependable
+  // production marker.
+  //
+  // reapStuckJobs() itself is unchanged — only its invocation is gated.
+  if (process.env.ZAP_DISABLE_REAPER === "1") {
+    console.log("[boot] Stuck-job reaper: SKIPPED — ZAP_DISABLE_REAPER=1 (local drive). Production is unaffected.");
+  } else {
+    // Sweep any jobs orphaned by the previous process's restart before we start
+    // accepting client polls — otherwise a reconnecting client polls a row that
+    // nothing will ever update and the UI hangs indefinitely.
+    const reapedAtBoot = await reapStuckJobs();
+    console.log(`[boot] Stuck-job reaper: ${reapedAtBoot} pending job(s) marked failed`);
+    // Ongoing sweep catches handler crashes (hard process death bypasses the
+    // setImmediate try/catch that would otherwise mark the job failed).
+    setInterval(async () => {
+      const reaped = await reapStuckJobs();
+      if (reaped > 0) console.log(`[reapStuckJobs] swept ${reaped} stuck job(s)`);
+    }, 60 * 1000);
+  }
 
   // Retention: purge captured leads past their 24-month window. Hourly sweep +
   // one at boot. Non-fatal; skips cleanly if PII/DB unavailable.

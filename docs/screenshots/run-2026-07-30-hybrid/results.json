@@ -1,0 +1,82 @@
+[
+  {
+    "label": "tabloid-1-person_shocked",
+    "renderer": "flux-1.1-pro",
+    "zone": "lower",
+    "genMs": 6386,
+    "totalMs": 8193,
+    "ok": true
+  },
+  {
+    "label": "tabloid-2-screenshot",
+    "renderer": "gpt-image-1",
+    "zone": "lower",
+    "genMs": 21271,
+    "totalMs": 22145,
+    "ok": true
+  },
+  {
+    "label": "tabloid-3-person_intense",
+    "renderer": "flux-1.1-pro",
+    "zone": "lower",
+    "genMs": 9991,
+    "totalMs": 10750,
+    "ok": true
+  },
+  {
+    "label": "tabloid-4-object",
+    "renderer": "gpt-image-1",
+    "zone": "lower",
+    "genMs": 21884,
+    "totalMs": 22774,
+    "ok": true
+  },
+  {
+    "label": "tabloid-5-person_curious",
+    "renderer": "flux-1.1-pro",
+    "zone": "lower",
+    "genMs": 7775,
+    "totalMs": 8532,
+    "ok": true
+  },
+  {
+    "label": "editorial-1-desk_focus",
+    "renderer": "flux-2-pro",
+    "zone": "left",
+    "genMs": 24538,
+    "totalMs": 25285,
+    "ok": true
+  },
+  {
+    "label": "editorial-2-workspace",
+    "renderer": "flux-2-pro",
+    "zone": "bottom",
+    "genMs": 15422,
+    "totalMs": 16221,
+    "ok": true
+  },
+  {
+    "label": "editorial-3-lean_in",
+    "renderer": "flux-2-pro",
+    "zone": "left",
+    "genMs": 14169,
+    "totalMs": 14908,
+    "ok": true
+  },
+  {
+    "label": "editorial-4-hero_object",
+    "renderer": "flux-2-pro",
+    "zone": "bottom",
+    "genMs": 13185,
+    "totalMs": 14034,
+    "ok": true
+  },
+  {
+    "label": "editorial-5-lobby_walk",
+    "renderer": "flux-2-pro",
+    "zone": "left",
+    "genMs": 15810,
+    "totalMs": 16568,
+    "ok": true
+  }
+]

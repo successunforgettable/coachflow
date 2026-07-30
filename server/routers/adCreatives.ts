@@ -11,6 +11,8 @@ import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
 import { runAdCreativesGeneration, resolveSubjectForService } from "../adCreativesGenerator";
 import { subjectClausesForBatch, describeResolution } from "../_core/subjectDescriptor";
+import { AD_VARIATIONS } from "../_core/adVariations";
+import { fitTitle } from "../lib/templates/templatePrimitives";
 import { validateCascadePrereqs } from "../_core/cascadeContext";
 
 // Meta-prohibited phrases for compliance checking
@@ -37,21 +39,126 @@ const PROHIBITED_PHRASES = [
 //   object          → best for mechanism reveal angles (show the asset or deliverable)
 //   person_curious  → best for curiosity/contrarian angles (intrigue, challenge to belief)
 //   pain formula    → best for LOSS angles (name the shared pain, create recognition)
+// ─── HOUSE HEADLINE LIMIT ────────────────────────────────────────────────────
+//
+// 38 is ZAP's OWN craft standard — what reads well in the ad-creative image
+// templates. It is NOT a Meta rule. Per docs/compliance/META_AD_COMPLIANCE_REFERENCE.md
+// §1.4a: Meta publishes **27** characters as a display/truncation recommendation
+// under "Text Recommendations", exceeding it is not a policy violation, and
+// **neither 38 nor 40 appears anywhere in Meta's documentation**. The old "40"
+// in checkCompliance below was unsourced. Never describe this as a Meta limit.
+export const AD_HEADLINE_HOUSE_MAX = 38;
+
+/**
+ * A (2026-07-31) — recover the mechanism NAME from a field that holds a description.
+ *
+ * `services.uniqueMechanismSuggestion` is documented as "A proprietary-sounding
+ * NAME" (routers/services.ts:194) but is persisted with trunc(…, 65535), so
+ * nothing enforces that shape. Measured on production: of 101 services carrying
+ * a mechanism, **94 exceed 255 characters** — long enough to blow the
+ * `adCreatives.headline` varchar(255) and crash the coach's Generate button
+ * outright. Mean length 394, max 622.
+ *
+ * 93 of those 101 are shaped `Name — description`, so the name is recoverable by
+ * splitting on the em-dash. Verified against real rows: this yields
+ * "The Skills-to-Title Translation Method" (38), "The Role Translation Method"
+ * (27), "The Postpartum Recalibration Protocol" (37) — exactly what the field's
+ * own prompt asked for.
+ *
+ * ⚠️ Extraction alone is NOT sufficient and must never be relied on by itself:
+ * after it, service 277's five headlines still measure 52/25/57/54/76 chars.
+ * The fit guard below is the load-bearing half. This helper only improves what
+ * gets fitted, so the trim lands on a whole name instead of mid-sentence.
+ */
+export function resolveMechanismName(raw: unknown): string {
+  const t = String(raw ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  // Em-dash, en-dash and " - " all appear as the name/description separator.
+  const head = t.split(/\s+[—–-]\s+/)[0]?.trim() ?? t;
+  // A separator inside the first few words means this was never a name/description
+  // split (e.g. "Skills-to-Title" is hyphenated); fall back to the whole string
+  // and let the fit guard handle it rather than returning a fragment.
+  return head.length >= 3 ? head : t;
+}
+
+/**
+ * B (2026-07-31) — the load-bearing guard. Trim-to-fit, NEVER reject.
+ *
+ * Applied inside every formula below rather than at the four call sites, so a
+ * call site cannot forget it and a new one inherits it for free. That is
+ * deliberate: the 2026-07-30 site sweep found P8/P6/zone each wired at some
+ * call sites and missed at others.
+ *
+ * Rejection is explicitly not an option here. A length gate that throws already
+ * killed a live beginner cascade once — one headline came a single character
+ * over 38 and the whole batch was rejected eight nodes into a run
+ * (META_AD_COMPLIANCE_REFERENCE §1.4a). Fit and continue.
+ *
+ * `fitTitle` cuts at a word boundary and appends an ellipsis AFTER cutting to
+ * `max`, so its result can be max + 1. We pass max - 1 so the finished headline
+ * is never above the house limit.
+ */
+function fitAdHeadline(s: string): string {
+  return fitTitle(s, AD_HEADLINE_HOUSE_MAX - 1);
+}
+
+/**
+ * "MADE FOR COACHING COACHES" — observed on real service 277, whose
+ * `category` is literally "coaching". Appending the noun to a niche that
+ * already names the audience reads as a bug. Only used where a noun is
+ * appended; "COACHING PROS" and "STILL DOING COACHING…" read fine untouched.
+ */
+function audienceLabel(niche: string): string {
+  const n = String(niche ?? "").replace(/\s+/g, " ").trim();
+  if (!n) return "COACHES";
+  if (/\bcoaching$/i.test(n)) return n.replace(/\bcoaching$/i, "coaches").toUpperCase();
+  if (/\bcoaches$/i.test(n)) return n.toUpperCase();
+  if (/\bcoach$/i.test(n)) return `${n}es`.toUpperCase();
+  return `${n.toUpperCase()} COACHES`;
+}
+
+// ─── FALLBACK HEADLINES — CLAIM-FREE BY CONSTRUCTION (2026-07-30) ───────────
+//
+// These are TEMPLATE fallbacks, used whenever a caller supplies no LLM-generated
+// headlines. Two live paths ALWAYS land here — generateAsync (the coach's
+// "Generate Ad Images" button) and generateAdCreativesBatch (the V1 campaign
+// dashboard) — so whatever is written here renders onto real ads for real
+// coaches. It is not test scaffolding.
+//
+// The previous versions asserted things nobody had measured: a 90% time
+// reduction, a 40-hours-to-4-hours before/after, a retention claim ("don't go
+// back"), an adoption trend ("are switching to"), and a population statistic
+// ("EVERY … MOST never fix it"). None of it came from the coach; all of it was
+// hardcoded here in 2024 and would be published under the coach's name.
+//
+// RULE FOR ANYONE EDITING THIS BLOCK: a fallback headline may name the offer,
+// the niche or the mechanism, and may ask a question. It may NOT assert an
+// outcome, a percentage, a timeframe, a quantity, a popularity or a retention
+// rate — because at fallback time we have no data for any of those.
+//
+// The ONE number still permitted is `customers`, and only when it is > 0: that
+// value is the coach's own `services.totalCustomers`, supplied by them. When it
+// is absent there is no social proof to state, so the fallback states none.
+// Every formula runs its mechanism through resolveMechanismName (A) and its
+// finished string through fitAdHeadline (B). Both are inside the formula, so
+// all four call sites get them and none can skip them.
 export const HEADLINE_FORMULAS = {
   benefit: (mechanism: string, niche: string, _customers?: number) =>
-    `${mechanism.toUpperCase()}: CUT YOUR ${niche.toUpperCase()} TIME BY 90%`,
+    fitAdHeadline(`${resolveMechanismName(mechanism).toUpperCase()}: HOW IT WORKS`),
   social_proof: (mechanism: string, niche: string, customers?: number) =>
-    customers && customers > 0
-      ? `${customers.toLocaleString()}+ ${niche.toUpperCase()} PROS USE THIS ${mechanism.toUpperCase()}`
-      : `${niche.toUpperCase()} COACHES WHO TRY THIS DON'T GO BACK`,
+    fitAdHeadline(
+      customers && customers > 0
+        ? `${customers.toLocaleString()}+ ${niche.toUpperCase()} PROS USE THIS ${resolveMechanismName(mechanism).toUpperCase()}`
+        : `MADE FOR ${audienceLabel(niche)}`,
+    ),
   curiosity: (mechanism: string, niche: string, _customers?: number) =>
-    `WHY ${niche.toUpperCase()} COACHES ARE SWITCHING TO ${mechanism.toUpperCase()}`,
+    fitAdHeadline(`WHAT ${resolveMechanismName(mechanism).toUpperCase()} ACTUALLY DOES`),
   contrast: (mechanism: string, niche: string, _customers?: number) =>
-    `BEFORE ${mechanism.toUpperCase()}: 40 HOURS. AFTER: 4 HOURS`,
+    fitAdHeadline(`THE OLD WAY, OR ${resolveMechanismName(mechanism).toUpperCase()}`),
   challenge: (mechanism: string, niche: string, _customers?: number) =>
-    `STILL DOING ${niche.toUpperCase()} THE OLD WAY? TRY ${mechanism.toUpperCase()}`,
+    fitAdHeadline(`STILL DOING ${niche.toUpperCase()} THE OLD WAY? TRY ${resolveMechanismName(mechanism).toUpperCase()}`),
   pain: (mechanism: string, niche: string, _customers?: number) =>
-    `EVERY ${niche.toUpperCase()} COACH FEELS THIS. MOST NEVER FIX IT.`,
+    fitAdHeadline(`ABOUT THAT ${niche.toUpperCase()} PROBLEM`),
 };
 
 // Check for Meta compliance issues
@@ -65,8 +172,18 @@ export function checkCompliance(headline: string, benefit: string, problem: stri
     }
   }
   
-  if (headline.length > 40) {
-    issues.push("Headline exceeds 40 characters (Meta recommendation)");
+  // RELABELLED 2026-07-31. This used to read "exceeds 40 characters (Meta
+  // recommendation)". The 40 was unsourced and the wording implied Meta gates on
+  // headline length — it does not. Meta publishes 27 as a DISPLAY recommendation
+  // and exceeding it is not a policy violation
+  // (docs/compliance/META_AD_COMPLIANCE_REFERENCE.md §1.4a). This is an advisory
+  // about ZAP's own craft standard, and it stays advisory: the fit guard in
+  // HEADLINE_FORMULAS already makes over-length structurally impossible on the
+  // template path, and a hard length gate has previously killed a live cascade.
+  if (headline.length > AD_HEADLINE_HOUSE_MAX) {
+    issues.push(
+      `Headline exceeds ${AD_HEADLINE_HOUSE_MAX} characters (ZAP house craft standard, not a Meta rule)`,
+    );
   }
   
   return issues;
@@ -111,7 +228,7 @@ export function generateAdImagePrompt(
   subject?: string,
 ): string {
   const baseStyle = uglyMode
-    ? "Raw UGC aesthetic, shot on iPhone, unpolished and authentic, slightly messy real-world environment, natural handheld camera shake, no studio lighting, no professional makeup, low-budget realism, observational documentary style, native social feed feel"
+    ? "Raw UGC aesthetic, shot on iPhone, unpolished and authentic, slightly messy real-world environment, natural handheld camera shake, lit only by whatever light is already in the room, bare skin and everyday hair, low-budget realism, observational documentary style, native social feed feel"
     : "Candid documentary photograph, available light, dramatic directional lighting, high contrast, shallow depth of field, phone-quality realism rather than polished studio work";
 
   // P6 cause 1 (2026-07-29): nicheContext is STYLE-AWARE. It used to be a single
@@ -123,7 +240,23 @@ export function generateAdImagePrompt(
   // (upsampling OFF) still drifted, which ruled out prompt_upsampling as the cause.
   const nicheContextPerson = `The person and setting must visually match the ${niche} niche — their clothing, environment, and expression must be recognisable to someone in that world. A fitness coach's client looks different from a crypto trader's client looks different from a corporate executive's client.`;
   const nicheContextSetting = `The setting, props and styling must visually match the ${niche} niche — the room, surfaces and objects must be recognisable to someone in that world. A fitness coach's workspace looks different from a crypto trader's looks different from a corporate executive's.`;
-  const complianceNote = `Do not generate images that imply medical treatment, guaranteed financial results, or dramatic physical before/after transformation. Images must show aspiration and possibility, not guaranteed outcomes.`;
+  // NEGATION SWEEP (2026-07-30). This string used to open "Do not generate images
+  // that imply medical treatment, guaranteed financial results, or dramatic
+  // physical before/after transformation" — it NAMED all three failure shapes in
+  // order to ban them, which on a diffusion model is how you request them. Same
+  // mechanism CLAUDE.md §14 documents for LLM prompts and the same trap that put
+  // text in frame via the deleted `noText` string. Restated as the picture we want.
+  //
+  // L4 (2026-07-31) — STYLE-AWARE. The single shared version said "The image shows
+  // an ordinary PERSON in an ordinary moment of their working life" and was
+  // appended to all five styles, so the two person-free still lifes carried
+  // person-wording four words from "an object study only". That is the FOURTH
+  // instance of this class (P6 cause 1 nicheContext, the composition clause, and
+  // now this) and it was introduced by the negation sweep itself. Same failure
+  // mode every time: one string written for the person styles, pasted onto the
+  // still lifes without re-reading it there.
+  const complianceNotePerson = `The image shows an ordinary person in an ordinary moment of their working life — aspiration and possibility, held in an everyday setting.`;
+  const complianceNoteStill = `The mood is ordinary and grounded — aspiration and possibility in an everyday working life.`;
 
   // P6: `problem` was a DEAD parameter — passed by all five call sites,
   // interpolated into none of the templates. That is why the 2026-07-28 v1 showed
@@ -181,22 +314,76 @@ export function generateAdImagePrompt(
   // to a foreground surface falling into shadow. That is a real photograph a
   // photographer could take, and the scrim then darkens an area that is already
   // low-detail instead of fighting a lit torso.
-  const compositionPerson = "Composed for a portrait-format advertisement: a medium-wide shot with the subject seated behind a plain table or against a plain wall, their head and shoulders in the upper third of the frame and the camera far enough back to include space around them. The lower half of the picture is the bare foreground surface falling away into shadow — a calm, dark, low-detail area with nothing in it competing for attention.";
+  // ─── OBJECT-SLOT STRUCTURAL FIX, L1–L3 (2026-07-31) ────────────────────────
+  //
+  // WHY. The Step D live render put a wall sign reading "COACHING" — large,
+  // sharp, centred at the top of the frame — directly above the composited
+  // headline, where it read as a second unintended headline. The OBJECT was
+  // correctly unlabelled; the BACKGROUND expressed the niche as legible text.
+  //
+  // ROOT CAUSE, read off the literal prompt: `nicheContextSetting` orders "the
+  // room, surfaces and objects must be recognisable to someone in that world",
+  // and `services.category` for that coach is the bare word "coaching" — an
+  // abstract service niche with NO physical vocabulary. A fitness room has
+  // dumbbells; a "coaching" room has nothing. Ordered to make a room recognisably
+  // coaching, the only unambiguous signifier left is the written word. It also
+  // directly contradicts cleanPlate's "plain walls" — the same self-contradiction
+  // class as P6 cause 1 and the composition clause, now the third instance.
+  //
+  // L1 — the OBJECT carries the niche; the background carries nothing. This is a
+  //      NEW object-only string. `nicheContextSetting` is shared with the
+  //      screenshot style, which passed and is out of scope, so it is untouched.
+  // L2 — the load-bearing change. A seamless studio sweep has no wall, no room,
+  //      no furniture and no frames, so there is structurally nowhere for signage
+  //      to live. This replaces "dark background" + the room implied by cleanPlate.
+  // L3 — neither the niche nor the problem gist reaches the background layer. The
+  //      problem gist was a second text vector: for this coach it read "three
+  //      StrengthsFinder assessments… I updated my LinkedIn headline", i.e. text-
+  //      bearing artefacts offered as the moment to depict.
+  // All three are POSITIVELY framed. The first draft of the backdrop read "with no
+  // wall, no corner, no room, no furniture…" — six bare negations, which is the
+  // §14 trap this codebase has now hit five times, and which the negation gate in
+  // imagePromptNegation.test.ts correctly rejects. Describing the sweep as filling
+  // the frame edge to edge achieves the same exclusion by leaving no space for a
+  // wall to exist, rather than by naming walls.
+  const nicheContextObject = `The chosen object alone identifies the field — a practitioner would recognise it instantly by its form. Everything else in the picture is anonymous.`;
+  const seamlessBackdropObject = `Shot on a seamless studio backdrop: one unbroken sweep of deep charcoal falling into black, filling the whole background edge to edge and corner to corner, smooth and evenly lit. The object rests alone on a plain dark surface. Directional light falls across it while the backdrop behind stays empty and softly out of focus.`;
+  // cleanPlate is shared with the four passing styles and stays untouched, but its
+  // wording is person-and-room shaped: it names "plain walls", "blank screens" and
+  // "plain untitled book covers" — three text-BEARING props suggested into a frame
+  // that is meant to hold one anonymous object. This object-only variant describes
+  // the same clean-surface requirement in terms of the object itself.
+  const cleanPlateObject = `Every surface in frame is bare: the object's own surfaces are smooth and unmarked, the surface it rests on is plain, and the backdrop is an even field of tone. A purely photographic still life with generous empty space around the object.`;
+
+  const compositionPerson = "Composed for a portrait-format advertisement: a medium-wide shot with the subject seated behind a plain table or against a plain wall, their head and shoulders in the upper third of the frame and the camera far enough back to include space around them. The lower half of the picture is the bare foreground surface falling away into shadow — a calm, dark, low-detail area of plain, unbroken surface.";
   const compositionSetting = "Composed for a portrait-style advertisement: the main object sits high in the frame, in the upper half, with the arrangement kept to the top of the picture. The lower half of the image is calm open space — bare surface or softly defocused background — an unbroken area with room to breathe below.";
 
   const stylePrompts = {
-    person_shocked: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNote}`,
+    person_shocked: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
 
     // "No people in the frame" was a bare NEGATION and Flux ignored it — the same
     // trap as the deleted noText string. The `object` style's positively-framed
     // "an object study only" worked on the identical run. Positive framing only.
-    screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape with no labelling, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNote}`,
+    screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape in flat blocks of colour, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNoteStill}`,
 
-    person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNote}`,
+    person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
 
-    object: `${baseStyle}. A single relevant object (device, tool, or item) specifically associated with the ${niche} niche, photographed alone as a still life. The frame is empty of people — an object study only. Dramatic lighting, dark background. ${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNote}`,
+    // STEERED TOWARD NON-TEXT-BEARING ITEMS (2026-07-30). Counterintuitive
+    // finding from the 6-niche bake-off: gpt-image-1's BETTER comprehension is
+    // what creates its text liability. It reaches for the most articulate prop —
+    // a phone reading "SALES PIPELINE", an empty booking calendar — and then
+    // renders that type imperfectly (the calendar's day headers came out
+    // garbled). Naming material classes that physically cannot carry type steers
+    // it to a plain object without ever mentioning text.
+    // "an object study only" is retained VERBATIM: it is the phrasing that
+    // demonstrably worked on the same run where "No people in the frame" was
+    // ignored, which is the whole reason this file is being swept.
+    // L1–L3: niche appears ONCE, in object selection only. No `nicheContextSetting`
+    // (it orders the room to signal the niche), no `scene` (its gist carries
+    // text-bearing artefacts) — both were the text vectors. Backdrop is seamless.
+    object: `${baseStyle}. A single unlabelled physical object specifically associated with the ${niche} niche — a made thing with plain surfaces of metal, wood, fabric, glass, ceramic or moulded plastic — photographed alone as a still life, an object study only. ${nicheContextObject} ${seamlessBackdropObject} ${compositionSetting} ${cleanPlateObject} ${complianceNoteStill}`,
 
-    person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNote}`,
+    person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
   };
 
   return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
@@ -910,17 +1097,28 @@ export const adCreativesRouter = router({
           const niche = capturedSvc.category || "coaching";
           const batchId = `batch-${Date.now()}-${rb(4).toString("hex")}`;
           const customerCount = capturedSvc.totalCustomers || 0;
-          const { renderAdCreative: doRenderA, resolveAdBodyText: resolveBodyA } = await import("../_core/compositeHeadline");
+          const { renderAdCreative: doRenderA, resolveAdBodyTexts: resolveBodiesA } = await import("../_core/compositeHeadline");
           const { resolveCampaignCta: resolveCtaA } = await import("../_core/campaignCta");
           const gaCta = await resolveCtaA(bgDb, { campaignType: (capturedInput as { campaignType?: string }).campaignType, campaignId: (capturedInput as { campaignId?: number }).campaignId, serviceId: capturedInput.serviceId });
-          const gaBody = await resolveBodyA(bgDb, capturedUserId, capturedInput.serviceId);
-          const variations = [
-            { style: "person_shocked", formula: "benefit" as const },
-            { style: "screenshot", formula: "social_proof" as const },
-            { style: "person_intense", formula: "curiosity" as const },
-            { style: "object", formula: "contrast" as const },
-            { style: "person_curious", formula: "challenge" as const },
-          ];
+          // One source of truth — see _core/adVariations.ts. Identical order.
+          const variations = AD_VARIATIONS;
+
+          // ─── PARITY WITH runAdCreativesGeneration (2026-07-30) ───────────────
+          // This loop is the COACH-FACING one (V2AdImageCreator's "Generate Ad
+          // Images" button) and it had drifted from its sibling in
+          // adCreativesGenerator.ts on all three of P8, P6 and the zone contract.
+          // STATE.md recorded those as fixed "at all batch sites"; they were not.
+          // See docs/handovers/AD_IMAGE_SITE_SWEEP_2026-07-30.md for the full map.
+          //
+          // P8 — the body DECK, rotated per variation below. A single resolved
+          // line here is what made all five creatives share one body.
+          const gaBodies = await resolveBodiesA(bgDb, capturedUserId, capturedInput.serviceId, variations.length);
+          // P6 cause 2 — one subject resolved per batch, then a per-slot clause.
+          // Without this the prompt fell back to the neutral "Person (30-45 years
+          // old)", which is precisely the Flux prior that produced all-male decks.
+          const gaSubject = await resolveSubjectForService(bgDb, capturedInput.serviceId);
+          console.log(describeResolution(gaSubject));
+          const gaSubjectClauses = subjectClausesForBatch(gaSubject, variations.map(v => v.style));
           for (let i = 0; i < 5; i++) {
             const variation = variations[i];
             const headline = HEADLINE_FORMULAS[variation.formula](mechanism, niche, customerCount);
@@ -934,10 +1132,12 @@ export const adCreativesRouter = router({
               variation.style,
               niche,
               capturedSvc.painPoints || "",
-              uglyMode
+              uglyMode,
+              gaSubjectClauses[i],
             );
             console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i+1}/5 uglyMode=${uglyMode}`);
-            const imageResult = await genImg({ prompt: imagePrompt });
+            // `style` drives renderer selection — still lifes on gpt-image-1.
+            const imageResult = await genImg({ prompt: imagePrompt, style: variation.style });
             if (!imageResult.url) throw new Error(`Failed to generate image for variation ${i + 1}`);
             const imageResponse = await fetch(imageResult.url);
             const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
@@ -946,7 +1146,17 @@ export const adCreativesRouter = router({
             // rebuild cleanly later; also upload the composited headline PNG.
             const rawKey = `ad-creatives/${capturedUserId}/${batchId}/raw-variation-${i + 1}.png`;
             const { url: rawImageUrl } = await s3Put(rawKey, rawBuffer, "image/png");
-            const compositedBuffer = await doRenderA(rawBuffer, { headline, bodyText: gaBody, ctaLabel: gaCta });
+            const compositedBuffer = await doRenderA(rawBuffer, {
+              headline,
+              bodyText: gaBodies.length ? gaBodies[i % gaBodies.length] : "",
+              ctaLabel: gaCta,
+              // Compositor half of the zone contract. The photo prompt above has
+              // always carried the prompt half (it lives in the shared
+              // generateAdImagePrompt); this site never carried the other half,
+              // so the coach's own deck rendered headlines against the legacy
+              // scrim that starts at opacity 0 exactly where the first line lands.
+              zone: "lower",
+            });
             const fileKey = `ad-creatives/${capturedUserId}/${batchId}/variation-${i + 1}.png`;
             const { url: s3Url } = await s3Put(fileKey, compositedBuffer, "image/png");
 
@@ -1059,14 +1269,8 @@ export async function generateAdCreativesBatch(params: {
 
   const customerCount = service[0]?.totalCustomers || 0;
 
-  // Define 5 variations
-  const variations = [
-    { style: "person_shocked", formula: "benefit" as const },
-    { style: "screenshot", formula: "social_proof" as const },
-    { style: "person_intense", formula: "curiosity" as const },
-    { style: "object", formula: "contrast" as const },
-    { style: "person_curious", formula: "challenge" as const },
-  ];
+  // The 5 variations — one source of truth, see _core/adVariations.ts.
+  const variations = AD_VARIATIONS;
 
   const generatedCreatives = [];
 
