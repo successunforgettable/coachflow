@@ -340,6 +340,85 @@ code correctly supplied `Host: Dana Whitfield` while the same prompt still instr
 emit `[INSERT_HOST_NAME]`, and the instruction won. **Supplying a value is not enough — the
 instruction to use the token must also go.**
 
+### 🟢 CHECKPOINT 2026-07-30 — PROD CLEAN, NOTHING IN FLIGHT
+
+**Verified at stop, not recalled.** Zero render or DB processes alive; no half-run to finish.
+
+| | |
+|---|---|
+| Tables | services **124** · ICPs **101** · kits **49** · creatives **397** · adCopy **5405** · headlines **2154** · LPs **90** · emails **96** · WA **91** · offers **101** · mechs **1072** · hvco **6577** · bonuses **0** |
+| Running jobs | **0** |
+| Rows from this session's runs | **0** — every verification set torn down and re-verified after settling |
+| Published KV pages from this session | **0** — LP 233/234 purged, both `/p/` URLs confirmed **404** |
+| Smoke user published pages | **0** · `MAX(landingPages.id)` = **227**, back inside the protected range |
+| Protected rows | **6/6/6/6** intact |
+| Prod HTTP | **200** |
+
+⚠️ **`landingPages` with a publicUrl = 35.** That is the pre-existing latent debt from
+`PUBLISHED_EXPOSURE_AUDIT_2026-07-29.md` (32 Arfeen + 3 zapreviewer, **zero real coaches**), NOT from
+this session. Do not read it as new exposure.
+
+**No new Cloudinary objects this session.** The bake-off, composition render and niche test are all
+local-only — verified: zero `storagePut` calls in any of the three harness scripts. The only
+outstanding orphans are the 30 already logged under Arfeen's open items.
+
+---
+
+### 🔴 DECIDED AND READY TO BUILD — THE HYBRID IMAGE-MODEL SWITCH (not built)
+
+**Evidence: 6-niche still-life test (`d3d7312`), images in `docs/screenshots/run-2026-07-30-niches/`.**
+
+- **Niche relevance, `object` style: gpt-image-1 medium 6/6 · flux-1.1-pro 2/6** — and *both* Flux
+  hits carried a defect (a garbled brand name "Famron"; a **hand in frame** on a person-free style).
+  Flux's four misses were generic props: a pink flat-lay with earbuds for strength training, a floral
+  flat-lay for reactive dogs, a coffee-and-plants desk for 3am waking.
+- **House style: gpt 6/6 dark and on-brief · Flux 3/6 off** (one bright pink, one monochrome, one
+  floral). ⚠️ **This is a compositing failure, not an aesthetic one — the scrim assumes a dark
+  plate, so an off-style plate breaks legibility.**
+- **Latency:** flux median **6.1s** · gpt-image-1 medium **18.2s**.
+
+**Build:**
+1. **Still-life styles (`object`, `screenshot`) → gpt-image-1 medium.** Person slots **stay on
+   flux-1.1-pro** — casting was a **15/15 tie** across models and Flux is 3× faster. One branch in
+   `generateImage`; the styles are already distinct code paths. **~24s added per campaign, not 75s**
+   (2 of 5 slots move). Cost neutral: $0.042 vs $0.040.
+2. **Steer the object prompt to non-text-bearing items** — "an unlabelled physical tool or item",
+   positive framing. 🔑 **Counterintuitive finding: gpt-image-1's BETTER comprehension is what
+   creates its text liability.** It picks phones and calendars to express the brief (a phone reading
+   "SALES PIPELINE", an empty calendar for "can't fill the booking calendar") and then its own text
+   is imperfect — the calendar's day headers came out garbled.
+3. **Decide and RECORD the OpenAI failure path** — fall back to Flux, or fail the slot. **A deck
+   missing 2 of 5 is worse than a slightly worse image**, which argues for fallback, but it must be
+   an explicit decision written down, not an accident of try/catch.
+
+**Verify:** live, **all five inspected**; confirm the gpt plates are dark enough for the scrim;
+record real **end-to-end** latency (not generation-only — the two differ by ~7.6s).
+
+⚠️ **Caveat on the evidence: n=1 per niche/model cell.** No single image proves anything; the
+pattern across six niches is what carries weight.
+
+### 🔴 ALSO QUEUED — sweep every image prompt for NEGATION phrasing
+
+Convert `no` / `without` / `avoid` / `never` to positive framing. **The trap has now appeared THREE
+times and demonstrably does not work on diffusion models:** tabloid `"NO text, NO words…"` (deleted
+in fix C), `"No people in the frame"` (ignored by Flux on the same run where "an object study only"
+worked), and `cleanPlate`'s `"without prints or logos"` (caught by my own check, fixed in `6223ee1`).
+Grep the prompt surface, not just the files I happened to touch.
+
+### ✅ SHIPPED 2026-07-30 — composition self-contradiction (`6223ee1`)
+
+Ours, not the models'. `"framed from the chest up"` and `"the lower half is calm open space"` cannot
+both hold in a square frame, and all three bake-off models duly filled the lower half with torso —
+which is why the composition axis produced no winner. Same class as `nicheContext` being
+person-worded on the still-life styles.
+
+**Changed the SHOT, not the wording:** medium-wide, subject seated behind a plain surface, head in
+the upper third, bare foreground falling into shadow. Verified live on flux-1.1-pro, **all five
+inspected**. ⚠️ **Honest limit: the bare band is ~10–15%, not the ~45% the text stack occupies, so
+the headline still crosses torso.** Acceptable — text over a plain jumper under a 0.62 scrim is
+legible, **text over a face is the defect, and the face is now clear in every slot**. "Lower half
+calm open space" was over-specified for a 1:1 frame containing a person.
+
 ### ✅ ORDINAL-AS-CHOICE — ALL 8 SITES FIXED + VERIFIED LIVE (`66a5682`)
 
 **`server/_core/pickSelected.ts` is now the ONLY place this decision is made.** All four
@@ -727,6 +806,10 @@ the root cause of the Sprint B email regression. **Needs regression testing, not
 
 - 🔴 **Rotate the smoke password** (`zap-e2e-smoke@mailinator.com`) + update `~/.zap-e2e-creds.env`.
   Deferred through three runs.
+- 🟡 **Bonus PDF design pass.** Content is excellent, presentation is plain. The backlog item already
+  exists ([[project_bonus_pdf_visual_design_pass]]): **a bonus should be a tool the buyer operates —
+  persisting checklists, copy-to-clipboard scripts, typeable fields — not a document to read.**
+  Queued behind Meta/GHL and the red-team.
 - 🟡 **Cloudinary cleanup — ad creatives (added 2026-07-29).** A DB delete never touches Cloudinary,
   so every torn-down run leaves its images behind. **30 orphans from the three 07-29 proof runs** —
   cloud `dunshei0y`, Media Library. Search **`batch-1785333231628`** → delete 10:
