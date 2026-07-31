@@ -1,7 +1,7 @@
 /**
  * Ad Creatives gen-core (Sprint B+1 path d Phase C C1, 2026-05-11).
  *
- * Phase C C1 extension to the B1 runX pattern. Extracts the 5-variation
+ * Phase C C1 extension to the B1 runX pattern. Extracts the deck-sized
  * generation loop from adCreativesRouter.generate so the orchestrator can
  * call it directly without an HTTP round-trip and without the free-tier
  * gate (which lives at the router level and is now redundant for Auto Mode
@@ -12,8 +12,9 @@
  * router's `generate` mutation now calls this gen-core after its free-tier
  * gate, keeping single-source-of-truth on the generation logic.
  *
- * Compositionally: 5 image variations per batch, each ~$0.04 Replicate Flux
- * cost (~$0.20/batch), wall-clock ~2-2.5 min sequential. Auto Mode runs
+ * Compositionally: AD_VARIATIONS.length image variations per batch (4 since
+ * the object slot was retired, 2026-08-01), each ~$0.04 Replicate Flux cost,
+ * wall-clock ~2 min sequential. Auto Mode runs
  * this as cascade step 9 (after whatsappSequence), inserted at the end of
  * the cascade so:
  *   - 8 text generators complete first (faster failure-feedback if any of
@@ -45,7 +46,7 @@ import {
   resolveSubjectDescriptor, subjectClausesForBatch, describeResolution,
   type SubjectResolution,
 } from "./_core/subjectDescriptor";
-import { AD_VARIATIONS } from "./_core/adVariations";
+import { AD_VARIATIONS, type AdVariationFormula } from "./_core/adVariations";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
@@ -73,7 +74,8 @@ export type RunAdCreativesGenerationInput = {
   // Phase C C1.1: optional pre-formed headlines from
   // generateContextualAdHeadlines (Auto Mode path uses these; wizard path
   // omits and falls back to HEADLINE_FORMULAS for backward compat).
-  // Length must be exactly 5; each headline ≤38 chars (enforced by
+  // Length must equal AD_VARIATIONS.length (4 since the object slot was
+  // retired, 2026-08-01); each headline ≤38 chars (enforced by
   // validateAdHeadlines on the producer side). Stage 2: each carries an
   // optional accent `emphasis` for the two-tone headline render.
   headlines?: { text: string; emphasis?: string }[];
@@ -173,7 +175,50 @@ export type GenerateContextualAdHeadlinesInput = {
  * example compressions + length-rule wording are present in the
  * constructed prompt.
  */
+/**
+ * One block per ad register, keyed by formula. Exhaustive over
+ * `AdVariationFormula` by type, so a new formula cannot be added to the deck
+ * without its guidance; only the formulas actually present in AD_VARIATIONS are
+ * emitted, in deck order.
+ *
+ * WHY DERIVED (2026-08-01). This list was hardcoded prose — "THE 5 HEADLINES",
+ * five numbered registers, and "exactly 5 strings … benefit, social_proof,
+ * curiosity, contrast, challenge". Retiring the object slot dropped the
+ * `contrast` register, and three separate places in one prompt would have had
+ * to be edited in lockstep or the model would be asked for 5 headlines that the
+ * caller then rejects for not being 4. Deriving all three from the deck makes
+ * the drift impossible rather than merely noticed.
+ *
+ * Each block's wording is UNCHANGED from the hardcoded version. §14: this is a
+ * subtractive + renumbering edit only — no register was reworded, and no
+ * failure shape was named to exclude it.
+ */
+const HEADLINE_REGISTER_BLOCKS: Readonly<Record<AdVariationFormula, string>> = {
+  benefit: `BENEFIT — name the outcome the audience wants. Direct, declarative, claim-the-result.
+   Example shapes: "Cut sales cycles 50%." / "Board-ready in 90 days." / "Stop the 2am replay loop."`,
+
+  social_proof: `SOCIAL_PROOF — reference a SPECIFIC outcome, named context, or numeric proof. NOT "X trust this" or "experts use this" or "leaders adopt this" — those are generic and forbidden. Use a concrete claim, a named situation, or a number.
+   Example shapes: "Most boards see it in 90 days." / "From 26 dead deals to 11 real ones."`,
+
+  curiosity: `CURIOSITY — open a loop or hint at a reframe. Make the reader want to know more.
+   Example shapes: "Your prep is fine. Your state isn't." / "It's not the deck." / "The 4-second window before words."`,
+
+  // Retired from the tabloid deck with the object slot on 2026-08-01. Retained
+  // here so the map stays exhaustive over the formula union — it is emitted only
+  // if `contrast` reappears in AD_VARIATIONS.
+  contrast: `CONTRAST — before/after framing OR what-vs-what positioning.
+   Example shapes: "Six rehearsals at home, froze onstage." / "Hope vs. data." / "Closed-won — not closed-wished."`,
+
+  challenge: `CHALLENGE — call out the wrong way; provoke action against a counterproductive pattern.
+   Example shapes: "Stop chasing dead pipeline." / "Sitting up straight won't hold a room." / "Forecasting fiction isn't strategy."`,
+};
+
 export function buildAdHeadlinesUserPrompt(input: GenerateContextualAdHeadlinesInput): string {
+  const registerCount = AD_VARIATIONS.length;
+  const registerList = AD_VARIATIONS.map((v) => v.formula).join(", ");
+  const registerBlocks = AD_VARIATIONS
+    .map((v, i) => `${i + 1}. ${HEADLINE_REGISTER_BLOCKS[v.formula]}`)
+    .join("\n\n");
   // Sprint 3 C4 side-fix: cascade-derived inputs can be full sentences
   // (ICP descriptors, mechanism paragraphs). Long inputs drag the model
   // toward long headlines and exhaust the ≤38-char validator's retries.
@@ -185,7 +230,7 @@ export function buildAdHeadlinesUserPrompt(input: GenerateContextualAdHeadlinesI
     const lastSpace = cut.lastIndexOf(" ");
     return `${cut.slice(0, lastSpace > max * 0.6 ? lastSpace : max)}…`;
   };
-  return `Write 5 Meta-compliant ad headlines for this service.
+  return `Write ${registerCount} Meta-compliant ad headlines for this service.
 
 Service: ${gist(input.productName, 60)}
 Audience: ${gist(input.targetAudience, 90)}
@@ -223,24 +268,11 @@ Pattern: dropped audience prefix; kept the niche-specific failure mode ("last cl
 
 In all three compressions, the audience-naming consumed 40-60% of the characters and added zero ad-headline value. Compress aggressively.
 
-THE 5 HEADLINES — each must match a different ad register, in order:
+THE ${registerCount} HEADLINES — each must match a different ad register, in order:
 
-1. BENEFIT — name the outcome the audience wants. Direct, declarative, claim-the-result.
-   Example shapes: "Cut sales cycles 50%." / "Board-ready in 90 days." / "Stop the 2am replay loop."
+${registerBlocks}
 
-2. SOCIAL_PROOF — reference a SPECIFIC outcome, named context, or numeric proof. NOT "X trust this" or "experts use this" or "leaders adopt this" — those are generic and forbidden. Use a concrete claim, a named situation, or a number.
-   Example shapes: "Most boards see it in 90 days." / "From 26 dead deals to 11 real ones."
-
-3. CURIOSITY — open a loop or hint at a reframe. Make the reader want to know more.
-   Example shapes: "Your prep is fine. Your state isn't." / "It's not the deck." / "The 4-second window before words."
-
-4. CONTRAST — before/after framing OR what-vs-what positioning.
-   Example shapes: "Six rehearsals at home, froze onstage." / "Hope vs. data." / "Closed-won — not closed-wished."
-
-5. CHALLENGE — call out the wrong way; provoke action against a counterproductive pattern.
-   Example shapes: "Stop chasing dead pipeline." / "Sitting up straight won't hold a room." / "Forecasting fiction isn't strategy."
-
-Output: a JSON object with a "headlines" key (array of exactly 5 strings, in the order above: benefit, social_proof, curiosity, contrast, challenge) AND an "emphases" key (array of exactly 5 strings, parallel to headlines).
+Output: a JSON object with a "headlines" key (array of exactly ${registerCount} strings, in the order above: ${registerList}) AND an "emphases" key (array of exactly ${registerCount} strings, parallel to headlines).
 
 For each headline, emphases[i] is the single most impactful phrase to highlight in a gold accent colour on the finished ad — the emotional or specific-outcome punch of that line. It MUST be a verbatim substring of headlines[i] (identical characters, same case), 1 to 4 words, never the entire headline. Examples: for "Your one income source has zero backup plan" → "backup plan"; for "30 apps, zero calls back. This worked." → "This worked."; for "Stop blaming price for lost deals" → "lost deals".
 

@@ -59,7 +59,11 @@ export type ImageRenderer = "flux-1.1-pro" | "gpt-image-1";
  * produce 9:16. adCreatives.makeVertical asks for "9:16", so it stays on Flux —
  * enforced here rather than left for a call site to remember.
  */
-const STILL_LIFE_STYLES: ReadonlySet<string> = new Set(["object", "screenshot"]);
+// `object` was retired from the tabloid deck on 2026-08-01 (see
+// _core/adVariations.ts). The set itself is LOAD-BEARING and stays — `screenshot`
+// depends on it for gpt-image-1 routing, and deleting the set would silently
+// drop the surviving still life back onto Flux.
+const STILL_LIFE_STYLES: ReadonlySet<string> = new Set(["screenshot"]);
 
 export function rendererForStyle(style?: string, aspectRatio?: string): ImageRenderer {
   if (!style || !STILL_LIFE_STYLES.has(style)) return "flux-1.1-pro";

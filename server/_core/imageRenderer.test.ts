@@ -1,7 +1,7 @@
 /**
  * Renderer selection for the hybrid image switch.
  *
- * The decision has to be made in ONE place, because the same five-slot loop is
+ * The decision has to be made in ONE place, because the same deck loop is
  * written out at three call sites and the 2026-07-30 site sweep showed that
  * per-site wiring is exactly what drifts (P8 rotation and the P6 subject
  * resolver each landed on some loops and missed others while STATE.md recorded
@@ -12,9 +12,16 @@ import { rendererForStyle } from "./imageGeneration";
 import { AD_VARIATIONS } from "./adVariations";
 
 describe("rendererForStyle", () => {
-  it("routes the two still-life slots to gpt-image-1 at 1:1", () => {
-    expect(rendererForStyle("object", "1:1")).toBe("gpt-image-1");
+  it("routes the surviving still-life slot to gpt-image-1 at 1:1", () => {
     expect(rendererForStyle("screenshot", "1:1")).toBe("gpt-image-1");
+  });
+
+  // OBJECT SLOT RETIRED 2026-08-01. `object` used to be the second still life
+  // and routed to gpt-image-1; it is no longer in STILL_LIFE_STYLES, so a
+  // historical row that still carries the string can never re-enter the
+  // gpt-image-1 path.
+  it("no longer treats the retired object slot as a still life", () => {
+    expect(rendererForStyle("object", "1:1")).toBe("flux-1.1-pro");
   });
 
   it("keeps all three person slots on flux-1.1-pro", () => {
@@ -24,14 +31,13 @@ describe("rendererForStyle", () => {
   });
 
   it("defaults the aspect ratio to 1:1 when omitted", () => {
-    expect(rendererForStyle("object")).toBe("gpt-image-1");
+    expect(rendererForStyle("screenshot")).toBe("gpt-image-1");
   });
 
   it("forces vertical back to flux — gpt-image-1 cannot render 9:16", () => {
     // gpt-image-1 offers 1024x1024 / 1024x1536 / 1536x1024 only. makeVertical
     // asks for "9:16", so it must stay on Flux; enforced here rather than left
     // for a call site to remember.
-    expect(rendererForStyle("object", "9:16")).toBe("flux-1.1-pro");
     expect(rendererForStyle("screenshot", "9:16")).toBe("flux-1.1-pro");
   });
 
@@ -43,10 +49,16 @@ describe("rendererForStyle", () => {
     expect(rendererForStyle("desk_focus", "1:1")).toBe("flux-1.1-pro");
   });
 
-  it("moves exactly 2 of the 5 canonical slots", () => {
-    // The latency and cost arithmetic in the switch decision depends on this
-    // being two, not three or five: ~24s added per campaign, cost neutral.
+  it("moves exactly 1 of the 4 canonical slots", () => {
+    // CHANGED 2026-08-01 (was "2 of the 5", ["screenshot", "object"]). The
+    // object slot was retired from the deck, so only `screenshot` moves. The
+    // latency arithmetic follows: ~12s added per campaign, not ~24s.
     const moved = AD_VARIATIONS.filter((v) => rendererForStyle(v.style, "1:1") === "gpt-image-1");
-    expect(moved.map((v) => v.style)).toEqual(["screenshot", "object"]);
+    expect(moved.map((v) => v.style)).toEqual(["screenshot"]);
+  });
+
+  it("the deck is four slots and contains no retired object entry", () => {
+    expect(AD_VARIATIONS.length).toBe(4);
+    expect(AD_VARIATIONS.some((v) => (v.style as string) === "object")).toBe(false);
   });
 });

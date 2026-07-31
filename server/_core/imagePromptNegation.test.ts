@@ -79,19 +79,39 @@ describe("image prompts carry no negation phrasing", () => {
   });
 });
 
-describe("the object style steers away from text-bearing props", () => {
-  it("names material classes that cannot carry type", () => {
-    const prompt = generateAdImagePrompt("object", NICHE, PROBLEM);
-    expect(prompt).toContain("unlabelled physical object");
-    for (const material of ["metal", "wood", "fabric", "glass", "ceramic", "moulded plastic"]) {
-      expect(prompt).toContain(material);
-    }
+// ─── OBJECT SLOT RETIRED, 2026-08-01 ────────────────────────────────────────
+//
+// CHANGED, NOT DELETED SILENTLY. This describe block previously asserted the
+// object prompt's positive content — "unlabelled physical object", the material
+// list, "an object study only", and the L5 surface clause — plus an L5 scoping
+// test. All of those pinned a template that no longer exists. They are replaced
+// by the inverse assertions: the slot must be unreachable.
+describe("the retired object slot cannot be produced", () => {
+  it("is absent from the deck", () => {
+    expect(AD_VARIATIONS.some((v) => (v.style as string) === "object")).toBe(false);
   });
 
-  it("keeps the phrasing that demonstrably worked", () => {
-    // "an object study only" rendered a genuine still life on the same 2026-07-29
-    // run where the bare negation "No people in the frame" was ignored. It is
-    // load-bearing wording, not decoration.
-    expect(generateAdImagePrompt("object", NICHE, PROBLEM)).toContain("an object study only");
+  it("no longer resolves to an object-study prompt", () => {
+    const prompt = generateAdImagePrompt("object", NICHE, PROBLEM);
+    expect(prompt).not.toContain("an object study only");
+    expect(prompt).not.toContain("unlabelled physical object");
+    expect(prompt).not.toContain("worked smooth and continuous");
+    expect(prompt).not.toContain("Its silhouette and construction are what identify it.");
+  });
+
+  it("falls back to the person_shocked template for any residual caller", () => {
+    // tsc rejects the literal at every in-repo call site; this covers a value
+    // arriving from the DB at runtime, where the type system cannot help.
+    expect(generateAdImagePrompt("object", NICHE, PROBLEM, false, "A woman in her late thirties"))
+      .toBe(generateAdImagePrompt("person_shocked", NICHE, PROBLEM, false, "A woman in her late thirties"));
+  });
+
+  it("leaves no object-only string anywhere in a surviving prompt", () => {
+    for (const v of AD_VARIATIONS) {
+      const prompt = generateAdImagePrompt(v.style, NICHE, PROBLEM, false, "A woman in her late thirties");
+      expect(prompt, v.style).not.toContain("seamless studio backdrop");
+      expect(prompt, v.style).not.toContain("worked smooth and continuous");
+      expect(prompt, v.style).not.toContain("The chosen object alone identifies the field");
+    }
   });
 });

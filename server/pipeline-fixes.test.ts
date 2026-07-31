@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { AD_VARIATIONS } from "./_core/adVariations";
 import { calculateSceneDurations } from "./routers/videos";
 import { buildScriptPrompt, MAX_SCRIPT_WORDS } from "./routers/videoScripts";
 import { sanitizePlaceholder, PLACEHOLDER_DEFAULTS } from "./routers/services";
@@ -1099,16 +1100,33 @@ describe("Phase C C1.1 Phase 2 — ad headlines prompt fortification", () => {
     expect(prompt).toMatch(/forbidden/i);
   });
 
-  it("prompt includes per-register example shapes for all 5 emotional registers", () => {
+  // CHANGED 2026-08-01 — was "all 5 emotional registers" and asserted /CONTRAST/.
+  // The object slot was retired from the tabloid deck, which retired its paired
+  // `contrast` register with it. Asserted against the DECK now rather than a
+  // hardcoded list, so this test tracks the source of truth instead of drifting
+  // from it — the exact failure mode that motivated deriving the prompt.
+  it("prompt includes per-register example shapes for every register in the deck", () => {
     const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
-    // Each register needs concrete length-fitting reference shapes.
+    for (const v of AD_VARIATIONS) {
+      expect(prompt, v.formula).toMatch(new RegExp(v.formula.toUpperCase()));
+    }
     expect(prompt).toMatch(/BENEFIT/);
     expect(prompt).toMatch(/SOCIAL_PROOF/);
     expect(prompt).toMatch(/CURIOSITY/);
-    expect(prompt).toMatch(/CONTRAST/);
     expect(prompt).toMatch(/CHALLENGE/);
+    // The retired register must not still be requested from the model.
+    expect(prompt).not.toMatch(/CONTRAST/);
     // Sample of expected example-shape phrases that should round-trip
     expect(prompt).toMatch(/Example shapes/);
+  });
+
+  it("prompt asks for exactly as many headlines as the deck has slots", () => {
+    const prompt = buildAdHeadlinesUserPrompt(SAMPLE_INPUT);
+    const n = AD_VARIATIONS.length;
+    expect(prompt).toContain(`Write ${n} Meta-compliant ad headlines`);
+    expect(prompt).toContain(`THE ${n} HEADLINES`);
+    expect(prompt).toContain(`array of exactly ${n} strings`);
+    expect(prompt).toContain(AD_VARIATIONS.map((v) => v.formula).join(", "));
   });
 
   it("prompt closes with a count-characters reminder as final instruction", () => {

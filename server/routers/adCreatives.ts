@@ -11,7 +11,7 @@ import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
 import { runAdCreativesGeneration, resolveSubjectForService } from "../adCreativesGenerator";
 import { subjectClausesForBatch, describeResolution } from "../_core/subjectDescriptor";
-import { AD_VARIATIONS } from "../_core/adVariations";
+import { AD_VARIATIONS, liveStyleFor } from "../_core/adVariations";
 import { fitTitle } from "../lib/templates/templatePrimitives";
 import { validateCascadePrereqs } from "../_core/cascadeContext";
 
@@ -314,47 +314,21 @@ export function generateAdImagePrompt(
   // to a foreground surface falling into shadow. That is a real photograph a
   // photographer could take, and the scrim then darkens an area that is already
   // low-detail instead of fighting a lit torso.
-  // ─── OBJECT-SLOT STRUCTURAL FIX, L1–L3 (2026-07-31) ────────────────────────
+  // ─── OBJECT SLOT RETIRED, 2026-08-01 ───────────────────────────────────────
   //
-  // WHY. The Step D live render put a wall sign reading "COACHING" — large,
-  // sharp, centred at the top of the frame — directly above the composited
-  // headline, where it read as a second unintended headline. The OBJECT was
-  // correctly unlabelled; the BACKGROUND expressed the niche as legible text.
+  // The `object` template and its four object-only strings (nicheContextObject,
+  // seamlessBackdropObject, cleanPlateObject, unmarkedSurfacesObject) lived here
+  // and were deleted with the slot. Three successive prompt layers each closed
+  // the text vector they named and the leak moved to the next surface —
+  // background signage, then engraved plinths, then embroidered fabric and a
+  // debossed block. See _core/adVariations.ts for the full disposition.
   //
-  // ROOT CAUSE, read off the literal prompt: `nicheContextSetting` orders "the
-  // room, surfaces and objects must be recognisable to someone in that world",
-  // and `services.category` for that coach is the bare word "coaching" — an
-  // abstract service niche with NO physical vocabulary. A fitness room has
-  // dumbbells; a "coaching" room has nothing. Ordered to make a room recognisably
-  // coaching, the only unambiguous signifier left is the written word. It also
-  // directly contradicts cleanPlate's "plain walls" — the same self-contradiction
-  // class as P6 cause 1 and the composition clause, now the third instance.
-  //
-  // L1 — the OBJECT carries the niche; the background carries nothing. This is a
-  //      NEW object-only string. `nicheContextSetting` is shared with the
-  //      screenshot style, which passed and is out of scope, so it is untouched.
-  // L2 — the load-bearing change. A seamless studio sweep has no wall, no room,
-  //      no furniture and no frames, so there is structurally nowhere for signage
-  //      to live. This replaces "dark background" + the room implied by cleanPlate.
-  // L3 — neither the niche nor the problem gist reaches the background layer. The
-  //      problem gist was a second text vector: for this coach it read "three
-  //      StrengthsFinder assessments… I updated my LinkedIn headline", i.e. text-
-  //      bearing artefacts offered as the moment to depict.
-  // All three are POSITIVELY framed. The first draft of the backdrop read "with no
-  // wall, no corner, no room, no furniture…" — six bare negations, which is the
-  // §14 trap this codebase has now hit five times, and which the negation gate in
-  // imagePromptNegation.test.ts correctly rejects. Describing the sweep as filling
-  // the frame edge to edge achieves the same exclusion by leaving no space for a
-  // wall to exist, rather than by naming walls.
-  const nicheContextObject = `The chosen object alone identifies the field — a practitioner would recognise it instantly by its form. Everything else in the picture is anonymous.`;
-  const seamlessBackdropObject = `Shot on a seamless studio backdrop: one unbroken sweep of deep charcoal falling into black, filling the whole background edge to edge and corner to corner, smooth and evenly lit. The object rests alone on a plain dark surface. Directional light falls across it while the backdrop behind stays empty and softly out of focus.`;
-  // cleanPlate is shared with the four passing styles and stays untouched, but its
-  // wording is person-and-room shaped: it names "plain walls", "blank screens" and
-  // "plain untitled book covers" — three text-BEARING props suggested into a frame
-  // that is meant to hold one anonymous object. This object-only variant describes
-  // the same clean-surface requirement in terms of the object itself.
-  const cleanPlateObject = `Every surface in frame is bare: the object's own surfaces are smooth and unmarked, the surface it rests on is plain, and the backdrop is an even field of tone. A purely photographic still life with generous empty space around the object.`;
-
+  // ⚠️ WHAT STAYED. `cleanPlate`, `compositionSetting`, `nicheContextSetting`
+  // and `complianceNoteStill` are SHARED with the `screenshot` style and are
+  // untouched. `complianceNoteStill` in particular was CREATED by the L4 object
+  // work — a git-revert of the L1–L5 commits would drag it back into the
+  // person-worded `complianceNotePerson` and silently regress screenshot. That
+  // is why this was deleted surgically by identifier and never reverted.
   const compositionPerson = "Composed for a portrait-format advertisement: a medium-wide shot with the subject seated behind a plain table or against a plain wall, their head and shoulders in the upper third of the frame and the camera far enough back to include space around them. The lower half of the picture is the bare foreground surface falling away into shadow — a calm, dark, low-detail area of plain, unbroken surface.";
   const compositionSetting = "Composed for a portrait-style advertisement: the main object sits high in the frame, in the upper half, with the arrangement kept to the top of the picture. The lower half of the image is calm open space — bare surface or softly defocused background — an unbroken area with room to breathe below.";
 
@@ -367,21 +341,6 @@ export function generateAdImagePrompt(
     screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape in flat blocks of colour, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNoteStill}`,
 
     person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
-
-    // STEERED TOWARD NON-TEXT-BEARING ITEMS (2026-07-30). Counterintuitive
-    // finding from the 6-niche bake-off: gpt-image-1's BETTER comprehension is
-    // what creates its text liability. It reaches for the most articulate prop —
-    // a phone reading "SALES PIPELINE", an empty booking calendar — and then
-    // renders that type imperfectly (the calendar's day headers came out
-    // garbled). Naming material classes that physically cannot carry type steers
-    // it to a plain object without ever mentioning text.
-    // "an object study only" is retained VERBATIM: it is the phrasing that
-    // demonstrably worked on the same run where "No people in the frame" was
-    // ignored, which is the whole reason this file is being swept.
-    // L1–L3: niche appears ONCE, in object selection only. No `nicheContextSetting`
-    // (it orders the room to signal the niche), no `scene` (its gist carries
-    // text-bearing artefacts) — both were the text vectors. Backdrop is seamless.
-    object: `${baseStyle}. A single unlabelled physical object specifically associated with the ${niche} niche — a made thing with plain surfaces of metal, wood, fabric, glass, ceramic or moulded plastic — photographed alone as a still life, an object study only. ${nicheContextObject} ${seamlessBackdropObject} ${compositionSetting} ${cleanPlateObject} ${complianceNoteStill}`,
 
     person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
   };
@@ -664,7 +623,9 @@ export const adCreativesRouter = router({
 
       const capturedUserId  = ctx.user.id;
       const capturedId      = input.id;
-      const capturedStyle   = existing.designStyle || "person_shocked";
+      // Retired styles remapped explicitly — see liveStyleFor(). A historical
+      // `object` row must not re-enter the retired prompt path on regenerate.
+      const capturedStyle   = liveStyleFor(existing.designStyle);
       const capturedNiche   = existing.niche;
       const capturedProblem = existing.pressingProblem;
       const capturedHeadline = nextHeadline;
@@ -827,7 +788,8 @@ export const adCreativesRouter = router({
 
       const capturedUserId    = ctx.user.id;
       const capturedId        = input.id;
-      const capturedStyle     = existing.designStyle || "person_shocked";
+      // Retired styles remapped explicitly — see liveStyleFor().
+      const capturedStyle     = liveStyleFor(existing.designStyle);
       const capturedNiche     = existing.niche;
       const capturedProblem   = existing.pressingProblem;
       const capturedHeadline  = existing.headline ?? "";
@@ -1119,7 +1081,10 @@ export const adCreativesRouter = router({
           const gaSubject = await resolveSubjectForService(bgDb, capturedInput.serviceId);
           console.log(describeResolution(gaSubject));
           const gaSubjectClauses = subjectClausesForBatch(gaSubject, variations.map(v => v.style));
-          for (let i = 0; i < 5; i++) {
+          // Arity derived from the deck, never hardcoded — this site read
+          // `i < 5` and would have crashed on `variations[4].formula` the
+          // moment the object slot was retired (2026-08-01).
+          for (let i = 0; i < variations.length; i++) {
             const variation = variations[i];
             const headline = HEADLINE_FORMULAS[variation.formula](mechanism, niche, customerCount);
             const complianceIssues = checkCompliance(
@@ -1135,7 +1100,7 @@ export const adCreativesRouter = router({
               uglyMode,
               gaSubjectClauses[i],
             );
-            console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i+1}/5 uglyMode=${uglyMode}`);
+            console.log(`[adCreatives.generateAsync] Job ${jobId} — variation ${i+1}/${variations.length} uglyMode=${uglyMode}`);
             // `style` drives renderer selection — still lifes on gpt-image-1.
             const imageResult = await genImg({ prompt: imagePrompt, style: variation.style });
             if (!imageResult.url) throw new Error(`Failed to generate image for variation ${i + 1}`);
@@ -1283,13 +1248,15 @@ export async function generateAdCreativesBatch(params: {
   console.log(describeResolution(batchSubject));
   const batchSubjectClauses = subjectClausesForBatch(batchSubject, variations.map(v => v.style));
 
-  for (let i = 0; i < 5; i++) {
+  // Arity derived from the deck, never hardcoded — see the sibling site in
+  // generateAsync. Both read `i < 5` before the object-slot retirement.
+  for (let i = 0; i < variations.length; i++) {
     const variation = variations[i];
     const headline = HEADLINE_FORMULAS[variation.formula](mechanism, params.niche, customerCount);
     const complianceIssues = checkCompliance(headline, params.mainBenefit, params.pressingProblem);
     const imagePrompt = generateAdImagePrompt(variation.style, params.niche, params.pressingProblem, false, batchSubjectClauses[i]);
 
-    console.log(`[generateAdCreativesBatch] Generating variation ${i + 1}/5`);
+    console.log(`[generateAdCreativesBatch] Generating variation ${i + 1}/${variations.length}`);
 
     // Generate image
     const imageResult = await generateImage({ prompt: imagePrompt });

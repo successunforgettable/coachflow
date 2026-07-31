@@ -4,9 +4,18 @@ import {
   resolveAgeBand, isPersonStyle,
 } from "./subjectDescriptor";
 
-// The REAL order from adCreativesGenerator.VARIATIONS. Person-bearing styles sit
-// at indices 0, 2, 4 — all even — which is exactly what broke the mixed path.
-const REAL_STYLE_ORDER = ["person_shocked", "screenshot", "person_intense", "object", "person_curious"];
+// The REAL order, read from the deck itself rather than restated. It was a
+// hardcoded 5-slot literal including "object" until 2026-08-01; that literal
+// kept PASSING after the object slot was retired while no longer describing the
+// deck, which is the quiet way a test stops testing anything. Derived now.
+//
+// Historically person-bearing styles sat at indices 0, 2, 4 — all even — which
+// is exactly what broke the mixed path (alternating on the variation index
+// instead of the person ordinal). Post-retirement they sit at 0, 2, 3, so the
+// parity coincidence is gone; the ordinal bookkeeping in subjectClausesForBatch
+// is what makes both layouts correct, and that is what these tests pin.
+import { AD_VARIATIONS } from "./adVariations";
+const REAL_STYLE_ORDER: string[] = AD_VARIATIONS.map((v) => v.style);
 
 // Verbatim prod values, read from idealCustomerProfiles.demographics on 2026-07-29.
 const PROD_254 = "All genders; slightly skewed toward women 38–46 in managerial and professional roles who report higher rates of values-career misalignment";
