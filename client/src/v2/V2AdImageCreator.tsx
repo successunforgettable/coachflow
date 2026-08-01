@@ -16,6 +16,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { downloadRemoteFile, adCreativeFilename } from "./lib/downloadImage";
 import ZappyMascot from "./ZappyMascot";
 import { Link } from "wouter";
 
@@ -197,23 +198,31 @@ function ImageCard({
     try { return JSON.parse(creative.complianceIssues); } catch { return []; }
   })();
 
+  // FIXED 2026-08-01. Both of these used `a.download` on a cross-origin
+  // Cloudinary URL with target="_blank" — the download attribute is ignored
+  // cross-origin, so this opened a tab instead of saving a file. See
+  // lib/downloadImage.ts for the mechanism and the evidence.
+  const [dlState, setDlState] = useState<Record<string, "busy" | "error">>({});
+
+  async function saveCreative(url: string, suffix: string, key: string) {
+    setDlState((s) => ({ ...s, [key]: "busy" }));
+    try {
+      const name = adCreativeFilename(creative).replace(/\.png$/, `${suffix}.png`);
+      await downloadRemoteFile(url, name);
+      setDlState((s) => { const n = { ...s }; delete n[key]; return n; });
+    } catch {
+      setDlState((s) => ({ ...s, [key]: "error" }));
+      setTimeout(() => setDlState((s) => { const n = { ...s }; delete n[key]; return n; }), 4000);
+    }
+  }
+
   function handleDownload() {
-    const a = document.createElement("a");
-    a.href = creative.imageUrl;
-    a.download = `zap-ad-${creative.id}.png`;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.click();
+    void saveCreative(creative.imageUrl, "", "square");
   }
 
   function handleDownloadVertical() {
     if (!creative.verticalImageUrl) return;
-    const a = document.createElement("a");
-    a.href = creative.verticalImageUrl;
-    a.download = `zap-ad-${creative.id}-9x16.png`;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.click();
+    void saveCreative(creative.verticalImageUrl, "-9x16", "vertical");
   }
 
   // Vertical (9:16) needs the persisted scene to stay one-shoot. Editorial rows
@@ -351,6 +360,7 @@ function ImageCard({
             {/* Download */}
             <button
               onClick={handleDownload}
+              disabled={dlState.square === "busy"}
               style={{
                 flex: 1,
                 background: T.dark,
@@ -367,7 +377,7 @@ function ImageCard({
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
             >
-              Download
+              {dlState.square === "busy" ? "Saving…" : dlState.square === "error" ? "Retry" : "Download"}
             </button>
             {/* Regenerate — opens the edit panel */}
             <button
@@ -410,13 +420,14 @@ function ImageCard({
               </span>
               <button
                 onClick={handleDownloadVertical}
+                disabled={dlState.vertical === "busy"}
                 style={{
                   background: "transparent", color: T.dark, border: `2px solid ${T.dark}`,
                   borderRadius: T.pill, padding: "8px 14px", fontFamily: T.fontBody,
                   fontWeight: 700, fontSize: "12px", cursor: "pointer",
                 }}
               >
-                Download 9:16
+                {dlState.vertical === "busy" ? "Saving…" : dlState.vertical === "error" ? "Retry" : "Download 9:16"}
               </button>
             </div>
           ) : (

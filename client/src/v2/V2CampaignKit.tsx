@@ -18,6 +18,7 @@ import { resolveTokensInObject, resolveTokensInText } from "./lib/resolveTokens"
 import { trpc } from "@/lib/trpc";
 import { downloadCampaignBrief, formatIcpTxt, downloadPdf } from "./lib/exportUtils";
 import { isIcpRich } from "./lib/icpRichness";
+import { downloadRemoteFile, adCreativeFilename } from "./lib/downloadImage";
 
 // Lazy — the full 17-section reader is only mounted when the user opens the modal.
 const V2ICPResultPanel = lazy(() => import("./V2ICPResultPanel"));
@@ -179,7 +180,26 @@ function AdCreativesSection({ batchId }: { batchId: string }) {
     : Array.isArray((batchQuery.data as any)?.creatives)
       ? (batchQuery.data as any).creatives
       : [];
-  const imageUrls = (items as any[]).map((c: any) => c?.imageUrl).filter((u: string) => u?.startsWith("http"));
+  // Keep the WHOLE row, not just the URL — the filename is built from
+  // variationNumber / headlineFormula / headline, so a coach downloading four
+  // of these can tell them apart in their Downloads folder.
+  const creatives = (items as any[]).filter((c: any) => typeof c?.imageUrl === "string" && c.imageUrl.startsWith("http"));
+
+  // Per-image download state, keyed by row id. Downloads are ~1MB and finish
+  // fast, but a coach on hotel wifi needs to see that the click registered.
+  const [downloading, setDownloading] = useState<Record<string, "busy" | "error">>({});
+
+  async function handleDownload(creative: any) {
+    const key = String(creative.id ?? creative.variationNumber ?? creative.imageUrl);
+    setDownloading((s) => ({ ...s, [key]: "busy" }));
+    try {
+      await downloadRemoteFile(creative.imageUrl, adCreativeFilename(creative));
+      setDownloading((s) => { const n = { ...s }; delete n[key]; return n; });
+    } catch {
+      setDownloading((s) => ({ ...s, [key]: "error" }));
+      setTimeout(() => setDownloading((s) => { const n = { ...s }; delete n[key]; return n; }), 4000);
+    }
+  }
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -197,17 +217,17 @@ function AdCreativesSection({ batchId }: { batchId: string }) {
         }}>
           Ad Images
         </span>
-        {imageUrls.length > 0 && (
+        {creatives.length > 0 && (
           <span style={{
             fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
             fontSize: 11,
             color: "#999",
           }}>
-            {imageUrls.length} images
+            {creatives.length} images
           </span>
         )}
       </div>
-      {imageUrls.length > 0 ? (
+      {creatives.length > 0 ? (
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
@@ -217,23 +237,51 @@ function AdCreativesSection({ batchId }: { batchId: string }) {
           padding: 16,
           border: "1px solid rgba(0,0,0,0.06)",
         }}>
-          {imageUrls.map((url: string, i: number) => (
-            <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
-              <img
-                src={url}
-                alt={`Ad creative ${i + 1}`}
-                style={{
-                  width: "100%",
-                  borderRadius: 8,
-                  aspectRatio: "1 / 1",
-                  objectFit: "cover",
-                  background: "#F3F4F6",
-                  cursor: "pointer",
-                }}
-                loading="lazy"
-              />
-            </a>
-          ))}
+          {creatives.map((creative: any, i: number) => {
+            const key = String(creative.id ?? creative.variationNumber ?? creative.imageUrl);
+            const state = downloading[key];
+            return (
+              <div key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <a href={creative.imageUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
+                  <img
+                    src={creative.imageUrl}
+                    alt={creative.headline || `Ad creative ${i + 1}`}
+                    style={{
+                      width: "100%",
+                      borderRadius: 8,
+                      aspectRatio: "1 / 1",
+                      objectFit: "cover",
+                      background: "#F3F4F6",
+                      cursor: "pointer",
+                    }}
+                    loading="lazy"
+                  />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => handleDownload(creative)}
+                  disabled={state === "busy"}
+                  title={`Download ${adCreativeFilename(creative)}`}
+                  style={{
+                    fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "6px 14px",
+                    borderRadius: 9999,
+                    border: "1px solid rgba(0,0,0,0.10)",
+                    background: state === "error" ? "#FEF2F2" : "var(--v2-primary-btn, #1A1624)",
+                    color: state === "error" ? "#B91C1C" : "#fff",
+                    cursor: state === "busy" ? "default" : "pointer",
+                    opacity: state === "busy" ? 0.6 : 1,
+                    width: "100%",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {state === "busy" ? "Saving…" : state === "error" ? "Retry" : "Download"}
+                </button>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{

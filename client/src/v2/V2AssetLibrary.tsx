@@ -5,6 +5,7 @@
  */
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import { downloadRemoteFile, adCreativeFilename, slugify } from "./lib/downloadImage";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import V2Layout from "./V2Layout";
@@ -192,7 +193,26 @@ export default function V2AssetLibrary() {
   ];
 
   const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copied!"); };
-  const downloadFile = (url: string, filename: string) => { const a = document.createElement("a"); a.href = url; a.download = filename; a.target = "_blank"; a.click(); };
+  // FIXED 2026-08-01. This set `a.download` on a cross-origin URL with
+  // target="_blank"; the download attribute is ignored cross-origin, so it
+  // opened a tab and never saved a file. Now routed through the one shared
+  // helper. See lib/downloadImage.ts.
+  //
+  // NOTE ON VIDEOS: ad images are Cloudinary (CORS open, real download). Videos
+  // are Remotion/S3 with NO CORS header, so the helper falls back to opening a
+  // tab — unchanged from today, not a regression. A true video download needs a
+  // bucket CORS rule or a server proxy setting Content-Disposition.
+  const [dlState, setDlState] = useState<Record<string, "busy" | "error">>({});
+  const downloadFile = async (url: string, filename: string, key: string) => {
+    setDlState((s) => ({ ...s, [key]: "busy" }));
+    try {
+      await downloadRemoteFile(url, filename);
+      setDlState((s) => { const n = { ...s }; delete n[key]; return n; });
+    } catch {
+      setDlState((s) => ({ ...s, [key]: "error" }));
+      setTimeout(() => setDlState((s) => { const n = { ...s }; delete n[key]; return n; }), 4000);
+    }
+  };
 
   const cardStyle: React.CSSProperties = { background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative" };
   const btnS = (primary?: boolean): React.CSSProperties => ({
@@ -366,7 +386,13 @@ export default function V2AssetLibrary() {
                 {img.productName || "Campaign"} · {new Date(img.createdAt).toLocaleDateString()}
               </p>
               <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => downloadFile(img.imageUrl, `zap-image-${img.id}.png`)} style={btnS(true)}>Download</button>
+                <button
+                  onClick={() => downloadFile(img.imageUrl, adCreativeFilename(img), `img-${img.id}`)}
+                  disabled={dlState[`img-${img.id}`] === "busy"}
+                  style={btnS(true)}
+                >
+                  {dlState[`img-${img.id}`] === "busy" ? "Saving…" : dlState[`img-${img.id}`] === "error" ? "Retry" : "Download"}
+                </button>
                 <button onClick={() => copyToClipboard(img.imageUrl)} style={btnS()}>Copy URL</button>
               </div>
             </div>
@@ -404,7 +430,15 @@ export default function V2AssetLibrary() {
                 {v.angle || "Ad"} · {new Date(v.createdAt).toLocaleDateString()}
               </p>
               <div style={{ display: "flex", gap: 6 }}>
-                {v.videoUrl && <button onClick={() => downloadFile(v.videoUrl, `zap-video-${v.id}.mp4`)} style={btnS(true)}>Download MP4</button>}
+                {v.videoUrl && (
+                  <button
+                    onClick={() => downloadFile(v.videoUrl, `zap-video-${slugify(v.title || String(v.id), 40)}.mp4`, `vid-${v.id}`)}
+                    disabled={dlState[`vid-${v.id}`] === "busy"}
+                    style={btnS(true)}
+                  >
+                    {dlState[`vid-${v.id}`] === "busy" ? "Saving…" : dlState[`vid-${v.id}`] === "error" ? "Retry" : "Download MP4"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
