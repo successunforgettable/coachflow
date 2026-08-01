@@ -898,6 +898,10 @@ describe("Phase C C1 — ad creatives cascade step", () => {
 
 import { validateAdHeadlines } from "./_core/validator";
 
+// These cases exercise the FIVE-headline shape, so they pass 5 explicitly.
+// The count used to be a module constant inside the validator; it is now a
+// required argument (2026-08-01) precisely because a hidden default let the
+// prompt and the validator disagree and took ad-creative generation down.
 const FIVE_VALID_SHORT_HEADLINES = [
   "Cut Decision Time 50%",      // 21 chars
   "Founders Trust This System", // 26 chars
@@ -908,7 +912,7 @@ const FIVE_VALID_SHORT_HEADLINES = [
 
 describe("Phase C C1.1 — ad headlines length validator", () => {
   it("ok: 5 valid ≤38-char headlines pass", () => {
-    const result = validateAdHeadlines({ headlines: FIVE_VALID_SHORT_HEADLINES });
+    const result = validateAdHeadlines({ headlines: FIVE_VALID_SHORT_HEADLINES }, 5);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.headlines).toHaveLength(5);
@@ -916,7 +920,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
   });
 
   it("ok: legacy shape where root parsed is the array directly", () => {
-    const result = validateAdHeadlines(FIVE_VALID_SHORT_HEADLINES);
+    const result = validateAdHeadlines(FIVE_VALID_SHORT_HEADLINES, 5);
     expect(result.ok).toBe(true);
   });
 
@@ -928,7 +932,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
       "From Guess to Number",
       "Stop Chasing Dead Deals",
     ];
-    const result = validateAdHeadlines({ headlines: dirty });
+    const result = validateAdHeadlines({ headlines: dirty }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headline_over_length");
@@ -948,7 +952,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
       "From Guess to Number",
       "Stop Chasing Dead Deals",
     ];
-    const result = validateAdHeadlines({ headlines: veryDirty });
+    const result = validateAdHeadlines({ headlines: veryDirty }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headline_over_length");
@@ -958,7 +962,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
   });
 
   it("FAIL: wrong count (4 instead of 5) → failContext names the count mismatch", () => {
-    const result = validateAdHeadlines({ headlines: FIVE_VALID_SHORT_HEADLINES.slice(0, 4) });
+    const result = validateAdHeadlines({ headlines: FIVE_VALID_SHORT_HEADLINES.slice(0, 4) }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headlines_wrong_count");
@@ -968,7 +972,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
   });
 
   it("FAIL: 6 headlines → also failContext names the count mismatch", () => {
-    const result = validateAdHeadlines({ headlines: [...FIVE_VALID_SHORT_HEADLINES, "Extra one"] });
+    const result = validateAdHeadlines({ headlines: [...FIVE_VALID_SHORT_HEADLINES, "Extra one"] }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headlines_wrong_count");
@@ -976,7 +980,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
   });
 
   it("FAIL: missing headlines field → wrong_type", () => {
-    const result = validateAdHeadlines({ other: "x" });
+    const result = validateAdHeadlines({ other: "x" }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headlines_wrong_type");
@@ -991,7 +995,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
       "From Guess to Number",
       "Stop Chasing Dead Deals",
     ];
-    const result = validateAdHeadlines({ headlines: dirty });
+    const result = validateAdHeadlines({ headlines: dirty }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headline_not_string");
@@ -1007,7 +1011,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
       "From Guess to Number",
       "Stop Chasing Dead Deals",
     ];
-    const result = validateAdHeadlines({ headlines: dirty });
+    const result = validateAdHeadlines({ headlines: dirty }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headline_not_string");
@@ -1016,7 +1020,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
 
   it("OK: headlines field as valid JSON-encoded string is recovered (sub-case 1)", () => {
     const stringified = JSON.stringify(FIVE_VALID_SHORT_HEADLINES);
-    const result = validateAdHeadlines({ headlines: stringified });
+    const result = validateAdHeadlines({ headlines: stringified }, 5);
     expect(result.ok).toBe(true);
   });
 
@@ -1024,7 +1028,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
     const at_38 = "0123456789012345678901234567890123 ab8"; // exactly 38
     expect(at_38.length).toBe(38);
     const headlines = [at_38, "B", "C", "D", "E"];
-    const result = validateAdHeadlines({ headlines });
+    const result = validateAdHeadlines({ headlines }, 5);
     expect(result.ok).toBe(true);
   });
 
@@ -1032,7 +1036,7 @@ describe("Phase C C1.1 — ad headlines length validator", () => {
     const at_39 = "0123456789012345678901234567890123 ab89"; // exactly 39
     expect(at_39.length).toBe(39);
     const headlines = [at_39, "B", "C", "D", "E"];
-    const result = validateAdHeadlines({ headlines });
+    const result = validateAdHeadlines({ headlines }, 5);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.subCase).toBe("headline_over_length");

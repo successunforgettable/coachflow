@@ -46,6 +46,7 @@ import { runLandingPageGeneration } from "../landingPageGenerator";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
 import { runWhatsappSequenceGeneration } from "../whatsappSequenceGenerator";
 import { runAdCreativesGeneration, runEditorialAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
+import { TABLOID_FORMULAS, TEMPLATE_CARD_FORMULAS } from "./adVariations";
 import { ctaForCampaignType } from "./campaignCta";
 import { renderQuoteCard } from "./renderQuoteCard";
 import { renderNotificationMockup } from "./renderNotificationMockup";
@@ -827,7 +828,16 @@ export async function runOrchestrationStep(
       const [icp] = await db.select().from(idealCustomerProfiles)
         .where(eq(idealCustomerProfiles.id, input.icpId)).limit(1);
 
-      // Generate contextual headlines (shared by both styles)
+      // Style routing is resolved BEFORE the headline call (hoisted 2026-08-01).
+      // The headline micro-call is shared by two decks of different sizes, so it
+      // has to be told which one is asking — the template-card deck renders five
+      // cards and indexes headlines[i] for i < 5, while the tabloid deck is four.
+      // Deriving one shared count from the tabloid deck is what took production
+      // down with `headlines_wrong_count`.
+      const adImageStyle = (freshKit as Record<string, unknown>)?.adImageStyle as string | null;
+      const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification") || adImageStyle?.startsWith("testimonial") || adImageStyle?.startsWith("comparison_card");
+      const isEditorial = adImageStyle?.startsWith("editorial");
+
       const headlines = await generateContextualAdHeadlines({
         productName: svc.name,
         mainBenefit: svc.mainBenefit ?? "",
@@ -838,12 +848,7 @@ export async function runOrchestrationStep(
         icpFears: icp?.fears || undefined,
         icpObjections: icp?.objections || undefined,
         icpBuyingTriggers: icp?.buyingTriggers || undefined,
-      });
-
-      // Style routing: read adImageStyle from the freshly-read kit
-      const adImageStyle = (freshKit as Record<string, unknown>)?.adImageStyle as string | null;
-      const isTemplate = adImageStyle?.startsWith("quote_card") || adImageStyle?.startsWith("notification") || adImageStyle?.startsWith("testimonial") || adImageStyle?.startsWith("comparison_card");
-      const isEditorial = adImageStyle?.startsWith("editorial");
+      }, isTemplate ? TEMPLATE_CARD_FORMULAS : TABLOID_FORMULAS);
 
       if (isTemplate) {
         // ── Template path: pure typography/layout, no Flux, $0/image, <5s ──
@@ -920,7 +925,7 @@ export async function runOrchestrationStep(
             adType: "lead_gen",
             styleType: "tabloid",
             designStyle: "person_shocked",
-            headlineFormula: (["benefit", "social_proof", "curiosity", "contrast", "challenge"] as const)[i],
+            headlineFormula: TEMPLATE_CARD_FORMULAS[i],
             headline,
             imageUrl,
             rawImageUrl: imageUrl,

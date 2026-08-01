@@ -46,7 +46,7 @@ import {
   resolveSubjectDescriptor, subjectClausesForBatch, describeResolution,
   type SubjectResolution,
 } from "./_core/subjectDescriptor";
-import { AD_VARIATIONS, type AdVariationFormula } from "./_core/adVariations";
+import { AD_VARIATIONS, TABLOID_FORMULAS, type AdVariationFormula } from "./_core/adVariations";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
@@ -213,11 +213,19 @@ const HEADLINE_REGISTER_BLOCKS: Readonly<Record<AdVariationFormula, string>> = {
    Example shapes: "Stop chasing dead pipeline." / "Sitting up straight won't hold a room." / "Forecasting fiction isn't strategy."`,
 };
 
-export function buildAdHeadlinesUserPrompt(input: GenerateContextualAdHeadlinesInput): string {
-  const registerCount = AD_VARIATIONS.length;
-  const registerList = AD_VARIATIONS.map((v) => v.formula).join(", ");
-  const registerBlocks = AD_VARIATIONS
-    .map((v, i) => `${i + 1}. ${HEADLINE_REGISTER_BLOCKS[v.formula]}`)
+export function buildAdHeadlinesUserPrompt(
+  input: GenerateContextualAdHeadlinesInput,
+  /**
+   * The registers this CALLER needs, in order. Not derived from AD_VARIATIONS
+   * any more: this generator is shared by the 4-slot tabloid deck and the
+   * 5-slot template-card deck, and deriving from one silently broke the other.
+   */
+  formulas: readonly AdVariationFormula[] = TABLOID_FORMULAS,
+): string {
+  const registerCount = formulas.length;
+  const registerList = formulas.join(", ");
+  const registerBlocks = formulas
+    .map((f, i) => `${i + 1}. ${HEADLINE_REGISTER_BLOCKS[f]}`)
     .join("\n\n");
   // Sprint 3 C4 side-fix: cascade-derived inputs can be full sentences
   // (ICP descriptors, mechanism paragraphs). Long inputs drag the model
@@ -299,8 +307,14 @@ type AdHeadlineAttemptRecord = {
 
 export async function generateContextualAdHeadlines(
   input: GenerateContextualAdHeadlinesInput,
+  /**
+   * The registers the CALLING deck needs. Defaults to the tabloid deck; the
+   * template-card path in orchestration.ts passes TEMPLATE_CARD_FORMULAS
+   * because it renders five cards and persists `contrast` at index 3.
+   */
+  formulas: readonly AdVariationFormula[] = TABLOID_FORMULAS,
 ): Promise<{ text: string; emphasis: string }[]> {
-  const userPromptBase = buildAdHeadlinesUserPrompt(input);
+  const userPromptBase = buildAdHeadlinesUserPrompt(input, formulas);
   let lastFailContext: string | null = null;
   let lastFailureSubCase: string | null = null;
   // Phase C C1.1 diagnostic (Bridge-B-style — Sprint B+1 path d lineage):
@@ -353,7 +367,9 @@ export async function generateContextualAdHeadlines(
     }
     const diagnosticCharCounts = diagnosticHeadlines.map(h => h.length);
 
-    const result = validateAdHeadlines(parsed);
+    // Validated against what we ACTUALLY asked for. Passing a different number
+    // here than the prompt requested is the 2026-08-01 production outage.
+    const result = validateAdHeadlines(parsed, formulas.length, formulas);
 
     // Per-attempt visibility log (always fires — pass or fail). Concise
     // summary line + verbatim headlines so log greps can correlate.

@@ -1013,13 +1013,28 @@ export function validateWhatsappFabricationPatterns(
 // headroom for any operator-side edit + avoids edge cases at exactly 40.
 
 const AD_HEADLINE_MAX_CHARS = 38;
-const AD_HEADLINE_REQUIRED_COUNT = 5;
+
+// ⚠️ THE COUNT IS A PARAMETER, NOT A CONSTANT — and deliberately has NO default.
+//
+// It used to be a module constant hardcoded to five. On 2026-08-01 the tabloid
+// deck went 5 → 4 and the prompt followed it; the constant did not, so every
+// ad-creative generation on production failed with `headlines_wrong_count` —
+// the model returned exactly what it was asked for and the validator rejected
+// it. A default value would hide the same class of bug again, so the caller
+// MUST state the count it asked for, and tsc enforces that.
 
 export type AdHeadlinesValidatorResult =
   | { ok: true; headlines: string[] }
   | { ok: false; failContext: string; subCase: string };
 
-export function validateAdHeadlines(parsed: unknown): AdHeadlinesValidatorResult {
+export function validateAdHeadlines(
+  parsed: unknown,
+  /** How many headlines the prompt actually asked for. Pass `formulas.length`. */
+  requiredCount: number,
+  /** The register names, in order, so the retry fail-context names the real ones. */
+  formulaNames: readonly string[] = [],
+): AdHeadlinesValidatorResult {
+  const registerList = formulaNames.length ? formulaNames.join(", ") : "one per ad style";
   // Accept {headlines: [...]} or [...] root.
   let headlinesCandidate: unknown;
   if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -1045,15 +1060,15 @@ export function validateAdHeadlines(parsed: unknown): AdHeadlinesValidatorResult
     return {
       ok: false,
       subCase: "headlines_wrong_type",
-      failContext: `Your previous response did not return a "headlines" array. Return a JSON object with a "headlines" key containing an array of exactly ${AD_HEADLINE_REQUIRED_COUNT} short strings.`,
+      failContext: `Your previous response did not return a "headlines" array. Return a JSON object with a "headlines" key containing an array of exactly ${requiredCount} short strings.`,
     };
   }
 
-  if (headlinesCandidate.length !== AD_HEADLINE_REQUIRED_COUNT) {
+  if (headlinesCandidate.length !== requiredCount) {
     return {
       ok: false,
       subCase: "headlines_wrong_count",
-      failContext: `Your previous response returned ${headlinesCandidate.length} headlines but exactly ${AD_HEADLINE_REQUIRED_COUNT} are required (one per ad style: benefit, social_proof, curiosity, contrast, challenge). Return exactly ${AD_HEADLINE_REQUIRED_COUNT} headlines.`,
+      failContext: `Your previous response returned ${headlinesCandidate.length} headlines but exactly ${requiredCount} are required (${registerList}). Return exactly ${requiredCount} headlines.`,
     };
   }
 
@@ -1081,7 +1096,7 @@ export function validateAdHeadlines(parsed: unknown): AdHeadlinesValidatorResult
     return {
       ok: false,
       subCase: "headline_over_length",
-      failContext: `Your previous response had ${overLength.length} headline(s) exceeding ZAP's ${AD_HEADLINE_MAX_CHARS}-character house limit for ad-creative headlines:\n${hits}\n\nRewrite ALL ${AD_HEADLINE_REQUIRED_COUNT} headlines to be ≤ ${AD_HEADLINE_MAX_CHARS} characters each. Count characters before finalising. Strip filler words, use punchy active verbs, and avoid long compound nouns. Each headline must still be a punchy ad-style line that an ad copywriter would write — not a truncated phrase ending mid-thought.`,
+      failContext: `Your previous response had ${overLength.length} headline(s) exceeding ZAP's ${AD_HEADLINE_MAX_CHARS}-character house limit for ad-creative headlines:\n${hits}\n\nRewrite ALL ${requiredCount} headlines to be ≤ ${AD_HEADLINE_MAX_CHARS} characters each. Count characters before finalising. Strip filler words, use punchy active verbs, and avoid long compound nouns. Each headline must still be a punchy ad-style line that an ad copywriter would write — not a truncated phrase ending mid-thought.`,
     };
   }
 

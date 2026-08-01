@@ -72,6 +72,41 @@ export const AD_VARIATIONS: readonly AdVariation[] = [
 ] as const;
 
 /**
+ * ─── HEADLINE SUPPLY PER DECK ───────────────────────────────────────────────
+ *
+ * The ad-headline micro-call (`generateContextualAdHeadlines`) is SHARED by two
+ * decks of different sizes. On 2026-08-01 that sharing broke production: the
+ * tabloid deck went 5 → 4 and the prompt followed it, but the validator's
+ * `AD_HEADLINE_REQUIRED_COUNT` and the template-card deck's `headlines[i]`
+ * indexing both still assumed five. Every ad-creative generation failed with
+ * `headlines_wrong_count`.
+ *
+ * The lesson is not "keep the numbers in sync" — it is that a shared generator
+ * must be TOLD what its caller needs instead of assuming. Each deck now states
+ * its own formula order here, passes it to the generator, and the validator
+ * checks against the count it was actually asked for.
+ */
+
+/** The tabloid deck's registers, derived — four since the object slot retired. */
+export const TABLOID_FORMULAS: readonly AdVariationFormula[] =
+  AD_VARIATIONS.map((v) => v.formula);
+
+/**
+ * The template-card deck's registers (orchestration.ts). **Five, deliberately.**
+ * That deck is not the tabloid deck and does not shrink with it; it also
+ * persists `contrast` to `adCreatives.headlineFormula` at index 3, which is why
+ * `contrast` remains in the formula union and in HEADLINE_REGISTER_BLOCKS.
+ * Stated once here — it was an inline literal at orchestration.ts:923.
+ */
+export const TEMPLATE_CARD_FORMULAS: readonly AdVariationFormula[] = [
+  "benefit",
+  "social_proof",
+  "curiosity",
+  "contrast",
+  "challenge",
+] as const;
+
+/**
  * Styles retired from the deck that still exist on historical `adCreatives`
  * rows. `regenerateSingle` and `makeVertical` read `designStyle` straight off
  * the stored row, so an old `object` row would re-enter the retired prompt path
