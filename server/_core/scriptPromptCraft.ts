@@ -50,7 +50,9 @@ These words appear in every ad on the internet; they trigger the part of the bra
 
 // STRUCTURE + BODY craft — the research-grounded 5-beat shape (Hook → Problem → Turn → Solution → CTA) and
 // the ear-first body rules. Positive-framed (describes what the copy IS). Grounded in the 7 NotebookLM
-// scriptwriting reports (Structure/Timing §2 five-beat; Hooks §5 intro <10w + bold; Messy Middle §1 one-idea;
+// scriptwriting reports — banked 2026-08-03 at docs/andromeda/script-research/ (README maps each short
+// name below to its file); previously Downloads-only and unresolvable.
+// (Structure/Timing §2 five-beat; Hooks §5 intro <10w + bold; Messy Middle §1 one-idea;
 // Natural Perf §5 story-before-stat; CTA §1 natural extension). The Turn's length is intentionally unspecified
 // (reports: "no strong signal" on Turn duration).
 export const SCRIPT_STRUCTURE_CRAFT = `
@@ -109,7 +111,7 @@ META COMPLIANCE — this governs whether the ad can run at all:
 // generator carried (CUSTOMER_LANGUAGE_RULE "read each line out loud" + globalRules "conversational —
 // contractions, short sentences, spoken naturally"), ported into POSITIVE framing (no WRONG:/RIGHT: pairs,
 // per §14) and scoped to the WHOLE script, not just the hook. Interim baseline — a deeper research-grounded
-// scriptwriting standard (NotebookLM) layers on top of this in a second pass.
+// scriptwriting standard layers on top of this in a second pass (docs/andromeda/script-research/).
 export const SPOKEN_REGISTER = `
 SPOKEN REGISTER — every spokenLine is said OUT LOUD by the coach to their phone camera. Write each line the
 way they would actually SAY it to one person across a table:

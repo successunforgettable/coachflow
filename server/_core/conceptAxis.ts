@@ -22,8 +22,11 @@ export const AWARENESS_STAGES = [
 ] as const;
 export type AwarenessStage = (typeof AWARENESS_STAGES)[number];
 
-// ─── Hook patterns (the 6 named patterns from EXECUTION_BRIEF §2 + the 7th, added this session) ──
-// The 7th — direct_offer_urgency — is the Most-Aware close. It is the HIGHEST Meta-compliance-risk hook:
+// ─── Hook patterns (the 6 named patterns from EXECUTION_BRIEF §2 + the 7th) ──
+// The 7th — direct_offer_urgency — is the Most-Aware close. It was added in-session, but the research
+// banked on 2026-08-03 shows it is GROUNDED, not invented: docs/andromeda/script-research/Meta Ads
+// Creative Strategy 2026… §6 states the six patterns are ineffective at Most-Aware because those users
+// are "waiting for the right timing or deal". It is the HIGHEST Meta-compliance-risk hook:
 // it must express only REAL urgency (a genuine coach-supplied deadline/offer), never fabricated scarcity
 // or fake countdowns. Its output is screened through the existing complianceFilter guards
 // (server/lib/complianceFilter.ts — income REJECT + scarcity PIVOT patterns) via screenConceptCompliance.
@@ -45,8 +48,10 @@ export const DEFAULT_CONCEPT_COUNT = 8;
 
 // ─── Hook→awareness mapping — ✅ APPROVED (grounded), 2026-07-25 ──────────────────────────────────
 //
-// SOURCE: Arfeen's NotebookLM run over his own research corpus, corroborated by the banked ICP docs on
-// the two stages where the corpus and the run matched INDEPENDENTLY:
+// SOURCE (banked 2026-08-03, previously Downloads-only):
+//   docs/andromeda/script-research/Meta Ads Creative Strategy 2026_ Mapping Hook Patterns to Schwartz
+//   Awareness Stages.md — §2-§6 give the per-stage primary/secondary hooks implemented below verbatim.
+// Corroborated by the banked ICP docs on the two stages where the corpus and the run matched INDEPENDENTLY:
 //   - Problem-Aware → Problem-First  (docs/icp-research/The Psychology of the ICP §6: "Empathize with the
 //     'Problem Pressure' and name the lived situation")
 //   - Product-Aware → Social-Proof   (same §6: "Address 'Perceived Barriers' and provide validation/proof")
@@ -77,7 +82,9 @@ export function isHookPattern(v: unknown): v is HookPattern {
   return typeof v === "string" && (HOOK_PATTERNS as readonly string[]).includes(v);
 }
 
-// ─── Video-script LENGTH config (grounded, Arfeen's NotebookLM corpus) ────────────────────────────
+// ─── Video-script LENGTH config ───────────────────────────────────────────────────────────────────
+// SOURCE (banked 2026-08-03): docs/andromeda/script-research/Strategic Report_ Optimising Meta Video
+// Ad Lengths for the 2026 AI Ecosystem.md
 //
 // DECISION: one length per concept, anchored SHORT / placement-safe. Meta Advantage+ auto-distributes ONE
 // asset across Reels/Stories/Feed and decides per-user, so the short end runs cleanly everywhere. We store
@@ -109,6 +116,7 @@ export function activeLengthForStage(stage: AwarenessStage): number {
 }
 
 // Spoken word budget — the GROUNDED per-duration table from the 7 NotebookLM scriptwriting reports
+// (banked 2026-08-03 at docs/andromeda/script-research/ — see its README for the per-report index)
 // (Zizzo conservative range + JL max), replacing the old ~130-wpm formula which under-targeted and
 // over-capped (30s gave target 65 / max 98, letting a 94-word script pass; reports want 75–85 / max 90).
 // Scripts are written ~2–3s shy of the slot; pace ≈ 3 words/sec. Only 15s/30s are used operationally

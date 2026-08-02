@@ -29,7 +29,9 @@ import { NICHE_DETECTION, HOOK_RULE, BANNED_WORDS, META_COMPLIANCE, REAL_URGENCY
 import { REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance } from "./_core/copywritingRules";
 
 // Tone by warmth — mapped from the concept's awareness stage. INTERNAL NOTE: the 3-category (Cold/Warm/Hot)
-// → 5-stage (Schwartz) mapping is INFERRED from the tone report's category definitions; the report states
+// → 5-stage (Schwartz) mapping is INFERRED from the tone report's category definitions — the tone report is
+// docs/andromeda/script-research/Analytical Report_ Calibrating Spoken Tone for Video Ad Performance.md
+// (banked 2026-08-03; previously Downloads-only). The report states
 // there is "no strong signal" for a data-backed 1:1 map across all 5 stages. Positive-framed.
 function toneForAwareness(awareness: string | null | undefined): string {
   switch (awareness) {

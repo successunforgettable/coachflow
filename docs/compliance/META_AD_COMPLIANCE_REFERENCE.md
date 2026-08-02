@@ -2,6 +2,7 @@
 
 **Status:** Authoritative reference for all ad-copy, script, landing-page and concept generation.
 **Created:** July 2026, from Meta's official published policy plus a research sweep (~15 reports).
+**Those 15 source reports are banked at `docs/compliance/source-reports/`** (added 2026-08-03; previously they existed only outside the repo). This synthesis outranks them — see the evidence-discipline note below for why.
 **How to use:** Tier 1 is the ONLY thing to build enforcement rules on. Tier 2 informs judgement but must never become a hard gate. Tier 3 must never be encoded at all.
 
 ---
