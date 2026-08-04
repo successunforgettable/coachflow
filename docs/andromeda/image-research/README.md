@@ -8,7 +8,7 @@ research behind it at all — every image decision in the product came from our 
 That map's conclusion was: *"connecting Andromeda to the ads is not purely wiring; there is no
 researched rule yet for what image an angle should carry."*
 
-**These seven reports are that rule.** Banked here the day the map named the gap. Copied verbatim
+**These reports are that rule** (seven at first banking; four more added 2026-08-05 — see below). Banked here the day the map named the gap. Copied verbatim
 from Arfeen's Downloads; plain git, matching `../script-research/` and `../landing-page-research/`.
 
 **Do NOT execute anything from these — reference material.** Nothing in the codebase reads them yet.
@@ -61,6 +61,51 @@ either title.**
    ratios, resolutions, formats and file-size limits (Feed 4:5 at 1440×1800; Stories/Reels 9:16 at
    1080×1920; Carousel 1:1 at 1440²). ⚠️ **Worth checking against what the renderer produces today** —
    these are higher-density figures than the 1080px plates currently generated.
+
+## ⚠️ FOUR REPORTS ADDED 2026-08-05 — they OVERTURN the sub-type model
+
+Banked from `~/Downloads`, SHA-256 verified byte-identical, verified by content not filename.
+
+8. **`Meta Ads 2026_ Visual Sub-Type Architecture for B2C Transformation Sellers.md`** — ⭐ **the
+   one that changes the rule.** §1 names the "Fixed Identity Model" as a performance bottleneck that
+   "traps the brand's Entity ID in one narrow branch". §2 scores four methods for choosing sub-type
+   and picks the **Hybrid** — an onboarding aesthetic anchor plus per-concept flexing — rating
+   inference-from-niche the weakest and *"the primary cause of campaign stagnation in 2026"*.
+
+9. **`Meta Ads 2026_ The B2C Creative Testing Matrix & Andromeda Architecture Playbook.md`** — the
+   largest of the four and the most directly buildable. §2.1 carries a **complete worked 8-concept
+   matrix** on three axes — Awareness × Format × Visual Style — for a single seller. This is the
+   concrete allocation the image rule now uses.
+
+10. **`Meta Ads 2026_ Visual Styles, Creative Similarity, and Unaware Stage Architecture.md`** —
+    the Entity-ID Trap restated: ads that "communicate the same idea" collapse to one ID regardless
+    of font or colour changes.
+
+11. **`Meta Ads 2026_ The Andromeda AI Ecosystem Shifting Marketing Strategy.md`** — three worked
+    creative briefs, one per sub-type, each anchored to a different PDA pillar (Grounded→Awareness,
+    Esoteric→Desire, Aspirational→Persona).
+
+**What they changed:** sub-type is NOT a fixed per-coach identity to be detected. It is a
+**per-concept diversity lever assigned across the batch**. See `../image-rule-spec.md` §5 (rev 4).
+
+⚠️ **They also introduce a THIRD awareness distribution** (2/2/2/1/1, including one Most-Aware),
+conflicting with the two already banked. Unreconciled — spec §5.7.
+
+## TWO MORE ADDED 2026-08-05 (later the same day)
+
+Banked from `~/Downloads`, SHA-256 verified byte-identical, verified by content not filename.
+
+12. **`Meta Ads 2026_ Compliance vs. Creative Diversity under the Andromeda Architecture.md`** —
+    ✅ **closes a standing worry.** Compliance and diversity act on different axes: *"Compliance is
+    semantic; diversity is structural… a 'safe' ad is not a 'similar' ad."* §2 enumerates six
+    structural levers that all survive strict compliance, and warns that compliance alone is a
+    delivery cap — *"if 7 out of 8 ads in a set are clustered, Andromeda will prune the redundant
+    branches."* Recorded at `../image-rule-spec.md` §3.5 (rev 5).
+
+13. **`Meta Ads 2026_ Ad Copy Hook Optimization for Andromeda's Language Encoders.md`** —
+    ⚠️ **COPY-side, not an image document.** Concerns how Andromeda's NLP encoders categorise intent
+    from ad text. Banked here for provenance only; nothing in the image rule uses it. Parked at
+    spec §11a for the next pass over the copy generators.
 
 ## What this set does NOT do
 

@@ -4,6 +4,23 @@
 
 ### Revision log
 
+**rev 5 — 2026-08-05 — compliance and diversity CONFIRMED independent; open concern closed.**
+No rule changed. `[COMPLIANCE-DIVERSITY]` settles a worry carried since rev 1 — that tightening
+compliance would flatten the batch into lookalike ads. It does not: the two operate on different
+axes, and all six diversity levers survive strict compliance. Recorded at §3.5 so it is not
+re-litigated. Also banks a COPY-side report, parked at §11.
+
+**rev 4 — 2026-08-05 — SUB-TYPE IS A PER-CONCEPT DIVERSITY LEVER, NOT A PER-COACH IDENTITY.**
+Four reports banked to `docs/andromeda/image-research/` overturn rev 1–3's model, in which a single
+sub-type was detected once per coach and applied to all eight concepts. That model is now known to
+be the failure it was meant to prevent: one sub-type across a batch keeps every asset on **one
+branch of the retrieval tree**, which is exactly the Entity-ID collapse the whole rule exists to
+avoid. Sub-type now **varies across the batch**, alongside awareness and a newly-surfaced **format**
+axis. §5 rewritten; §2 (the 15-cell matrix) **unchanged and still the styling reference** — only
+where sub-type comes from has changed. ⚠️ Two things in this revision do NOT match the brief that
+requested it — see §5.0 and §5.6. ⚠️ A THIRD awareness distribution has appeared; see §5.7.
+
+
 **rev 3 — 2026-08-04 — allocation corrected to the prospecting research: 3 / 3 / 1 / 1 / 0.**
 Four reports banked to `docs/andromeda/prospecting-research/` address batch allocation as their
 actual subject. Two of them state the same split for exactly an 8-concept cold batch —
@@ -46,6 +63,12 @@ labelled as a departure, not dressed up as a resolution.
 | `[GUARD]` | *Meta Ad Image Compliance Guardrails 2026…* (internal title: *Definitive 2026 Meta Ad Image Compliance Report*) |
 | `[COHERENCE]` | *Image-and-Copy Coherence: The Matched-Pair Principle…* |
 | `[TECH]` | *Meta Ad Image Technical Specifications & Rendering Guide (2026 Edition)* |
+| `[SUBTYPE-ARCH]` | *Meta Ads 2026: Visual Sub-Type Architecture for B2C Transformation Sellers* — banked 2026-08-05 (rev 4) |
+| `[TESTING-MATRIX]` | *Meta Ads 2026: The B2C Creative Testing Matrix & Andromeda Architecture Playbook* — banked 2026-08-05 (rev 4) |
+| `[VISUAL-SIM]` | *Meta Ads 2026: Visual Styles, Creative Similarity, and Unaware Stage Architecture* — banked 2026-08-05 (rev 4) |
+| `[ECOSYSTEM]` | *Meta Ads 2026: The Andromeda AI Ecosystem Shifting Marketing Strategy* — banked 2026-08-05 (rev 4) |
+| `[COMPLIANCE-DIVERSITY]` | *Meta Ads 2026: Compliance vs. Creative Diversity under the Andromeda Architecture* — banked 2026-08-05 (rev 5) |
+| `[HOOK-ENCODERS]` | *Meta Ads 2026: Ad Copy Hook Optimization for Andromeda's Language Encoders* — banked 2026-08-05. **COPY-side; not used by the image rule.** See §11. |
 
 ⚠️ Three files carry an internal title differing from their filename; per CLAUDE.md §15a these were
 judged by content, not by either label. Noted in `docs/andromeda/image-research/README.md`.
@@ -100,9 +123,9 @@ to solve. Governs **PD-4**.
 
 | # | Decision | Decided by | Reasoning of record |
 |---|---|---|---|
-| **PD-1** | **Fitness coaches / personal trainers default to Grounded.** | Arfeen's strategic partner, 2026-08-04 | Meta health-scrutiny safety. `[GUARD §4]` treats health and weight as a high-scrutiny zone where distress framing and body-flaw framing trigger Entity ID suppression; fitness sits squarely inside it. Account-level suppression outweighs the warmer imagery Aspirational would produce. Settles the primary question in R3 — but not its residue; see §7.3. |
-| **PD-2** | **Ambiguous sub-type detection defaults to Grounded, and the low-confidence state is stored explicitly.** | Arfeen's strategic partner, 2026-08-04 | Grounded produces the most compliance-conservative imagery (`[GUARD §4]`'s compliant substitute is clinical lighting). Storing low confidence rather than silently absorbing it keeps ambiguous cases visible, and is what gives PD-3's correction affordance something to act on. |
-| **PD-3** | **Detection is shown and changeable.** The system auto-detects the sub-type, surfaces it to the coach, and lets them correct it. Auto-detect remains the default; it is not silent and not unchangeable. | **Arfeen**, 2026-08-04 | `[ARCHETYPE §1]` establishes that a wrong archetype causes branch-cutting into the wrong retrieval tree and "catastrophic conversion failure"; `[ARCHETYPE §3]` warns of *permanent* Entity ID suppression for the esoteric mismatch. Given that cost, and given §5.3's real and unresolvable ambiguity, the coach — who knows their own positioning — is the cheapest available correction. Auto-detect stays default so the flow is not gated on a question most coaches will not need to answer. |
+| **PD-1** ⛔ *superseded rev 4 (§5.4)* | **Fitness coaches / personal trainers default to Grounded.** | Arfeen's strategic partner, 2026-08-04 | Meta health-scrutiny safety. `[GUARD §4]` treats health and weight as a high-scrutiny zone where distress framing and body-flaw framing trigger Entity ID suppression; fitness sits squarely inside it. Account-level suppression outweighs the warmer imagery Aspirational would produce. Settles the primary question in R3 — but not its residue; see §7.3. |
+| **PD-2** ⛔ *superseded rev 4 (§5.4)* | **Ambiguous sub-type detection defaults to Grounded, and the low-confidence state is stored explicitly.** | Arfeen's strategic partner, 2026-08-04 | Grounded produces the most compliance-conservative imagery (`[GUARD §4]`'s compliant substitute is clinical lighting). Storing low confidence rather than silently absorbing it keeps ambiguous cases visible, and is what gives PD-3's correction affordance something to act on. |
+| **PD-3** ⚠️ *reshaped rev 4 (§5.0, §5.4) — anchor, not correction* | **Detection is shown and changeable.** The system auto-detects the sub-type, surfaces it to the coach, and lets them correct it. Auto-detect remains the default; it is not silent and not unchangeable. | **Arfeen**, 2026-08-04 | `[ARCHETYPE §1]` establishes that a wrong archetype causes branch-cutting into the wrong retrieval tree and "catastrophic conversion failure"; `[ARCHETYPE §3]` warns of *permanent* Entity ID suppression for the esoteric mismatch. Given that cost, and given §5.3's real and unresolvable ambiguity, the coach — who knows their own positioning — is the cheapest available correction. Auto-detect stays default so the flow is not gated on a question most coaches will not need to answer. |
 | **PD-4** | **At Most-Aware, all three sub-types depict a founder/practitioner direct-to-camera human still — NOT the product, pricing, checkout or portal visual.** Offer specifics move to the headline overlay. No required in-image text. | Arfeen's strategic partner, 2026-08-04 | Two reasons, the second decisive. **(a)** A human direct-address moment is stronger ad creative than a static checkout or pricing screenshot, which reads as a banner rather than a scroll-stopping ad. **(b)** Decisively: a clean pricing/checkout visual is *composed of* text and numbers — exactly the uncontrolled in-image text that failed three times and retired the object slot (Principle 2). A founder still requires no baked-in text; the offer specifics live in the controllable overlay. The founder-still is therefore both the better creative **and** the only version compatible with what this image pipeline can safely render. ⚠️ **This is a departure from the research, not a resolution of a conflict in it — see §7.4.** |
 
 **PD-3 is a build requirement, not only a policy.** It obliges the record to store the detected
@@ -443,6 +466,68 @@ the overlay text — and PD-4 increases the overlay's load, making this tighter,
 experience — "Your anxiety" → "The anxious nervous system"; "Are you struggling with *Condition*?" →
 "Providing support for those seeking *Outcome*."
 
+### 3.5 ✅ CLOSED — compliance and diversity do NOT trade off (rev 5)
+
+**The concern, now settled: does tightening compliance flatten the batch into lookalike ads?**
+It was reasonable — the compliance filter (§3.1) removes depictions, and removing depictions
+narrows the space a batch can occupy. `[COMPLIANCE-DIVERSITY]` answers it directly and the answer
+is no.
+
+**They act on different axes.** `[COMPLIANCE-DIVERSITY §2]` — *"Compliance acts as a semantic filter
+(determining WHAT can be said), while Diversity Levers act as coordinate multipliers (determining
+WHERE the ad sits in the embedding space)."* And its one-line form: **"A 'safe' ad is not a
+'similar' ad. Compliance is semantic; diversity is structural."**
+
+The Creative Similarity Score reads **structure** — `[COMPLIANCE-DIVERSITY §1]` describes "Visual
+DNA Extraction" mapping "lighting recipes, composition structures, and facial geometry" to latent
+coordinates. Compliance restricts **content**: before/after imagery, distress framing, unrealistic
+claims, personal attributes. A rule about what may be depicted and a score about how a picture is
+built rarely collide.
+
+**All six levers survive strict compliance.** `[COMPLIANCE-DIVERSITY §2]` enumerates them — and
+every one is already an axis this spec uses:
+
+| Lever (verbatim) | Where this spec already uses it |
+|---|---|
+| 1. Awareness Stage | The matrix ROW axis (§2); batch distribution (§5.7) |
+| 2. Subject (expert-led vs peer-led) | Cell depiction (§2); structural variable (§4.3) |
+| 3. Setting (clinical/studio vs lifestyle) | Cell styling (§2); "environmental coordinates" (§4.3) |
+| 4. Composition (POV/UGC vs flat-lay) | "Visual composition & format" (§4.3) |
+| 5. Format (carousel / static / reel) | The third axis surfaced at §5.2 |
+| 6. Visual Sub-type | The matrix COLUMN axis (§2); per-concept assignment (§5.1) |
+
+The report's worked pair makes the point concretely: a compliant expert-led infographic on
+"The Mechanism of Spinal Support" and a compliant peer-led UGC reel on "A Morning Routine for
+Mobility" **both avoid prohibited personal attributes yet occupy vastly different coordinates**,
+because their Visual DNA (faces vs diagrams) and format differ. Its conclusion:
+**"compliance is a boundary, not a style. You can be 100% policy-compliant and still achieve 100%
+diversity by rotating structural levers rather than testing the limits of semantic claims."**
+
+⚠️ **The corollary is a WARNING, not a reassurance — diversity must be engineered, never assumed.**
+`[COMPLIANCE-DIVERSITY §2]`: *"A 'pure compliance' strategy that lacks structural variety acts as a
+delivery cap. If 7 out of 8 ads in a set are clustered, Andromeda will prune the redundant branches,
+effectively ghost-banning your creative pipeline before it even hits the auction."* Passing the
+compliance gate earns nothing on the diversity axis. Structural distinctness has to be built in.
+
+**Does this spec's existing distribution already deliver it? Yes — deliberately, not by chance.**
+Two mechanisms, both already specified and one already implemented:
+
+1. **Awareness is assigned deterministically per slot**, not chosen by the model — implemented as
+   `COLD_WEIGHTED_STAGE_MIX` / `awarenessPlanForCount` and enforced per-slot by the concept
+   validator. That is lever 1, fixed by construction.
+2. **Sub-type is assigned per concept so that no (awareness × sub-type) pair repeats** (§5.1,
+   from `[TESTING-MATRIX §2.1]`). That is lever 6, and combined with lever 1 it places every
+   concept in its own matrix cell.
+
+Levers 2–5 (subject, setting, composition, format) sit inside the cell definitions and §4.3, and
+format became an explicit axis at §5.2. So the batch is spread across all six levers by design.
+
+⚠️ **Two caveats kept honest.** First, the distribution actually implemented is **3/3/1/1/0**, not
+the 2/3/2/1/0 sometimes quoted, and §5.7 records a genuine three-way conflict in the corpus about
+which distribution is right — still open. Second, none of this is measurable directly: Meta
+publishes no Creative Similarity Score (§9, V3), so the <40% target is engineered by construction
+and verified by observed delivery behaviour, never by reading a number back.
+
 ### 3.4 What the research does not decide here
 
 **No precedence order among the five categories** when several apply (e.g. a spiritual practitioner
@@ -582,7 +667,137 @@ decision.
 
 ---
 
-## 5. Sub-type auto-detection
+## 5. Sub-type — a per-concept diversity lever (REWRITTEN, rev 4)
+
+### 5.0 ⚠️ What changed, and one place this diverges from the brief
+
+**Confirmed and adopted:** sub-type varies **per concept across a batch**. The decisive evidence is
+a fully worked 8-concept table — `[TESTING-MATRIX §2.1]` "The Dual-Axis Creative Matrix" — in which
+one seller's batch runs Esoteric, Grounded, Grounded, Aspirational, Aspirational, Esoteric,
+Esoteric, Aspirational. One sub-type per coach cannot produce that, and `[SUBTYPE-ARCH §1]` names
+the reason: a **"Fixed Identity Model… traps the brand's Entity ID in one narrow branch, leading to
+high signal-to-noise ratios and limited reach."**
+
+**⚠️ NOT adopted — the brief asked to delete the onboarding/coach-override entirely, on the grounds
+that sub-type is now purely system-assigned. The report cited for that change says the opposite.**
+`[SUBTYPE-ARCH §2]` scores four candidate methods and names a winner:
+
+| Method | Brand protection | Retrieval variety | Verdict in the report |
+|---|---|---|---|
+| Automatic Inference (guess from niche) | **Low** | Moderate | *"the primary cause of campaign stagnation in 2026"* |
+| Direct Self-Identification (onboarding) | High | **Low** | "clear but often too narrow" |
+| Concept-Driven Derivation | Moderate | High | each concept earns a unique Entity ID |
+| **Hybrid — anchors + concept flexing** | **Very High** | **Very High** | **"Strategic Choice"** |
+
+The recommended model is explicitly *"Core Anchor + Flexible Styling"*: **"By using a '3-Card
+Aesthetic Anchor' during onboarding, the seller sets the boundary for their identity. Meanwhile,
+'Concept-Level Flexing' allows the system to produce variations that Andromeda recognizes as
+unique."** `[SUBTYPE-ARCH §1, §2]`
+
+So deleting the onboarding anchor would move ZAP from the top row of that table to the bottom —
+into "Automatic Inference", the option the report singles out as the primary cause of stagnation.
+**This spec therefore adopts the HYBRID**: the coach optionally sets aesthetic boundaries, and the
+system flexes sub-type per concept inside them. Where a coach sets nothing, all three are in play.
+
+**Flagged for Arfeen** — this is the one place rev 4 departs from the instruction that produced it.
+It is a research-grounded call, not a preference, and it is cheap to reverse if he prefers the
+purely-assigned model.
+
+### 5.1 How sub-type is assigned across the batch
+
+`[TESTING-MATRIX §2.1]` gives the allocation directly, for exactly the 8-concept batch ZAP produces:
+
+| # | Awareness | Format | Sub-type | Angle |
+|---|---|---|---|---|
+| 1 | Unaware | UGC | **Esoteric** | Nervous System |
+| 2 | Unaware | Static | **Grounded** | Productivity Gap |
+| 3 | Problem-Aware | Static | **Grounded** | Intent Scan |
+| 4 | Problem-Aware | UGC | **Aspirational** | Agency Burnout |
+| 5 | Solution-Aware | Static | **Aspirational** | Us vs. Them |
+| 6 | Solution-Aware | Carousel | **Esoteric** | Flow States |
+| 7 | Product-Aware | UGC | **Esoteric** | Skepticism |
+| 8 | Most-Aware | Static | **Aspirational** | Scarcity |
+
+Sub-type totals **Esoteric 3 · Grounded 2 · Aspirational 3**. No sub-type appears more than twice
+consecutively, and no (awareness × sub-type) cell repeats — every concept lands in a distinct cell,
+which is what earns eight Entity IDs rather than one.
+
+The report's own rationale, `[TESTING-MATRIX §2.2]`: ads 1–4 are top-funnel and *"prioritize
+pattern interruption (Esoteric) and logic-mapping (Grounded)"*; ads 5–8 are low-funnel and *"by
+utilizing Aspirational and Esoteric styles, we ensure the 'Most-Aware' ads sit on entirely
+different branches than the 'Unaware' ads, preventing internal auction overlap."*
+
+**Assignment rule:** sub-type is allocated so that **no (awareness × sub-type) pair repeats within a
+batch**. That single constraint delivers the sub-40% Creative Similarity target without needing a
+similarity score we cannot read (see §9, V3 — Meta publishes no such score).
+
+### 5.2 FORMAT is a third axis — newly surfaced
+
+`[TESTING-MATRIX §2.1]` carries a **Format** column the earlier specs did not model: **UGC ×3,
+Static ×4, Carousel ×1**. `[SUBTYPE-ARCH §3]` lists format transitions first among non-cosmetic
+diversity variables — *"Transition between UGC 'raw' video, studio cinematic assets, and text-first
+layouts. CV scans differentiate these formats even if the colour palette is identical."*
+
+This matters for the build: **format is a diversity lever the current renderer does not expose at
+all** beyond aspect ratio, and it is cheaper to vary than talent or setting.
+
+### 5.3 Even a fixed sub-type can be diversified — the fallback
+
+`[SUBTYPE-ARCH §3]` is explicit that a seller who wants one aesthetic is not doomed: *"To maintain a
+fixed sub-type (e.g. 'Esoteric') while earning unique Entity IDs, architects must utilize the PDA
+Framework"* — varying **format**, **awareness stage** and **composition** instead. So a coach whose
+brand genuinely demands one look still gets a diverse batch; the levers shift, they do not vanish.
+
+### 5.4 OBSOLETE — removed in rev 4, and why
+
+| Removed | Why |
+|---|---|
+| **Sub-type detection algorithm** (infer from niche text) | This is `[SUBTYPE-ARCH §2]`'s "Automatic Inference" — **lowest** brand protection, *"the primary cause of campaign stagnation in 2026"*, prone to "generic tropes (stock gym equipment or sunset landscapes)". Superseded by the hybrid. ⚠️ `server/_core/sellerSubType.ts` implements exactly this and is now **dead code** — uncommitted, safe to delete. |
+| **PD-1 fitness → Grounded default** | Moot. It resolved *which single sub-type a fitness coach gets*; there is no longer a single sub-type per coach. The underlying `[GUARD §4]` health-scrutiny caution survives as a **compliance** constraint (§3), not a styling one. |
+| **PD-2 ambiguous → Grounded + low-confidence flag** | Moot. Nothing is being inferred, so there is no ambiguity to resolve and no confidence to store. |
+| **Detection confidence / coach-override fields** | Confidence is gone. An **aesthetic anchor** replaces the override — see §5.5. |
+| **PD-3 "detection is shown and changeable"** | Superseded rather than deleted: the coach still has a say, but it is a forward-looking *anchor* set at onboarding, not a correction to a guess made about them. |
+
+### 5.5 What the record must carry now (supersedes §6.2's sub-type rows)
+
+- **Per-concept sub-type** — one of grounded / esoteric / aspirational, assigned by §5.1, stored on
+  the concept, not on the coach.
+- **Per-concept format** — UGC / static / carousel (§5.2).
+- **Optional per-coach aesthetic anchor** — the boundary the hybrid needs. Absent means all three
+  sub-types are in play, which is the highest-diversity default.
+- **No longer needed:** detected sub-type, detection confidence, low-confidence flag, override flag.
+
+### 5.6 ⚠️ Reconciling with §2 — the 15-cell matrix is UNCHANGED
+
+Only the *sourcing* of the column changed. The matrix still says what a given
+(awareness × sub-type) cell depicts and how it is styled, and every citation in §2 still holds. What
+changed is that a batch now walks **eight different cells** instead of eight rows of one column.
+
+This also **strengthens §4.2**: rev 3 warned that a fixed sub-type left the batch in four cells with
+seven of eight concepts sharing. Under rev 4 every concept occupies its own cell, so the collision
+§4.2 described **largely dissolves** — the within-cell diversification requirement drops from
+"correctness-critical" to "belt and braces". §4.3's four structural levers remain the mechanism.
+
+### 5.7 🔴 A THIRD awareness distribution — unreconciled, flagged not silently picked
+
+`[TESTING-MATRIX §2.1]` implies **Unaware 2 · Problem-Aware 2 · Solution-Aware 2 · Product-Aware 1 ·
+Most-Aware 1**. The corpus now carries three different answers for the same 8-concept batch:
+
+| Source | Distribution | Most-Aware |
+|---|---|---|
+| `[ENTITY §3]` worked example (rev 2) | 1 / 2 / 3 / 2 / 0 | 0 |
+| Prospecting reports ×2 (rev 3, **implemented**) | 3 / 3 / 1 / 1 / 0 | 0 |
+| `[TESTING-MATRIX §2.1]` (rev 4) | 2 / 2 / 2 / 1 / **1** | **1** |
+
+The first two agree Most-Aware is zero for cold prospecting and attribute a mechanism to it
+(cannibalisation). This one includes a Most-Aware scarcity ad. **The corpus does not reconcile
+them.** Rev 3's 3/3/1/1/0 stays implemented for now — it is the only figure stated by *two
+independent* reports, both addressing prospecting allocation as their subject. **Genuine open
+question for Arfeen; do not treat as settled.**
+
+---
+
+## 5a. Sub-type auto-detection — ⛔ SUPERSEDED BY §5 (retained for history)
 
 ### 5.1 What the research gives — category membership
 
@@ -913,7 +1128,7 @@ that does not exist in any Meta interface.**
 
 | # | Gap |
 |---|---|
-| **G1** | **No detection algorithm** for sub-type from a niche string (§5.2). PD-2 and PD-3 govern the *policy*; the mechanism is a build decision. |
+| **G1** | ⛔ **DISSOLVED rev 4.** There is no detection to specify — sub-type is assigned per concept (§5.1), not inferred from the coach. `[SUBTYPE-ARCH §2]` rates inference-from-niche the weakest of four methods. |
 | **G2** | ✅ **CLOSED, rev 3 (2026-08-04).** The allocation is **unaware 3 · problem_aware 3 · solution_aware 1 · product_aware 1 · most_aware 0**, stated independently by *Prospecting Campaign Ad Concept Distribution* §3 and *The Definitive B2C Prospecting & Creative Architecture Playbook* §4 (`docs/andromeda/prospecting-research/`). Implemented deterministically as `COLD_WEIGHTED_STAGE_MIX` / `awarenessPlanForCount` (`server/_core/conceptAxis.ts`), enforced per-slot by `conceptValidator`. **Supersedes rev 2's 1/2/3/2/0**, which came from `[ENTITY §3]`'s worked *example* rather than a stated finding. ⚠️ Adopted over `[SCHWARTZ §5]`'s contrary "surround sound" principle — see §2.5. |
 | **G11** | 🔴 **NEW, rev 3 — the sharpest open risk.** **No rule for varying execution WITHIN one awareness stage.** The batch puts 3 concepts in the Unaware cell and 3 in Problem-Aware; persona is fixed per coach, format is mapped per *stage* not within it, so those trios rely on **desire alone** to earn separate Entity IDs. *Prospecting Campaign Ad Concept Distribution* §4's Mattress Paradox says that is not enough — and *Resolving the Awareness-Diversity Tension* §3 shows the fix is varying **execution style** (UGC / expert / infographic / lifestyle), for which the corpus gives no per-stage allocation. Needs a decision before the image rule is wired. |
 | **G3** | **No precedence order** between §2.6's cross-cutting modifiers and the cell's own prescription. |
@@ -928,6 +1143,27 @@ that does not exist in any Meta interface.**
 ---
 
 ## 11. Not in scope
+
+### 11a. 📌 PARKED — a COPY-side report, banked here but not used by the image rule
+
+`[HOOK-ENCODERS]` — *Ad Copy Hook Optimization for Andromeda's Language Encoders* — was banked to
+`docs/andromeda/image-research/` alongside the visual set on 2026-08-05, but it is **not an image
+document**. It concerns how Andromeda's NLP encoders read ad TEXT and categorise intent from it.
+
+**Nothing in the image rule depends on it, and nothing in it changes any cell, axis or
+distribution above.** It is recorded here only so a future session finds it rather than re-derives
+it.
+
+**Where it becomes relevant:** the next pass over the copy generators. It sits naturally beside the
+already-banked prospecting finding that Unaware statics want 150–250 words with high-signal intent
+words in the first 125–150 tokens (`[PROSPECT §3]`, §8.2's note) — both are about feeding the
+language encoders rather than the vision encoders. The stage-aware copy work shipped in `6aaf97f`
+is the surface it would revise.
+
+⚠️ **Filed in the image-research folder for provenance, not for topic.** Judge it by content, not
+by location — the same discipline CLAUDE.md §15a applies to the three mis-titled files in that set.
+
+
 
 No code. No schema migration. No prompt text. No wiring.
 
