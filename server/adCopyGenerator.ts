@@ -785,19 +785,36 @@ Format as JSON array:
     if (row.contentType === "body" && res.failContext) retryable.push({ row, failContext: res.failContext });
   }
 
-  // ── ONE RETRY ROUND ─────────────────────────────────────────────────────────
-  // adCopy was the only generator that dropped without retrying — concepts, scripts and
-  // the landing page all retry. Measured on a career-shaped offer: 10/16 bodies survived
-  // the first draft and 6/6 of the dropped angles recovered on a SINGLE redraft with the
-  // merged failContext, taking the deck to 16/16.
+  // ── CAPPED REGENERATION ─────────────────────────────────────────────────────
+  // HARD-BLOCK + AUTO-REGENERATE (Arfeen's call, 2026-08-04). A variant that fails the gate is
+  // never shown to the coach — it is already excluded from keptInserts above, which IS the hard
+  // block. This loop then tries to replace it with a compliant one so the coach still gets a
+  // working deck rather than a thinner one.
   //
-  // Reactive by design: it re-runs what actually dropped rather than predicting from the
-  // service record, so it self-corrects for niches nobody has measured. Runs in parallel,
-  // so the cost is one extra round-trip in wall-clock regardless of how many failed.
+  // CAP: COMPLIANCE_RETRY_MAX_ATTEMPTS (3), shared with conceptGenerator and the script generator
+  // so every path has the same ceiling. Previously this was exactly ONE round, hardcoded. Each
+  // attempt re-gates its own output, so a redraft that violates again is discarded, not kept.
+  //
+  // Measured on a career-shaped offer: 10/16 bodies survived the first draft and 6/6 dropped
+  // angles recovered on a SINGLE redraft, taking the deck to 16/16 — so attempt 1 does most of
+  // the work and the extra attempts are the tail, not the norm.
+  //
+  // BODIES ONLY, deliberately: measured on prod, 100% of drops were bodies (46 generated → 34
+  // kept = 15 headlines + 4 bodies + 15 links), and a 40-character headline has too little room
+  // for a redraft to change the verdict. Extending regeneration to headlines would be building
+  // for a case that has never occurred.
+  //
+  // Runs in parallel within an attempt, so cost is one round-trip per attempt regardless of how
+  // many variants failed.
+  const { COMPLIANCE_RETRY_MAX_ATTEMPTS: MAX_REGEN } = await import("./_core/complianceAxis");
+  const blockedFirstPass = allInserts.length - keptInserts.length;
+  const firstPassClasses = [...droppedClasses];
   let recoveredCount = 0;
-  if (retryable.length > 0) {
+  let pending = [...retryable];
+  for (let attempt = 1; attempt <= MAX_REGEN && pending.length > 0; attempt++) {
+    const stillFailing: typeof pending = [];
     const { BODY_ANGLE_PROMPTS: ANGLE_PROMPTS } = await import('./adCopyAngles');
-    const retried = await Promise.all(retryable.map(async ({ row, failContext }) => {
+    const retried = await Promise.all(pending.map(async ({ row, failContext }) => {
       try {
         const anglePrompt = ANGLE_PROMPTS[row.bodyAngle as keyof typeof ANGLE_PROMPTS] ?? "";
         const resp = await invokeLLM({
@@ -808,15 +825,44 @@ Format as JSON array:
         });
         const raw = resp.choices[0]?.message?.content;
         const text = typeof raw === "string" ? raw.trim() : "";
-        if (!text) return null;
+        if (!text) return { ok: false as const, row, failContext };
         const candidate = { ...row, content: text };
-        return gateOne(candidate).ok ? candidate : null;
-      } catch { return null; }
+        const res = gateOne(candidate);
+        if (res.ok) return { ok: true as const, candidate };
+        // Still violating — carry it into the next attempt with the FRESH failContext, so each
+        // redraft is corrected against what it actually got wrong this time.
+        return { ok: false as const, row, failContext: res.failContext || failContext };
+      } catch { return { ok: false as const, row, failContext }; }
     }));
-    for (const r of retried) if (r) { keptInserts.push(r); recoveredCount++; }
+    for (const r of retried) {
+      if (r.ok) { keptInserts.push(r.candidate); recoveredCount++; }
+      else if (attempt < MAX_REGEN) stillFailing.push({ row: r.row, failContext: r.failContext });
+    }
+    pending = stillFailing;
   }
   if (retryable.length > 0) {
-    console.log(`[adCopyGenerator] retry round: ${recoveredCount}/${retryable.length} body variants recovered.`);
+    console.log(
+      `[adCopyGenerator] regeneration: ${recoveredCount}/${retryable.length} body variants recovered ` +
+      `within ${MAX_REGEN} attempts; ${retryable.length - recoveredCount} exhausted the cap.`,
+    );
+  }
+
+  // ── BLOCK-RATE INSTRUMENTATION ──────────────────────────────────────────────
+  // The gate is the safety net; this number says how well the PROMPTS are doing. blockedFirstPass
+  // counts variants the model produced in violation before any regeneration — recoveries do not
+  // reduce it, because a recovered variant still represents a draft the prompt should not have
+  // produced. See _core/complianceTelemetry.ts.
+  {
+    const { recordComplianceGate } = await import("./_core/complianceTelemetry");
+    recordComplianceGate({
+      asset: "adCopy",
+      generated: allInserts.length,
+      blockedFirstPass,
+      recovered: recoveredCount,
+      kept: keptInserts.length,
+      classes: firstPassClasses,
+      labels: retryable.map((r) => String(r.row.bodyAngle ?? "")).filter(Boolean),
+    });
   }
   if (droppedClasses.length > 0 && keptInserts.length < allInserts.length) {
     console.warn(

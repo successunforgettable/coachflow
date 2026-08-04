@@ -201,8 +201,23 @@ export async function generateScriptForConcept(params: { userId: number; concept
     const { services } = await import("../drizzle/schema");
     [gateService] = await db.select().from(services).where(eq(services.id, concept.serviceId)).limit(1);
   }
+  // DEFECT (b) — scripts now adjudicate against the SAME ground truth as concepts.
+  // This passed `groundingMeta: null` while conceptGenerator.ts:227 and adCopyGenerator.ts:768
+  // both pass the real value. groundingMeta carries the coach's VERBATIM ladder answers, which
+  // feed corpus.text — the haystack claimIsGrounded() searches (trackRecordClaims.ts). So a figure
+  // or a name the coach ACTUALLY stated was missing from the script's corpus and read as invented.
+  // This was a FALSE-POSITIVE bug that over-blocked honest scripts, not merely thinner detection.
+  const [gateIcp] = concept.icpId != null
+    ? await db.select({ groundingMeta: idealCustomerProfiles.groundingMeta })
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.id, concept.icpId))
+        .limit(1)
+    : [undefined as any];
   const grounding = gateService
-    ? { corpus: buildCoachCorpus({ service: gateService, groundingMeta: null }), supplied: buildProofSupplied(gateService) }
+    ? {
+        corpus: buildCoachCorpus({ service: gateService, groundingMeta: gateIcp?.groundingMeta ?? null }),
+        supplied: buildProofSupplied(gateService),
+      }
     : undefined;
 
   const gate = (s: RawScript): { ok: boolean; failContext: string; labels: string } => {
@@ -214,6 +229,8 @@ export async function generateScriptForConcept(params: { userId: number; concept
         { location: `scene[${i}].onScreenText`, text: sc.onScreenText, role: "short" as const },
       ]),
       grounding,
+      // FAIL CLOSED — scripts are free spoken prose, the highest-risk surface for invented proof.
+      { requireGrounding: true },
     );
     if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
     const parts = [
@@ -235,9 +252,30 @@ export async function generateScriptForConcept(params: { userId: number; concept
   const MAX_ATTEMPTS = 3;
   let script = await invokeScript(prompt, "");
   let result = gate(script);
+  // Captured BEFORE any regeneration — the first-pass verdict is the PREVENTION signal.
+  const firstPassOk = result.ok;
+  const firstPassLabels = result.ok
+    ? []
+    : String(result.labels || "").split(",").map((x) => x.trim()).filter(Boolean);
   for (let attempt = 2; attempt <= MAX_ATTEMPTS && !result.ok; attempt++) {
     script = await invokeScript(prompt, result.failContext);
     result = gate(script);
+  }
+
+  // BLOCK-RATE INSTRUMENTATION — completes the set (adCopy, concepts, scripts). Scripts are free
+  // spoken prose and the highest-risk surface for both invented proof and policy language, so the
+  // rate here is the most informative of the three about how well the prompt craft is holding.
+  {
+    const { recordComplianceGate } = await import("./_core/complianceTelemetry");
+    recordComplianceGate({
+      asset: "script",
+      generated: 1,
+      blockedFirstPass: firstPassOk ? 0 : 1,
+      recovered: !firstPassOk && result.ok ? 1 : 0,
+      kept: result.ok ? 1 : 0,
+      classes: firstPassLabels,
+      labels: concept.awareness ? [String(concept.awareness)] : [],
+    });
   }
   if (!result.ok) throw new Error(`Script failed validation after ${MAX_ATTEMPTS} attempts: ${result.labels}`);
 

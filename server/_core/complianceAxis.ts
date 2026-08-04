@@ -43,7 +43,11 @@ export type ComplianceClass =
   | "ad_to_page_mismatch"                 // §1.4  check 3 (publish only)
   | "special_ad_category_employment"      // Tier-2 evidence — ADVISORY ONLY, check 5
   | "promised_result"                     // check 7 — ZAP HOUSE STANDARD, see below
-  | "register_diagnostic_address";        // TIER 3 house style — LABELS, never blocks
+  | "register_diagnostic_address"         // TIER 3 house style — LABELS, never blocks
+  | "fabrication_check_unavailable"       // FAIL-CLOSED: coach material unloadable, see checkOutput
+  | "restricted_financial_service"        // check 9  — credit/debt/lending, needs permission
+  | "clinical_outcome_claim"              // check 10 — promise to reverse/cure a condition
+  | "supernatural_outcome_claim";         // check 12 — spiritual practice -> material/health result
 
 export type ComplianceHit = {
   classId: ComplianceClass;
@@ -487,11 +491,129 @@ export type FieldRole = "short" | "body" | "cta";
  * less uniformly first-person on non-enumerated topics; that is the intended trade.
  */
 /** A result promised in a timeframe. Moved from fabricationValidator — see check 7. */
+/**
+ * A result promised in a timeframe, or promised absolutely. Written as a REGEX LITERAL rather than
+ * new RegExp(): the string form needs doubled escapes and a mis-escape silently turns \b into a
+ * literal "backslash-b", which is exactly what happened during this rebuild — it broke a case that
+ * had been passing. A literal cannot make that mistake.
+ *
+ * Sources: META_AD_COMPLIANCE_REFERENCE §1.6 (deceptive practices) + the ZAP house standard on
+ * promised results. "Every client who…" is a typicality guarantee regardless of timeframe.
+ */
 const PROMISED_RESULT_RE =
-  /\b(?:in|within|inside)\s+(?:just\s+)?\d+\s*(?:day|week|month|year)s?\b[^.!?]{0,60}\b(?:you(?:'ll| will)?|guarantee|promise|results?|revenue|clients?|leads?)\b|\b(?:you(?:'ll| will)|guaranteed to)\s+(?:make|earn|add|hit|land|book|double|triple)\b/gi;
+  /\b(?:in|within|inside)\s+(?:just\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|thirty|sixty|ninety)\s*(?:day|week|month|quarter|term|year)s?\b[^.!?]{0,60}\b(?:you(?:'ll| will)?|guarantee|promise|results?|revenue|clients?|leads?|promotion|role|job)\b|\b(?:you(?:'ll| will)|guaranteed to)\s+(?:make|earn|add|hit|land|book|double|triple)\b|\b(?:every|all|each)\s+(?:single\s+)?(?:client|student|member|customer)s?\b[^.!?]{0,60}\b(?:lands?|gets?|earns?|makes?|doubles?|achieves?|leaves?|wins?)\b|\b(?:will|guaranteed to)\s+(?:absolutely|definitely|completely|permanently|finally)?\s*(?:fix|solve|end|cure|eliminate|transform)\b/gi;
+
+/**
+ * FINALITY URGENCY — "closes forever", "never reopens". META_AD_COMPLIANCE_REFERENCE §1.6
+ * (Deceptive / Unacceptable Business Practices). Conjunctive: a real deadline the coach has set
+ * ("doors close on Friday") stays legal; it is the IRREVERSIBILITY claim that is deceptive.
+ */
+const FINALITY_URGENCY_RE =
+  /\b(?:doors?\s+clos\w*|last\s+chance|final\s+call|closing|gone)\b[^.!?]{0,50}\b(?:forever|for\s+good|never\s+(?:again|reopens?|opens?|returns?))\b|\bnever\s+(?:reopens?|opens?\s+again|runs?\s+again)\b/i;
 
 const matches = (t: string, re: RegExp): RegExpMatchArray[] =>
   Array.from(t.matchAll(new RegExp(re.source, re.flags)));
+
+// ─── RESEARCH-GROUNDED DETECTION (2026-08-04) ────────────────────────────────
+// Added after a HELD-OUT measurement put recall at 38%. Every vocabulary below is extracted from
+// the banked compliance corpus at docs/compliance/source-reports/ and cited to its document.
+// Nothing here is invented; where the corpus is silent that is stated rather than filled in.
+//
+// All four are CONJUNCTIVE — a topic term plus an action/claim term. Bare topic vocabulary never
+// blocks on its own, which is what kept precision at 20/20 through the whole rebuild.
+
+/**
+ * CRYPTO — widening TRADE_ENDORSEMENT, which held only exact promo phrases ("buy now",
+ * "buy the dip") and therefore missed the most natural phrasings entirely.
+ *
+ * SOURCE: "Policy Analysis: Meta's Cryptocurrency Permission Requirements for Educators
+ * (2025-2026)". Restricted is content "facilitating or promoting the trading, investment, or
+ * swapping of assets"; §Trading Signals & Investment Advice are "classified as high-risk/
+ * prohibited"; §Asset Allocation Guidance — "providing specific portfolio recommendations is
+ * frequently flagged as Cryptocurrency Investment".
+ *
+ * The document's SAFE HARBOUR is preserved by the conjunction: education, events, news and
+ * "how the technology works" carry no transactional verb, so they still pass.
+ */
+const CRYPTO_TRANSACTIONAL_RE =
+  /\b(?:which|what|when|how)\s+\w+\s+to\s+(?:buy|sell|trade|invest|stake|swap)\b|\bto\s+(?:buy|sell|trade|swap|stake)\b|\btrading\s+signals?\b|\bentry\s+and\s+exit\b|\bportfolio\s+allocation\b|\bwhen\s+to\s+(?:buy|sell|exit)\b/i;
+
+/**
+ * FINANCIAL SERVICES — a RESTRICTED CONTENT category needing pre-authorisation, distinct from the
+ * personal-attribute check that already catches "your debt".
+ *
+ * SOURCE: "Vocabulary Report: Signaling Personal Financial Vulnerability in Consumer Coaching" —
+ * "Categories like Financial Services, Credit, and Debt Relief are 'Restricted Content'. Coaches
+ * offering these services must obtain pre-authorization." Reinforced by "Policy Analysis: Meta's
+ * Financial Information Targeting Standards", which enumerates debt levels, bankruptcy history,
+ * credit scores and income brackets as protected.
+ *
+ * Note the same document's FALSE-MATCH warning: "credit" also means recognition ("giving credit
+ * to a mentor"), so the credit terms below are all compound, never the bare word.
+ */
+//
+// ⚠️ ANCHORING, not presence. An earlier draft listed "credit score" as a bare term and broke a
+// standing test: "The module explains how credit scores work" is EDUCATION about credit, not a
+// credit-repair service, and the whole module's design is that a topic noun never blocks on its
+// own. Split accordingly — unambiguous service names, plus a verb-anchored pattern for the rest.
+const RESTRICTED_FINANCIAL_SERVICE = [
+  "debt relief", "debt consolidation", "consolidate your debt",
+  "credit repair", "payday loan", "write off your debt", "clear your debt",
+];
+/** Offering to ACT on someone's credit standing, or to secure lending for them. */
+const FINANCIAL_SERVICE_ACTION_RE =
+  /\b(?:repair|fix|clean|boost|improve|restore|wipe|raise)\w*\s+(?:your\s+|their\s+)?credit\s*(?:file|score|rating|report|history)\b|\bget(?:ting)?\s+approved\s+for\s+(?:a\s+)?(?:mortgage|loan|credit)\b|\b(?:mortgage|loan)\s+approval\b/i;
+
+/**
+ * CLINICAL OUTCOME CLAIMS — a promise to reverse or cure a named condition, which the existing
+ * appearance-comparison rule does not model.
+ *
+ * SOURCE: "Vocabulary Report: Physical Health Signalling in Consumer Coaching Copy" §2.2 —
+ * "Meta's 2026 classifiers are hyper-sensitive to 'Guaranteed Weight Loss'. Compliance requires
+ * moving from outcome-based claims to mechanism-based" framing. The compliant column throughout
+ * that report is mechanism language ("supports healthy blood sugar already in the normal range"),
+ * never a reversal or cure.
+ */
+const CLINICAL_OUTCOME_VERB =
+  /\b(?:reverse[sd]?|cure[sd]?|heal(?:s|ed)?|eliminate[sd]?|fix(?:es|ed)?|get\s+rid\s+of)\b/i;
+
+/**
+ * SELF-PERCEPTION — self-directed disgust or shame, which §1.3 polices but the existing
+ * appearance-COMPARISON rule misses when no before/after framing is present.
+ *
+ * SOURCE: "Vocabulary Report: Physical Health Signalling" §1 — the standards exist "to eliminate
+ * the 'surveillance feel'"; and META_AD_COMPLIANCE_REFERENCE §1.3, whose prohibition is generating
+ * negative self-perception to promote a diet/weight/cosmetic product.
+ */
+const NEGATIVE_SELF_REGARD_RE =
+  /\b(?:hate|loathe|disgusted\s+by|ashamed\s+of|embarrassed\s+by|can'?t\s+stand)\b[^.!?]{0,40}\b(?:what\s+(?:you\s+see|stares?\s+back)|your\s+(?:body|reflection|photos?|appearance)|the\s+mirror|yourself)\b|\b(?:look\s+in\s+the\s+mirror)\b[^.!?]{0,30}\b(?:hate|loathe|dread)\b/i;
+
+/**
+ * SUPERNATURAL OUTCOME CLAIMS.
+ *
+ * ⚠️ HONEST SOURCING NOTE: the 15 text-compliance documents in docs/compliance/source-reports/
+ * contain NO coverage of manifestation, energy work or supernatural outcomes — searched, zero
+ * hits. The grounding here is the IMAGE-side corpus:
+ *   docs/andromeda/image-research/"Meta Ad Image Compliance Guardrails 2026" §6 — flags "claims of
+ *   guaranteed physical healing via supernatural means" and gives the worked example
+ *   "Your energy blockages are causing poverty", whose compliant substitute is "using tools for
+ *   personal reflection and mental clarity".
+ *
+ * Applying an image-side guardrail to text is a judgement call, flagged as such: the underlying
+ * Meta policy is the same, but the text corpus does not corroborate it. The conjunction keeps
+ * ordinary spiritual practice legal — reflection, ritual and card-reading all pass; only a
+ * GUARANTEED material or health outcome by supernatural means blocks.
+ */
+const SUPERNATURAL_AGENT = [
+  "energetic block", "energy block", "energy blocks", "energetic blocks", "curse", "hex",
+  "ancestral block", "ancestors are blocking", "karmic", "chakra", "aura", "manifest",
+  "manifestation", "law of attraction", "the universe", "moon cycle", "energy healing",
+  "spirit guides", "past life", "vibration", "frequency alignment",
+];
+const SUPERNATURAL_OUTCOME_RE =
+  /\b(?:money|wealth|abundance|income|bank\s+account|soulmate|partner|health|healing|cured?|illness|disease|fertility|pregnan\w*)\b/i;
+const SUPERNATURAL_CERTAINTY_RE =
+  /\b(?:will|guarantee[sd]?|remove[sd]?|clear(?:s|ed)?|unlock(?:s|ed)?|attract(?:s|ed)?|within\s+\w+|release[sd]?)\b/i;
 
 export function checkComplianceAxis(
   fields: Array<{ location: string; text: string | null | undefined; role?: FieldRole }>,
@@ -719,13 +841,100 @@ export function checkComplianceAxis(
         m[0], f.location);
     }
 
+    // ── Check 13 — FINALITY URGENCY. §1.6: irreversibility is the deceptive part, not the deadline.
+    {
+      const m = text.match(FINALITY_URGENCY_RE);
+      if (m) {
+        push("deceptive_urgency", 1,
+          "This says the opportunity disappears permanently. A real date the coach has set carries the same urgency and passes cleanly.",
+          m[0], f.location);
+      }
+    }
+
+    // ── Check 8 — CRYPTO, widened. §1.8 + Cryptocurrency Permission Requirements.
+    // Conjunctive with CRYPTO_TERMS, so the document's education/news safe harbour survives.
+    if (containsAny(hay, CRYPTO_TERMS) && CRYPTO_TRANSACTIONAL_RE.test(text)) {
+      const m = text.match(CRYPTO_TRANSACTIONAL_RE);
+      push("crypto_trade_endorsement", 1,
+        "This directs someone toward buying, selling or timing a crypto asset, which needs Meta's prior written permission. How the technology works, industry news and events are permitted without it.",
+        m?.[0] ?? "", f.location);
+    }
+
+    // ── Check 9 — RESTRICTED FINANCIAL SERVICES (credit, debt relief, lending).
+    // Source: Vocabulary Report — Signaling Personal Financial Vulnerability, §Restricted Content
+    // Notice. Distinct from check 1: this fires on the SERVICE being offered, not on asserting the
+    // reader's status, so it catches "repair your credit file" where no protected noun is asserted.
+    {
+      const svc = containsAny(hay, RESTRICTED_FINANCIAL_SERVICE) || text.match(FINANCIAL_SERVICE_ACTION_RE)?.[0];
+      if (svc) {
+        push("restricted_financial_service", 1,
+          "Credit, debt relief and lending are restricted categories that need Meta's written permission before the ad runs. Coaching on money habits, pricing and business decisions is not restricted and reads cleanly.",
+          svc, f.location);
+      }
+    }
+
+    // ── Check 10 — CLINICAL OUTCOME CLAIMS. Physical Health Signalling §2.2: compliance means
+    // mechanism framing, not a promise to reverse or cure a named condition.
+    if (CLINICAL_OUTCOME_VERB.test(text)) {
+      const cond = containsAny(hay, PROTECTED_ATTRIBUTE_TERMS);
+      if (cond) {
+        const v = text.match(CLINICAL_OUTCOME_VERB);
+        push("clinical_outcome_claim", 1,
+          "This promises to resolve a named health condition. Describing what the protocol does — and what it supports — carries the same weight without claiming a clinical outcome.",
+          `${v?.[0] ?? ""} … ${cond}`.trim(), f.location);
+      }
+    }
+
+    // ── Check 11 — NEGATIVE SELF-REGARD. §1.3, the form with no before/after comparison.
+    {
+      const m = text.match(NEGATIVE_SELF_REGARD_RE);
+      if (m) {
+        push("negative_self_perception", 1,
+          "This invites someone to feel badly about how they look. What becomes possible — what they will be able to do — motivates the same action without the self-criticism.",
+          m[0], f.location);
+      }
+    }
+
+    // ── Check 12 — SUPERNATURAL OUTCOME CLAIMS. See the sourcing note on SUPERNATURAL_AGENT:
+    // grounded in the IMAGE-side Guardrails §6, flagged because the text corpus is silent.
+    // Triple conjunction — agent + material/health outcome + certainty — so ordinary reflective
+    // spiritual practice stays legal.
+    {
+      const agent = containsAny(hay, SUPERNATURAL_AGENT);
+      if (agent && SUPERNATURAL_OUTCOME_RE.test(text) && SUPERNATURAL_CERTAINTY_RE.test(text)) {
+        push("supernatural_outcome_claim", 1,
+          "This states that a spiritual practice will produce a material or health result. Framing the work as reflection, clarity and personal insight keeps the same offer inside Meta's rules.",
+          agent, f.location);
+      }
+    }
+
     // ── Check 6 — delegate to the existing filter rather than duplicating it.
+    //
+    // 🔴 BUG FIXED 2026-08-04 (measured, held-out): the verdict was DROPPED whenever the filter
+    // classified the copy as REJECTED/PIVOT_REQUIRED but returned an empty `flaggedTerms`. The hit
+    // was pushed only from inside `for (const term of verdict.flaggedTerms)`, so an empty array
+    // meant a correct verdict was computed and silently discarded.
+    //
+    // Measured impact: "Only two seats left and the price doubles at midnight tonight" and
+    // "Guaranteed six figures in your first year of coaching" BOTH returned PIVOT_REQUIRED with
+    // zero flagged terms — and both shipped. This single line accounted for most of the
+    // deceptive-urgency (0/2) and promised-result (1/4) misses.
+    //
+    // The classification is now the trigger. Flagged terms only enrich the message.
     const verdict = complianceFilter(text);
     if (verdict.classification === "REJECTED" || verdict.classification === "PIVOT_REQUIRED") {
-      for (const term of verdict.flaggedTerms.slice(0, 3)) {
+      const terms = (verdict.flaggedTerms ?? []).slice(0, 3);
+      if (terms.length > 0) {
+        for (const term of terms) {
+          push("deceptive_urgency", 1,
+            "This carries a claim or an urgency device Meta's policy filters reject. Real deadlines the coach has set, and what the offer actually does, both pass cleanly.",
+            term, f.location);
+        }
+      } else {
+        // Verdict with no attributable span — still a verdict. Report it against the field.
         push("deceptive_urgency", 1,
           "This carries a claim or an urgency device Meta's policy filters reject. Real deadlines the coach has set, and what the offer actually does, both pass cleanly.",
-          term, f.location);
+          text.slice(0, 80), f.location);
       }
     }
   }
@@ -839,11 +1048,30 @@ export type OutputGateResult = {
  * needs the coach corpus, compliance needs only the text and the field's role.
  *
  * Fabrication runs only when a corpus is supplied; callers without one (or before the
- * validator is available) still get the compliance axis.
+ * validator is available) still get the compliance axis. Callers that MUST have the
+ * fabrication half run pass `requireGrounding` — see below.
  */
 export function checkOutput(
   fields: Array<{ location: string; text: string | null | undefined; role?: FieldRole }>,
   grounding?: { corpus: any; supplied: any },
+  opts?: {
+    /**
+     * FAIL CLOSED. When true, an absent or incomplete `grounding` produces a BLOCKING hit rather
+     * than silently skipping the fabrication check.
+     *
+     * THE DEFECT THIS FIXES: the guard below is `if (grounding?.corpus && grounding?.supplied)`.
+     * Every caller builds `grounding` only when the coach's service row loads — so a missing
+     * service row made the fabrication half quietly no-op and the function returned `ok: true`
+     * with zero blocking. "Could not check" was indistinguishable from "checked and passed", on
+     * the exact paths that feed live ads.
+     *
+     * OPT-IN, deliberately: most of the 18 call sites legitimately pass no grounding (landing-page
+     * generation, the compliance router's single-row check, the unit tests). Making
+     * undefined-grounding fail globally would break them for no safety gain, because those paths
+     * never claimed to be running the fabrication check. Only the gates that feed a live ad set it.
+     */
+    requireGrounding?: boolean;
+  },
 ): OutputGateResult {
   const cmp = checkComplianceAxis(fields);
   const blocking: OutputHit[] = [...cmp.blocking];
@@ -851,7 +1079,26 @@ export function checkOutput(
   const contexts: string[] = [];
   if (cmp.failContext) contexts.push(cmp.failContext);
 
-  if (grounding?.corpus && grounding?.supplied) {
+  const groundingUsable = !!(grounding?.corpus && grounding?.supplied);
+  if (!groundingUsable && opts?.requireGrounding) {
+    // Only meaningful where there is copy to check — no text is not an unverified claim.
+    const hasText = fields.some((f) => typeof f.text === "string" && f.text.trim());
+    if (hasText) {
+      blocking.push({
+        classId: "fabrication_check_unavailable" as ComplianceClass,
+        tier: 1,
+        description:
+          "The coach's own material could not be loaded, so nothing in this copy could be checked against it. This holds rather than passing unchecked.",
+        matched: "",
+        location: fields.find((f) => typeof f.text === "string" && f.text.trim())?.location ?? "(all)",
+      });
+      contexts.push(
+        "The coach's supplied material was not available, so the copy could not be checked against it. Retry once that material can be loaded.",
+      );
+    }
+  }
+
+  if (groundingUsable) {
     const fabFields: Record<string, string> = {};
     for (const f of fields) if (typeof f.text === "string" && f.text.trim()) fabFields[f.location] = f.text;
     if (Object.keys(fabFields).length > 0) {

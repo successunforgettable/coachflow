@@ -19,8 +19,8 @@ async function main() {
   if (!icpId || !userId) throw new Error("usage: verify-concept-generation.ts <icpId> <userId> [count]");
 
   console.log(`[verify] generating ${count} concepts for icp=${icpId} user=${userId} ...`);
-  const persisted = await generateConceptsForIcp({ userId, icpId, count });
-  console.log(`[verify] generateConceptsForIcp returned: ${persisted} concepts persisted`);
+  const res = await generateConceptsForIcp({ userId, icpId, count });
+  console.log(`[verify] generateConceptsForIcp returned: ${res.persisted} persisted, ${res.skipped} skipped of ${res.requested} requested`);
 
   const db = await getDb();
   if (!db) throw new Error("no db");

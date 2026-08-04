@@ -175,7 +175,7 @@ export async function generateConceptsForIcp(params: {
   serviceId?: number | null;
   campaignId?: number | null;
   count?: number;
-}): Promise<number> {
+}): Promise<ConceptGenerationResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -238,6 +238,10 @@ export async function generateConceptsForIcp(params: {
         { location: `concept[${i}].longText`, text: c.longText, role: "body" as const },
       ]),
       grounding,
+      // FAIL CLOSED. Concepts are the upstream input to Andromeda-driven ads; if the coach's
+      // material cannot be loaded there is nothing to check claims against, and a silent pass
+      // here would carry through to a live ad. Holding is the safe direction.
+      { requireGrounding: true },
     );
     if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
     const parts = [
@@ -256,11 +260,73 @@ export async function generateConceptsForIcp(params: {
   const { COMPLIANCE_RETRY_MAX_ATTEMPTS } = await import("./_core/complianceAxis");
   let concepts = await invokeConcepts(prompt, "");
   let result = gate(concepts);
+  // Captured BEFORE any regeneration — the first-pass verdict is the prevention signal.
+  const firstPassOk = result.ok;
+  const firstPassLabels = result.ok
+    ? []
+    : String(result.labels || "").split(",").map((x) => x.trim()).filter(Boolean);
   for (let attempt = 2; attempt <= COMPLIANCE_RETRY_MAX_ATTEMPTS && !result.ok; attempt++) {
     concepts = await invokeConcepts(prompt, result.failContext);
     result = gate(concepts);
   }
-  if (!result.ok) throw new Error(`Concept set failed validation after ${COMPLIANCE_RETRY_MAX_ATTEMPTS} attempts: ${result.labels}`);
+  // BLOCK-RATE INSTRUMENTATION. Concepts already had the locked behaviour — hard-block via the
+  // gate, regenerate up to COMPLIANCE_RETRY_MAX_ATTEMPTS, then throw rather than persist anything
+  // that failed. What was missing was visibility: no way to tell how often the prompt produced a
+  // violating set in the first place.
+  // ── PARTIAL DELIVERY (Arfeen's call, 2026-08-04) ────────────────────────────
+  // Previously an all-or-nothing throw: one concept the gate would not pass killed the whole set
+  // and the coach got nothing. Now the clean concepts are delivered and only the failures are
+  // skipped, with the count surfaced so the coach can be told plainly.
+  //
+  // Per-concept evaluation applies the SAME two gates (compliance, then fabrication) to one
+  // concept's four copy fields. Set-level structural rules — desire x awareness distinctness and
+  // slot adherence — are deliberately NOT re-applied here: they describe the shape of a full set,
+  // and a set that has had failures removed is smaller by definition. The awareness distribution
+  // degrades accordingly, which is the accepted cost of delivering something rather than nothing.
+  let skippedCount = 0;
+  if (!result.ok) {
+    const conceptPassesAlone = (c: RawConcept, i: number): boolean => {
+      const cmp = screenConceptCompliance([c]);
+      if (!cmp.ok) return false;
+      const out = checkOutput(
+        [
+          { location: `concept[${i}].hook`, text: c.hook, role: "short" as const },
+          { location: `concept[${i}].headline`, text: c.headline, role: "short" as const },
+          { location: `concept[${i}].shortText`, text: c.shortText, role: "body" as const },
+          { location: `concept[${i}].longText`, text: c.longText, role: "body" as const },
+        ],
+        grounding,
+        { requireGrounding: true },
+      );
+      return out.ok;
+    };
+    const survivors = concepts.filter((c, i) => conceptPassesAlone(c, i));
+    skippedCount = concepts.length - survivors.length;
+    if (survivors.length === 0) {
+      // Nothing survived — there is no partial result to deliver, so this still throws rather
+      // than persisting an empty set the coach would read as a silent failure.
+      throw new Error(
+        `Concept set failed validation after ${COMPLIANCE_RETRY_MAX_ATTEMPTS} attempts: ${result.labels}`,
+      );
+    }
+    console.warn(
+      `[conceptGenerator] partial delivery: ${survivors.length}/${concepts.length} concepts kept, ` +
+      `${skippedCount} skipped after ${COMPLIANCE_RETRY_MAX_ATTEMPTS} attempts (classes=[${result.labels}]).`,
+    );
+    concepts = survivors;
+  }
+
+  {
+    const { recordComplianceGate } = await import("./_core/complianceTelemetry");
+    recordComplianceGate({
+      asset: "concepts",
+      generated: count,
+      blockedFirstPass: firstPassOk ? 0 : count,
+      recovered: !firstPassOk && skippedCount === 0 ? count : 0,
+      kept: concepts.length,
+      classes: firstPassLabels,
+    });
+  }
 
   const conceptSetId = randomUUID();
   const personaLabel = (icp as any).angleName || (icp as any).name || null;
@@ -287,8 +353,25 @@ export async function generateConceptsForIcp(params: {
     })),
   );
 
-  return concepts.length;
+  // SURFACING THE SKIP COUNT. Returned as a structured result rather than a bare number so the
+  // caller — and eventually the coach-facing surface — can say "2 angles were filtered" without
+  // re-deriving it. Nothing reads concepts in the UI yet (see the Andromeda stock-take), so this
+  // is the API-boundary half of that notice; the render half lands with the concepts UI.
+  return { persisted: concepts.length, skipped: skippedCount, requested: count };
 }
+
+/**
+ * What one concept-set generation produced. `skipped` is the number the gate blocked and
+ * regeneration could not recover — the number a coach is told about ("2 angles were filtered").
+ */
+export type ConceptGenerationResult = {
+  /** Concepts actually written to the database. */
+  persisted: number;
+  /** Concepts blocked by the gate and not recovered within the attempt cap. */
+  skipped: number;
+  /** How many were asked for. persisted + skipped === requested. */
+  requested: number;
+};
 
 /**
  * LAZY entry — called at the ad-copy generation entry after validateCascadePrereqs passes. Checks for

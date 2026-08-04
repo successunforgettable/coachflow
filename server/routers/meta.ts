@@ -269,14 +269,26 @@ export const metaRouter = router({
           const [gateIcp] = await gateDb.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
 
-          const gate = svc ? checkOutput(
-            [
-              { location: "headline", text: headline, role: "short" },
-              { location: "body", text: body, role: "body" },
-              { location: "callToAction", text: callToAction, role: "cta" },
-            ],
-            { corpus: buildCoachCorpus({ service: svc, groundingMeta: (gateIcp as any)?.groundingMeta }), supplied: buildProofSupplied(svc) },
-          ) : null;
+          // FAIL CLOSED — the same defect as the generator gates, and this is the LAST boundary
+          // before Meta. `svc ? … : null` meant a service row that could not be loaded skipped
+          // BOTH the compliance axis and the fabrication check, and the ad published unchecked.
+          // Passing the fields with no grounding still runs compliance, and requireGrounding turns
+          // the missing corpus into a blocking hit instead of silence.
+          const gateFields = [
+            { location: "headline", text: headline, role: "short" as const },
+            { location: "body", text: body, role: "body" as const },
+            { location: "callToAction", text: callToAction, role: "cta" as const },
+          ];
+          const gate = checkOutput(
+            gateFields,
+            svc
+              ? {
+                  corpus: buildCoachCorpus({ service: svc, groundingMeta: (gateIcp as any)?.groundingMeta }),
+                  supplied: buildProofSupplied(svc),
+                }
+              : undefined,
+            { requireGrounding: true },
+          );
 
           // CHECK 3 (§1.4) — Meta requires the products and services promoted in an ad to
           // match those on its landing page, and reviews the destination. Only evaluable
