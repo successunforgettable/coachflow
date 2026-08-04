@@ -474,9 +474,49 @@ Format as JSON array:
   const availableAngles = hasRealProof
     ? [...ALL_BODY_ANGLES]
     : ALL_BODY_ANGLES.filter((a) => !PROOF_DEPENDENT_ANGLES.includes(a));
-  const selectedAngles = input.liteMode ? availableAngles.slice(0, 3) : availableAngles;
-  const bodyPromises = selectedAngles.map(async (angle) => {
+
+  // ── AWARENESS-STAGE SELECTION ───────────────────────────────────────────────
+  // Schwartz: the same offer needs different copy depending on what the reader already knows.
+  // Previously this was `availableAngles.slice(0, 3)` in liteMode — the first three angles in
+  // ARRAY ORDER, with no strategic basis. For a coach with testimonials that resolved to
+  // pain_agitation + social_proof + authority: two of three cold-traffic ads aimed at people who
+  // already know the brand, and nothing for the Unaware reader the prospecting research allocates
+  // 37.5% of the batch to.
+  //
+  // The stage per slot comes from awarenessPlanForCount — the SAME deterministic allocation the
+  // concept generator uses, so ad copy and concepts describe the same funnel shape.
+  //
+  // ⚠️ Why the plan and not a concept row: ensureConceptsForIcp above is fire-and-forget and
+  // explicitly never delays ad-copy generation, so no concept exists yet when this runs. Reading
+  // one here would be a race. Deriving the stage from the shared plan gives the same stages the
+  // concepts will carry, with no ordering dependency.
+  //
+  // Verified at the deck sizes actually used: the plan's largest-remainder apportionment already
+  // spans a warmer stage at 3 slots (unaware, problem_aware, solution_aware) and all four at 8+.
+  // The 25% warmer tail that …Prospecting Campaign Ad Concept Distribution §3 calls "a vital
+  // safeguard against Entity-ID pigeonholing" is therefore preserved without special-casing.
+  const { awarenessPlanForCount } = await import('./_core/conceptAxis');
+  const { angleForStage, STAGE_COPY_GUIDANCE } = await import('./adCopyAngles');
+  const slotCount = input.liteMode ? 3 : availableAngles.length;
+  const stagePlan = awarenessPlanForCount(slotCount);
+
+  // One angle per planned slot. Where a stage's mapped angles are exhausted — inevitable on the
+  // full 18-slot deck, since 4 stages × 3 mapped angles cannot cover 18 — the slot backfills from
+  // the remaining angles in the previous array order but KEEPS its planned stage guidance. Deck
+  // size is therefore byte-identical to the old slice(0, n) behaviour, with no angle issued twice.
+  const usedAngles = new Set<(typeof availableAngles)[number]>();
+  const slots: Array<{ angle: (typeof availableAngles)[number]; stage: (typeof stagePlan)[number] }> = [];
+  for (const stage of stagePlan) {
+    const mapped = angleForStage(stage, availableAngles, usedAngles);
+    const angle = mapped ?? availableAngles.find((a) => !usedAngles.has(a));
+    if (!angle) break; // angles exhausted — cannot happen while slotCount <= availableAngles.length
+    usedAngles.add(angle);
+    slots.push({ angle, stage });
+  }
+
+  const bodyPromises = slots.map(async ({ angle, stage }) => {
     const anglePrompt = BODY_ANGLE_PROMPTS[angle];
+    const stageGuidance = STAGE_COPY_GUIDANCE[stage];
     const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
 
 Service: ${service.name}
@@ -503,6 +543,8 @@ Ad Style: ${input.adStyle}
 Call To Action: ${input.adCallToAction}
 
 ${anglePrompt}
+
+${stageGuidance}
 
 ${registerPersonGuidance(hasRealProof)}
 

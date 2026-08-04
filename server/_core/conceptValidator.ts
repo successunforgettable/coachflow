@@ -32,6 +32,7 @@ export interface RawConcept {
 export type ConceptStructureClass =
   | "concept_missing_field"
   | "concept_bad_awareness"
+  | "concept_wrong_awareness_slot"
   | "concept_bad_hook_pattern"
   | "concept_headline_equals_hook"
   | "concept_duplicate_axis"
@@ -55,7 +56,11 @@ function norm(v: string | undefined): string {
   return (v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function buildFailContext(hits: ConceptStructureHit[], maxHits = 8): string {
+function buildFailContext(
+  hits: ConceptStructureHit[],
+  expectedAwarenessPlan?: readonly string[],
+  maxHits = 8,
+): string {
   if (hits.length === 0) return "";
   const top = hits.slice(0, maxHits);
   const lines = top.map((h) => `- ${h.location}: ${h.description}`);
@@ -63,18 +68,46 @@ function buildFailContext(hits: ConceptStructureHit[], maxHits = 8): string {
     hits.length > maxHits
       ? `\n(plus ${hits.length - maxHits} additional structural issue${hits.length - maxHits === 1 ? "" : "s"} not shown)`
       : "";
-  return `Your previous concept set failed structural validation and must be regenerated:\n${lines.join("\n")}${more}\n\nRegenerate the full set so that: every concept has a non-empty hook, headline, shortText and longText; awareness is one of the 5 stages (unaware, problem_aware, solution_aware, product_aware, most_aware); hookPattern is one of the 6 patterns (problem_first, founder_authenticity, social_proof, aspirational_transformation, meme_humor, data_chart); the headline carries a DIFFERENT signal from the hook (mechanism or outcome), never a repeat; and no two concepts share the same desire × awareness pair — vary the desire, the awareness stage, or both so every concept is genuinely distinct.`;
+  // When a plan is in force the awareness rule is "match your assigned slot", not "pick any of the
+  // 5" — restating the free-choice version here would contradict the per-slot hits above and invite
+  // the model to re-pick freely on the retry.
+  const awarenessRule = expectedAwarenessPlan?.length
+    ? `awareness is FIXED PER SLOT and must be exactly: ${expectedAwarenessPlan.map((s, i) => `concept[${i}]=${s}`).join(", ")}`
+    : "awareness is one of the 5 stages (unaware, problem_aware, solution_aware, product_aware, most_aware)";
+  return `Your previous concept set failed structural validation and must be regenerated:\n${lines.join("\n")}${more}\n\nRegenerate the full set so that: every concept has a non-empty hook, headline, shortText and longText; ${awarenessRule}; hookPattern is one of the 6 patterns (problem_first, founder_authenticity, social_proof, aspirational_transformation, meme_humor, data_chart); the headline carries a DIFFERENT signal from the hook (mechanism or outcome), never a repeat; and no two concepts share the same desire × awareness pair — vary the desire, the awareness stage, or both so every concept is genuinely distinct.`;
 }
 
 /**
  * Validate the STRUCTURE of a generated concept set. Returns ok=true when structurally sound,
  * ok=false with hits + a failContext shaped for prompt-injection on the next retry attempt.
  */
-export function validateConceptSetStructure(concepts: RawConcept[]): ConceptStructureResult {
+export function validateConceptSetStructure(
+  concepts: RawConcept[],
+  /**
+   * The per-slot awareness plan the generator asked for (awarenessPlanForCount). When supplied,
+   * each concept must carry the stage assigned to ITS slot — the cold-weighted distribution is
+   * enforced here rather than left to the model's discretion.
+   *
+   * Optional so existing callers and tests that predate the plan keep their previous behaviour:
+   * omitted means "any valid stage in any slot", exactly as before.
+   */
+  expectedAwarenessPlan?: readonly string[],
+): ConceptStructureResult {
   const hits: ConceptStructureHit[] = [];
 
   concepts.forEach((c, i) => {
     const at = `concept[${i}]`;
+
+    // Slot adherence. Only meaningful once the stage itself is valid — an invalid stage is already
+    // reported as concept_bad_awareness and reporting it twice would just crowd the failContext.
+    const expected = expectedAwarenessPlan?.[i];
+    if (expected && isAwarenessStage(c.awareness) && c.awareness !== expected) {
+      hits.push({
+        classId: "concept_wrong_awareness_slot",
+        description: `awareness "${c.awareness}" does not match the stage assigned to this slot ("${expected}") — the batch distribution is fixed`,
+        location: `${at}.awareness`,
+      });
+    }
 
     for (const field of REQUIRED_FIELDS) {
       if (typeof c[field] !== "string" || (c[field] as string).trim().length === 0) {
@@ -127,7 +160,7 @@ export function validateConceptSetStructure(concepts: RawConcept[]): ConceptStru
   });
 
   if (hits.length === 0) return { ok: true };
-  return { ok: false, hits, failContext: buildFailContext(hits) };
+  return { ok: false, hits, failContext: buildFailContext(hits, expectedAwarenessPlan) };
 }
 
 // ─── Compliance screen — route concept text through the EXISTING complianceFilter guards ─────────

@@ -15,11 +15,28 @@ describe("buildConceptPrompt — one person, many angles (Desire × Awareness)",
     expect(buildConceptPrompt(icp, 8)).toContain("8");
   });
 
-  it("spans all 5 Schwartz awareness stages", () => {
+  // REWRITTEN 2026-08-04. The previous version asserted the prompt merely CONTAINED all 5 stage
+  // names, and it kept passing after the batch became cold-weighted — because `most_aware` still
+  // appears in the hook→awareness guidance block regardless of the batch distribution. It was
+  // passing for the wrong reason and would not have caught a regression in the distribution.
+  it("assigns a stage to every concept slot rather than letting the model choose", () => {
     const p = buildConceptPrompt(icp, 8);
-    for (const stage of ["unaware", "problem_aware", "solution_aware", "product_aware", "most_aware"]) {
-      expect(p).toContain(stage);
+    expect(p).toContain("ASSIGNED PER CONCEPT, NOT CHOSEN");
+    for (let i = 1; i <= 8; i++) {
+      expect(p).toMatch(new RegExp(`Concept ${i}: (unaware|problem_aware|solution_aware|product_aware)`));
     }
+  });
+
+  it("weights the batch toward the three cold stages and allocates no most_aware slot", () => {
+    const p = buildConceptPrompt(icp, 8);
+    const slots = [...p.matchAll(/ {2}- Concept \d+: (\w+)/g)].map((m) => m[1]);
+    expect(slots).toHaveLength(8);
+    // prospecting-research allocation: 3 / 3 / 1 / 1 / 0.
+    expect(slots.filter((s) => s === "unaware")).toHaveLength(3);
+    expect(slots.filter((s) => s === "problem_aware")).toHaveLength(3);
+    expect(slots.filter((s) => s === "solution_aware")).toHaveLength(1);
+    expect(slots.filter((s) => s === "product_aware")).toHaveLength(1);
+    expect(slots.filter((s) => s === "most_aware")).toHaveLength(0);
   });
 
   // Register change 2026-07-27: the social-proof hook needs a real client account to

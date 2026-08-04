@@ -20,6 +20,7 @@ import {
   HOOK_PATTERNS,
   DEFAULT_CONCEPT_COUNT,
   CANDIDATE_HOOK_AWARENESS_MAP,
+  awarenessPlanForCount,
 } from "./_core/conceptAxis";
 import { validateConceptSetStructure, screenConceptCompliance, type RawConcept } from "./_core/conceptValidator";
 import { REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance } from "./_core/copywritingRules";
@@ -54,6 +55,13 @@ function renderHookGuidance(availableHooks: readonly string[]): string {
 
 export function buildConceptPrompt(icp: ConceptIcpInput, count: number, hasRealClientMaterial: boolean = false): string {
   const persona = icp.angleName || icp.name || "this ideal customer";
+  // COLD-WEIGHTED, DETERMINISTIC. The stage for each slot is decided here, not by the model — see
+  // COLD_WEIGHTED_STAGE_MIX in _core/conceptAxis.ts for the research citation and the recorded
+  // counter-evidence. Previously the prompt asked the model to "span all 5 stages" and only the
+  // desire × awareness PAIR was enforced, which meant a set could legally put all 8 concepts at one
+  // stage (8 different desires = 8 distinct pairs) and still pass.
+  const awarenessPlan = awarenessPlanForCount(count);
+  const planLines = awarenessPlan.map((stage, i) => `  - Concept ${i + 1}: ${stage}`).join("\n");
   // PROOF-DEPENDENT HOOKS. social_proof asks for a client result; data_chart asks for a
   // figure. Both are offered only once the coach's proof is on the record — otherwise the
   // set is built from the remaining patterns and the prompt never asks for something the
@@ -77,7 +85,11 @@ Fears: ${icp.fears || "(none provided)"}
 Objections: ${icp.objections || "(none provided)"}
 Buying triggers: ${icp.buyingTriggers || "(none provided)"}
 
-AWARENESS — span all 5 Schwartz stages across the set: ${AWARENESS_STAGES.join(", ")}.
+AWARENESS — ASSIGNED PER CONCEPT, NOT CHOSEN. This is a cold-traffic, broad-targeting batch, so the
+set is weighted toward earlier-stage prospects. Write each concept TO the stage assigned to its slot:
+${planLines}
+Return the concepts in exactly this order, each carrying its assigned awareness value. Do NOT
+substitute a different stage, reorder the set, or re-balance the distribution.
 HOOK PATTERN — each concept uses exactly one of these patterns: ${availableHooks.join(", ")}.${hasRealClientMaterial ? "" : "\n(The social-proof and data-chart hooks need a real client account or a real figure to carry them, and this coach's proof is not on the record yet, so this set is built from the other patterns.)"}
 ${renderHookGuidance(availableHooks)}
 
@@ -96,8 +108,8 @@ STRUCTURAL RULES (every concept):
 - longText: the long-form primary text (feeds sequence learning).
 
 SET RULES:
-- The ${count} concepts must be DISTINCT on desire × awareness — no two concepts share the same desire AND awareness pair. Vary the desire, the awareness stage, or both.
-- Cover a spread of awareness stages; do not cluster everything at one stage.
+- The ${count} concepts must be DISTINCT on desire × awareness — no two concepts share the same desire AND awareness pair. Since the awareness stages are already fixed above, this means: where two concepts share an assigned stage, their DESIRES must differ.
+- The awareness distribution is set by the assignment above and is not yours to change.
 
 Return valid JSON only, no markdown:
 { "concepts": [ { "desire": "...", "awareness": "problem_aware", "hookPattern": "problem_first", "hook": "...", "headline": "...", "shortText": "...", "longText": "..." } ] }`;
@@ -175,6 +187,9 @@ export async function generateConceptsForIcp(params: {
   if (!icp) throw new Error(`ICP ${params.icpId} not found for user ${params.userId}`);
 
   const count = params.count ?? DEFAULT_CONCEPT_COUNT;
+  // The same deterministic plan the prompt assigns, re-derived here so the validator enforces
+  // exactly what was asked for. Same input → same plan, so these cannot drift apart.
+  const awarenessPlan = awarenessPlanForCount(count);
   // Real-proof signal for the third-person unlock — the coach's own supplied client
   // material. Absent (or no serviceId) resolves to first-person-only, the safe direction.
   let hasRealClientMaterial = false;
@@ -213,7 +228,7 @@ export async function generateConceptsForIcp(params: {
     : undefined;
 
   const gate = (cs: RawConcept[]): { ok: boolean; failContext: string; labels: string } => {
-    const structure = validateConceptSetStructure(cs);
+    const structure = validateConceptSetStructure(cs, awarenessPlan);
     const compliance = screenConceptCompliance(cs);
     const output = checkOutput(
       cs.flatMap((c, i) => [

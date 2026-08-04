@@ -1,7 +1,24 @@
 # The Per-Angle Image Rule
 
-**STATUS: FINAL — UNCOMMITTED.** Awaiting Claude's last faithfulness pass, then Arfeen's approval,
-before it is committed. No code implements any of it.
+**STATUS: FINAL — committed at `0b3c2ff`. REVISED 2026-08-04 (rev 2), uncommitted.**
+
+### Revision log
+
+**rev 3 — 2026-08-04 — allocation corrected to the prospecting research: 3 / 3 / 1 / 1 / 0.**
+Four reports banked to `docs/andromeda/prospecting-research/` address batch allocation as their
+actual subject. Two of them state the same split for exactly an 8-concept cold batch —
+**unaware 3 · problem_aware 3 · solution_aware 1 · product_aware 1 · most_aware 0**. This
+**supersedes rev 2's 1/2/3/2/0**, which came from a worked *example* inside the Entity-ID Protocol
+rather than a stated finding. Both agree Most-Aware is zero for cold traffic; they differ sharply on
+the rest (75% in the top two stages, where rev 2 had 37.5%). §2.5 and §4.2 revised again.
+
+**rev 2 — 2026-08-04 — batch distribution is cold-weighted; Most-Aware is not in the default batch.**
+Introduced deterministic assignment (`COLD_WEIGHTED_STAGE_MIX` / `awarenessPlanForCount` in
+`server/_core/conceptAxis.ts`) using the Entity-ID Protocol §3 worked distribution
+(1/2/3/2/0). **Superseded by rev 3 on the numbers; its structural conclusions stand** — all 15 cells
+remain valid, and what changes is which rows the DEFAULT cold batch reaches.
+
+**rev 1 — 2026-08-04 — original.** No code implemented any of it.
 
 **What this is.** The rule that decides what an ad's *picture* should be, from the concept's angle —
 the visual counterpart to how the hook research became the hook engine. It is a faithful extraction
@@ -285,7 +302,33 @@ is applied and the cell is marked **[derived from row+column]** on that attribut
 - **Compliance:** Reviews must be verified/typical `[MATRIX §2]`
 - **Diversity:** Shift from studio shots to "day-in-the-life" candids to hold <40% `[MATRIX §3.4.3]`
 
-### 2.5 MOST-AWARE — 🔶 all three cells DEPART from the research per PD-4
+### 2.5 MOST-AWARE — ⚠️ WARM / RETARGETING ONLY (rev 2) · 🔶 all three cells DEPART per PD-4
+
+> **⚠️ RETARGETING ONLY — NOT IN THE COLD-PROSPECTING BATCH (rev 3, 2026-08-04).**
+> `COLD_WEIGHTED_STAGE_MIX` allocates **zero** slots to Most-Aware, so a standard 8-concept batch on
+> broad cold traffic never reaches this row. **These three cells remain fully valid and are not
+> retired** — they are the correct direction for a **warm or retargeting** batch, which would use a
+> different mix.
+>
+> **Basis, now stated directly rather than inferred** (`docs/andromeda/prospecting-research/`):
+> *Prospecting Campaign Ad Concept Distribution* §3 lists Most-Aware at **0 concepts / 0.0%**, noted
+> *"Excluded from cold broad to avoid cannibalization"*, and §2 says the strategy is *"representing 4
+> out of 5 Schwartz stages (excluding 'Most Aware' for cold traffic)"*. *The Definitive B2C
+> Prospecting & Creative Architecture Playbook* §4 independently allocates the 8th slot to
+> "Product/Most-Aware" as a single **Product-Aware** concept. Corroborated by the broad-targeting
+> campaign shape assumed throughout (Entity-ID Protocol §5, Angle-to-Image Matrix §5.1, Visual
+> Archetype Strategy §6).
+>
+> ⚠️ **Counter-evidence, recorded not buried:** Eugene Schwartz Awareness-Stage §5 argues all stages
+> should run simultaneously for a "Surround Sound Effect… capturing cold, warm, and hot prospects
+> without cannibalisation" — under which a Most-Aware slot is not wasted, because Andromeda routes it
+> to hot prospects itself. **The corpus does not reconcile this.** Two directly-on-topic reports now
+> state the exclusion explicitly *and* attribute a mechanism to it (cannibalisation), which outweighs
+> a general principle naming no allocation. **Still flagged for review.**
+>
+> **Consequence for PD-4:** PD-4 (founder-still, not product-shot) applies only to these three cells,
+> so on cold traffic its practical reach is now near-zero. It is unaffected in substance and stays as
+> written — it governs the moment a warm batch runs.
 
 **The research is unanimous that Most-Aware should be transactional** — `[SCHWARTZ §2.5]` "high-fidelity
 mockups of the program portal, booking interfaces, or physical workbooks"; `[SCHWARTZ §3]` "Portal
@@ -428,6 +471,47 @@ you from suppression.**"
 The picture is chosen by **awareness × sub-type**. Sub-type is fixed per coach (§5.4). Awareness has
 five values. **A batch of 8 concepts therefore has at most 5 distinct cells available, so at least 3
 concepts must share a cell with another.**
+
+**⚠️ REVISED, rev 3 — the collision is EXACTLY KNOWN, and concentrated in two triples.** With the
+deterministic prospecting distribution the batch spans **four** stages, not five, in fixed
+proportions — so for any single coach (sub-type fixed) the 8 concepts land in exactly **4 cells**:
+
+| Cell (awareness × the coach's sub-type) | Concepts sharing it |
+|---|---|
+| unaware | **3** |
+| problem_aware | **3** |
+| solution_aware | 1 — unique |
+| product_aware | 1 — unique |
+| most_aware | 0 — retargeting only |
+
+**Six of the eight concepts share a cell with two others**, in two groups of three. Only the
+Solution-Aware and Product-Aware concepts are unique by construction. **An 8-concept batch therefore
+yields at most 4 Entity IDs from the awareness axis alone** — the remaining diversity must come from
+within the cell.
+
+This is what the prospecting research itself says, so it is a designed property rather than a defect.
+*Prospecting Campaign Ad Concept Distribution* §4 calls shifting awareness *"the most efficient lever
+for generating a unique Entity-ID"* — **efficient, not sufficient.** Its **Mattress Paradox** is the
+warning: ten ads of a person on a bed, differing only in bedding colour and font, collapse to **one**
+Entity ID and cannibalise each other. *Resolving the Awareness-Diversity Tension* §3 supplies the
+resolution — four mattress ads executed as **UGC / expert / infographic / lifestyle** earn **four**
+Entity IDs, because they "communicate different meanings."
+
+**So the three Unaware concepts (and the three Problem-Aware) must differ by Persona, Desire and
+execution format, not merely by headline.** Two mechanisms already enforce part of this:
+- `conceptValidator` rejects any two concepts sharing a **desire × awareness** pair, so same-stage
+  concepts are forced onto distinct desires (`concept_duplicate_axis`).
+- The *B2C Creative Matrix & Format Mapping Playbook* §3 assigns a **distinct format per stage**
+  (Unaware → 60–90s explainers, UGC pattern-interrupts, memes; Problem-Aware → lo-fi talking heads
+  and long-form-copy statics; Solution-Aware → comparative split-screens and step-by-step carousels;
+  Product-Aware → review carousels and founder-led objection handling). **Format varies *between*
+  stages there, not within one** — so it does not by itself separate the three Unaware concepts.
+
+⚠️ **Open, and it is the sharpest remaining risk in this spec:** the research gives no rule for
+varying execution *within* a single stage. Desire distinctness is enforced; persona is fixed per
+coach by design; format is mapped per stage. **That leaves the three same-cell concepts relying on
+desire alone to earn separate Entity IDs, which the Mattress Paradox says is not enough on its own.**
+Tracked as gap **G11**.
 
 If a shared cell yields the same picture, those concepts collapse into one Entity ID — the exact
 failure the eight-angle strategy exists to avoid. **Within-cell structural diversification is a
@@ -830,7 +914,8 @@ that does not exist in any Meta interface.**
 | # | Gap |
 |---|---|
 | **G1** | **No detection algorithm** for sub-type from a niche string (§5.2). PD-2 and PD-3 govern the *policy*; the mechanism is a build decision. |
-| **G2** | **No distribution rule** for how many of the 8 concepts occupy each cell. `[ENTITY §3]`'s example distributes 8 assets unevenly (3 Solution-Aware, 2 Problem-Aware, 2 Product-Aware, 1 Unaware) but states no rule. |
+| **G2** | ✅ **CLOSED, rev 3 (2026-08-04).** The allocation is **unaware 3 · problem_aware 3 · solution_aware 1 · product_aware 1 · most_aware 0**, stated independently by *Prospecting Campaign Ad Concept Distribution* §3 and *The Definitive B2C Prospecting & Creative Architecture Playbook* §4 (`docs/andromeda/prospecting-research/`). Implemented deterministically as `COLD_WEIGHTED_STAGE_MIX` / `awarenessPlanForCount` (`server/_core/conceptAxis.ts`), enforced per-slot by `conceptValidator`. **Supersedes rev 2's 1/2/3/2/0**, which came from `[ENTITY §3]`'s worked *example* rather than a stated finding. ⚠️ Adopted over `[SCHWARTZ §5]`'s contrary "surround sound" principle — see §2.5. |
+| **G11** | 🔴 **NEW, rev 3 — the sharpest open risk.** **No rule for varying execution WITHIN one awareness stage.** The batch puts 3 concepts in the Unaware cell and 3 in Problem-Aware; persona is fixed per coach, format is mapped per *stage* not within it, so those trios rely on **desire alone** to earn separate Entity IDs. *Prospecting Campaign Ad Concept Distribution* §4's Mattress Paradox says that is not enough — and *Resolving the Awareness-Diversity Tension* §3 shows the fix is varying **execution style** (UGC / expert / infographic / lifestyle), for which the corpus gives no per-stage allocation. Needs a decision before the image rule is wired. |
 | **G3** | **No precedence order** between §2.6's cross-cutting modifiers and the cell's own prescription. |
 | **G4** | **No precedence order** among the five compliance categories when several apply (§3.4). |
 | **G5** | **No definition** of which niches count as the health/weight/mental-health zone triggering §3.2's lighting override. |

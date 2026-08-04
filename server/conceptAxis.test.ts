@@ -8,6 +8,9 @@ import {
   TWO_CUT_ENABLED,
   activeLengthForStage,
   wordBudgetForSeconds,
+  awarenessPlanForCount,
+  COLD_WEIGHTED_STAGE_MIX,
+  DEFAULT_CONCEPT_COUNT,
 } from "./_core/conceptAxis";
 
 describe("conceptAxis — 7 hook patterns + grounded APPROVED hook→awareness mapping", () => {
@@ -75,5 +78,85 @@ describe("length config — research table stored, ACTIVE capped to placement-sa
     expect(b30.target).toBeGreaterThanOrEqual(75);
     expect(b30.target).toBeLessThanOrEqual(85);
     expect(b30.max).toBe(90);
+  });
+});
+
+describe("awarenessPlanForCount — cold-weighted, deterministic batch distribution", () => {
+  it("reproduces the prospecting-research allocation at the default count of 8", () => {
+    // docs/andromeda/prospecting-research/ — "Prospecting Campaign Ad Concept Distribution" §3
+    // (Proportional Weighting Model table) and "The Definitive B2C Prospecting & Creative
+    // Architecture Playbook" §4 (8-Concept Prospecting Batch Allocation), stated independently.
+    // SUPERSEDED the earlier 1/2/3/2/0 taken from the Entity-ID Protocol §3 worked example.
+    const plan = awarenessPlanForCount(DEFAULT_CONCEPT_COUNT);
+    expect(plan).toHaveLength(8);
+    const count = (s: string) => plan.filter((p) => p === s).length;
+    expect(count("unaware")).toBe(3);
+    expect(count("problem_aware")).toBe(3);
+    expect(count("solution_aware")).toBe(1);
+    expect(count("product_aware")).toBe(1);
+    expect(count("most_aware")).toBe(0);
+  });
+
+  it("puts 75% of an 8-batch in the top two stages, per the reports' own percentages", () => {
+    // Report 1 §3 states this twice: "Weighting 75% of assets toward the top of the funnel
+    // (Unaware and Problem-Aware)" and "the 25% warmer weighting". Both must hold.
+    const plan = awarenessPlanForCount(8);
+    const top = plan.filter((s) => s === "unaware" || s === "problem_aware").length;
+    const warm = plan.filter((s) => s === "solution_aware" || s === "product_aware").length;
+    expect(top / 8).toBeCloseTo(0.75);
+    expect(warm / 8).toBeCloseTo(0.25);
+  });
+
+  it("never zeroes the warmer tail — it guards against Entity-ID pigeonholing", () => {
+    // Report 1 §3 calls the 25% warmer weighting "a vital safeguard against Entity-ID
+    // pigeonholing". At the default batch size both warmer stages must be represented.
+    const plan = awarenessPlanForCount(8);
+    expect(plan).toContain("solution_aware");
+    expect(plan).toContain("product_aware");
+  });
+
+  it("allocates no most_aware slot at any batch size — it carries weight 0", () => {
+    expect(COLD_WEIGHTED_STAGE_MIX.most_aware).toBe(0);
+    for (let n = 1; n <= 24; n++) {
+      expect(awarenessPlanForCount(n).filter((s) => s === "most_aware")).toHaveLength(0);
+    }
+  });
+
+  it("always returns exactly `count` slots, all of them valid stages", () => {
+    for (let n = 1; n <= 24; n++) {
+      const plan = awarenessPlanForCount(n);
+      expect(plan).toHaveLength(n);
+      for (const stage of plan) expect(AWARENESS_STAGES).toContain(stage);
+    }
+  });
+
+  it("keeps the cold majority at every batch size", () => {
+    // The three cold stages must never fall to a minority of the batch — that is the whole point
+    // of the weighting, and largest-remainder rounding must not erode it at awkward sizes.
+    const cold = new Set(["unaware", "problem_aware", "solution_aware"]);
+    for (let n = 2; n <= 24; n++) {
+      const plan = awarenessPlanForCount(n);
+      const coldCount = plan.filter((s) => cold.has(s)).length;
+      expect(coldCount * 2).toBeGreaterThanOrEqual(n);
+    }
+  });
+
+  it("is deterministic — the same count always yields the identical plan", () => {
+    for (const n of [3, 8, 12]) {
+      expect(awarenessPlanForCount(n)).toEqual(awarenessPlanForCount(n));
+    }
+  });
+
+  it("interleaves rather than clustering, so adjacent slots differ where possible", () => {
+    const plan = awarenessPlanForCount(8);
+    // The research's own worked example interleaves; grouped output would read as 3 identical
+    // consecutive briefs to the generator.
+    expect(plan[0]).not.toBe(plan[1]);
+  });
+
+  it("degrades safely on nonsense input", () => {
+    expect(awarenessPlanForCount(0)).toEqual([]);
+    expect(awarenessPlanForCount(-5)).toEqual([]);
+    expect(awarenessPlanForCount(NaN)).toEqual([]);
   });
 });

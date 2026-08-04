@@ -11,8 +11,14 @@
  */
 
 // ─── Awareness (Eugene Schwartz's 5 stages) ──────────────────────────────────
-// Concepts span ALL 5 stages: the banked research shows diversity earns separate Meta Entity-IDs,
-// and there is no cold-narrowing rule in the data (docs/andromeda/landing-page-research/).
+// The 5 stages themselves are fixed. How a BATCH is distributed across them is NOT even —
+// see COLD_WEIGHTED_STAGE_MIX below.
+//
+// ⚠️ SUPERSEDES an earlier comment here which read: "Concepts span ALL 5 stages … there is no
+// cold-narrowing rule in the data (docs/andromeda/landing-page-research/)." That was true of the
+// landing-page research it cited, but the IMAGE research banked 2026-08-03 does carry a concrete
+// distribution — see the citation on COLD_WEIGHTED_STAGE_MIX. The stages are still all VALID; what
+// changed is that the default batch no longer spreads across them evenly.
 export const AWARENESS_STAGES = [
   "unaware",
   "problem_aware",
@@ -45,6 +51,112 @@ export type HookPattern = (typeof HOOK_PATTERNS)[number];
 // Start at 8 (locked). Brief §2 says build to a range (5–12), scale with spend — kept as a single
 // tunable constant, not false precision.
 export const DEFAULT_CONCEPT_COUNT = 8;
+
+// ─── Awareness distribution across a batch — COLD-WEIGHTED ───────────────────
+//
+// SOURCE (primary, and it is the reports' actual SUBJECT rather than an aside):
+//   docs/andromeda/prospecting-research/Meta Ads 2026_ Prospecting Campaign Ad Concept
+//     Distribution.md §3 — "The Proportional Weighting Model" table, with counts AND percentages.
+//   docs/andromeda/prospecting-research/Meta Ads 2026_ The Definitive B2C Prospecting & Creative
+//     Architecture Playbook.md §4 — "The 8-Concept Prospecting Batch Allocation Strategy",
+//     INDEPENDENTLY restating the identical split.
+//
+//     unaware 3 · problem_aware 3 · solution_aware 1 · product_aware 1 · most_aware 0
+//
+// Report 1 §3 restates it in prose two ways and both reconcile: "Weighting 75% of assets toward the
+// top of the funnel (Unaware and Problem-Aware)" (3+3 = 6/8) and "the 25% warmer weighting"
+// (1+1 = 2/8). Report 1 §2 is explicit on the exclusion: "By representing 4 out of 5 Schwartz stages
+// (excluding 'Most Aware' for cold traffic)"; the table's own note reads "Excluded from cold broad to
+// avoid cannibalization."
+//
+// ⚠️ THE 25% WARMER TAIL IS LOAD-BEARING — do not zero solution_aware/product_aware to buy more
+// top-funnel reach. Report 1 §3: it is "a vital safeguard against Entity-ID pigeonholing. Without
+// these warmer signals, the algorithm may cluster the account into a narrow intent segment, leading
+// to accelerated creative fatigue and a collapse in delivery volume."
+//
+// ── SUPERSEDES (2026-08-04, same day) ────────────────────────────────────────
+// This constant was first built as 1/2/3/2/0 from the Entity-ID Protocol §3 "Somatic Anxiety Relief"
+// worked example (docs/andromeda/image-research/). That was the only concrete figure available at
+// the time, but it was an ILLUSTRATION inside a report about visual diversity — not a stated finding
+// about batch allocation. The prospecting reports address allocation as their subject and agree with
+// each other, so they win. Both old and new agree most_aware = 0; they differ sharply on the rest
+// (the new split puts 75% in the top two stages where the old put 37.5%).
+//
+// ⚠️ COUNTER-EVIDENCE, still recorded rather than buried: Eugene Schwartz Awareness-Stage… §5
+// (image-research) argues all stages should run simultaneously for a "Surround Sound Effect,
+// capturing cold, warm, and hot prospects… without cannibalisation" — under which a most_aware slot
+// is not wasted because Andromeda routes it to hot prospects itself. The corpus does not reconcile
+// this. Two directly-on-topic reports now state the exclusion explicitly and attribute a mechanism to
+// it (cannibalisation), which outweighs a general principle that names no allocation. Flagged.
+//
+// most_aware is NOT retired — it stays a valid stage, and its image-rule cells stay valid for a
+// warm/retargeting batch. It simply gets no slot in the default cold-prospecting batch.
+export const COLD_WEIGHTED_STAGE_MIX: Readonly<Record<AwarenessStage, number>> = {
+  unaware: 3,
+  problem_aware: 3,
+  solution_aware: 1,
+  product_aware: 1,
+  most_aware: 0,
+};
+
+const COLD_MIX_TOTAL = Object.values(COLD_WEIGHTED_STAGE_MIX).reduce((a, b) => a + b, 0);
+
+/**
+ * The deterministic per-slot awareness plan for a batch of `count` concepts.
+ *
+ * At count = 8 this reproduces the Entity-ID Protocol §3 distribution exactly. Other counts are
+ * apportioned from the same weights by largest-remainder, with ties broken toward the COLDER stage
+ * (AWARENESS_STAGES is ordered coldest → hottest), preserving the cold weighting at any size.
+ *
+ * Slots are emitted round-robin rather than grouped, so consecutive concepts differ in stage — the
+ * research's own worked example interleaves rather than clustering, and it gives the generator a
+ * clearer per-slot instruction.
+ *
+ * Deterministic: same count always yields the same plan. No randomness, no model choice.
+ */
+export function awarenessPlanForCount(count: number): AwarenessStage[] {
+  if (!Number.isFinite(count) || count <= 0) return [];
+
+  // Largest-remainder apportionment over the cold-weighted mix.
+  const exact = AWARENESS_STAGES.map((stage) => ({
+    stage,
+    ideal: (COLD_WEIGHTED_STAGE_MIX[stage] * count) / COLD_MIX_TOTAL,
+  }));
+  const alloc = new Map<AwarenessStage, number>(exact.map((e) => [e.stage, Math.floor(e.ideal)]));
+  let remaining = count - Array.from(alloc.values()).reduce((a, b) => a + b, 0);
+
+  // Only stages with non-zero weight may receive a remainder slot — otherwise most_aware (weight 0)
+  // could pick one up at small counts and silently break the cold weighting.
+  const byRemainder = exact
+    .filter((e) => COLD_WEIGHTED_STAGE_MIX[e.stage] > 0)
+    .map((e) => ({ ...e, frac: e.ideal - Math.floor(e.ideal) }))
+    .sort((a, b) => b.frac - a.frac || AWARENESS_STAGES.indexOf(a.stage) - AWARENESS_STAGES.indexOf(b.stage));
+
+  let i = 0;
+  while (remaining > 0 && byRemainder.length > 0) {
+    const pick = byRemainder[i % byRemainder.length].stage;
+    alloc.set(pick, (alloc.get(pick) ?? 0) + 1);
+    remaining--;
+    i++;
+  }
+
+  // Round-robin emit, coldest-first each pass, so stages interleave instead of clustering.
+  const plan: AwarenessStage[] = [];
+  const left = new Map(alloc);
+  while (plan.length < count) {
+    let placedThisPass = false;
+    for (const stage of AWARENESS_STAGES) {
+      const n = left.get(stage) ?? 0;
+      if (n > 0 && plan.length < count) {
+        plan.push(stage);
+        left.set(stage, n - 1);
+        placedThisPass = true;
+      }
+    }
+    if (!placedThisPass) break; // exhausted — defensive, cannot happen when totals agree
+  }
+  return plan;
+}
 
 // ─── Hook→awareness mapping — ✅ APPROVED (grounded), 2026-07-25 ──────────────────────────────────
 //

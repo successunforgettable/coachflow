@@ -21,6 +21,7 @@
  */
 
 import { BANNED_COPYWRITING_WORDS } from "./_core/copywritingRules";
+import type { AwarenessStage } from "./_core/conceptAxis";
 
 export type BodyAngle =
   | "pain_agitation"
@@ -346,3 +347,128 @@ export const ALL_BODY_ANGLES: BodyAngle[] = [
   "desire_pdc",
   "circumstance_pdc",
 ];
+
+// ─── AWARENESS-STAGE ADAPTATION ──────────────────────────────────────────────
+//
+// Schwartz's core principle: the same offer needs different copy depending on what the reader
+// already knows. Until now the live cascade ignored this entirely — `liteMode` selected
+// `availableAngles.slice(0, 3)`, i.e. the first three angles in ARRAY ORDER, with no strategic
+// basis. For a coach with testimonials that resolved to pain_agitation + social_proof + authority:
+// two of the three cold-traffic ads written for people who already know the brand, and nothing at
+// all for the Unaware reader the prospecting research allocates 37.5% of the batch to.
+//
+// SOURCES (all in docs/andromeda/):
+//   [HOOK-MAP]   script-research/Meta Ads Creative Strategy 2026_ Mapping Hook Patterns to
+//                Schwartz Awareness Stages.md — §2 Unaware, §3 Problem-Aware, §4 Solution-Aware,
+//                §5 Product-Aware, §6 Most-Aware. Gives the primary + secondary hook per stage.
+//   [COHERENCE]  image-research/Image-and-Copy Coherence… §2 "The Matched-Pair Awareness Map" —
+//                splits each stage into a HEADLINE focus (intrigue) and a PRIMARY TEXT focus
+//                (invite). The stage guidance below is taken from its Primary-Text column.
+//   [PROSPECT]   prospecting-research/…Definitive B2C Prospecting & Creative Architecture
+//                Playbook.md §3 — Unaware copy mechanics.
+
+/**
+ * Which body angle carries each awareness stage.
+ *
+ * Deliberately mirrors the shape of CANDIDATE_HOOK_AWARENESS_MAP in _core/conceptAxis.ts — same
+ * primary/secondary structure and the same fall-through behaviour when an angle is unavailable,
+ * so the two maps stay legible as one idea applied twice (hooks there, body copy here).
+ *
+ * Mapping rationale, per stage, from [HOOK-MAP]:
+ *   unaware        §2 "ultimate pattern interrupt… bridges total ignorance and curiosity"; the 18
+ *                  angles carry no meme/humour angle, so `curiosity` (the counterintuitive reason
+ *                  the problem persists) is the closest pattern-interrupt. `data_driven` matches
+ *                  the report's named SECONDARY ("shocking statistics") exactly.
+ *   problem_aware  §3 "Primary Hook – Problem-First… leading with recognition of the struggle
+ *                  validates the user's experience" → pain_agitation (PAS). The report names a
+ *                  "contrarian truth" as the rapport mechanism → `contrarian`; and
+ *                  founder-authenticity as secondary → `story`.
+ *   solution_aware §4 "Primary Hook – Aspirational/Transformation" → `transformation`. The reader
+ *                  is "comparing mechanisms" → `comparison`. Founder shifts "from Guide to
+ *                  Architect" → `authority`.
+ *   product_aware  §5 "Primary Hook – Social-Proof… Secondary Hook – Data/Chart" → social_proof,
+ *                  data_driven. "Lower the perceived risk" → `guarantee`.
+ *   most_aware     §6 the six primary hooks are "generally ineffective" here; the shift is to
+ *                  "Direct Offer, Urgency, or Scarcity" → urgency, direct_response. NOTE: the cold
+ *                  prospecting batch allocates ZERO most_aware slots (COLD_WEIGHTED_STAGE_MIX), so
+ *                  this row is reached only by a warm/retargeting caller. Kept for completeness.
+ */
+export const ANGLE_AWARENESS_MAP: Record<
+  AwarenessStage,
+  { primary: BodyAngle; secondary: BodyAngle[] }
+> = {
+  unaware: { primary: "curiosity", secondary: ["story", "data_driven"] },
+  problem_aware: { primary: "pain_agitation", secondary: ["contrarian", "story"] },
+  solution_aware: { primary: "transformation", secondary: ["comparison", "authority"] },
+  product_aware: { primary: "social_proof", secondary: ["data_driven", "guarantee"] },
+  most_aware: { primary: "urgency", secondary: ["direct_response", "social_proof"] },
+};
+
+/**
+ * Resolve the angle for a stage against the angles actually available to THIS coach.
+ *
+ * Proof-dependent angles (social_proof, data_driven) are withheld from a coach whose client
+ * material is not on the record — see PROOF_DEPENDENT_ANGLES above. product_aware's primary AND
+ * first secondary are both proof-dependent, so a launch-stage coach falls through to `guarantee`.
+ * Identical fall-through logic to renderHookGuidance() in conceptGenerator.ts, for the same reason:
+ * a stage must never lose its guidance just because its preferred angle is unavailable.
+ *
+ * `taken` lets a caller avoid handing the same angle to two slots — with 3 unaware slots in a full
+ * batch, the primary alone would repeat three times.
+ */
+export function angleForStage(
+  stage: AwarenessStage,
+  availableAngles: readonly BodyAngle[],
+  taken: ReadonlySet<BodyAngle> = new Set(),
+): BodyAngle | null {
+  const { primary, secondary } = ANGLE_AWARENESS_MAP[stage];
+  const ordered = [primary, ...secondary];
+  // Returns null when every mapped angle is unavailable or already spent. The caller backfills that
+  // slot from the remaining angles, keeping the slot's PLANNED stage guidance — which preserves
+  // deck size without ever issuing the same angle twice. (A deck longer than 4 stages × 3 mapped
+  // angles necessarily exhausts the map; the 18-angle full deck does exactly that.)
+  return ordered.find((a) => availableAngles.includes(a) && !taken.has(a)) ?? null;
+}
+
+/**
+ * The stage-appropriate directive appended to a body-copy prompt.
+ *
+ * Taken from [COHERENCE §2]'s Primary-Text column, with the stage objective from [HOOK-MAP].
+ * POSITIVE-FRAMED ONLY — CLAUDE.md §14: naming a failure shape in an LLM prompt primes the model
+ * to emit it, which is what caused the Sprint B email regression. Each block states what the copy
+ * IS, never what it must avoid.
+ *
+ * Deliberately additive: this does NOT restate word count, PAS structure, register, banned words
+ * or compliance rules. Those already exist in the body prompt and are unchanged — the stage block
+ * only says who the reader is and what job the copy is doing for them.
+ */
+export const STAGE_COPY_GUIDANCE: Record<AwarenessStage, string> = {
+  unaware: `AWARENESS STAGE — UNAWARE ([HOOK-MAP §2], [COHERENCE §2]).
+This reader does not yet have words for the problem. They are scrolling for entertainment, not
+solutions. Open a knowledge gap and let curiosity carry them — an educational entry point, a short
+story or an observation that lands as native to the feed. Keep the offer in the background; the job
+of this copy is recognition, not the sale. Lead with the counterintuitive observation, so the first
+lines carry the specific subject matter rather than a generic opening ([PROSPECT §3]: the platform
+reads the opening tokens to classify what this ad is about).`,
+
+  problem_aware: `AWARENESS STAGE — PROBLEM-AWARE ([HOOK-MAP §3], [COHERENCE §2]).
+This reader feels the problem clearly and has no guide. Name the struggle with precision — the
+specific, recognisable version of it — so the copy reads as validation before it reads as an offer.
+A contrarian truth about why the problem persists builds rapport fastest here. Then establish the
+coach's expertise and introduce the pathway.`,
+
+  solution_aware: `AWARENESS STAGE — SOLUTION-AWARE ([HOOK-MAP §4], [COHERENCE §2]).
+This reader already knows solutions exist and is comparing mechanisms. Lead with the mechanism of
+change — what this method does differently and why that difference produces the result. Demonstrate
+the unique approach concretely enough to be compared against the alternatives they are weighing.`,
+
+  product_aware: `AWARENESS STAGE — PRODUCT-AWARE ([HOOK-MAP §5], [COHERENCE §2]).
+This reader knows the coach and is weighing risk. Lead with proof drawn from the supplied material —
+real results, credentials, real client accounts. Address the specific hesitation directly and give
+the reader permission to commit.`,
+
+  most_aware: `AWARENESS STAGE — MOST-AWARE ([HOOK-MAP §6], [COHERENCE §2]).
+This reader is convinced and waiting on timing. Be direct: the offer, the next step, and any REAL
+coach-supplied deadline or limit. Urgency comes only from a genuine deadline present in the supplied
+material; where none exists, close on the concrete next step instead.`,
+};
