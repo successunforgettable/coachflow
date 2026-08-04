@@ -114,6 +114,85 @@ const COLD_MIX_TOTAL = Object.values(COLD_WEIGHTED_STAGE_MIX).reduce((a, b) => a
  *
  * Deterministic: same count always yields the same plan. No randomness, no model choice.
  */
+/**
+ * The awareness plan for a small AD DECK, as distinct from a concept batch.
+ *
+ * WHY THIS EXISTS SEPARATELY. awarenessPlanForCount apportions the 3/3/1/1/0 mix, which is
+ * specified for an 8-CONCEPT batch. Applied to a 4-slot ad deck it yields
+ * [unaware, problem_aware, unaware, problem_aware] — only TWO distinct stages, with two cells
+ * repeated. That defeats the purpose: the image rule's assignment rule is that no
+ * (awareness x sub-type) pair repeats within a batch (image-rule-spec §5.1), because a repeated
+ * cell is a repeated Entity ID. With sub-type constant at Layer 1, that reduces to "no stage
+ * repeats".
+ *
+ * So a deck SMALLER than the stage count spans as many DISTINCT stages as it has slots, coldest
+ * first. Corroborated by [COMPLIANCE-DIVERSITY §2], which lists awareness stage as the FIRST of
+ * six structural diversity levers, and by [TESTING-MATRIX §2.1], whose worked batch never repeats
+ * an (awareness x sub-type) cell.
+ *
+ * most_aware is excluded, consistent with COLD_WEIGHTED_STAGE_MIX: two independent prospecting
+ * reports put it at zero for cold traffic and attribute a mechanism to it (cannibalisation).
+ * ⚠️ A third report disagrees — image-rule-spec §5.7 records that conflict as genuinely open.
+ *
+ * At counts GREATER than the number of available stages this defers to the proportional plan, so
+ * an 8-concept batch is unaffected. At exactly 4 slots it spans all four cold stages.
+ */
+/** The image rule's column axis. System-assigned per concept, never detected from the coach. */
+export const SELLER_SUB_TYPES = ["grounded", "esoteric", "aspirational"] as const;
+export type SellerSubType = (typeof SELLER_SUB_TYPES)[number];
+
+/**
+ * Sub-type by awareness stage, read straight off [TESTING-MATRIX §2.1] "The Dual-Axis Creative
+ * Matrix" — the worked 8-concept table for ONE seller:
+ *
+ *   Ad 1 Unaware/Esoteric        Ad 5 Solution-Aware/Aspirational
+ *   Ad 2 Unaware/Grounded        Ad 6 Solution-Aware/Esoteric
+ *   Ad 3 Problem-Aware/Grounded  Ad 7 Product-Aware/Esoteric
+ *   Ad 4 Problem-Aware/Aspirational  Ad 8 Most-Aware/Aspirational
+ *
+ * Listed per stage in the order the matrix uses them, so the Nth concept at a given stage takes the
+ * Nth sub-type that stage is assigned. This is what makes sub-type a DIVERSITY LEVER rather than a
+ * per-coach identity (image-rule-spec §5, rev 4): one seller's batch runs three different styles.
+ *
+ * ⚠️ Deliberately NOT detected from the coach. [SUBTYPE-ARCH §1] — a "Fixed Identity Model" traps
+ * the brand's Entity ID in one narrow branch; [SUBTYPE-ARCH §2] rates inference-from-niche the
+ * weakest of four methods and "the primary cause of campaign stagnation in 2026".
+ */
+const SUBTYPE_SEQUENCE_BY_STAGE: Record<AwarenessStage, readonly SellerSubType[]> = {
+  unaware: ["esoteric", "grounded"],
+  problem_aware: ["grounded", "aspirational"],
+  solution_aware: ["aspirational", "esoteric"],
+  product_aware: ["esoteric"],
+  most_aware: ["aspirational"],
+};
+
+/**
+ * Assign a sub-type to each slot of an awareness plan.
+ *
+ * Deterministic: same plan in, same assignment out. The Nth appearance of a stage takes the Nth
+ * sub-type the matrix gives that stage, cycling if a batch repeats a stage more often than the
+ * matrix enumerates.
+ *
+ * The spec's assignment rule (§5.1) is that no (awareness x sub-type) pair repeats within a batch;
+ * indexing by per-stage occurrence satisfies it by construction for any batch the matrix covers.
+ */
+export function subTypePlanFor(awarenessPlan: readonly AwarenessStage[]): SellerSubType[] {
+  const seen: Partial<Record<AwarenessStage, number>> = {};
+  return awarenessPlan.map((stage) => {
+    const n = seen[stage] ?? 0;
+    seen[stage] = n + 1;
+    const seq = SUBTYPE_SEQUENCE_BY_STAGE[stage];
+    return seq[n % seq.length];
+  });
+}
+
+export function awarenessDeckPlan(slots: number): AwarenessStage[] {
+  if (!Number.isFinite(slots) || slots <= 0) return [];
+  const coldFirst = AWARENESS_STAGES.filter((s) => COLD_WEIGHTED_STAGE_MIX[s] > 0);
+  if (slots > coldFirst.length) return awarenessPlanForCount(slots);
+  return coldFirst.slice(0, slots);
+}
+
 export function awarenessPlanForCount(count: number): AwarenessStage[] {
   if (!Number.isFinite(count) || count <= 0) return [];
 

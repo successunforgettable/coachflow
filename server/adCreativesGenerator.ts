@@ -47,6 +47,7 @@ import {
   type SubjectResolution,
 } from "./_core/subjectDescriptor";
 import { AD_VARIATIONS, TABLOID_FORMULAS, type AdVariationFormula } from "./_core/adVariations";
+import { awarenessDeckPlan, subTypePlanFor } from "./_core/conceptAxis";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
@@ -557,6 +558,16 @@ export async function runAdCreativesGeneration(
   // visible slot and every man on a still life.
   const subjectClauses = subjectClausesForBatch(subject, VARIATIONS.map(v => v.style));
 
+  // One awareness stage per deck slot, spanning as many DISTINCT stages as there are slots so no
+  // (stage x style) pair repeats — a repeated cell is a repeated Entity ID. See awarenessDeckPlan.
+  const deckAwarenessPlan = awarenessDeckPlan(VARIATIONS.length);
+  // LAYER 2 — sub-type per slot, from [TESTING-MATRIX §2.1]. System-assigned across the batch as a
+  // diversity lever, never detected from the coach (image-rule-spec §5, rev 4).
+  const deckSubTypePlan = subTypePlanFor(deckAwarenessPlan);
+  console.log(
+    `[adCreativesGenerator] LAYER1+2 plan: ${VARIATIONS.map((v, i) => `${v.style}=${deckAwarenessPlan[i]}/${deckSubTypePlan[i]}`).join(" ")}`,
+  );
+
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
     const variation = VARIATIONS[i];
@@ -577,6 +588,13 @@ export async function runAdCreativesGeneration(
       input.pressingProblem,
       false,
       subjectClauses[i],
+      // LAYER 1 of the image rule — awareness-stage depiction. The stage comes from the SAME
+      // deterministic allocation the concept batch uses, so the deck and the concepts describe one
+      // funnel shape. Not read from a concept row: adCreativesGenerator has no icpId, and
+      // ensureConceptsForIcp is fire-and-forget, so a lookup here would be a race. Deriving it from
+      // the shared plan gives the same stages with no ordering dependency.
+      deckAwarenessPlan[i],
+      deckSubTypePlan[i],
     );
 
     console.log(

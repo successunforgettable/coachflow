@@ -216,6 +216,131 @@ export function checkCompliance(headline: string, benefit: string, problem: stri
 //     "Parenting books" and "Baby time parents" were Flux labelling the bubbles
 //     it was told to draw. Annotations, if wanted, belong in the resvg layer
 //     that already draws the headline, body and CTA in real type.
+/**
+ * ── LAYER 1 OF THE IMAGE RULE — AWARENESS-STAGE DEPICTION ────────────────────
+ *
+ * The image rule is: picture = Awareness stage x Seller sub-type, where awareness governs WHAT is
+ * depicted and sub-type governs HOW it is styled (docs/andromeda/image-rule-spec.md §1.1). This is
+ * the awareness half only. Sub-type and the full 15-cell matrix are Layer 2+.
+ *
+ * Sourced from the spec's row-level table (§2), itself extracted from [SCHWARTZ §2.1-2.5]:
+ *   unaware        pattern break; relatable, unposed, native-feeling moment
+ *   problem_aware  the empathetic mirror; quiet reflection on the friction
+ *   solution_aware the mechanism made visible; mid-explanation, demonstrating
+ *   product_aware  the authority anchor; assured, established, credible setting
+ *   most_aware     PD-4 — founder direct-to-camera, and NO baked-in text
+ *
+ * ── WHY THESE ARE STYLE-AWARE, NOT ONE SHARED STRING ─────────────────────────
+ * This file has been bitten FOUR times by a string written for the person styles being pasted onto
+ * the still life: nicheContext (P6 cause 1), the composition clause, complianceNote (L4), and the
+ * deleted noText. Each produced a self-contradicting prompt. So each stage carries a person form
+ * and a setting form, and the still life never receives person wording.
+ *
+ * The directives deliberately modify the SITUATION and BEARING of the subject already established
+ * by the style — never the subject type. Telling a "person with EXCITED expression" style to render
+ * a labelled flowchart would contradict itself four words later, which is the exact failure above.
+ * The mechanism is therefore shown as the person DEMONSTRATING it, not as a diagram replacing them.
+ *
+ * Positive framing only: diffusion has no logical NOT, and this codebase has been bitten twice by
+ * phrasing a requirement as an absence.
+ */
+const AWARENESS_DEPICTION: Record<string, { person: string; still: string }> = {
+  unaware: {
+    person: "The moment is unposed and ordinary — caught mid-gesture rather than presented, as though the camera happened to be there. It should read as a real moment someone would scroll past and recognise — the texture of an ordinary day.",
+    still: "The arrangement looks lived-in and unstaged — as though someone stepped away mid-task and the camera simply found it.",
+  },
+  problem_aware: {
+    person: "The bearing is quietly reflective — the stillness of someone sitting with something that has been going on a while. Warm and non-judgemental, the weight of the situation carried in posture rather than distress.",
+    still: "The scene carries the quiet aftermath of a long day — settled, still, the traces of something that has been going on a while.",
+  },
+  solution_aware: {
+    person: "The subject is mid-explanation — hands and posture engaged in walking someone through how something works, the bearing of a practitioner showing their method rather than presenting themselves.",
+    still: "The arrangement reads as a method in progress — the working surface of someone part-way through a process, ordered and deliberate.",
+  },
+  product_aware: {
+    person: "The bearing is assured and established — a practitioner at ease in a professional setting they clearly occupy, credibility carried in composure rather than in props.",
+    still: "The setting is professional and established — an orderly, credible working environment that has clearly been in use.",
+  },
+  most_aware: {
+    // PD-4 (spec §1.2, §2.5): at Most-Aware the depiction is a founder direct-address still, NOT a
+    // product, pricing or checkout visual. The decisive reason is Principle 2 — a checkout visual is
+    // COMPOSED of text and numbers, the same uncontrolled in-image text that failed three times and
+    // retired the object slot (5f3294d, 46 clean / 2 leaked on 48 renders). Offer specifics live in
+    // the controllable headline overlay, never in the generated pixels.
+    person: "The subject faces the camera directly, addressing the viewer — a settled, straightforward look as though speaking to one person. Every surface in frame stays plain and unmarked, with clear open space; the offer itself is carried by the overlay.",
+    still: "The scene is calm and direct, every surface plain and unmarked, with clear open space — anything to be said is carried by the overlay.",
+  },
+};
+
+/**
+ * ── LAYER 2 — SUB-TYPE STYLING ───────────────────────────────────────────────
+ *
+ * Sub-type governs HOW a picture is styled, where awareness governs WHAT it depicts
+ * (image-rule-spec §1.1). Extracted from the spec's column table (§2), itself from
+ * [ARCHETYPE §2–§5] and [COHERENCE §4]:
+ *   grounded      soft, even, non-dramatic light; professional office or studio; minimalist
+ *   esoteric      low-key warm light, deep shadows; raw stone, worn wood, dark linen
+ *   aspirational  bright, high-key natural daylight; open, uncluttered, light-filled space
+ *
+ * ⚠️ WHY THESE REPLACE FRAGMENTS RATHER THAN APPEND TO THEM.
+ * The style templates hardcode their own light and backdrop — "Dark grey/black background",
+ * "Dark background with a spotlight", and baseStyle's "dramatic directional lighting, high
+ * contrast". Appending "bright, high-key natural daylight" to a template that already says
+ * "Dark grey/black background" produces a prompt that contradicts itself four words later. That is
+ * the exact bug class this file has been bitten by four times (nicheContext, the composition
+ * clause, complianceNote, the deleted noText).
+ *
+ * So both fragments become sub-type-driven, with defaults that reproduce the current strings
+ * BYTE-FOR-BYTE when no sub-type is passed. Every call site that does not opt in is unaffected.
+ */
+const SUBTYPE_LIGHTING: Record<string, string> = {
+  grounded: "Candid documentary photograph, soft even non-dramatic light, gentle shadows, clean clinical clarity, shallow depth of field, phone-quality realism rather than polished studio work",
+  esoteric: "Candid documentary photograph, low-key warm light with deep shadows, rich organic texture, intimate and atmospheric, shallow depth of field, phone-quality realism rather than polished studio work",
+  aspirational: "Candid documentary photograph, bright high-key natural daylight, open and airy, warm clear tones, shallow depth of field, phone-quality realism rather than polished studio work",
+};
+
+const SUBTYPE_BACKDROP: Record<string, { person: string; still: string }> = {
+  grounded: {
+    person: "A professional room behind them — plain wall, uncluttered, the calm of a working consulting space.",
+    still: "The room reads as a professional, orderly workspace, plain and uncluttered.",
+  },
+  esoteric: {
+    person: "Behind them the room falls into warm shadow, with natural texture — worn wood, stone, dark linen — close at hand.",
+    still: "The surfaces are natural and tactile — worn wood, stone, dark linen — with the room falling into warm shadow.",
+  },
+  aspirational: {
+    person: "Behind them an open, light-filled room with daylight from a window and plenty of clear air around them.",
+    still: "The setting is open and light-filled, daylight across the surface with plenty of clear air around the arrangement.",
+  },
+};
+
+/**
+ * The CURRENT backdrop sentence for each style, verbatim. Used when no sub-type is supplied, so the
+ * default path is byte-identical to what shipped before Layer 2.
+ */
+const DEFAULT_BACKDROP: Record<string, string> = {
+  person_shocked: "Dark grey/black background.",
+  person_intense: "Dark background with a spotlight on the face.",
+  person_curious: "Dark grey background.",
+};
+
+/** Person-based styles receive the person form; the still life receives the setting form. */
+const STILL_LIFE_PROMPT_STYLES = new Set(["screenshot", "object"]);
+
+export function awarenessDepictionFor(style: string, awareness?: string | null): string {
+  if (!awareness) return "";
+  const entry = AWARENESS_DEPICTION[awareness];
+  if (!entry) return "";
+  return STILL_LIFE_PROMPT_STYLES.has(style) ? entry.still : entry.person;
+}
+
+/** Backdrop for a slot: sub-type-driven when supplied, otherwise the pre-Layer-2 literal. */
+export function subTypeBackdropFor(style: string, subType?: string | null): string {
+  if (!subType || !SUBTYPE_BACKDROP[subType]) return DEFAULT_BACKDROP[style] ?? "";
+  const e = SUBTYPE_BACKDROP[subType];
+  return STILL_LIFE_PROMPT_STYLES.has(style) ? e.still : e.person;
+}
+
 export function generateAdImagePrompt(
   style: string,
   niche: string,
@@ -226,10 +351,29 @@ export function generateAdImagePrompt(
   // their previous behaviour — omitted falls back to the neutral wording, which
   // is exactly what those sites rendered before.
   subject?: string,
+  /**
+   * LAYER 1. The concept's awareness stage. OPTIONAL by design: omitted reproduces the previous
+   * output byte-for-byte, so the seven call sites that do not yet pass it are completely
+   * unaffected. Only the cascade passes it today.
+   */
+  awareness?: string | null,
+  /**
+   * LAYER 2. The slot's assigned sub-type — system-assigned across the batch as a diversity lever,
+   * never detected from the coach (image-rule-spec §5, rev 4). OPTIONAL by the same discipline as
+   * `awareness`: omitted reproduces the pre-Layer-2 output byte-for-byte.
+   */
+  subType?: string | null,
 ): string {
+  // uglyMode keeps its own UGC aesthetic untouched — it is a deliberate raw look, not a lighting
+  // choice sub-type should override. Sub-type only replaces the polished branch's lighting clause.
   const baseStyle = uglyMode
     ? "Raw UGC aesthetic, shot on iPhone, unpolished and authentic, slightly messy real-world environment, natural handheld camera shake, lit only by whatever light is already in the room, bare skin and everyday hair, low-budget realism, observational documentary style, native social feed feel"
-    : "Candid documentary photograph, available light, dramatic directional lighting, high contrast, shallow depth of field, phone-quality realism rather than polished studio work";
+    : (subType && SUBTYPE_LIGHTING[subType])
+      ? SUBTYPE_LIGHTING[subType]
+      : "Candid documentary photograph, available light, dramatic directional lighting, high contrast, shallow depth of field, phone-quality realism rather than polished studio work";
+
+  // Backdrop: sub-type-driven when supplied, otherwise the exact pre-Layer-2 literal per style.
+  const backdrop = subTypeBackdropFor(style, subType);
 
   // P6 cause 1 (2026-07-29): nicheContext is STYLE-AWARE. It used to be a single
   // person-worded string appended to all five styles, including the two that are
@@ -333,19 +477,23 @@ export function generateAdImagePrompt(
   const compositionSetting = "Composed for a portrait-style advertisement: the main object sits high in the frame, in the upper half, with the arrangement kept to the top of the picture. The lower half of the image is calm open space — bare surface or softly defocused background — an unbroken area with room to breathe below.";
 
   const stylePrompts = {
-    person_shocked: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. Dark grey/black background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
+    person_shocked: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with EXCITED expression, wide eyes, enthusiastic smile, gesturing toward the camera. ${backdrop} ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
 
     // "No people in the frame" was a bare NEGATION and Flux ignored it — the same
     // trap as the deleted noText string. The `object` style's positively-framed
     // "an object study only" worked on the identical run. Positive framing only.
-    screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape in flat blocks of colour, a cold coffee cup beside it. The room is empty, the chair pushed back. ${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNoteStill}`,
+    screenshot: `${baseStyle}. An unattended desk at night, photographed as a still life: a laptop open at an angle on a dark surface, its screen showing a plain abstract chart shape in flat blocks of colour, a cold coffee cup beside it. The room is empty, the chair pushed back. ${subType ? `${backdrop} ` : ""}${nicheContextSetting} ${scene} ${compositionSetting} ${cleanPlate} ${complianceNoteStill}`,
 
-    person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. Dark background with a spotlight on the face. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
+    person_intense: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with CONFIDENT expression, serious face, leaning forward, direct eye contact. ${backdrop} ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
 
-    person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. Dark grey background. ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
+    person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. ${backdrop} ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
   };
 
-  return stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
+  const base = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
+  // Appended, never interpolated into the style templates: the style strings carry the renderer
+  // routing contract and the object-slot-retirement fragments, and are left untouched.
+  const depiction = awarenessDepictionFor(style, awareness);
+  return depiction ? `${base} ${depiction}` : base;
 }
 
 // Free-tier ad image gate — stops trial/free users from spamming Generate or
