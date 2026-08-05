@@ -568,6 +568,13 @@ export async function runAdCreativesGeneration(
     `[adCreativesGenerator] LAYER1+2 plan: ${VARIATIONS.map((v, i) => `${v.style}=${deckAwarenessPlan[i]}/${deckSubTypePlan[i]}`).join(" ")}`,
   );
 
+  // ─── FEED ASPECT RATIO (2026-08-06) ────────────────────────────────────────
+  // The tabloid deck rendered 1:1 while the EDITORIAL deck already rendered 4:5 (line ~729). 4:5 is
+  // the feed placement the banked specs describe ([SEPARATION §3]: 4:5 mobile feed, top 14% /
+  // bottom 20% UI clearance) and it is what maximises mobile canvas. Person slots take it natively
+  // on Flux; the still life takes it via gpt-image-1 2:3 + crop (see rendererForStyle).
+  const FEED_ASPECT = "4:5";
+
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
     const variation = VARIATIONS[i];
@@ -595,6 +602,8 @@ export async function runAdCreativesGeneration(
       // the shared plan gives the same stages with no ordering dependency.
       deckAwarenessPlan[i],
       deckSubTypePlan[i],
+      // LAYER 3 — the canvas drives the text-safe band, via the compositor's own measured geometry.
+      FEED_ASPECT,
     );
 
     console.log(
@@ -604,7 +613,7 @@ export async function runAdCreativesGeneration(
 
     // `style` drives renderer selection (see _core/imageGeneration.rendererForStyle):
     // the two still-life slots render on gpt-image-1, the three person slots on Flux.
-    const imageResult = await generateImage({ prompt: imagePrompt, style: variation.style });
+    const imageResult = await generateImage({ prompt: imagePrompt, style: variation.style, aspectRatio: FEED_ASPECT });
     if (!imageResult.url) {
       throw new Error(
         `Ad creative variation ${i + 1} image generation returned no URL (batchId=${batchId})`,
@@ -617,6 +626,13 @@ export async function runAdCreativesGeneration(
     // batches as for wizard-generated ones.
     const imageResponse = await fetch(imageResult.url);
     const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+    // Record what was ACTUALLY emitted, never a nominal constant. Flux answers "4:5" with
+    // 896x1088 and gpt-image-1 with 1024x1280, so a hardcoded string would make the row lie about
+    // its own asset — and the reserved-band maths keys off these dimensions.
+    const emittedMeta = await (await import("sharp")).default(rawBuffer).metadata();
+    const emittedFormat = `${emittedMeta.width ?? "?"}x${emittedMeta.height ?? "?"}`;
+    console.log(`[adCreativesGenerator] variation ${i + 1} emitted ${emittedFormat} (requested ${FEED_ASPECT})`);
 
     const rawKey = `ad-creatives/${input.userId}/${batchId}/raw-variation-${i + 1}.png`;
     const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
@@ -658,7 +674,7 @@ export async function runAdCreativesGeneration(
       headline,
       imageUrl: s3Url,
       rawImageUrl,
-      imageFormat: "1080x1080",
+      imageFormat: emittedFormat,
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
       batchId,

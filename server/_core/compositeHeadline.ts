@@ -19,6 +19,74 @@ import { eq, and, desc } from "drizzle-orm";
  * No host lockup (product decision: AI subjects only). No price.
  */
 
+/**
+ * ─── THE TEXT-SAFE ZONE — ONE DEFINITION, SHARED WITH THE PHOTO PROMPT ───────
+ *
+ * ⚠️ THIS EXISTS BECAUSE FIX 3 FAILED ON 2026-08-05. The photo prompt reserved a band in English
+ * ("the lower portion is calm") and the compositor reserved a band in pixels, and the two were
+ * written independently. They disagreed: the finished ad laid its headline straight across the
+ * work surface the scene had been told to keep clear. Moving the scene again would not fix that —
+ * only making both halves read the SAME definition fixes it.
+ *
+ * ── MEASURED, NOT TAKEN FROM RESEARCH ────────────────────────────────────────
+ * The banked safe-zone figures ([SEPARATION §3] 4:5 top 14% / bottom 20%; [COHERENCE §4] Center
+ * Band) describe META'S UI overlaying the ad. They say nothing about how much canvas OUR OWN type
+ * consumes. That is a property of this file, so it is measured from this file — by pushing a flat
+ * synthetic plate through renderAdCreative at worst-case content and finding the topmost glyph.
+ * `scripts/measure-text-safe-zone.ts` performs that measurement; the layer suite re-runs it as a
+ * regression test, so this constant cannot drift from reality unnoticed.
+ *
+ * ── IT IS NOT RATIO-INVARIANT, WHICH IS WHY THIS IS A FUNCTION AND NOT A SCALAR ──
+ * Measured topmost-glyph fraction: 4:5 = 0.6445 · 1:1 = 0.5693 · 9:16 = 0.5875. Identical across
+ * SIZES within a ratio (1024x1280 vs 1440x1800 differ by 0.0001) but 5.7pp apart between 4:5 and
+ * 9:16. A single exported scalar would silently mis-reserve `makeVertical`'s 9:16 path.
+ *
+ * The reason is structural, which is what makes it derivable:
+ *   • the text block's own height depends only on WIDTH — fonts and wrapping scale off W
+ *   • its offset from the bottom edge is padBottom, which depends on HEIGHT, and for vertical
+ *     canvases jumps to H*0.20 for Stories UI clearance
+ *
+ *     textBlockHeight ≈ TEXT_BLOCK_H_PER_W * W        (1024→385px, 1440→541px)
+ *     reservedFromBottom = textBlockHeight + padBottom(H)
+ *
+ * Predicting 9:16 from that gives textTop 1130 against 1128 measured — two pixels.
+ */
+export const TEXT_BLOCK_H_PER_W = 0.376;
+
+/** Mirrors renderAdCreative's own padBottom. Kept adjacent so the two cannot drift apart. */
+function padBottomFor(W: number, H: number): number {
+  const vertical = H / W >= 1.5;
+  return Math.max(Math.round(H * 0.055), vertical ? Math.round(H * 0.20) : 0);
+}
+
+/**
+ * The band at the bottom of the canvas that the compositor will write into, as fractions of H.
+ * `reservedFrac` is measured from the SCRIM top, not the glyph top: the scrim darkens the picture
+ * and is the honest edge of "the compositor has taken this area".
+ *
+ * A photo prompt that keeps focal content above `1 - reservedFrac` will not be written over.
+ */
+export function textSafeZoneFor(W: number, H: number): {
+  textTopFrac: number; scrimTopFrac: number; reservedFrac: number;
+} {
+  const textTopPx = H - (TEXT_BLOCK_H_PER_W * W + padBottomFor(W, H));
+  const scrimTopPx = Math.max(0, textTopPx - H * 0.14); // matches scrimTop for zone:"lower"
+  const scrimTopFrac = scrimTopPx / H;
+  return { textTopFrac: textTopPx / H, scrimTopFrac, reservedFrac: 1 - scrimTopFrac };
+}
+
+/**
+ * The same reservation expressed as the words a diffusion prompt can act on. This is the coupling:
+ * the scene's zone clause is CHOSEN FROM the measured number rather than written independently.
+ * Bands are deliberately coarse — a model cannot act on "the lower 47.4%".
+ */
+export function reservedBandWording(W: number, H: number): string {
+  const { reservedFrac } = textSafeZoneFor(W, H);
+  if (reservedFrac >= 0.50) return "the lower three-fifths";
+  if (reservedFrac >= 0.42) return "the lower half";
+  return "the lower third";
+}
+
 // ─── Palette (matched to the reference set) ──────────────────────────────────
 const GOLD = "#D4A24A";
 const WHITE = "#FFFFFF";

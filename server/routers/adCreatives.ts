@@ -4,9 +4,9 @@ import { getDb } from "../db";
 import { adCreatives, services, users, jobs, headlines } from "../../drizzle/schema";
 import { eq, and, desc, gte, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { generateImage } from "../_core/imageGeneration";
+import { generateImage, emittedCanvasFor } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
-import { renderAdCreative, resolveAdBodyText, resolveAdBodyTexts } from "../_core/compositeHeadline";
+import { renderAdCreative, resolveAdBodyText, resolveAdBodyTexts, reservedBandWording } from "../_core/compositeHeadline";
 import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
 import { runAdCreativesGeneration, resolveSubjectForService } from "../adCreativesGenerator";
@@ -223,53 +223,194 @@ export function checkCompliance(headline: string, benefit: string, problem: stri
  * depicted and sub-type governs HOW it is styled (docs/andromeda/image-rule-spec.md §1.1). This is
  * the awareness half only. Sub-type and the full 15-cell matrix are Layer 2+.
  *
- * Sourced from the spec's row-level table (§2), itself extracted from [SCHWARTZ §2.1-2.5]:
- *   unaware        pattern break; relatable, unposed, native-feeling moment
- *   problem_aware  the empathetic mirror; quiet reflection on the friction
- *   solution_aware the mechanism made visible; mid-explanation, demonstrating
- *   product_aware  the authority anchor; assured, established, credible setting
- *   most_aware     PD-4 — founder direct-to-camera, and NO baked-in text
+ * Originally sourced from the spec's row-level table (§2), extracted from [SCHWARTZ §2.1-2.5].
+ *
+ * ⚠️ SUPERSEDED IN PLACE, 2026-08-05. This layer shipped as a BEARING modifier appended after the
+ * style template, and the live render proved it did not reach the picture. It is now a whole SHOT
+ * CONCEPT that leads the prompt. The rebuild rationale, the research citations and the three
+ * deliberate departures from the research all sit on `AWARENESS_DEPICTION` immediately below.
+ */
+/**
+ * ── REBUILT 2026-08-05: STAGE NOW CARRIES A WHOLE SHOT CONCEPT, NOT A BEARING ─
+ *
+ * The 2026-08-05 live render proved Layer 2 and DISPROVED Layer 1: slot 3 was told "mid-explanation,
+ * hands and posture engaged" and returned a static seated figure. Two causes, both structural:
+ *   1. the stage string was APPENDED after the style template had already fixed expression and pose;
+ *   2. `compositionPerson` hardcoded "the subject SEATED behind a plain table", which pinned the body
+ *      regardless of where the stage text sat.
+ *
+ * [AWARENESS-PLAYBOOK §3] "The Metadata Clash" names this exact failure: *"The awareness stage must
+ * dictate the core shot concept and composition, while styling (lighting, props, backdrops) serves
+ * as a secondary aesthetic shell. If styling is allowed to lead, the ad risks falling into 'default'
+ * poses — such as the standard smiling executive — which trigger Entity ID clustering."* A static
+ * seated figure IS the default pose. [AWARENESS-PLAYBOOK §1] adds the finding that retires our old
+ * model outright: *"Nuanced facial expressions alone are insufficient for differentiation."*
+ *
+ * So each stage now carries an ACTION (what is physically happening) and a COMPOSITION (how it is
+ * framed) — the two [SEPARATION §1] classes as "Variables of Change". Lighting, backdrop and palette
+ * are "Variables of Constancy" and belong to the sub-type shell, applied AFTER the scene is set.
+ *
+ * Actions are taken from [AWARENESS-PLAYBOOK §2], adapted where a locked constraint overrides:
+ *   unaware        mid-motion, native, unposed — reacting to something off-camera
+ *   problem_aware  physical weariness at the work surface
+ *   solution_aware hands actively working the method — laying out a grid, open notebook
+ *   product_aware  assured authority, at ease with their own materials
+ *   most_aware     PD-4 — direct-to-camera decision moment, and NO baked-in text
+ *
+ * ⚠️ THREE DELIBERATE DEPARTURES FROM THE RESEARCH, each overriding it for a measured reason:
+ *   • §2 wants Product-Aware to hold "bold statistical proof charts" and Most-Aware "onboarding
+ *     calendars or scarcity graphics". Both are COMPOSED OF TEXT. The object slot was retired over
+ *     exactly this (5f3294d, 46 clean / 2 leaked on 48 renders) and both renderers garble glyphs.
+ *     Proof is carried as PLAIN, UNMARKED materials; specifics live in the overlay. PD-4 stands.
+ *   • §2 wants Solution-Aware to sketch "labelled diagrams". A labelled diagram contradicts
+ *     `cleanPlate`'s "blank paper" four words later — the self-contradiction class this file has been
+ *     bitten by four times. The mechanism is shown as STRUCTURE instead: plain cards laid into a
+ *     deliberate grid ("bento-box grids", §2's own phrase), which needs no legible text at all.
+ *   • §2 wants Problem-Aware in "blue-lit environments". Light belongs to the sub-type shell under
+ *     [SEPARATION §1]; taking a lighting instruction from a stage would re-create the very override
+ *     this rebuild removes. Only the ACTION and the clutter are taken.
  *
  * ── WHY THESE ARE STYLE-AWARE, NOT ONE SHARED STRING ─────────────────────────
  * This file has been bitten FOUR times by a string written for the person styles being pasted onto
  * the still life: nicheContext (P6 cause 1), the composition clause, complianceNote (L4), and the
- * deleted noText. Each produced a self-contradicting prompt. So each stage carries a person form
- * and a setting form, and the still life never receives person wording.
- *
- * The directives deliberately modify the SITUATION and BEARING of the subject already established
- * by the style — never the subject type. Telling a "person with EXCITED expression" style to render
- * a labelled flowchart would contradict itself four words later, which is the exact failure above.
- * The mechanism is therefore shown as the person DEMONSTRATING it, not as a diagram replacing them.
+ * deleted noText. Each produced a self-contradicting prompt. So each stage carries a person form and
+ * a setting form, and the still life never receives person wording.
  *
  * Positive framing only: diffusion has no logical NOT, and this codebase has been bitten twice by
  * phrasing a requirement as an absence.
  */
-const AWARENESS_DEPICTION: Record<string, { person: string; still: string }> = {
+const AWARENESS_DEPICTION: Record<
+  string,
+  { person: string; still: string; personComposition: string; stillComposition: string }
+> = {
   unaware: {
-    person: "The moment is unposed and ordinary — caught mid-gesture rather than presented, as though the camera happened to be there. It should read as a real moment someone would scroll past and recognise — the texture of an ordinary day.",
-    still: "The arrangement looks lived-in and unstaged — as though someone stepped away mid-task and the camera simply found it.",
+    person: "caught mid-motion in an ordinary moment — walking through the room, mid-sentence, or turning toward something happening off-camera, entirely unposed as though the camera simply happened to be running.",
+    still: "The arrangement is ordinary and unstaged, caught mid-task as though someone stepped out of frame a moment ago and the camera simply found it.",
+    personComposition: "Composed for a portrait-format advertisement as a grabbed candid: the subject off-centre and mid-movement, the room carrying on around them.",
+    stillComposition: "Composed for a portrait-style advertisement, framed as a grabbed candid of the surface, slightly off-centre.",
   },
   problem_aware: {
-    person: "The bearing is quietly reflective — the stillness of someone sitting with something that has been going on a while. Warm and non-judgemental, the weight of the situation carried in posture rather than distress.",
-    still: "The scene carries the quiet aftermath of a long day — settled, still, the traces of something that has been going on a while.",
+    // ── AMENDED 2026-08-05 after the isolation render (FIX 1) ─────────────────
+    // The first rebuild said "a hand at the temple, shoulders down". That is the SAME SHAPE the
+    // banked guardrails list as a PROHIBITED DISTRESS TRIGGER — verbatim: "Heads in hands; dark,
+    // isolated, 'atmospheric' lighting", against the compliant column "routine 'candid moments'".
+    // [GUARDRAILS §3] warns the penalty is not cosmetic: "Using imagery that matches the 'Visual DNA'
+    // of clinical suffering triggers a total retrieval penalty… Andromeda clusters these with a
+    // library of previously banned 'suffering-centric' assets."
+    //
+    // So friction is carried by the ENVIRONMENT, never by the face or body. This also strengthens
+    // Layer 1 rather than weakening it: [SEPARATION §1] classes "Talent/Environment" as a Variable
+    // of CHANGE (earns a new Entity ID), while [AWARENESS-PLAYBOOK §1] states plainly that "nuanced
+    // facial expressions alone are insufficient for differentiation" — so an overloaded surface is
+    // worth more than a pained expression on the exact axis we are trying to move.
+    //
+    // The live render is what surfaced this: it came back composed and calm, which is the COMPLIANT
+    // outcome, and the clutter — not the woman — was doing all the differentiating work.
+    person: "steady and composed at a work surface that has been overtaken by the task — several stacks that have outgrown their places, the same job open in three unfinished states at once, work spilling past the edges of where it belongs. The bearing stays even; it is the surface that shows the strain.",
+    still: "The surface has been overtaken by the task — several stacks that have outgrown their places, the same job open in three unfinished states at once, work spilling past the edges of where it belongs.",
+    personComposition: "Composed for a portrait-format advertisement: the subject held in the middle band of the frame with the overtaken surface extending around and behind them.",
+    stillComposition: "Composed for a portrait-style advertisement: the crowded end of the surface fills the upper frame.",
   },
   solution_aware: {
-    person: "The subject is mid-explanation — hands and posture engaged in walking someone through how something works, the bearing of a practitioner showing their method rather than presenting themselves.",
-    still: "The arrangement reads as a method in progress — the working surface of someone part-way through a process, ordered and deliberate.",
+    // ── AMENDED 2026-08-05 after the isolation render (FIX 3) ─────────────────
+    // The ACTION is unchanged — the render proved it works, and it is the clearest Layer-1 result we
+    // have. Only WHERE IT SITS changed. The render put the card grid and hands across the bottom of
+    // the frame, which is the band the compositor stacks headline + body + CTA into, so the finished
+    // ad would lay type over a busy work surface.
+    //
+    // [COHERENCE §4]: "All core messaging must reside in the Center Band (250px to 1248px)", with the
+    // bottom 20–35% reserved for platform UI; and "Bokeh Engineering: Use a shallow depth-of-field to
+    // blur background elements, creating high-legibility zones for typography." [SEPARATION §3] gives
+    // the same safe-zone matrix. The foreground is therefore named as DEFOCUSED rather than merely
+    // "calm" — a positive instruction the model can act on, instead of an absence it must infer.
+    person: "actively working the method through by hand — laying plain cards out into a deliberate grid on the table, an open notebook with blank pages beside them, attention on the work itself rather than on the camera.",
+    still: "The surface shows a method in progress — plain cards laid out in a deliberate grid, an open notebook with blank pages beside them, the orderly middle of a process being actively worked through.",
+    personComposition: "Composed for a portrait-format advertisement: the work surface and their busy hands sit in the middle band of the frame, well clear of the lower edge, with the near edge of the table falling softly out of focus in the foreground.",
+    stillComposition: "Composed for a portrait-style advertisement: the laid-out grid reads clearly from above, held in the middle band, with the near edge of the surface softly out of focus below it.",
   },
   product_aware: {
-    person: "The bearing is assured and established — a practitioner at ease in a professional setting they clearly occupy, credibility carried in composure rather than in props.",
-    still: "The setting is professional and established — an orderly, credible working environment that has clearly been in use.",
+    // ── AMENDED 2026-08-05 after the isolation render (FIX 2) ─────────────────
+    // The first rebuild rendered a seated, head-on, composed portrait — which is (a) the "standard
+    // smiling executive" [AWARENESS-PLAYBOOK §3] names as the default pose that "trigger[s] Entity ID
+    // clustering", and (b) a COLLISION with most_aware, whose PD-4 shape is direct-to-camera address.
+    // Two stages converging on one picture is the exact failure the Entity ID work exists to prevent.
+    //
+    // [COHERENCE §2] specifies this stage as "Authority markers; portraits of the expert IN-ACTION",
+    // and [SEPARATION §1] lists "Featured Deliverables: Physical/digital objects" as a Variable of
+    // Change. So authority is now DEMONSTRATED to someone off-camera rather than posed for the lens,
+    // which separates it from most_aware on the one axis that matters — where the eyes go.
+    //
+    // The workbook stays PLAIN: [AWARENESS-PLAYBOOK §2] asks for "bold statistical proof charts" here,
+    // which is one of the three documented departures — proof charts are composed of text.
+    person: "mid-demonstration with the assurance of long practice — turned toward someone just off-camera, holding up their own plain workbook to show a point, caught in the middle of walking another through it.",
+    still: "The setting is an established professional workspace, orderly and clearly long in use, with plain work materials arranged as though ready to be walked through.",
+    personComposition: "Composed for a portrait-format advertisement: the subject turned three-quarters toward the person they are addressing off-camera, their raised materials sitting in the middle band, the room reading as established and theirs.",
+    stillComposition: "Composed for a portrait-style advertisement: the arrangement is orderly and centred, the room established around it.",
   },
   most_aware: {
     // PD-4 (spec §1.2, §2.5): at Most-Aware the depiction is a founder direct-address still, NOT a
     // product, pricing or checkout visual. The decisive reason is Principle 2 — a checkout visual is
     // COMPOSED of text and numbers, the same uncontrolled in-image text that failed three times and
     // retired the object slot (5f3294d, 46 clean / 2 leaked on 48 renders). Offer specifics live in
-    // the controllable headline overlay, never in the generated pixels.
-    person: "The subject faces the camera directly, addressing the viewer — a settled, straightforward look as though speaking to one person. Every surface in frame stays plain and unmarked, with clear open space; the offer itself is carried by the overlay.",
+    // the controllable headline overlay, never in the generated pixels. Kept VERBATIM through the
+    // 2026-08-05 rebuild: [AWARENESS-PLAYBOOK §2]'s "onboarding calendars or scarcity graphics" is
+    // one of the three departures documented above.
+    // ⚠️ The exact phrase "faces the camera directly" is asserted by the PD-4 guards in BOTH layer
+    // suites. It is kept verbatim through the rebuild and the sentence is shaped around it — the
+    // guard is not relaxed to suit new prose.
+    person: "steady and decided. The subject faces the camera directly, addressing the viewer — a settled, straightforward look as though speaking to one person, at the moment of choosing. Every surface in frame stays plain and unmarked, with clear open space; the offer itself is carried by the overlay.",
     still: "The scene is calm and direct, every surface plain and unmarked, with clear open space — anything to be said is carried by the overlay.",
+    personComposition: "Composed for a portrait-format advertisement: the subject centred and facing the lens straight on, the framing simple and uncluttered.",
+    stillComposition: "Composed for a portrait-style advertisement: a single clear arrangement, centred, with generous empty space.",
   },
+};
+
+/**
+ * The INVARIANT half of composition — the zone contract, which stage may not override.
+ *
+ * The compositor stacks headline + body + CTA upward from the bottom edge and cannot see the
+ * photograph, so whatever occupies the lower frame gets text laid over it. This is the prompt half
+ * of that contract; `zone: "lower"` in renderAdCreative is the other. Independently endorsed by
+ * [SEPARATION §3], which mandates bottom-band UI clearance on 4:5 — so reserving it is
+ * research-supported rather than in tension with the stage-led rebuild.
+ */
+// ⚠️ "dark" DELETED from this clause 2026-08-05. The pre-rebuild `compositionPerson` read "a calm,
+// DARK, low-detail area" — a LIGHTING word inside a composition clause. Under [SEPARATION §1] light
+// belongs to the sub-type shell, and the word actively contradicted the `aspirational` sub-type's
+// "bright high-key natural daylight" in the very same prompt (slot 3 of the live deck). The zone
+// contract needs the area to be LOW-DETAIL and UNBROKEN, not dark — the compositor's scrim supplies
+// the darkening. Same self-contradiction class as nicheContext, complianceNote and the deleted noText.
+/**
+ * ⚠️ REBUILT 2026-08-06. These used to be hand-written sentences that named a band ("the lower
+ * portion", "the upper half") with NO connection to what the compositor actually writes into. The
+ * 2026-08-05 composite proved they disagreed: the headline landed across the work surface the scene
+ * had been told to keep clear. The band is now CHOSEN FROM the compositor's own measured geometry
+ * via reservedBandWording(), so the two halves cannot drift apart. See compositeHeadline.ts.
+ */
+function zonePersonFor(style: string, aspectRatio?: string | null): string {
+  const [W, H] = emittedCanvasFor(style, aspectRatio);
+  const band = reservedBandWording(W, H);
+  return `The camera is far enough back to leave clear space around them, with their head, shoulders and hands — every part of the picture that matters — held clear of ${band} of the frame; ${band} is the near foreground falling softly out of focus, a calm, low-detail, unbroken area.`;
+}
+
+function zoneStillFor(style: string, aspectRatio?: string | null): string {
+  const [W, H] = emittedCanvasFor(style, aspectRatio);
+  const band = reservedBandWording(W, H);
+  return `The arrangement sits high in the frame, entirely clear of ${band}; ${band} is bare surface or softly defocused foreground, an unbroken area with room to breathe below.`;
+}
+
+/**
+ * What survives of the three person styles once stage owns the shot.
+ *
+ * [AWARENESS-PLAYBOOK §1]: *"Nuanced facial expressions alone are insufficient for differentiation."*
+ * The styles therefore no longer decide the picture — they carry an emotional REGISTER that colours
+ * the stage's action, which is consistent with [AWARENESS-PLAYBOOK §4] pairing an Action WITH an
+ * Emotion. Style keeps its renderer-routing contract and its deck slot; it loses shot authority.
+ */
+const STYLE_REGISTER: Record<string, string> = {
+  person_shocked: "The register through the moment is animated and energised.",
+  person_intense: "The register through the moment is focused and serious.",
+  person_curious: "The register through the moment is open and questioning.",
 };
 
 /**
@@ -327,11 +468,44 @@ const DEFAULT_BACKDROP: Record<string, string> = {
 /** Person-based styles receive the person form; the still life receives the setting form. */
 const STILL_LIFE_PROMPT_STYLES = new Set(["screenshot", "object"]);
 
+/**
+ * The styles that actually have a prompt template. Anything else — including the RETIRED `object`,
+ * which can still arrive as a string from an old DB row — falls back to `person_shocked`.
+ *
+ * ⚠️ PRE-EXISTING DEFECT FIXED HERE (2026-08-05). `imagePromptNegation.test.ts` asserts that the
+ * `object` fallback is byte-identical to `person_shocked`, and it was RED on HEAD before this
+ * rebuild: `backdrop` was looked up by the RAW style, so `DEFAULT_BACKDROP["object"]` missed and the
+ * fallback prompt shipped with its backdrop sentence silently blank. Resolving the style ONCE, up
+ * front, and using it for every subsequent lookup fixes it. No live style is affected — for all four
+ * real styles `known === style`.
+ */
+const PROMPT_STYLES = new Set(["person_shocked", "screenshot", "person_intense", "person_curious"]);
+
+/**
+ * The stage's ACTION clause — what is physically happening in the picture.
+ * [SEPARATION §1] classes Subject Action as a "Variable of Change": the axis that earns a distinct
+ * Entity ID, as against lighting/backdrop/palette, which are "Variables of Constancy".
+ */
 export function awarenessDepictionFor(style: string, awareness?: string | null): string {
   if (!awareness) return "";
   const entry = AWARENESS_DEPICTION[awareness];
   if (!entry) return "";
   return STILL_LIFE_PROMPT_STYLES.has(style) ? entry.still : entry.person;
+}
+
+/**
+ * The stage's COMPOSITION clause — how that action is framed. The other half of [SEPARATION §1]'s
+ * "Variables of Change", and the half that was previously hardcoded to "seated behind a plain
+ * table", pinning every stage to the same body position.
+ *
+ * The invariant zone contract (ZONE_PERSON / ZONE_STILL) is appended separately and is NOT
+ * stage-overridable — the compositor depends on it.
+ */
+export function stageCompositionFor(style: string, awareness?: string | null): string {
+  if (!awareness) return "";
+  const entry = AWARENESS_DEPICTION[awareness];
+  if (!entry) return "";
+  return STILL_LIFE_PROMPT_STYLES.has(style) ? entry.stillComposition : entry.personComposition;
 }
 
 /** Backdrop for a slot: sub-type-driven when supplied, otherwise the pre-Layer-2 literal. */
@@ -363,6 +537,12 @@ export function generateAdImagePrompt(
    * `awareness`: omitted reproduces the pre-Layer-2 output byte-for-byte.
    */
   subType?: string | null,
+  /**
+   * LAYER 3 (2026-08-06). The canvas this slot will actually be rendered at. Drives the text-safe
+   * band via the compositor's own measured geometry — the coupling that Fix 3 lacked. OPTIONAL and
+   * defaulting to 1:1, so every existing call site is byte-identical.
+   */
+  aspectRatio?: string | null,
 ): string {
   // uglyMode keeps its own UGC aesthetic untouched — it is a deliberate raw look, not a lighting
   // choice sub-type should override. Sub-type only replaces the polished branch's lighting clause.
@@ -372,8 +552,12 @@ export function generateAdImagePrompt(
       ? SUBTYPE_LIGHTING[subType]
       : "Candid documentary photograph, available light, dramatic directional lighting, high contrast, shallow depth of field, phone-quality realism rather than polished studio work";
 
+  // Resolve the style ONCE, before any per-style lookup. See PROMPT_STYLES for the defect this fixes.
+  const known = (PROMPT_STYLES.has(style) ? style : "person_shocked") as
+    "person_shocked" | "screenshot" | "person_intense" | "person_curious";
+
   // Backdrop: sub-type-driven when supplied, otherwise the exact pre-Layer-2 literal per style.
-  const backdrop = subTypeBackdropFor(style, subType);
+  const backdrop = subTypeBackdropFor(known, subType);
 
   // P6 cause 1 (2026-07-29): nicheContext is STYLE-AWARE. It used to be a single
   // person-worded string appended to all five styles, including the two that are
@@ -489,11 +673,42 @@ export function generateAdImagePrompt(
     person_curious: `${baseStyle}. ${who} dressed and styled for the ${niche} world, with INTRIGUED expression, raised eyebrow, interested smile, head tilted. ${backdrop} ${nicheContextPerson} ${scene} ${compositionPerson} ${cleanPlate} ${complianceNotePerson}`,
   };
 
-  const base = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.person_shocked;
-  // Appended, never interpolated into the style templates: the style strings carry the renderer
-  // routing contract and the object-slot-retirement fragments, and are left untouched.
-  const depiction = awarenessDepictionFor(style, awareness);
-  return depiction ? `${base} ${depiction}` : base;
+  // ─── PATH A — NO STAGE: the pre-rebuild template, byte-for-byte ────────────
+  //
+  // The seven call sites that do not pass an awareness stage keep their exact previous output. This
+  // is what lets a genuine architecture change ship without re-proving seven un-tested procedures
+  // (`adImagePromptStability.test.ts` is the fixture that holds it). The cost is two assembly paths
+  // in one function until those sites opt in; that is deliberate and is the cheaper risk.
+  const stageAction = awarenessDepictionFor(known, awareness);
+  if (!stageAction) return stylePrompts[known];
+
+  // ─── PATH B — STAGE-LED: the 2026-08-05 rebuild ────────────────────────────
+  //
+  // ORDER IS THE FIX. [AWARENESS-PLAYBOOK §3] requires the awareness stage to "dictate the core shot
+  // concept and composition, while styling serves as a secondary aesthetic shell". So:
+  //
+  //   1. SCENE      — subject + stage ACTION            (stage owns it)
+  //   2. REGISTER   — the style's emotional colour       (secondary to the action)
+  //   3. COMPOSITION— stage framing, then the invariant zone contract
+  //   4. SHELL      — sub-type lighting + backdrop       (Variables of Constancy, [SEPARATION §1])
+  //   5. INVARIANTS — niche, problem, clean plate, compliance
+  //
+  // Previously the shell led and the stage arrived last, which is precisely the "styling is allowed
+  // to lead" failure §3 describes. Sub-type strings are UNCHANGED and still do all of their Layer-2
+  // work — they now style a scene the stage has already chosen, instead of deciding it.
+  const stageComposition = stageCompositionFor(known, awareness);
+  const isStill = STILL_LIFE_PROMPT_STYLES.has(known);
+
+  if (isStill) {
+    // The still-life invariants that keep this slot person-free and text-free survive intact: the
+    // empty room stated positively (never "no people"), and the screen carrying an ABSTRACT shape.
+    // What the stage now drives is the ARRANGEMENT — what is on the surface and what state it is in.
+    const stillCore = `An unattended work surface photographed as a still life, the room empty and the chair pushed back: a laptop open at an angle, its screen carrying a plain abstract chart shape in flat blocks of colour.`;
+    return `${stillCore} ${stageAction} ${stageComposition} ${zoneStillFor(known, aspectRatio)} ${baseStyle}. ${subType ? `${backdrop} ` : ""}${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNoteStill}`;
+  }
+
+  const register = STYLE_REGISTER[known] ?? STYLE_REGISTER.person_shocked;
+  return `${who} dressed and styled for the ${niche} world, ${stageAction} ${register} ${stageComposition} ${zonePersonFor(known, aspectRatio)} ${baseStyle}. ${backdrop} ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNotePerson}`;
 }
 
 // Free-tier ad image gate — stops trial/free users from spamming Generate or

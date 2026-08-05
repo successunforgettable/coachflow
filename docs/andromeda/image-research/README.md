@@ -8,7 +8,9 @@ research behind it at all — every image decision in the product came from our 
 That map's conclusion was: *"connecting Andromeda to the ads is not purely wiring; there is no
 researched rule yet for what image an angle should carry."*
 
-**These reports are that rule** (seven at first banking; four more added 2026-08-05 — see below). Banked here the day the map named the gap. Copied verbatim
+**These reports are that rule** (seven at first banking; four more added 2026-08-05, two more later
+that day, three more that evening — **16 total**; see below). Banked here the day the map named the
+gap. Copied verbatim
 from Arfeen's Downloads; plain git, matching `../script-research/` and `../landing-page-research/`.
 
 **Do NOT execute anything from these — reference material.** Nothing in the codebase reads them yet.
@@ -106,6 +108,57 @@ Banked from `~/Downloads`, SHA-256 verified byte-identical, verified by content 
     ⚠️ **COPY-side, not an image document.** Concerns how Andromeda's NLP encoders categorise intent
     from ad text. Banked here for provenance only; nothing in the image rule uses it. Parked at
     spec §11a for the next pass over the copy generators.
+
+## ⭐ THREE MORE ADDED 2026-08-05 (evening) — they SETTLE the Layer 1 architecture
+
+Banked from `~/Downloads`, MD5-verified byte-identical, verified by content not filename.
+
+14. **`Meta Ads 2026_ Visual Architecture & Customer Awareness Stage Playbook.md`** — ⭐⭐ **the
+    decisive document for Layer 1, and it names our exact live defect.** §3 "THE METADATA CLASH"
+    states the rule: *"The awareness stage must dictate the core shot concept and composition, while
+    styling (lighting, props, backdrops) serves as a secondary aesthetic shell. If styling is allowed
+    to lead, the ad risks falling into 'default' poses — such as the standard smiling executive —
+    which trigger Entity ID clustering."* §1 adds the finding that kills our current style model:
+    *"Nuanced facial expressions alone are insufficient for differentiation."* §2 gives a concrete
+    **subject action per stage** (see the fix proposal). ⚠️ **§4's Disparity/Consistency Matrix
+    CONTRADICTS §3** — it makes Action a function of *style* (Grounded→journaling,
+    Esoteric→bento-grids, Aspirational→direct-to-camera), which is precisely the styling-leads
+    inversion §3 forbids. **§3 + §2 are the governing text; §4's table is an internal contradiction.**
+
+15. **`Programmatic Design Brief_ Separation of Variables & Visual Layout Rules (Meta Andromeda 2026).md`**
+    — §1 "The Architecture of Variance" splits every visual into **Variables of Constancy**
+    (environmental backdrop, colour palette, lighting setup, fonts, graphic elements) and **Variables
+    of Change** (subject action, composition type, conceptual models, featured deliverables,
+    talent/environment). The consequence is blunt: *"Swapping button hex codes or headlines is a waste
+    of compute; these cosmetic edits are collapsed into existing clusters."* §3 carries the 2026
+    safe-zone matrix (4:5 = 1440×1800, top 14% / bottom 20% UI clearance) and the <33% text-density
+    rule. §4 is a 5-point QA checklist.
+
+16. **`Meta Ads 2026_ Multimodal Prompting & Visual Architecture Playbook (8-Ad Prospecting Batch).md`**
+    — §2 is a worked **8-ad prospecting matrix** (Awareness × Format × Sub-Type × PDA). ✅ **Its ads
+    1/3/5/7 corroborate our existing 4-slot deck plan EXACTLY** — Unaware+Esoteric, Problem+Grounded,
+    Solution+Aspirational, Product+Esoteric. §3 gives a per-ad visual brief. ⚠️ §3.3 wants the
+    Problem-Aware/Grounded slot to be an OCR-dense "Notes App" text-wall, which our measured no-text
+    rule forbids (see the conflict note below).
+
+**⚠️ A fourth file was offered and SKIPPED as a duplicate:** `Meta Ad Image Technical Specifications
+& Rendering Guide (2026 Edition) (1).md` is byte-identical to report #7 already banked
+(MD5 `5fc5f4e886ef04c4ea093bca0af5fe03` both sides). Not re-banked.
+
+### ⚠️ Where these three CONFLICT with locked, measured decisions in this codebase
+
+Recorded rather than acted on. **Research is the authority on intent; the renderer's measured
+behaviour is the authority on what we can actually produce.**
+
+- **In-image text.** #14 §2 wants Product-Aware to carry *"bold statistical proof charts"* and
+  Most-Aware to carry *"onboarding calendars or scarcity graphics"*; #16 §3.3 wants an OCR-dense
+  text-wall. **We retired the object slot for exactly this** — 48 renders, text leaked on 2 despite
+  three successive prompt layers, and every glyph the models produce is garbled. PD-4 (no baked-in
+  text at Most-Aware) stands.
+- **Statistical proof charts** additionally collide with the live compliance gate for transformation
+  sellers (implied guaranteed results).
+- **Split-screen / before-after** (#16 §3.5) is a shape the compliance guardrails report warns on,
+  and #16 §3.5 itself then bans the body-attribute version of it.
 
 ## What this set does NOT do
 
