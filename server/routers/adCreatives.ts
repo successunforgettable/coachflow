@@ -366,6 +366,37 @@ const AWARENESS_DEPICTION: Record<
 };
 
 /**
+ * ─── FACE-ABSENT SCENES — [STRUCTURAL-DISTINCTNESS §3(b)] ────────────────────
+ *
+ * Used ONLY when a sub-type repeats inside one deck (see visibilityTierPlanFor). Two cells sharing
+ * a lighting profile, a backdrop family and one face collapse to a single Entity ID no matter how
+ * the pose or environment is varied — [SAME-TALENT] rates that "Negligible". Dropping the face is
+ * the documented bypass: "high-action close-ups of hands or product-only flat-lays".
+ *
+ * POSITIVELY FRAMED. The first draft opened "with no one in the picture" — a bare negation, and
+ * this file has been bitten twice by phrasing a requirement as an absence (the deleted noText, and
+ * "No people in the frame" which Flux ignored on the very run where "an object study only" worked).
+ * Diffusion has no logical NOT: naming the person is how you request one.
+ *
+ * Person-free by construction, and NEVER labelled — a labelled process model is text in pixels,
+ * which retired the object slot. Surfaces stay plain so cleanPlate is reinforced, not contradicted.
+ *
+ * Each also has to be distinct from the `screenshot` still life, which is a laptop-and-desk scene:
+ * a second desk would trade a face collision for an object collision.
+ */
+const FACE_ABSENT_SCENE: Record<string, string> = {
+  product_aware: "A flat-lay photographed from directly above, an object study only: the practitioner's own working materials laid out on a plain surface — a closed plain-covered workbook, a squared-off stack of unmarked cards, a pen set alongside, a folded cloth beneath. The arrangement is deliberate and well-used, the quiet evidence of an established practice.",
+  solution_aware: "A tactile close-up framed tightly on the hands alone: two hands at work on a plain surface, mid-method — one hand laying a plain card into a forming grid, the other steadying an open notebook of blank pages. The frame is close enough that the hands and the work fill it.",
+  problem_aware: "A close-up study of the far end of a work surface that the task has overtaken — plain stacks that have outgrown their places, a folded cloth pushed aside, the same job open in several unfinished states.",
+};
+
+/** Person-free scene for a slot whose face was dropped, or "" when the stage has no such form. */
+export function faceAbsentSceneFor(awareness?: string | null): string {
+  if (!awareness) return "";
+  return FACE_ABSENT_SCENE[awareness] ?? "";
+}
+
+/**
  * The INVARIANT half of composition — the zone contract, which stage may not override.
  *
  * The compositor stacks headline + body + CTA upward from the bottom edge and cannot see the
@@ -543,6 +574,12 @@ export function generateAdImagePrompt(
    * defaulting to 1:1, so every existing call site is byte-identical.
    */
   aspectRatio?: string | null,
+  /**
+   * VISIBILITY TIER. True only for a repeated sub-type's ceded cell. Renders the slot face-absent so
+   * it lands in a different visual branch instead of collapsing into its twin's Entity ID.
+   * OPTIONAL and defaulting false, so every existing call site is byte-identical.
+   */
+  faceAbsent?: boolean,
 ): string {
   // uglyMode keeps its own UGC aesthetic untouched — it is a deliberate raw look, not a lighting
   // choice sub-type should override. Sub-type only replaces the polished branch's lighting clause.
@@ -705,6 +742,23 @@ export function generateAdImagePrompt(
     // What the stage now drives is the ARRANGEMENT — what is on the surface and what state it is in.
     const stillCore = `An unattended work surface photographed as a still life, the room empty and the chair pushed back: a laptop open at an angle, its screen carrying a plain abstract chart shape in flat blocks of colour.`;
     return `${stillCore} ${stageAction} ${stageComposition} ${zoneStillFor(known, aspectRatio)} ${baseStyle}. ${subType ? `${backdrop} ` : ""}${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNoteStill}`;
+  }
+
+  // ── FACE-ABSENT BRANCH ──────────────────────────────────────────────────────
+  // Reuses the stage's STILL forms, which are already person-free and guarded by test, and drops
+  // the subject clause and the style register entirely — a register belongs to a face.
+  const faceAbsentScene = faceAbsent ? faceAbsentSceneFor(awareness) : "";
+  if (faceAbsentScene) {
+    const stillAction = AWARENESS_DEPICTION[awareness as string]?.still ?? "";
+    const stillComposition = AWARENESS_DEPICTION[awareness as string]?.stillComposition ?? "";
+    // ⚠️ The SETTING form of the backdrop, not the person form. `subTypeBackdropFor` keys off the
+    // style, and a person style would hand back "Behind THEM the room falls into warm shadow…" —
+    // person wording four words from "no one in the picture". That is the self-contradiction class
+    // this file has been bitten by four times (nicheContext, composition, complianceNote, noText).
+    const stillBackdrop = subType && SUBTYPE_BACKDROP[subType]
+      ? SUBTYPE_BACKDROP[subType].still
+      : (DEFAULT_BACKDROP[known] ?? "");
+    return `${faceAbsentScene} ${stillAction} ${stillComposition} ${zoneStillFor(known, aspectRatio)} ${baseStyle}. ${stillBackdrop} ${nicheContextSetting} ${scene} ${cleanPlate} ${complianceNoteStill}`;
   }
 
   const register = STYLE_REGISTER[known] ?? STYLE_REGISTER.person_shocked;

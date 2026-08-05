@@ -47,7 +47,7 @@ import {
   type SubjectResolution,
 } from "./_core/subjectDescriptor";
 import { AD_VARIATIONS, TABLOID_FORMULAS, type AdVariationFormula } from "./_core/adVariations";
-import { awarenessDeckPlan, subTypePlanFor } from "./_core/conceptAxis";
+import { awarenessDeckPlan, subTypePlanFor, visibilityTierPlanFor } from "./_core/conceptAxis";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
@@ -564,8 +564,12 @@ export async function runAdCreativesGeneration(
   // LAYER 2 — sub-type per slot, from [TESTING-MATRIX §2.1]. System-assigned across the batch as a
   // diversity lever, never detected from the coach (image-rule-spec §5, rev 4).
   const deckSubTypePlan = subTypePlanFor(deckAwarenessPlan);
+  // VISIBILITY TIER — a 4-cell deck over 3 sub-types must repeat one, and a repeat that keeps the
+  // same face under the same lighting collapses to one Entity ID ([SAME-TALENT §2]). The ceded cell
+  // renders face-absent, which is the documented bypass ([STRUCTURAL-DISTINCTNESS §3(b)]).
+  const deckVisibilityPlan = visibilityTierPlanFor(deckAwarenessPlan, deckSubTypePlan);
   console.log(
-    `[adCreativesGenerator] LAYER1+2 plan: ${VARIATIONS.map((v, i) => `${v.style}=${deckAwarenessPlan[i]}/${deckSubTypePlan[i]}`).join(" ")}`,
+    `[adCreativesGenerator] LAYER1+2+3 plan: ${VARIATIONS.map((v, i) => `${v.style}=${deckAwarenessPlan[i]}/${deckSubTypePlan[i]}/${deckVisibilityPlan[i]}`).join(" ")}`,
   );
 
   // ─── FEED ASPECT RATIO (2026-08-06) ────────────────────────────────────────
@@ -604,6 +608,7 @@ export async function runAdCreativesGeneration(
       deckSubTypePlan[i],
       // LAYER 3 — the canvas drives the text-safe band, via the compositor's own measured geometry.
       FEED_ASPECT,
+      deckVisibilityPlan[i] === "face_absent",
     );
 
     console.log(

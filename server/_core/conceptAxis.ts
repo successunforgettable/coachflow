@@ -325,3 +325,72 @@ export function wordBudgetForSeconds(seconds: number): { min: number; target: nu
   const target = Math.round(Math.max(0, seconds - 2) * 3);
   return { min: Math.round(target * 0.85), target, max: Math.round(target * 1.15) };
 }
+
+/**
+ * ─── VISIBILITY TIER — the fix for a repeated sub-type in one deck ────────────
+ *
+ * A 4-cell deck drawn from 3 sub-types must repeat one. Two cells then share a lighting profile AND
+ * a backdrop family AND — by Arfeen's locked one-subject-per-batch rule — the same face.
+ * [SAME-TALENT §2]: "If the lighting profile, talent face, and 'backdrop family' remain constant,
+ * Andromeda identifies these as the same concept." Its table rates "Pose/Backdrop Tweaks" as
+ * "Negligible - Likely collapsed into a single existing Entity ID", and [STRUCTURAL-DISTINCTNESS §2]
+ * takes "a firm NEGATIVE stance" on micro-variation while face and lighting stay constant. So
+ * varying pose, action or environment CANNOT fix this — that lever was scoped and then abandoned.
+ *
+ * The lever that works and touches neither locked rule is [STRUCTURAL-DISTINCTNESS §3(b)]:
+ * "Face Absence & Tactile Close-Ups: Bypass facial recognition anchors by focusing on high-action
+ * close-ups of hands or product-only flat-lays... without triggering the 'same talent' penalty."
+ * [SAME-TALENT §4] agrees: "hands-only demonstrations redirects the ad into different visual
+ * branches of the tree." [STRUCTURAL-DISTINCTNESS §5] names the mechanism a "Visibility Tier".
+ *
+ * It introduces NO new persona and NO second subject, so persona-fixed-to-ICP and one-depiction-per-
+ * audience both hold.
+ *
+ * WARNING - §3(a) "Portrait to Labeled Process Model" is deliberately NOT taken: a LABELED model is
+ * text in pixels, and the object slot was retired over exactly that (48 renders, 2 leaked).
+ * Face-absent, never labelled.
+ *
+ * WHICH occurrence goes face-absent is derived from stage semantics, never from slot order:
+ *   unaware        NEVER - [AWARENESS-PLAYBOOK §2] wants a native unposed moment that "mimics
+ *                  organic feed behavior"; with no person there is no pattern interrupt left.
+ *   most_aware     NEVER - PD-4 is founder direct-to-camera address.
+ *   problem_aware  eligible - friction already reads through an environment.
+ *   solution_aware eligible - "sketching, mapping out bento-box grids" is intrinsically hands-on.
+ *   product_aware  MOST eligible - authority transfers to the artifact; [SEPARATION §1] lists
+ *                  "Featured Deliverables: Physical/digital objects" as a Variable of Change.
+ */
+export type VisibilityTier = "full_face" | "face_absent";
+
+const FACE_ABSENT_AFFINITY: Readonly<Record<AwarenessStage, number>> = {
+  most_aware: -1,
+  unaware: 0,
+  problem_aware: 1,
+  solution_aware: 2,
+  product_aware: 3,
+};
+
+/**
+ * One tier per slot. A sub-type appearing once keeps its face. Where it repeats, exactly ONE cell
+ * keeps the face - the one least able to survive without it - and every other eligible cell goes
+ * face-absent. A repeat of two never-eligible stages is left alone and returns two full_face cells:
+ * a real, flagged limitation rather than a silent breach of a locked rule.
+ */
+export function visibilityTierPlanFor(
+  awarenessPlan: readonly AwarenessStage[],
+  subTypePlan: readonly SellerSubType[],
+): VisibilityTier[] {
+  const tiers: VisibilityTier[] = awarenessPlan.map(() => "full_face");
+  const bySubType = new Map<SellerSubType, number[]>();
+  subTypePlan.forEach((st, i) => bySubType.set(st, [...(bySubType.get(st) ?? []), i]));
+
+  for (const idxs of Array.from(bySubType.values())) {
+    if (idxs.length < 2) continue;
+    const ranked = [...idxs].sort(
+      (a, b) => FACE_ABSENT_AFFINITY[awarenessPlan[a]] - FACE_ABSENT_AFFINITY[awarenessPlan[b]],
+    );
+    for (const i of ranked.slice(1)) {
+      if (FACE_ABSENT_AFFINITY[awarenessPlan[i]] > 0) tiers[i] = "face_absent";
+    }
+  }
+  return tiers;
+}
