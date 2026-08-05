@@ -168,6 +168,9 @@ in-image text, an anatomical failure, or a subject buried under the headline.
   overlay, **the COMPOSITE is the only proof**. The raw render passed while the finished ad was broken.
 - **Save proof images to disk BEFORE any teardown.** Teardown outranks the artifact read.
 - **Do NOT write to protected services 272–277, or to service 285.**
+- **⚠️ TEARDOWN IS ALWAYS ID-SCOPED, NEVER USER-SCOPED.** Smoke user **117174 OWNS the 25 protected
+  creatives on services 272–277** (verified 2026-08-06). A teardown written as "delete this user's
+  rows" would destroy them. Always `WHERE id IN (…)` plus a userId guard — never userId alone.
 - **Write prose-heavy records with Write/Edit, never a bash heredoc** — backticks get shell-substituted.
 - **⚠️ ONLY THE TABLOID DECK IS 4.** `EDITORIAL_VARIATIONS` stays 5.
 - **~309 untracked earlier-session files deliberately left alone.** Never sweep them into a commit.
