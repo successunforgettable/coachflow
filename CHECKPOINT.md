@@ -1,10 +1,10 @@
-# CHECKPOINT — 2026-08-01, close-out
+# CHECKPOINT — 2026-08-06, session close (stage-led image engine committed at `eb50e3a`, NOT pushed)
 
 **For a cold terminal with no memory of the session that produced this.** Read this file, then
-`docs/handovers/STATE.md`. Everything below was verified, not recalled.
+`docs/handovers/STATE.md`. Everything below was verified in-session, not recalled.
 
-**⚠️ Unlike every previous checkpoint in this file's history: THE WORK IS SHIPPED AND LIVE ON
-PRODUCTION.** Earlier versions of this file said "nothing pushed" — that is no longer true.
+⚠️ **`docs/handovers/STATE.md` is dated 2026-07-28 and knows nothing about the last five sessions.**
+It has been wrong more than once. **Trace code and query the DB; do not trust handover prose.**
 
 ---
 
@@ -13,205 +13,163 @@ PRODUCTION.** Earlier versions of this file said "nothing pushed" — that is no
 | | |
 |---|---|
 | Branch | `railway-build` |
-| `origin/railway-build` | **`304f6fd`** |
-| **Production is LIVE on** | **`304f6fd`** — deployed and verified |
-| This checkpoint commit | **HEAD**, docs-only, **NOT pushed.** Print it with `git rev-parse HEAD` |
-| Working tree | Clean for this work. ~310 untracked files from earlier sessions deliberately left alone |
+| HEAD | **`eb50e3a`** — committed locally |
+| origin/railway-build | **`e71f62f`** — UNMOVED |
+| Unpushed | **1 commit** |
+| Deployed? | **NO.** Railway has not seen this work. Push = instant deploy (~4s, no gate). |
 
-The only unpushed thing is this docs commit. All code is live.
+**The next push needs a fresh explicit "push" from Arfeen.** No prior authorisation carries forward.
 
-**Push = instant production deploy.** Measured: `785df87` was authored at `04:16:17Z` and Railway
-created its deployment at `04:16:21.231Z` — **4 seconds**, no human gate, one deployment per commit
-**including docs-only commits**. See §6.
-
-### The three commits that make up the live state
-
-| commit | what |
-|---|---|
-| `a57cbb6` | **P6c** — the headline-overflow fix |
-| `5f3294d` | **Object-slot retirement** — tabloid deck 5 → 4 |
-| `304f6fd` | **Validator count fix** — repaired the outage `5f3294d` caused (§3) |
+⚠️ **Correction to the old version of this file**, which claimed committing it "triggers a production
+deploy". It does not — **pushing** deploys. This file is now committed deliberately, because a fresh
+session reads it first and a stale one is a trap.
 
 ---
 
-## 2. What is shipped and PROVEN LIVE
+## 2. What `eb50e3a` actually changes
 
-All three were confirmed by a **real browser generation on production** on 2026-08-01 —
-batch `batch-1785563397522-51bbfcf5`, service **263**, userId 1. Not a harness, not a bundle grep: a
-real coach-path click.
+The awareness stage now drives the **shot concept** — subject, action, composition — and the sub-type
+only **styles** it (lighting, backdrop, texture). Previously the style template fixed pose and
+composition and the stage was appended afterwards, so it modified a decision already made.
+`[AWARENESS-PLAYBOOK §3]` names that exact failure: *"If styling is allowed to lead, the ad risks
+falling into 'default' poses… which trigger Entity ID clustering."*
 
-### P6c — the "Generate Ad Images" crash — FIXED AND LIVE
-
-`adCreatives.headline` is `varchar(255)`, and `services.uniqueMechanismSuggestion` — documented as
-"a proprietary-sounding NAME" but persisted with `trunc(…, 65535)` — holds a *description* on **94 of
-the 101** production services that have one (mean 394 chars, max 622). Templates interpolated it
-whole, so the INSERT died on variation 1. **93% of production services hit this.**
-
-Fixed in `server/routers/adCreatives.ts`, both layers inside the formulas so no call site can skip
-them: `resolveMechanismName()` recovers the name from the `Name — description` shape;
-`fitAdHeadline()` trims the **finished** headline to the house 38-char limit (load-bearing —
-extraction alone still left four of five headlines over). **Trim-to-fit, never reject** — a hard
-length gate has previously killed a live cascade.
-
-**Live proof:** service 263 carries a **445-character** mechanism. It produced four headlines of
-**28 / 36 / 36 / 34** chars, all persisted, no `Data too long` error.
-
-### Object slot RETIRED — tabloid deck 5 → 4 — LIVE
-
-Prompt-based text suppression failed three times; each layer closed the surface it named and the leak
-moved to the next. Background signage (L1–L4) → engraved plinths (L5 — 13/13 trophies came back
-blank, that fix genuinely worked) → **"LEADER" embroidered on a chair back** and **"MINDSET" debossed
-into a moulded block**, the latter being the exact failure L5 was written to eliminate.
-
-Cumulative **46 clean / 2 leaked on 48 renders**: 4.2% point estimate but a **~12% exact 95% upper
-bound**, which fails the no-uncontrolled-text bar for unattended publishing. Retired, not iterated a
-fourth time. Evidence: `docs/handovers/OBJECT_SLOT_L5_RESULT_2026-07-31.md`.
-
-Also fixed two **live production crash sites** in the same change: `routers/adCreatives.ts:1153` and
-`:1317` hardcoded `i < 5` and would have thrown on `variations[4].formula` the instant the deck
-shrank — the coach's Generate button and the campaigns batch path. Both now derive
-`variations.length`.
-
-**Live proof:** the run emitted `variation 1/4 … 4/4` with styles `person_shocked / screenshot /
-person_intense / person_curious`. `/4` can only come from the new build. No `object` slot.
-
-**The four survivors are byte-for-byte undisturbed** — `server/_core/adImagePromptStability.test.ts`
-asserts a pre-retirement fixture verbatim (16 variants). **`screenshot` is identical to the
-character.** Live confirmation: `[imageGeneration] gpt-image-1 rendered style=screenshot in 16.6s`,
-no `FALLBACK` line, so the hybrid switch survived `object` leaving `STILL_LIFE_STYLES`.
-
-**⚠️ NEVER `git revert` the L1–L5 object commits.** `cleanPlate`, `compositionSetting`,
-`nicheContextSetting` and `complianceNoteStill` are **shared with `screenshot`**, and
-`complianceNoteStill` was *created by* the L4 object work. A revert drags it back into the
-person-worded `complianceNotePerson` and silently regresses screenshot. Deleted surgically by
-identifier for exactly this reason.
-
-### Validator count fix — LIVE
-
-`validateAdHeadlines` no longer holds its own count. The count is a **required parameter with no
-default**, and each caller passes the number it actually asked the model for (`formulas.length`).
-A default would hide the same class of bug again; tsc now forces every caller to state it.
-
-**Live proof:** `Attempt 1/5 produced 4 headlines, char counts [28,36,36,34], validation=PASS` —
-accepted on the first attempt, no retry, no `headlines_wrong_count`.
+Files: `routers/adCreatives.ts` · `_core/imageGeneration.ts` · `_core/compositeHeadline.ts` ·
+`adCreativesGenerator.ts` · two test files · `scripts/measure-text-safe-zone.ts` · 3 research
+reports + their README.
 
 ---
 
-## 3. THE OUTAGE — recorded so it is not relearned
+## 3. ✅ PROVEN — on live renders, zero DB writes, every run reconciled to 405
 
-**`5f3294d` took ad-creative generation down on production.** Between `5f3294d` and `304f6fd`, every
-generation failed — both the coach's Generate button and the Auto Mode cascade.
+- **Layer 1 across all five awareness stages**, isolated: style and sub-type held constant, stage the
+  only variable, with the styling half of every prompt asserted **byte-identical before any spend**.
+  A same-prompt control render sets the diffusion-noise floor — noise changes *who and how*, the
+  stage changes *what is happening*.
+- **Fix 1 — Problem-Aware** carries friction in the **environment**, not the face. The first rebuild
+  used "a hand at the temple", which the banked guardrails list verbatim as a prohibited distress
+  trigger carrying *"a total retrieval penalty"*.
+- **Fix 2 — Product-Aware** is an expert mid-demonstration addressing someone off-camera. It had been
+  rendering as a head-on portrait, colliding with Most-Aware's PD-4 direct address. Guarded by test.
+- **Fix 3 — verified ONLY on the composite.** Headline/body/CTA land on darkened defocused surface
+  instead of across the work the scene was told to keep clear. ⚠️ **The raw render looked fine while
+  the finished ad was broken — raw pixels cannot prove this.**
+- **4:5 feed** with the reserved band keyed to **emitted pixels**, plus its guards (§4).
+- **Still-life `screenshot` slot has pixels for the first time** — person-free, abstract text-free
+  screen, clean plate held, and it stayed on gpt-image-1. **n=1.**
 
-**Cause:** three places encoded the headline count and only two were changed.
-
-1. the LLM prompt — updated
-2. `_core/validator.ts` — `AD_HEADLINE_REQUIRED_COUNT = 5`, **missed**
-3. the consuming deck — updated
-
-The model returned exactly the 4 headlines it was asked for and the validator rejected them for not
-being 5 → `headlines_wrong_count`, five times, then failure.
-
-**Why the sweep missed it:** the count lived behind a *named constant* in a file
-(`_core/validator.ts`) that the blast-radius greps for `"exactly 5"` and `i < 5` never touched. The
-pre-change coupling report explicitly claimed a complete list and was wrong.
-
-**Second, independent break behind it:** `generateContextualAdHeadlines` is **shared by two decks of
-different sizes**. The template-card deck renders five cards and indexes `headlines[i]` for `i < 5`,
-so a 4-array would have thrown on `headlines[4].text`. Masked only because the validator rejected
-first. The earlier report called that deck "independent" — true of its array, false of its headline
-supply.
-
-**Fix (`304f6fd`), and the principle:** not "keep the numbers in sync" but *a shared generator must
-be told what its caller needs instead of assuming*. Each deck states its own formula order once in
-`_core/adVariations.ts` — `TABLOID_FORMULAS` (derived, 4) and `TEMPLATE_CARD_FORMULAS` (explicit, 5).
-The template-card deck got **independent headline supply** rather than recycling four across five
-cards. `contrast` stays in the formula union because that deck persists it to
-`adCreatives.headlineFormula` at index 3.
-
-**How it was caught: a real browser click, not a test and not a bundle grep.** Both had gone green
-while production was broken. Treat "the code is present" and "the path works" as separate claims.
-
-**The guard against recurrence:** `server/_core/headlineDeckAgreement.test.ts` asserts the
-*relationship* the old tests never did — for each deck, the validator accepts exactly what that
-deck's prompt asks for, and rejects one too few and one too many. **Mutation-verified:**
-reintroducing the hardcoded 5 fails it; restoring passes.
+Proof images on disk (not committed — binary weight):
+`docs/screenshots/run-2026-08-05-layer1-isolation/` · `run-2026-08-05-layer1-reprove/` ·
+`run-2026-08-06-layer3-45/` · `run-2026-08-06-layer3-verify/`.
+`run-2026-08-05-layer12-proof/` is the **pre-rebuild** "before" set.
 
 ---
 
-## 4. Gates and current numbers
+## 4. The text-safe band — measured, per-canvas, and guarded
 
-- `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (baseline; all pre-existing, all client-side)
-- **620 tests passing across 10 suites**, zero failures. `pipeline-fixes` **383**,
-  `headlineDeckAgreement` **12**, `adImagePromptStability` **18**
-- Production `adCreatives` = **401** (was 397; +4 from the live confirmation run, real work, kept)
-- Four-slot smoke renders: `docs/screenshots/run-2026-08-01-deck4-smoke/`
+**Do not replace this with a constant.** It was measured by pushing a synthetic plate through the
+real compositor at worst-case content (`scripts/measure-text-safe-zone.ts`).
 
-### ⚠️ `jobs` is NOT a baseline metric
+| canvas | topmost glyph | reserved | wording |
+|---|---|---|---|
+| Flux 4:5 → **896×1088** | 0.6445 | 0.5048 | "the lower three-fifths" |
+| gpt-image-1 4:5 → **1024×1280** | 0.6445 | 0.4955 | "the lower half" |
+| 1:1 1024×1024 | 0.5693 | 0.5707 | "the lower three-fifths" |
+| 9:16 1080×1920 | 0.5875 | 0.5515 | "the lower three-fifths" |
 
-Corrected in `docs/handovers/STATE.md` in this same commit. `jobs` is a transient status noticeboard
-with **24-hour retention** — a cron at `_core/index.ts:274` deletes rows older than 24h, and its
-`setInterval` re-arms from process boot, so every deploy shifts when it fires. Measured on one
-database: **88** (07-28), **94** (07-31), **0** (08-01, ~1 min after the cron fired at boot+24h),
-**5** an hour later. A session treating any of those as a baseline will burn a pass investigating a
-non-anomaly — this happened on 2026-08-01. **The only jobs figure with signal is `running = 0`.**
-The stuck-job reaper is unrelated: it marks `pending → failed`, it never deletes.
-
----
-
-## 5. Explicitly NOT done — held, not forgotten
-
-- **Deterministic object-slot rebuild** — server-side selection from a **curated per-niche text-free
-  object list**. The ONLY real path to bringing the slot back *with a guarantee* rather than a
-  probability. **NOT another prompt clause** — that has failed three times and must not be
-  re-attempted. Parked, not cancelled.
-- **Write-side shape guard on `uniqueMechanismSuggestion`** — sized, not built. 3 edits, one file, no
-  migration: tighten the prompt at `routers/services.ts:194`, validate shape at `:326` and `:364`
-  (`:364` has **no** truncation at all), tighten the Zod input at `:67`.
-  ⚠️ **A length clamp would be wrong** — five consumers read that field for its descriptive content
-  (`adCopyGenerator.ts:329`, `headlinesGenerator.ts:311`, `leadMagnetContentGenerator.ts:155`,
-  `icpAngleSuggestions.ts:49`, `groundingCorpus.ts:101`). Enforce *shape*, not length.
-- **C — data backfill of the 94 oversized rows.** Not needed for correctness: P6c is read-time, so
-  every existing row already renders correctly.
-- **Three softer-claim fallback lines**, for a copy-honesty pass: `_core/campaignCta.ts:23`
-  ("Book a Free Call"), `lib/templates/eventImanGadzhi.ts:287` ("A free live event…"),
-  `lib/templates/salesLight.ts:146` ("Here's exactly what you'll be able to do.").
-- **`V2ToolLibrary` is dead code** — imported at `V2Dashboard.tsx:11`, never rendered anywhere.
-- **Route 1063 (V1 campaign dashboard, `/campaigns/:id`)** still lacks the `zone: "lower"` scrim.
-  Live route, real user path. See `docs/handovers/AD_IMAGE_SITE_SWEEP_2026-07-30.md`.
-- **"coaching" renders as *athletic* coaching** (whistle, court clipboard) rather than business/life
-  coaching. Pre-existing niche ambiguity, still open.
+- **NOT ratio-invariant** — 4:5 and 9:16 are **5.7pp apart**. A scalar silently mis-reserves the
+  9:16 path. Size-invariant *within* a ratio (1024×1280 vs 1440×1800 differ by 0.0001).
+- `reservedFromBottom = 0.376 × W + padBottom(H)` — predicts 9:16 to within **two pixels**.
+- **Keyed off EMITTED pixels, never the ratio string.** Flux answers "4:5" with **896×1088** (0.824);
+  gpt-image-1 returns a true 1024×1280. Those straddle a band boundary, so the person slots were
+  under-reserving by ~1pp — clearance by margin, not design. **Flux is deliberately NOT forced to
+  exact 4:5**; 896×1088 is a valid Meta asset.
+- **Crop direction settled on pixels**: `DEFAULT_CROP_DIRECTION = "bottom"` (keep the upper 1280).
+  gpt-image-1 cannot emit 4:5, so it renders 1024×1536 and is cropped. The alternative was cramped
+  and top-heavy. Both candidates are in `run-2026-08-06-layer3-45/08-crop-A` vs `08-crop-B`.
+- `imageFormat` now records dimensions read off the rendered buffer, so a row cannot lie.
 
 ---
 
-## 6. Standing rules for whoever resumes
+## 5. 🔴 OPEN — read this before claiming anything works
 
-- **⛔ NO COMMIT-AND-PUSH WITHOUT ARFEEN'S EXPLICIT "push" / "deploy" IN THE IMMEDIATELY PRECEDING
-  MESSAGE.** No exceptions for "obviously correct", "urgent", or "it fixes an outage". **This
-  includes docs-only commits** — every commit deploys, in ~4 seconds, with no human gate. Breached on
-  2026-08-01 when a fix was pushed on a truncated instruction; the fix was correct, but a wrong one
-  would have hit production unapproved. If an instruction looks truncated or its scope is unclear,
-  **ask before doing anything irreversible**.
-- **Every prod write needs Arfeen's "execute" in the immediately preceding message.** No exceptions
-  for small, safe, or "done it before".
-- **Decisions Arfeen reserved stay reserved.** If a report says "this needs a decision from you",
-  present the options and wait — flagging a unilateral choice in passing is not the same thing.
-  Breached on 2026-08-01 with the template-card supply decision.
-- **Arfeen's eyes on renders are the design gate.** CC never self-certifies a visual result.
-- **A live click is the only proof of a live path.** Bundle greps and green suites both passed while
-  production was broken.
-- **Save proof images to disk BEFORE any teardown.**
-- **⚠️ ONLY THE TABLOID DECK IS 4. The other two stay at 5** — accepted and intended. Never sweep
-  these into a deck-size change:
-  - `_core/orchestration.ts:879` — `i < 5`, the **template-card** deck. Does not use `AD_VARIATIONS`.
-  - `routers/campaigns.ts:337` — `i < 5`, **video** generation, its own `videoConfigs` array.
-  - `EDITORIAL_VARIATIONS` in `_core/editorialPrompt.ts` — 5 variations, separate flux-2 renderer.
+1. **THE WIRING GAP IS THE NEXT ROCK.** **Five of eight fan-out sites pass no stage** and render the
+   pre-rebuild prompt. Only the cascade (`adCreativesGenerator.ts`) carries Layers 1–3.
+   ⚠️ **Opening this forces the 4-vs-8 cardinality decision** — the tabloid deck is 4
+   (`AD_VARIATIONS`), the concept batch is 8, and `adCreativesGenerator.ts:534` **throws** on a
+   mismatch because a mismatch once caused a live outage (`5f3294d` → `304f6fd`). **Arfeen's call.**
+2. **Esoteric and aspirational sub-types are unproven** with the new shot concepts. Only `grounded`
+   has been rendered since the rebuild.
+3. **flux@9:16 emission has never been measured.** It takes the conservative fallback.
+   **Measure it before any stage-led vertical ships.**
+4. **The editorial path has no Layers 1/2/3** and is untouched. A run routing editorial proves nothing.
+5. **Four person stages (Unaware, Problem-Aware, Product-Aware, Most-Aware) were not re-rendered**
+   after the band was rekeyed to emitted pixels. That change only **widened** clearance so it cannot
+   have regressed them, but they are unswept — fold into the next full run.
+6. **DEPLOY IS GATED on the shared paths.** `makeVertical` (9:16) and `regenerateSingle` share
+   `generateAdImagePrompt` / `rendererForStyle` / `renderAdCreative`. **None of the five wizard
+   procedures has an automated test** and they are historically error-prone (P6b). Exercise them
+   before pushing.
 
-  A find-and-replace on `"object"` is likewise unsafe: it hits `mode: "object"` and `hero_object` in
-  `editorialPrompt.ts` (a different, live deck) and `typeof x === "object"` throughout.
-- **The landing-page cascade is NOT coupled to the ad deck.** `landingPage` is cascade step 6,
-  `adCreatives` step 9; LPs come from 4 fixed angles; exactly one LP row per run. GHL push already
-  deletes orphaned `ZAP Ad Creative N` custom values for N > count. Email, WhatsApp, ad copy and Meta
-  push are all deck-size agnostic.
-- **~310 untracked files from earlier sessions were deliberately left alone**, including the 24
-  L5-confirmation renders in `docs/screenshots/run-2026-07-31-objectleak-L5-confirm/`. Do not sweep
-  them into a commit without asking.
+---
+
+## 6. ⚠️ EVERY GATE IS BLIND TO WHETHER A PICTURE IS GOOD
+
+G4 checks only that a non-empty PNG reached disk. Nothing in the suite can see melodrama, legible
+in-image text, an anatomical failure, or a subject buried under the headline.
+**That judgement is Arfeen's and only Arfeen's. CC never self-certifies a visual result.**
+
+---
+
+## 7. Production data — verified this session
+
+- `adCreatives` = **405** (the baseline). `meta_published_ads` = **2**.
+- **Protected services untouched:** `272:5 273:5 275:5 276:5 277:5 285:4` — 29 creatives.
+- **The 409-vs-405 drift is resolved.** It was NOT failed teardown: the previous proof's teardown was
+  clean (0 surviving proof services, 0 orphan rows). Four rows (450–453, service 287, user 1) were a
+  dummy demo campaign Arfeen made on 2026-08-05; he authorised their deletion and they are gone.
+- ⚠️ **Service 287 still exists** and is NOT a shell — ~115 rows across 11 tables (60 hvcoTitles,
+  14 placeholderValues, 11 heroMechanisms, 10 headlines, 9 adCopy, 6 campaignConcepts, plus ICP,
+  offer, LP, email and WhatsApp). It now has **0 adCreatives** and is inert. Deleting the service row
+  would cascade-delete the placeholderValues and orphan ~101 rows at `serviceId = NULL`. **Not done;
+  needs its own decision.**
+
+---
+
+## 8. Gates
+
+- `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (CLAUDE.md §8 still says 35 — stale by one)
+- **554 tests across 12 suites**, including the new `server/textSafeZoneCoupling.test.ts`
+- ⚠️ `jobs` is **NOT a baseline metric** — 24h retention. Only `running = 0` has signal.
+
+---
+
+## 9. Traps specific to this work
+
+- **The old test asserting the stage directive is APPENDED was DELETED.** It passed throughout while
+  the stage never reached the picture — it was locking in the defect. Do not reinstate it.
+- **`rendererForStyle` bounces unknown ratios to Flux.** Requesting a ratio gpt-image-1 cannot serve
+  silently moves the still life off the model the bake-off chose (**6/6 vs 2/6** niche relevance).
+- **The banked safe-zone figures describe META'S UI clearance**, not our own type. Never size our
+  text band from them — measure it.
+- **Research vs. code:** `[AWARENESS-PLAYBOOK §2]` asks for proof charts, calendars and labelled
+  diagrams at various stages. **All are composed of text.** The object slot was retired over exactly
+  this (48 renders, 2 leaked). Three departures are documented on `AWARENESS_DEPICTION`. PD-4 stands.
+- **`[AWARENESS-PLAYBOOK §4]` contradicts its own §3** — its table makes Action a function of style.
+  §3 + §2 govern.
+
+---
+
+## 10. Standing rules
+
+- **⛔ NO PUSH WITHOUT ARFEEN'S EXPLICIT "push" IN THE IMMEDIATELY PRECEDING MESSAGE.**
+- **Every prod write needs explicit "execute"/"go ahead" in the immediately preceding message.**
+- **A LIVE RENDER IS THE ONLY PROOF OF A LIVE IMAGE PATH** — and for anything involving the text
+  overlay, **the COMPOSITE is the only proof**. The raw render passed while the finished ad was broken.
+- **Save proof images to disk BEFORE any teardown.** Teardown outranks the artifact read.
+- **Do NOT write to protected services 272–277, or to service 285.**
+- **Write prose-heavy records with Write/Edit, never a bash heredoc** — backticks get shell-substituted.
+- **⚠️ ONLY THE TABLOID DECK IS 4.** `EDITORIAL_VARIATIONS` stays 5.
+- **~309 untracked earlier-session files deliberately left alone.** Never sweep them into a commit.
+- **`railway run` block-buffers stdout.** Two runs today were invisible for 25 minutes while failing.
+  Proof scripts log to a file with `appendFileSync` as well as stdout — keep that.
