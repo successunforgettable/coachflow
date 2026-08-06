@@ -193,6 +193,28 @@ export function awarenessDeckPlan(slots: number): AwarenessStage[] {
   return coldFirst.slice(0, slots);
 }
 
+/**
+ * Deal a set of values across slots so that neighbouring slots differ.
+ *
+ * Used for the DESIRE axis, and shaped by what the awareness work already proved:
+ * planning a dimension per-format instead of across the whole set is what left ten
+ * zero-axis pairs and starved a stage of every slot. Awareness plans arrive grouped
+ * (all unaware, then all problem-aware…), so cycling by global slot index means the
+ * slots inside one stage group receive consecutive — therefore different — values,
+ * which is exactly where distinctness is needed: two pieces sharing a stage must
+ * differ somewhere else or they collapse.
+ *
+ * Repeats are unavoidable when there are more slots than values (15 headline slots
+ * over 4 surviving desires repeats by pigeonhole). Cycling spreads those repeats as
+ * far apart as the ordering allows rather than clustering them.
+ *
+ * Returns an empty array when there are no values, so callers can fall back.
+ */
+export function dealAcrossSlots<T>(values: readonly T[], slotCount: number): T[] {
+  if (!values.length || slotCount <= 0) return [];
+  return Array.from({ length: slotCount }, (_, i) => values[i % values.length]);
+}
+
 export function awarenessPlanForCount(count: number): AwarenessStage[] {
   if (!Number.isFinite(count) || count <= 0) return [];
 

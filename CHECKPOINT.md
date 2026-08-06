@@ -1,7 +1,27 @@
-# CHECKPOINT — 2026-08-06 (post-deploy): the Andromeda image chapter is LIVE at `51bdd03`
+# CHECKPOINT — the Andromeda image chapter is LIVE; the COPY chapter is built and PROVEN, held local
 
 **For a cold terminal with no memory of the session that produced this.** Read this file, then
 `docs/handovers/STATE.md`. Everything below was verified in-session, not recalled.
+
+---
+
+## 0. NEXT ACTION — read this before anything else
+
+**The copy engine is built, proven live, and committed LOCALLY ONLY. Nothing has been pushed, so
+none of it is deployed.** Production is running the image chapter plus the two-site canvas fix.
+
+Three things, in order:
+
+1. **Propose the distinctness-gate design — PROPOSE ONLY, DO NOT BUILD.** See §12.6 for the
+   constraints it has to satisfy.
+2. **The image sprint** — fix the image-baked-text duplication (§12.7) and grow the image deck
+   from 4 to 8 to match the locked copy cardinality.
+3. **Then deploy**, which needs Arfeen's explicit "push" like every other deploy.
+
+⚠️ **Migration 0097 is ALREADY APPLIED TO PRODUCTION** — four additive nullable columns
+(`persona`, `desire`, `awareness`, `format`) on `headlines` and `adCopy`. Additive and inert: no
+deployed code reads or writes them, because the code that does is the unpushed work. Do not
+re-apply it, and do not treat its presence as evidence the copy engine is live.
 
 ⚠️ **`docs/handovers/STATE.md` is dated 2026-07-28 and knows nothing about the last six sessions.**
 It has been wrong more than once. **Trace code and query the DB; do not trust handover prose.**
@@ -194,7 +214,9 @@ in-image text, an anatomical failure, or a subject buried under the headline.
 
 - `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (CLAUDE.md §8 still says 35 — stale by one;
   34 re-confirmed 2026-08-06 post-deploy and again after the §11 canvas fix)
-- **554 tests across 12 suites**, including `server/textSafeZoneCoupling.test.ts`
+- **554 tests across 12 suites**, including `server/textSafeZoneCoupling.test.ts`. The copy-engine
+  gate set (`pipeline-fixes` + `complianceFilter` + `tokenCrypto` + `adCopyAngles.stageAware` +
+  `conceptGenerator` + `conceptValidator`) = **442 passed**, re-run after the copy work.
 - CLAUDE.md §8 gate suites re-run 2026-08-06: `pipeline-fixes` + `complianceFilter` + `tokenCrypto`
   = **407 passed**. Image suites = **108 passed** across 6 files.
 - ⚠️ `jobs` is **NOT a baseline metric** — 24h retention. Only `running = 0` has signal.
@@ -404,3 +426,148 @@ crosses the laptop screen and mug while the top ~45% is empty wall**: the legacy
 cured that** — these paths were already on the legacy composition at 1:1, and there is no 1:1
 before-shot from this path to compare against. Logged as a separate prompt-adherence issue on the
 legacy still-life composition. Approved for ship by Arfeen on the pixels.
+
+---
+
+## 12. ✅ THE COPY ENGINE — built, PROVEN LIVE, committed LOCAL ONLY (not deployed)
+
+The copy equivalent of the image chapter. Same discipline: a researched rule, applied in the
+generator, judged against real produced output — not a green test.
+
+**Research + spec are banked in git** (commit `d9dc69c`): six NotebookLM reports at
+`docs/andromeda/copy-research/`, plus the build spec, the alignment audit and the as-built
+description at `docs/andromeda/`. The build spec's §8a records the settled product decisions.
+
+### 12.1 The rule everything serves
+
+From `docs/andromeda/copy-research/Andromeda_Copy_EntityID_Distinctness.md`: two pieces of copy are
+genuinely different to Meta only if they differ on **at least two of four** dimensions — **P**ersona,
+**D**esire, **A**wareness, **F**ormat. Differ on 0 or 1 and Meta collapses them into one Entity ID
+with one auction ticket. **The gate is this categorical 2-of-4 check. It is NOT a cosine score** —
+the 0.40 figure that appears in the audit comes from a local model that is not Meta's, and the
+audit contradicts itself on it (its own evidence-hygiene section excludes static thresholds).
+
+### 12.2 What was measured — the whole point of this chapter
+
+Phase 0 baseline, measured on production before any change: **69–71% of all copy pairs collapsed**;
+both headline populations were at **100%**.
+
+| population | no stage | stage + format | **+ desire (now)** |
+|---|---|---|---|
+| Node 6 headlines | 100% | 42.3% | **19.4%** |
+| Node 7 headlines | 100% | 37.1% | **17.1%** |
+| Node 7 bodies | — | 26.7% | **13.3%** |
+| fused surfaces (headlines + bodies) | — | — | **17.2%** |
+
+All figures MEASURED on live generated decks against the stamped columns, never estimated.
+
+**Three of four axes are live: awareness, format, desire. Persona is still pinned** — one ICP means
+one target market across a whole deck, and the concept engine pins it too (`conceptGenerator.ts`
+sets `personaLabel` once from the ICP). Before desire landed, no pair anywhere could exceed TWO
+differing axes; the live decks now show pairs at three, which is what proves the axis is real
+rather than a label.
+
+### 12.3 What is built and proven
+
+1. **Node 6 — awareness stage** (`headlinesGenerator.ts`). Accepts an optional stage; otherwise
+   distributes the set across stages via `awarenessPlanForCount`, the same cold-weighted allocation
+   ad copy uses. **Planned across the WHOLE SET and dealt to the formulas, never per formula** —
+   per-formula planning left 10 zero-axis pairs and starved product_aware of every slot.
+   Stage guidance is the Headline (Intrigue) column of `[COHERENCE §2]`, kept in `adCopyAngles.ts`
+   beside the Primary-Text column so the two halves of one research table cannot drift.
+2. **Node 7 — awareness on all surfaces + three-surface chaining** (`adCopyGenerator.ts`).
+   Headlines and links now carry a stage (they carried none). The three surfaces are generated as a
+   CHAIN: headline first, then the body paired with a same-stage headline and told not to restate
+   its nouns and verbs and to open on the priming words, then the link description aware of both.
+3. **The desire axis, durable and early** (`conceptGenerator.ts`, `routers/campaignKits.ts`).
+   Concept generation moved from the ad-copy entry to **campaign-kit creation**, four nodes earlier,
+   made durable with a deterministic per-ICP job id, and left non-blocking. Both copy nodes read the
+   concept set's desires and deal them across their slots.
+
+### 12.4 Decisions LOCKED (do not reopen without Arfeen)
+
+- **Cardinality target is 8** — proven on COPY only. **Image growth 4 → 8 is deferred** to its own
+  sprint. Do not ship 8 copy angles against 4 images: two ads sharing a picture re-collapse, which
+  is exactly what the image chapter was spent eliminating.
+- **Variation counts are configurable** (`_core/variationCounts.ts`), defaults reproducing the old
+  behaviour exactly. **The cut happens AT THE GATE, never by generating fewer** — the gate needs a
+  surplus to reject from.
+- **Link descriptions are OUT of the distinctness population.** A 30-character CTA surface is not
+  one of the three fused surfaces (image / headline / body), so link-vs-link collapse is not a real
+  delivery signal. They keep the awareness stamp for coordination and are never counted.
+- **Anti-echo must be DECK-WIDE at the gate, not pairwise.** Publishing recombines headlines and
+  bodies, so complementarity has to hold across the combinations that can actually ship — not just
+  the 1:1 pair generation happened to produce.
+- **Yield is handled by OVER-GENERATING and by biasing proof-less coaches toward proof-free angles.
+  Never by padding** a batch to hit a number.
+- **The gate compares axes ASSIGNED at generation, never inferred from finished text.**
+  `format` reuses the formula (Node 6) or angle (Node 7) each piece was already written to — no
+  parallel taxonomy.
+
+### 12.5 Open items
+
+- **Node 6 still shows 3 zero-axis pairs.** Pigeonhole, not a defect: 25 headlines over 20
+  (stage × formula) cells must repeat. **Retired by the volume trim** when counts drop to the
+  budget band. Node 7's equivalent went 3 → 0 once the whole-set dealing was ported to it.
+- **Node 6 falls back to a single desire on the no-service path.** It resolves an ICP only when a
+  serviceId is supplied; without one there are no concepts. The fallback is the pre-change
+  behaviour, so nothing regresses. **Whether that entry SHOULD resolve an ICP is a product call**
+  — it means either demanding a service or guessing which ICP a headline set belongs to.
+- **Concept yield is not guaranteed to equal the ask.** A launch-stage fixture asked for 8 and kept
+  **4**: the gate blocked all 8 first-pass (`invented_testimonial`, `unearned_authority`), recovered
+  none on retry, kept 4 on the per-concept pass. A coach with no proof makes the model reach for
+  proof it does not have. This is the yield the over-generate decision above exists to absorb.
+
+### 12.6 The gate — NEXT ACTION, and it is PROPOSE-ONLY
+
+The comparator already exists and is deliberately kept clean:
+`server/scripts/pdafDistinctness.ts` — pure, categorical, no DB, no text analysis, no inference.
+It is written to move into `_core` unchanged when the gate ships. The baseline audit's
+recovery-by-replay lives in a separate file on purpose and is a one-off measurement device.
+
+The gate design must satisfy: the 2-of-4 categorical rule on ASSIGNED axes · deck-wide anti-echo ·
+links excluded · the budget-band cut applied here and nowhere earlier · regenerate-on-collapse
+reusing the existing capped-retry machinery.
+
+### 12.7 The image-baked-text duplication — for the image sprint
+
+The compositor bakes in the headline AND `bodyText`, which is **the first 140 characters of an
+ad-copy body row**, taken verbatim from the same table the published primary text comes from. So the
+text Meta's OCR reads off the picture is a truncation of the body's opening — the exact
+repeat-across-surfaces case the research names as collapse-inducing, live today.
+
+**Decided:** the image surface gets its OWN short hook line. Do NOT solve it by constraining the
+body's opening — the body's first words are the priming real estate and must stay free.
+
+**No OCR pre-pass is needed for our own ads.** We bake the text in, so we already know the string.
+
+### 12.8 Proof + audit tooling (all read-only or teardown-safe)
+
+- `server/scripts/pdafDistinctness.ts` — the pure 2-of-4 comparator (gate-bound)
+- `server/scripts/pdaf-collapse-audit.ts` — read-only Phase 0 baseline over existing prod rows
+- `server/scripts/pdaf-node6-proof.ts` · `pdaf-node7-proof.ts` · `pdaf-step1-proof.ts` ·
+  `pdaf-desire-proof.ts` — live proofs, each printing an id-scoped teardown it does NOT execute
+
+### 12.9 Traps this chapter added
+
+- **`serviceId` is load-bearing on `ensureConceptsForIcp`.** Without it no grounding corpus is built
+  and the output gate — fail-closed by design for concepts — refuses all three attempts with
+  `fabrication_check_unavailable` and writes nothing. The first version of the kit-creation trigger
+  omitted it and generated ZERO concepts while reporting a clean "enqueued". The gate was right.
+- **Concept generation takes minutes, not seconds.** 8 concepts × 3 gate attempts plus a
+  per-concept solo pass. A 240s poll window timed out on a job that was alive and later completed;
+  combined with `railway run`'s block-buffered stdout the run looked like a durability failure and
+  was not. Poll for 10 minutes.
+- **The concept job stays `pending` and never moves to `running`, deliberately.** The reaper sweeps
+  `pending` older than 5 minutes; `running` is never swept, which is exactly how a dead job becomes
+  a permanent zombie blocking every retry. A false "failed" on a slow-but-alive run is harmless —
+  the rows still land and the next call returns "exists".
+- **Kit creation is the earliest SAFE concept trigger.** `icps.sharpenWithLadder` regenerates a
+  profile in place and is documented as sitting "BEFORE the kit exists, so nothing downstream has
+  consumed the ICP yet". Triggering at ICP creation would make a sharpen leave a stale concept set.
+
+### 12.10 Baselines to reconcile every proof run against
+
+`adCopy` **5424** · `headlines` **2174** · `adCreatives` **405**. All three were restored exactly
+after every proof run in this chapter. The copy proofs render no images, so Cloudinary is not
+involved — but the moment a proof renders one, §10's teardown rules apply in full.

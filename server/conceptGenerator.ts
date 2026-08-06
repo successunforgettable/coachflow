@@ -373,31 +373,122 @@ export type ConceptGenerationResult = {
   requested: number;
 };
 
+/** What ensureConceptsForIcp decided to do. Returned for logging and for proof scripts. */
+export type EnsureConceptsOutcome =
+  | "exists"       // a concept set is already on the record for this ICP
+  | "in_flight"    // a durable job for this ICP is already pending
+  | "enqueued"     // this call enqueued the work
+  | "retrying"     // a previous attempt failed; this call re-enqueued it
+  | "unavailable"; // no database
+
+/** Deterministic per-ICP job id — the idempotency key. varchar(36) is ample. */
+export function conceptJobId(icpId: number): string {
+  return `concepts-icp-${icpId}`;
+}
+
 /**
- * LAZY entry — called at the ad-copy generation entry after validateCascadePrereqs passes. Checks for
- * existing concepts for this ICP; generates them in the background if absent. NEVER blocks the caller.
+ * EARLY entry — called at CAMPAIGN KIT CREATION (routers/campaignKits.ts,
+ * ensureCampaignKit), with the ad-copy entry retained as a safety net.
+ *
+ * ── WHY THE TRIGGER MOVED FORWARD ───────────────────────────────────────────
+ * Concepts carry the desire axis that ad copy needs in order for two pieces
+ * sharing an awareness stage to still count as distinct. Generated at the ad-copy
+ * entry they were never ready in time — the entry fires and returns, so copy ran
+ * against an empty table every time and had to derive what it could from a shared
+ * allocation instead. Kit creation happens at the offer node, four nodes ahead of
+ * ad copy, which is enough wall-clock for the set to be finished and on the record.
+ *
+ * ── WHY KIT CREATION AND NOT ICP CREATION ───────────────────────────────────
+ * `icps.sharpenWithLadder` regenerates a profile IN PLACE, and its placement is
+ * documented as deliberate: it is offered after the reveal card and *before the kit
+ * exists*, "so nothing downstream has consumed the ICP yet and a regenerate has zero
+ * staleness blast radius". Generating concepts at ICP creation would break that
+ * invariant — concepts WOULD have consumed it, and a sharpen would silently leave a
+ * stale concept set behind. Kit creation is the first moment after that window
+ * closes, so it is the earliest trigger that does not make sharpening unsafe.
+ *
+ * ── IDEMPOTENCY ─────────────────────────────────────────────────────────────
+ * Three layers, because this is now called from two sites and on every auto-select:
+ *   1. an existing concept set short-circuits before any work;
+ *   2. a deterministic job id (one row per ICP) means a second caller collides on
+ *      the primary key rather than starting a second generation;
+ *   3. generateConceptsForIcp itself deletes-then-inserts per ICP, so even a lost
+ *      race cannot produce a doubled set.
+ *
+ * ── STILL NON-BLOCKING ──────────────────────────────────────────────────────
+ * The work stays in setImmediate. "Durable" here means the ATTEMPT is recorded and
+ * its outcome is visible, not that the caller waits — the caller never waits.
+ *
+ * ── WHY THE JOB STAYS 'pending' AND NEVER MOVES TO 'running' ────────────────
+ * The reaper sweeps `pending` older than 5 minutes and marks it failed; `running`
+ * is never swept, which is precisely how a dead job becomes a permanent zombie
+ * that blocks every future retry. A false "failed" on a slow-but-alive generation
+ * is harmless here — the rows still land, and the next call sees them and returns
+ * "exists". A zombie would be unrecoverable without manual intervention. Pending is
+ * the safer failure mode, deliberately chosen.
  */
 export async function ensureConceptsForIcp(params: {
   userId: number;
   icpId: number;
   serviceId?: number | null;
   campaignId?: number | null;
-}): Promise<void> {
+}): Promise<EnsureConceptsOutcome> {
   const db = await getDb();
-  if (!db) return;
+  if (!db) return "unavailable";
+
+  const { jobs } = await import("../drizzle/schema");
 
   const existing = await db
     .select({ id: campaignConcepts.id })
     .from(campaignConcepts)
     .where(eq(campaignConcepts.icpId, params.icpId))
     .limit(1);
-  if (existing.length > 0) return; // already generated for this ICP
+  if (existing.length > 0) return "exists"; // already generated for this ICP
 
-  // Fire-and-forget so the ad-copy entry never blocks. (Draft-only; a durable jobs-table version is a
-  // follow-up, matching how the bonus path started before its durability fix.)
-  setImmediate(() => {
-    generateConceptsForIcp(params).catch((err) => {
-      console.error(`[conceptGenerator.ensureConceptsForIcp] icp ${params.icpId} failed:`, err instanceof Error ? err.message : String(err));
-    });
+  const jobId = conceptJobId(params.icpId);
+  const [job] = await db.select({ id: jobs.id, status: jobs.status }).from(jobs).where(eq(jobs.id, jobId)).limit(1);
+
+  let outcome: EnsureConceptsOutcome;
+  if (job) {
+    // A job exists but no rows do. Pending → someone is on it. Anything else →
+    // the previous attempt did not leave a set behind, so re-arm it.
+    if (job.status === "pending" || job.status === "running") return "in_flight";
+    await db.update(jobs).set({ status: "pending", error: null }).where(eq(jobs.id, jobId));
+    outcome = "retrying";
+  } else {
+    try {
+      await db.insert(jobs).values({ id: jobId, userId: String(params.userId), status: "pending" });
+      outcome = "enqueued";
+    } catch {
+      // Primary-key collision — a concurrent caller enqueued it first. That is the
+      // idempotency working, not an error.
+      return "in_flight";
+    }
+  }
+
+  setImmediate(async () => {
+    try {
+      const result = await generateConceptsForIcp(params);
+      const bgDb = await getDb();
+      if (bgDb) {
+        await bgDb.update(jobs)
+          .set({ status: "complete", result: JSON.stringify(result) })
+          .where(eq(jobs.id, jobId));
+      }
+      console.log(`[conceptGenerator.ensure] icp ${params.icpId} complete — persisted=${result.persisted} skipped=${result.skipped}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[conceptGenerator.ensure] icp ${params.icpId} failed:`, message);
+      try {
+        const bgDb = await getDb();
+        if (bgDb) {
+          await bgDb.update(jobs)
+            .set({ status: "failed", error: message.slice(0, 1024) })
+            .where(eq(jobs.id, jobId));
+        }
+      } catch { /* the reaper will sweep it */ }
+    }
   });
+
+  return outcome;
 }

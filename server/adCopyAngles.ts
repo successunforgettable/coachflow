@@ -442,6 +442,58 @@ export function angleForStage(
  * or compliance rules. Those already exist in the body prompt and are unchanged — the stage block
  * only says who the reader is and what job the copy is doing for them.
  */
+/**
+ * The HEADLINE half of the same research table.
+ *
+ * [COHERENCE §2] "The Matched-Pair Awareness Map" has two copy columns, not one:
+ * a **Headline Focus (Intrigue)** and a **Primary Text Focus (Invite)**.
+ * STAGE_COPY_GUIDANCE below is the Primary-Text column. This is the Headline
+ * column, quoted per stage:
+ *
+ *   Unaware        "Broad curiosity; opening a knowledge gap without selling."
+ *   Problem-Aware  "Validating the specific pain; naming the struggle with precision."
+ *   Solution-Aware "Highlighting unique benefits; the mechanism of change."
+ *   Product-Aware  "Reducing perceived risk; lead with social proof or credentials."
+ *   Most-Aware     "Specific incentives; limited-time offers or urgent CTAs."
+ *
+ * Both columns live in this one file deliberately. They are two halves of a single
+ * table, and splitting them across modules is how the two would quietly drift into
+ * disagreeing about the same stage — the failure [COHERENCE §3] calls a "Case 1
+ * awareness mismatch", where a Problem-Aware image meets a Product-Aware headline
+ * and "triggers retrieval suppression due to conflicting DNA".
+ *
+ * A headline is not a short body. The Intrigue column asks the headline to open the
+ * loop; the Invite column asks the body to walk through it. Guidance written for one
+ * produces the wrong shape in the other.
+ */
+export const STAGE_HEADLINE_GUIDANCE: Record<AwarenessStage, string> = {
+  unaware: `AWARENESS STAGE — UNAWARE ([COHERENCE §2] headline column, [HOOK-MAP §2]).
+This headline's job is broad curiosity: open a knowledge gap WITHOUT selling. The reader
+does not yet have words for the problem, so naming the offer, the method or the outcome
+closes the loop before it opens. Lead on the counterintuitive observation about the
+situation itself. No mechanism name, no outcome promise, no urgency.`,
+
+  problem_aware: `AWARENESS STAGE — PROBLEM-AWARE ([COHERENCE §2] headline column, [HOOK-MAP §3]).
+This headline's job is validation: name the specific struggle with precision, in the
+reader's own vocabulary, so it reads as recognition before it reads as an offer. The
+recognisable version of the problem — not the category, and not yet the solution.`,
+
+  solution_aware: `AWARENESS STAGE — SOLUTION-AWARE ([COHERENCE §2] headline column, [HOOK-MAP §4]).
+This headline's job is the mechanism of change: lead on what this method does differently
+and why that difference produces the result. The reader is comparing approaches, so the
+headline must give them the thing to compare.`,
+
+  product_aware: `AWARENESS STAGE — PRODUCT-AWARE ([COHERENCE §2] headline column, [HOOK-MAP §5]).
+This headline's job is reducing perceived risk: lead with proof or credentials drawn from
+the supplied material. The reader knows the coach and is weighing whether to commit, so
+the headline answers the hesitation rather than restating the promise.`,
+
+  most_aware: `AWARENESS STAGE — MOST-AWARE ([COHERENCE §2] headline column, [HOOK-MAP §6]).
+This headline's job is the specific incentive and the next step. Be direct: the offer and
+any REAL coach-supplied deadline or limit. Urgency only where a genuine deadline exists in
+the supplied material; otherwise close on the concrete next step.`,
+};
+
 export const STAGE_COPY_GUIDANCE: Record<AwarenessStage, string> = {
   unaware: `AWARENESS STAGE — UNAWARE ([HOOK-MAP §2], [COHERENCE §2]).
 This reader does not yet have words for the problem. They are scrolling for entertainment, not

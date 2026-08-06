@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
 import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, REGISTER_STANDARD, scoreAdContent } from "./_core/copywritingRules";
+import { awarenessPlanForCount, dealAcrossSlots, type AwarenessStage } from "./_core/conceptAxis";
+import { STAGE_HEADLINE_GUIDANCE } from "./adCopyAngles";
 import type { headlines as headlinesTable } from "../drizzle/schema";
 
 function stripMarkdownJson(content: string): string {
@@ -276,6 +278,13 @@ export async function runHeadlinesGeneration(input: {
   powerMode?: boolean;
   liteMode?: boolean;
   headlineStyle?: "story" | "eyebrow" | "question" | "authority" | "urgency";
+  // ── AWARENESS STAGE (0097) ────────────────────────────────────────────────
+  // Omitted (the normal case) → the set is DISTRIBUTED across stages using
+  // awarenessPlanForCount, the same cold-weighted allocation the ad-copy node
+  // already uses, so headlines and body copy describe one funnel shape.
+  // Supplied → every headline in the set is written to that one stage, for a
+  // caller that wants a single-stage set (e.g. a warm retargeting batch).
+  awarenessStage?: AwarenessStage;
   // Caller-provided user tier/role for compliance-rewrite free-tier cap.
   userSubscriptionTier?: string | null;
   userRole?: string | null;
@@ -382,13 +391,119 @@ The headline must signal physical presence — city, venue, date. Reference the 
   const allHeadlines: Array<typeof headlinesTable.$inferInsert> = [];
   const countMultiplier = input.liteMode ? 0.4 : input.powerMode ? 3 : 1;
 
+  // ── AWARENESS PLAN FOR THE WHOLE SET (0097) ─────────────────────────────────
+  // Planned across the SET, then dealt to the formulas — never planned per formula
+  // independently. The distinction is not cosmetic. Five formulas each planning
+  // their own 5 slots gives every formula the same [unaware, unaware, problem,
+  // problem, solution] shape, which has two consequences, both measured on a live
+  // run: the same (stage × formula) cell repeats inside every formula — 10 pairs
+  // differing on ZERO axes — and product_aware receives no headline at all, because
+  // its 1/8 share rounds away at a count of five. Planning the whole set spends the
+  // cold-weighted mix once, across 25 slots, so the small stages survive rounding.
+  //
+  // This mirrors awarenessDeckPlan on the image side, where the same rule is stated
+  // as "a repeated (stage × style) cell is a repeated Entity ID".
+  const activeFormulas = Object.entries(FORMULA_PROMPTS)
+    .filter(([k]) => !input.headlineStyle || k === input.headlineStyle);
+  const perFormulaCount = Math.max(1, Math.round(5 * countMultiplier));
+  const totalSlots = perFormulaCount * activeFormulas.length;
+  const wholeSetPlan: AwarenessStage[] = input.awarenessStage
+    ? Array.from({ length: totalSlots }, () => input.awarenessStage as AwarenessStage)
+    : awarenessPlanForCount(totalSlots);
+
+  // ── DESIRE AXIS ─────────────────────────────────────────────────────────────
+  // Read from the concept set for this ICP. Node 6 resolves an ICP only on the
+  // serviceId path; called WITHOUT a service (the sync wizard entry and the proof
+  // harness both do this) there is no ICP to look up, so there are no concepts and
+  // the desire axis falls back to the single deck-constant value — exactly the
+  // behaviour before this change, so that path cannot regress.
+  //
+  // ⚠️ SURFACED, NOT SILENTLY RESOLVED: whether the no-service entry SHOULD resolve
+  // an ICP is a product question, not a mechanical one. It would mean Node 6 either
+  // demanding a service or guessing which ICP a headline set belongs to. Left as
+  // the documented fallback; flagged for Arfeen rather than decided here.
+  let conceptDesires: string[] = [];
+  if (resolvedIcpId) {
+    try {
+      const { getDb: getDb2 } = await import("./db");
+      const db2 = await getDb2();
+      if (db2) {
+        const { campaignConcepts } = await import("../drizzle/schema");
+        const { eq: eqC } = await import("drizzle-orm");
+        const rows = await db2
+          .select({ desire: campaignConcepts.desire })
+          .from(campaignConcepts)
+          .where(eqC(campaignConcepts.icpId, resolvedIcpId));
+        conceptDesires = Array.from(
+          new Set(rows.map((r: any) => String(r.desire ?? "").trim()).filter(Boolean)),
+        );
+      }
+    } catch (err) {
+      console.warn(`[headlinesGenerator] desire axis unavailable for icp ${resolvedIcpId}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  const wholeSetDesires = dealAcrossSlots(conceptDesires, totalSlots);
+  console.log(`[headlinesGenerator] desire axis: ${conceptDesires.length} distinct desires` +
+    `${conceptDesires.length ? "" : " — falling back to the single deck-constant desire"}`);
+
+  // Deal the plan across formulas in rotation. awarenessPlanForCount returns the
+  // stages grouped, so rotating spreads each stage over as many different formulas
+  // as it has slots — which is what keeps (stage × formula) cells from repeating
+  // more often than the pigeonhole minimum for the deck size.
+  type HeadlineSlot = { stage: AwarenessStage; desire: string | null };
+  const slotsByFormula: HeadlineSlot[][] = activeFormulas.map(() => []);
+  let dealCursor = 0;
+  wholeSetPlan.forEach((stage, globalIdx) => {
+    for (let k = 0; k < slotsByFormula.length; k++) {
+      const f = (dealCursor + k) % slotsByFormula.length;
+      if (slotsByFormula[f].length < perFormulaCount) {
+        slotsByFormula[f].push({ stage, desire: wholeSetDesires[globalIdx] ?? null });
+        dealCursor = f + 1;
+        break;
+      }
+    }
+  });
+
   // 5 formulas in parallel via tool-use; per-formula filter respects
   // input.headlineStyle (undefined = all 5; specific enum = 1).
   await Promise.all(
-    Object.entries(FORMULA_PROMPTS)
-      .filter(([k]) => !input.headlineStyle || k === input.headlineStyle)
-      .map(async ([formulaType, promptTemplate]) => {
-        const modifiedTemplate = promptTemplate.replace(/Generate 5/g, `Generate ${5 * countMultiplier}`);
+    activeFormulas
+      .map(async ([formulaType, promptTemplate], formulaIndex) => {
+        const modifiedTemplate = promptTemplate
+          .replace(/Generate 5/g, `Generate ${perFormulaCount}`)
+          // The templates also say "the array of 5 …" further down. Left unreplaced
+          // it contradicts the count above, and the stage list below is positional —
+          // a short return would silently shift every stage by one slot.
+          .replace(/array of 5\b/g, `array of ${perFormulaCount}`);
+
+        // This formula's slice of the whole-set plan built above. Without a stage,
+        // every headline in a set differs from its siblings on FORMAT ALONE — one
+        // axis of four — which is a guaranteed Entity-ID collapse under the 2-of-4
+        // rule (docs/andromeda/copy-research/Andromeda_Copy_EntityID_Distinctness.md).
+        // Measured before this change: 1,809 of 1,809 headline pairs on prod
+        // collapsed. Adding the stage is what moves a pair from one axis to two.
+        const slotPlan: HeadlineSlot[] = slotsByFormula[formulaIndex];
+        const stagePlan: AwarenessStage[] = slotPlan.map((s) => s.stage);
+
+        const stageBlock = [
+          `AWARENESS-STAGE ASSIGNMENT — read this before writing anything.`,
+          ``,
+          `These ${perFormulaCount} headlines are deliberately spread across awareness stages. Two`,
+          `headlines that differ only in wording are treated as the same ad and compete against`,
+          `each other, so each slot below is written to a DIFFERENT reader.`,
+          ``,
+          `Write one headline per slot, in this exact order, and return them in this order:`,
+          ``,
+          ...stagePlan.map((s, i) =>
+            `── HEADLINE ${i + 1} → ${s.replace(/_/g, " ").toUpperCase()} ──\n` +
+            (slotPlan[i]?.desire ? `the want this one speaks to: ${slotPlan[i].desire}\n` : "") +
+            STAGE_HEADLINE_GUIDANCE[s],
+          ),
+          ``,
+          `Every headline still obeys the ${formulaType} format specified above. The stage decides`,
+          `WHAT the headline is about and how much it is allowed to reveal; the formula decides its`,
+          `shape. A stage assignment never overrides the compliance rules or the banned patterns.`,
+        ].join("\n");
         const resolvedPressingProblem = autoPopData.resolvedPressingProblem ?? input.pressingProblem;
         const resolvedDesiredOutcome = autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome;
         const resolvedUniqueMechanism = autoPopData.resolvedUniqueMechanism ?? input.uniqueMechanism;
@@ -401,6 +516,7 @@ The headline must signal physical presence — city, venue, date. Reference the 
         const icpAndCampaignBlock = [icpContext, campaignTypeContext].filter(Boolean).join('\n\n');
         const promptWithIcp = icpAndCampaignBlock ? prompt.replace(/\n\nGenerate /, `\n\n${icpAndCampaignBlock}\n\nGenerate `) : prompt;
         const promptWithSot = sotContext ? `${sotContext}\n\n${promptWithIcp}` : promptWithIcp;
+        const promptWithStage = `${promptWithSot}\n\n${stageBlock}`;
 
         try {
           const response = await invokeLLM({
@@ -420,7 +536,7 @@ MANDATORY: Every headline must contain at least ONE word that comes directly fro
 
 Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}\n\n${REGISTER_STANDARD}`,
               },
-              { role: "user", content: cascadeContext + promptWithSot },
+              { role: "user", content: cascadeContext + promptWithStage },
             ],
             response_format: {
               type: "json_schema",
@@ -436,8 +552,23 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           if (typeof content !== "string") throw new Error("Invalid LLM response");
           const parsed = JSON.parse(stripMarkdownJson(content));
 
+          // ── P.D.A.F. AXES (0097) ────────────────────────────────────────────
+          // Stamped from what the generator ASSIGNED, never re-read from the
+          // finished headline. stagePlan is positional — slot i was written to
+          // stage i — so the recorded stage is the instruction that was actually
+          // issued, not a guess about what came back. This is the whole reason the
+          // columns exist: the distinctness gate has to compare assignments.
+          // `format` reuses formulaType. No parallel format taxonomy is created.
+          const axesFor = (idx: number) => ({
+            persona: input.targetMarket || null,
+            desire: slotPlan[idx]?.desire
+              || ([resolvedPressingProblem, resolvedDesiredOutcome].filter(Boolean).join(" ⁝ ") || null),
+            awareness: (stagePlan[idx] ?? stagePlan[stagePlan.length - 1]) ?? null,
+            format: formulaType,
+          });
+
           if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
-            parsed.headlines.forEach((headline: string) => {
+            parsed.headlines.forEach((headline: string, idx: number) => {
               allHeadlines.push({
                 userId: input.userId,
                 serviceId: input.serviceId,
@@ -447,6 +578,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
                 headline,
                 subheadline: null,
                 eyebrow: null,
+                ...axesFor(idx),
                 targetMarket: input.targetMarket,
                 pressingProblem: input.pressingProblem,
                 desiredOutcome: input.desiredOutcome,
@@ -454,7 +586,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
               });
             });
           } else if (formulaType === "eyebrow") {
-            parsed.headlines.forEach((item: { eyebrow: string; main: string; sub: string }) => {
+            parsed.headlines.forEach((item: { eyebrow: string; main: string; sub: string }, idx: number) => {
               allHeadlines.push({
                 userId: input.userId,
                 serviceId: input.serviceId,
@@ -464,6 +596,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
                 headline: item.main,
                 subheadline: item.sub,
                 eyebrow: item.eyebrow,
+                ...axesFor(idx),
                 targetMarket: input.targetMarket,
                 pressingProblem: input.pressingProblem,
                 desiredOutcome: input.desiredOutcome,
@@ -471,7 +604,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
               });
             });
           } else if (formulaType === "authority") {
-            parsed.headlines.forEach((item: { main: string; sub: string }) => {
+            parsed.headlines.forEach((item: { main: string; sub: string }, idx: number) => {
               allHeadlines.push({
                 userId: input.userId,
                 serviceId: input.serviceId,
@@ -481,6 +614,7 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
                 headline: item.main,
                 subheadline: item.sub,
                 eyebrow: null,
+                ...axesFor(idx),
                 targetMarket: input.targetMarket,
                 pressingProblem: input.pressingProblem,
                 desiredOutcome: input.desiredOutcome,

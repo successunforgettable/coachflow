@@ -91,6 +91,43 @@ export async function ensureCampaignKit(
     .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icpId)))
     .limit(1);
 
+  // ── CONCEPT SET — triggered here, four nodes ahead of ad copy ───────────────
+  // Kit creation is the earliest point at which generating concepts is SAFE:
+  // icps.sharpenWithLadder regenerates a profile in place and is documented as
+  // sitting "BEFORE the kit exists, so nothing downstream has consumed the ICP
+  // yet". Anything earlier would make a sharpen leave a stale concept set behind.
+  //
+  // Fired on EVERY call, not only on the insert branch, which makes it
+  // self-healing: a set that failed to generate gets another attempt on the next
+  // auto-select rather than never being retried. ensureConceptsForIcp is idempotent
+  // three ways (existing set, deterministic job id, delete-then-insert), so the
+  // repeat calls cost one indexed SELECT each and nothing more.
+  //
+  // Never awaited — the cascade must not wait on concepts, which is the whole
+  // reason this generation is asynchronous in the first place.
+  // ⚠️ serviceId IS LOAD-BEARING AND MUST BE PASSED. conceptGenerator builds its
+  // grounding corpus only when a serviceId arrives (conceptGenerator.ts:226); with
+  // none, `grounding` is undefined and the output gate — which runs
+  // requireGrounding:true for concepts, by design, because concepts feed live ads —
+  // fails closed with `fabrication_check_unavailable` on all three attempts and
+  // writes nothing. The first version of this trigger omitted it and generated zero
+  // concepts on a live proof run while reporting a clean "enqueued". The gate was
+  // right; the caller was wrong.
+  void (async () => {
+    try {
+      const [icpRow] = await db
+        .select({ serviceId: idealCustomerProfiles.serviceId })
+        .from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.id, icpId))
+        .limit(1);
+      const { ensureConceptsForIcp } = await import("../conceptGenerator");
+      const outcome = await ensureConceptsForIcp({ userId, icpId, serviceId: icpRow?.serviceId ?? null });
+      if (outcome !== "exists") console.log(`[campaignKits] concepts for icp ${icpId}: ${outcome} (serviceId=${icpRow?.serviceId ?? "null"})`);
+    } catch (err) {
+      console.error(`[campaignKits] concept trigger failed for icp ${icpId}:`, err instanceof Error ? err.message : err);
+    }
+  })();
+
   if (existing) {
     if (campaignType && !existing.campaignType) {
       await db.update(campaignKits)

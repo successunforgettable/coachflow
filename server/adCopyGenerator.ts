@@ -343,7 +343,12 @@ ${icp.communicationStyle ? `How they communicate: ${icp.communicationStyle}` : '
   };
 
   const adSetId = nanoid();
-  const count = input.liteMode ? 3 : input.powerMode ? 30 : 15;
+  // Count is configuration now (see _core/variationCounts.ts). Defaults reproduce
+  // the previous `liteMode ? 3 : powerMode ? 30 : 15` exactly — no cut happens
+  // here. The budget-scaled reduction belongs at the distinctness gate, which
+  // needs a surplus to reject from.
+  const { resolveAdCopyCount } = await import("./_core/variationCounts");
+  const count = resolveAdCopyCount(input);
 
   const adTypeContext = input.adType === "lead_gen"
     ? "Lead Generation (free webinar, consultation, download)"
@@ -374,16 +379,106 @@ Every number, rating, review count, client story and named outcome in this copy 
      resolvedPressingProblem, resolvedDesiredOutcome, input.targetMarket, input.productCategory].join(" "),
   );
 
-  const headlineAngles = hasRealProof
-    ? `- Pain angle: name the specific daily frustration (1-2 words max before the hook)
-- Outcome angle: name the exact result with a number or timeframe, drawn from the supplied proof data above
-- Curiosity angle: the counterintuitive reason this problem persists
-- Social proof angle: name the result a specific type of person got, drawn from the supplied proof data above`
-    : `- Pain angle: name the specific daily frustration (1-2 words max before the hook)
-- Situation angle: name the moment this work turns, in the vocabulary the field uses
-- Curiosity angle: the counterintuitive reason this problem persists
-- Mechanism angle: name the shift the method creates and what makes the approach different
-- Contrast angle: what a working week looks like once that shift lands`;
+  // The headline angles, as a LIST rather than a prose blob. Same angles, same
+  // wording — but now each one can be assigned to a specific slot and recorded on
+  // the row as that headline's `format`. Per the standing guardrail, format reuses
+  // the angle a piece was already written to; nothing new is invented here.
+  const headlineAngleList: Array<{ key: string; brief: string }> = hasRealProof
+    ? [
+        { key: "pain", brief: "name the specific daily frustration (1-2 words max before the hook)" },
+        { key: "outcome", brief: "name the exact result with a number or timeframe, drawn from the supplied proof data above" },
+        { key: "curiosity", brief: "the counterintuitive reason this problem persists" },
+        { key: "social_proof", brief: "name the result a specific type of person got, drawn from the supplied proof data above" },
+      ]
+    : [
+        { key: "pain", brief: "name the specific daily frustration (1-2 words max before the hook)" },
+        { key: "situation", brief: "name the moment this work turns, in the vocabulary the field uses" },
+        { key: "curiosity", brief: "the counterintuitive reason this problem persists" },
+        { key: "mechanism", brief: "name the shift the method creates and what makes the approach different" },
+        { key: "contrast", brief: "what a working week looks like once that shift lands" },
+      ];
+
+  // ── AWARENESS + ANGLE PLAN FOR THE HEADLINE SET (0097) ──────────────────────
+  // Node 7's headlines carried no stage at all, which made them the same
+  // 100%-collapse case Node 6 was: every headline in the set differed from its
+  // siblings on nothing that was recorded. Measured on prod at Phase 0, all 1,911
+  // Node 7 headline pairs collapsed.
+  //
+  // Planned across the WHOLE SET and dealt, never per angle — the fix proven on
+  // Node 6, where per-format planning left 10 zero-axis pairs and starved
+  // product_aware of every slot.
+  const { awarenessPlanForCount, dealAcrossSlots } = await import("./_core/conceptAxis");
+  const { STAGE_HEADLINE_GUIDANCE } = await import("./adCopyAngles");
+
+  // ── DESIRE AXIS ─────────────────────────────────────────────────────────────
+  // The third distinctness dimension, read from the concept set the kit-creation
+  // trigger generated four nodes ago. Persona stays pinned to the ICP (the concept
+  // engine pins it too), so desire is what lets two pieces sharing an awareness
+  // stage still count as distinct.
+  //
+  // FALLBACK IS THE PRE-EXISTING BEHAVIOUR: when no concept set exists — an older
+  // ICP, a generation that failed, a coach whose set is still in flight — every
+  // piece takes the single deck-constant desire it used before this change, and
+  // nothing regresses. The axis simply goes quiet rather than breaking the run.
+  let conceptDesires: string[] = [];
+  if (icp?.id) {
+    try {
+      const { campaignConcepts } = await import("../drizzle/schema");
+      const rows = await db
+        .select({ desire: campaignConcepts.desire })
+        .from(campaignConcepts)
+        .where(eq(campaignConcepts.icpId, icp.id));
+      conceptDesires = Array.from(
+        new Set(rows.map((r: any) => String(r.desire ?? "").trim()).filter(Boolean)),
+      );
+    } catch (err) {
+      console.warn(`[adCopyGenerator] desire axis unavailable for icp ${icp.id}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  const fallbackDesire = [resolvedPressingProblem, resolvedDesiredOutcome].filter(Boolean).join(" ⁝ ") || null;
+  console.log(`[adCopyGenerator] desire axis: ${conceptDesires.length} distinct desires from concepts` +
+    `${conceptDesires.length ? "" : " — falling back to the single deck-constant desire"}`);
+
+  const headlineStagePlan = awarenessPlanForCount(count);
+  const headlineDesirePlan = dealAcrossSlots(conceptDesires, count);
+  // Angles dealt with the capacity-based algorithm ported from Node 6, rather than
+  // a plain index rotation. The rotation left 3 pairs differing on ZERO axes on the
+  // live Node 7 run, because a stage group longer than the angle list repeated an
+  // angle inside that group. Dealing with capacity spreads each stage's slots over
+  // as many different angles as the deck size allows.
+  const angleSlotsByIndex: Array<{ key: string; brief: string }> = new Array(count);
+  {
+    const capacity = Math.ceil(count / headlineAngleList.length);
+    const used = headlineAngleList.map(() => 0);
+    let cursor = 0;
+    for (let i = 0; i < count; i++) {
+      for (let k = 0; k < headlineAngleList.length; k++) {
+        const a = (cursor + k) % headlineAngleList.length;
+        if (used[a] < capacity) {
+          angleSlotsByIndex[i] = headlineAngleList[a];
+          used[a]++;
+          cursor = a + 1;
+          break;
+        }
+      }
+      if (!angleSlotsByIndex[i]) angleSlotsByIndex[i] = headlineAngleList[i % headlineAngleList.length];
+    }
+  }
+
+  const headlineSlots = headlineStagePlan.map((stage, i) => ({
+    stage,
+    angle: angleSlotsByIndex[i],
+    desire: headlineDesirePlan[i] ?? fallbackDesire,
+  }));
+
+  const headlineAngles = headlineSlots
+    .map((s, i) =>
+      `HEADLINE ${i + 1} → stage ${s.stage.replace(/_/g, " ").toUpperCase()}, angle "${s.angle.key}"\n` +
+      (s.desire ? `  the want this one speaks to: ${s.desire}\n` : "") +
+      `  angle brief: ${s.angle.brief}\n` +
+      `  ${STAGE_HEADLINE_GUIDANCE[s.stage].split("\n").slice(1).join(" ").trim()}`,
+    )
+    .join("\n\n");
 
   // ── Headlines call (sync fuller prompt) ─────────────────────────────────────
   const headlinePrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting ad HEADLINES for this service:
@@ -428,7 +523,13 @@ BANNED PATTERNS — never generate:
 
 MANDATORY: Include at least one word from the pressing problem field — the actual vocabulary the target market uses to describe their situation.
 
-Create ${count} attention-grabbing headlines (max 40 characters each). Use these angles across the set:
+Create ${count} attention-grabbing headlines (max 40 characters each).
+
+SLOT ASSIGNMENT — each headline below is written for a DIFFERENT reader and to a
+DIFFERENT angle. Two headlines that differ only in wording are treated as one ad and
+compete against each other, so write one headline per slot, in this exact order, and
+return them in that order:
+
 ${headlineAngles}
 
 Format as JSON array:
@@ -495,7 +596,8 @@ Format as JSON array:
   // spans a warmer stage at 3 slots (unaware, problem_aware, solution_aware) and all four at 8+.
   // The 25% warmer tail that …Prospecting Campaign Ad Concept Distribution §3 calls "a vital
   // safeguard against Entity-ID pigeonholing" is therefore preserved without special-casing.
-  const { awarenessPlanForCount } = await import('./_core/conceptAxis');
+  // awarenessPlanForCount is already in scope — imported above for the headline
+  // plan, so headlines, bodies and links all spend the SAME allocation function.
   const { angleForStage, STAGE_COPY_GUIDANCE } = await import('./adCopyAngles');
   const slotCount = input.liteMode ? 3 : availableAngles.length;
   const stagePlan = awarenessPlanForCount(slotCount);
@@ -513,10 +615,85 @@ Format as JSON array:
     usedAngles.add(angle);
     slots.push({ angle, stage });
   }
+  // Desire per body slot, from the same concept set the headlines used.
+  const bodyDesirePlan = dealAcrossSlots(conceptDesires, slots.length);
 
-  const bodyPromises = slots.map(async ({ angle, stage }) => {
+  // ── FIELD CHAINING (build spec §3) ──────────────────────────────────────────
+  // The three text surfaces used to be generated in parallel silos: headlines,
+  // then bodies, then links, none of them seeing the others. Andromeda fuses the
+  // fields of ONE ad into a single meaning, so the redundancy that costs delivery
+  // is redundancy WITHIN an ad — a headline and a body saying the same thing in
+  // the same words. Each body is therefore paired with the headline it is most
+  // likely to ship beside (same awareness stage, so the pair is coherent as well
+  // as non-redundant) and told to complement it.
+  //
+  // The pairing is a generation-time device, not a stored relationship: there is
+  // no pairing column and this step does not add one.
+  const headlineTexts: string[] = Array.isArray(headlineData.headlines) ? headlineData.headlines : [];
+  const headlineByStage = new Map<string, string[]>();
+  headlineSlots.forEach((s, i) => {
+    const t = headlineTexts[i];
+    if (!t) return;
+    const pool = headlineByStage.get(s.stage) ?? [];
+    pool.push(String(t));
+    headlineByStage.set(s.stage, pool);
+  });
+  const stageCursor: Record<string, number> = {};
+  const partnerHeadlineFor = (stage: string, idx: number): string | null => {
+    const pool = headlineByStage.get(stage);
+    if (pool && pool.length) {
+      const c = stageCursor[stage] ?? 0;
+      stageCursor[stage] = c + 1;
+      return pool[c % pool.length];
+    }
+    return headlineTexts.length ? String(headlineTexts[idx % headlineTexts.length]) : null;
+  };
+
+  const bodyPartners: Array<string | null> = slots.map(({ stage }, i) => partnerHeadlineFor(stage, i));
+
+  const bodyPromises = slots.map(async ({ angle, stage }, slotIdx) => {
     const anglePrompt = BODY_ANGLE_PROMPTS[angle];
     const stageGuidance = STAGE_COPY_GUIDANCE[stage];
+    const partnerHeadline = bodyPartners[slotIdx];
+    const slotDesire = bodyDesirePlan[slotIdx] ?? fallbackDesire;
+
+    // The desire is written INTO the prompt, not merely recorded on the row. A
+    // dimension that labels output without changing it is the fake-diversity the
+    // whole exercise exists to remove.
+    const desireBlock = bodyDesirePlan.length
+      ? `THE WANT THIS PIECE SPEAKS TO — the single thread it follows:
+${slotDesire}
+
+Other pieces in this batch speak to different wants. Stay on this one. Do not try to
+cover every reason someone might hire this coach; the copy that names one want
+precisely is what the right reader recognises, and it is what keeps this piece from
+being read as a restatement of its siblings.`
+      : "";
+
+    const chainBlock = partnerHeadline
+      ? `PAIRED HEADLINE — this body copy will run in the same ad as this headline:
+"${partnerHeadline}"
+
+COMPLEMENT IT, DO NOT RESTATE IT. The headline and the body are read together as one
+message. Repeating the headline's wording in the body wastes the second surface and
+makes the ad read as one narrow idea instead of a complete one.
+- Do NOT reuse the headline's key nouns and verbs. Where the same subject has to be
+  referred to, refer to it a different way.
+- Do NOT open the body with a paraphrase of the headline.
+- The headline has done the work of stopping the scroll. The body's job is the part
+  the headline could not carry: the specific situation behind it, and what changes.`
+      : "";
+
+    const primingBlock = `OPENING WORDS — the first sentence carries more weight than any other.
+The opening 5 to 10 words decide how this ad is categorised and therefore who sees it,
+so they must be the most specific words in the whole piece.
+- Open on the concrete situation, in the vocabulary this field actually uses for it.
+- Name the reader's world in those first words — the work they do, the thing that keeps
+  happening — not a greeting, not a wind-up, not a question that could open any ad.
+- Do NOT open with filler: "Hey", "So", "Look", "Let me tell you", "Imagine", "What if",
+  "Are you tired of", "Ever wondered", "Picture this", "Here's the thing".
+- The first sentence should be impossible to reuse for a different coach in a different
+  field.`;
     const bodyPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ONE high-converting ad BODY COPY using the ${angle.replace('_', ' ')} angle:
 
 Service: ${service.name}
@@ -549,6 +726,12 @@ ${stageGuidance}
 ${registerPersonGuidance(hasRealProof)}
 
 ${physicalGuidance}
+
+${desireBlock}
+
+${chainBlock}
+
+${primingBlock}
 
 PAS STRUCTURE — apply to every body copy in this order:
 PAIN (1-2 sentences): Open on the specific moment the coach knows this problem by — from their own experience of it, or from doing this work up close. Use the vocabulary the field actually uses for it. Concrete moment, not a category.
@@ -586,7 +769,30 @@ Return ONLY the body text as a single string, no JSON wrapper.`;
   const bodyResults = await Promise.all(bodyPromises);
   const bodyData = { bodies: bodyResults.map(r => r.body) };
 
-  // ── Link descriptions (sync fuller prompt) ─────────────────────────────────
+  // ── Link descriptions — the third link in the chain ────────────────────────
+  // Generated LAST and, unlike before, aware of both surfaces that precede them.
+  // Each slot sees the headline and the opening of the body it will ship with, so
+  // it can close the message rather than restate it. Links also carry an awareness
+  // stage now, from the same whole-set allocation — previously they had none, which
+  // made every link in a set indistinguishable from every other on the axes that
+  // decide Entity-ID clustering.
+  const linkStagePlan = awarenessPlanForCount(count);
+  const linkDesirePlan = dealAcrossSlots(conceptDesires, count);
+  const linkSlotBlock = linkStagePlan
+    .map((stage, i) => {
+      const hl = headlineTexts.length ? String(headlineTexts[i % headlineTexts.length]) : "(none)";
+      const bodyOpening = bodyResults.length
+        ? String(bodyResults[i % bodyResults.length].body).replace(/\s+/g, " ").slice(0, 140)
+        : "(none)";
+      return (
+        `LINK ${i + 1} → stage ${stage.replace(/_/g, " ").toUpperCase()}\n` +
+        `  its headline: "${hl}"\n` +
+        `  its body opens: "${bodyOpening}…"\n` +
+        `  finish this ad's message — do not repeat the headline's words or the body's opening.`
+      );
+    })
+    .join("\n\n");
+
   const linkPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Create ${count} high-converting LINK DESCRIPTIONS for this service:
 
 Service: ${service.name}
@@ -609,6 +815,15 @@ Create ${count} clear, action-oriented link descriptions (max 30 characters each
 - Create urgency or excitement
 - Are benefit-focused
 - Match the ad style tone
+
+SLOT ASSIGNMENT — each link description completes an ad that already has a headline and
+a body. It is the third and last text surface, so its job is to finish the message, not
+to repeat either of them. Write one link description per slot, in this exact order, and
+return them in that order:
+
+${linkSlotBlock}
+
+Return them in slot order.
 
 Format as JSON array:
 {
@@ -644,6 +859,15 @@ Format as JSON array:
   // ── Compliance + insert ────────────────────────────────────────────────────
   const allInserts: any[] = [];
 
+  // P.D.A.F. axes, stamped from what the generator ASSIGNED — never re-read from
+  // the finished text. persona and desire are deck-constant today (one ICP, one
+  // pressing problem), which is exactly the pinned-ceiling the persona/pain
+  // widening phase exists to lift; recording them now means the gate reads one
+  // shape whether or not that phase has landed.
+  const pdafPersona = input.targetMarket || null;
+  const pdafDesire = [resolvedPressingProblem, resolvedDesiredOutcome].filter(Boolean).join(" ⁝ ") || null;
+
+  let headlineIdx = 0;
   for (const headline of headlineData.headlines) {
     const complianceResult = await checkCompliance(headline, {
       userId: input.userId,
@@ -660,6 +884,11 @@ Format as JSON array:
       adCallToAction: input.adCallToAction,
       contentType: "headline" as const,
       content: headline,
+      // Slot i of the headline plan produced headline i — positional, as issued.
+      persona: pdafPersona,
+      desire: headlineSlots[headlineIdx]?.desire ?? pdafDesire,
+      awareness: headlineSlots[headlineIdx]?.stage ?? null,
+      format: headlineSlots[headlineIdx]?.angle.key ?? null,
       targetMarket: input.targetMarket,
       productCategory: input.productCategory,
       specificProductName: input.specificProductName,
@@ -681,8 +910,10 @@ Format as JSON array:
       selectionScore: String(scoreAdContent('headline', headline)),
       violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null,
     });
+    headlineIdx++;
   }
 
+  let bodyIdx = 0;
   for (const result of bodyResults) {
     const complianceResult = await checkCompliance(result.body, {
       userId: input.userId,
@@ -700,6 +931,12 @@ Format as JSON array:
       contentType: "body" as const,
       bodyAngle: result.angle,
       content: result.body,
+      // Bodies already carried a stage and an angle; 0097 records them. `format`
+      // reuses bodyAngle rather than introducing a second label for the same idea.
+      persona: pdafPersona,
+      desire: bodyDesirePlan[bodyIdx] ?? pdafDesire,
+      awareness: slots[bodyIdx]?.stage ?? null,
+      format: result.angle,
       targetMarket: input.targetMarket,
       productCategory: input.productCategory,
       specificProductName: input.specificProductName,
@@ -721,8 +958,10 @@ Format as JSON array:
       selectionScore: String(scoreAdContent('body', result.body, result.angle)),
       violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null,
     });
+    bodyIdx++;
   }
 
+  let linkIdx = 0;
   for (const link of linkData.links) {
     const complianceResult = await checkCompliance(link);
     allInserts.push({
@@ -735,6 +974,14 @@ Format as JSON array:
       adCallToAction: input.adCallToAction,
       contentType: "link" as const,
       content: link,
+      // Links now carry a stage from the same whole-set allocation. Their format
+      // axis is the surface itself — a link description is one architecture, not a
+      // family of angles — so it is recorded as such rather than left null, which
+      // would read as "no format assigned" to the gate.
+      persona: pdafPersona,
+      desire: linkDesirePlan[linkIdx] ?? pdafDesire,
+      awareness: linkStagePlan[linkIdx] ?? null,
+      format: "link_description",
       targetMarket: input.targetMarket,
       productCategory: input.productCategory,
       specificProductName: input.specificProductName,
@@ -756,6 +1003,7 @@ Format as JSON array:
       selectionScore: String(scoreAdContent('link', link)),
       violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null,
     });
+    linkIdx++;
   }
 
   // ── OUTPUT GATE (compliance axis + fabrication), one shared pass ────────────
