@@ -369,6 +369,14 @@ export const adCopy = mysqlTable("adCopy", {
   // actual issue count + reasons and feeds the "prefer stored over live"
   // path in complianceRewrites.generateMore. Nullable for legacy rows.
   violationReasons: json("violationReasons"),
+  // ── 0097 — P.D.A.F. distinctness axes, recorded AT GENERATION TIME ─────────
+  // See the matching block on `headlines`. On this table `format` reuses the
+  // bodyAngle for body rows; headline and link rows carry whatever format label
+  // the generator assigns them, and NULL where none is assigned yet.
+  persona: text("persona"),
+  desire: text("desire"),
+  awareness: varchar("awareness", { length: 32 }),
+  format: varchar("format", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -711,6 +719,17 @@ export const headlines = mysqlTable("headlines", {
   // issue count and the exact reasons without re-running the checker on
   // every render. Nullable for legacy rows predating the column.
   violationReasons: json("violationReasons"),
+  // ── 0097 — P.D.A.F. distinctness axes, recorded AT GENERATION TIME ─────────
+  // The four dimensions that decide whether two pieces of copy are one Entity ID
+  // or two. Written when the piece is generated so the distinctness gate compares
+  // what was ASSIGNED, never a score inferred from the finished text.
+  // `format` reuses the formula this headline was written to (formulaType) — it is
+  // denormalised here so one gate reads one axis across headlines and adCopy alike.
+  // NULL == generated before the axes were recorded.
+  persona: text("persona"),
+  desire: text("desire"),
+  awareness: varchar("awareness", { length: 32 }),
+  format: varchar("format", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
