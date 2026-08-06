@@ -12,16 +12,24 @@ It has been wrong more than once. **Trace code and query the DB; do not trust ha
 
 | | |
 |---|---|
-| Branch | `railway-build` |
-| HEAD | **`51bdd03`** |
-| origin/railway-build | **`51bdd03`** — in sync |
-| Unpushed | **0 commits** (plus whatever the current session is holding — see §11) |
-| Deployed? | **YES.** Railway is green on this SHA; prod HTTP 200. |
+| Branch | `railway-build` — the only deploy branch. Never push `main`. |
+| HEAD / origin | **Do not read a SHA from this file. Run the command below.** |
+| Deployed? | Railway auto-deploys `railway-build` on push. If HEAD == origin and Railway is green, the tip is live. |
 
-⚠️ **THIS SECTION WAS WRONG FOR THE WHOLE OF 2026-08-06 AND IS THE REASON TO DISTRUST IT BY DEFAULT.**
-It claimed HEAD `eb50e3a`, "origin UNMOVED", "Deployed? **NO**" — all three false once the six-commit
-chapter shipped. A fresh session reads this file first, so a stale §1 is the most expensive stale
-prose in the repo. **If you change what is deployed, this table is part of the change.**
+```
+git fetch origin railway-build && git rev-parse HEAD origin/railway-build && git log --oneline -8
+```
+
+⚠️ **THIS SECTION HARDCODED A SHA THREE TIMES AND WENT STALE THREE TIMES — SO IT NO LONGER CARRIES
+ONE.** It claimed `eb50e3a` while the six-commit chapter had already shipped; it then claimed
+`51bdd03` while the §11 canvas fix (`774a39b`) was already pushed and live. A fresh session reads
+this file first, so a stale §1 is the most expensive stale prose in the repo. **The fix is not to
+update the SHA faster — it is to stop storing one here.** Git is the source of truth for where the
+repo is; this file's job is to explain what that code *means*, which is everything below.
+
+**What is true as at 2026-08-06:** the Andromeda image chapter and the §11 canvas + routing fix are
+both pushed and live. The narrative sections below describe that state. If `git log` shows commits
+newer than §11's, this file has not caught up with them and the code wins.
 
 **Push discipline is unchanged: the next push needs a fresh explicit "push" from Arfeen.** No prior
 authorisation carries forward. Committing does NOT deploy; **pushing** deploys (~4s, no gate).
@@ -135,6 +143,17 @@ real compositor at worst-case content (`scripts/measure-text-safe-zone.ts`).
    from the others. Inert today because it takes PATH A, but it is the same omission
    `regenerateSingle` had. **Not fixed — deliberately out of scope of the 08-06 canvas fix, which
    Arfeen scoped to two sites.**
+8. **`generateAsync` (`routers/adCreatives.ts:1552`) passes NO aspectRatio AT ALL — so it still
+   emits 1:1 while the cascade emits 4:5.** Found 2026-08-06 by tracing every prompt-builder call
+   site; not previously written down. Neither the `generateAdImagePrompt` call at `:1552` nor the
+   `genImg({ prompt, style })` call that follows it carries a ratio, and `generateImage` defaults
+   `aspect_ratio` to `"1:1"` (`imageGeneration.ts:265`). **This is the same missing-argument family
+   as the `regenerateSingle` fix (§8b symptom 1) and as `makeVertical` (item 7) — three instances of
+   one shape.** Unlike item 7 this one is NOT inert: any card produced by this path is a different
+   SHAPE from a cascade-produced sibling. It also takes PATH A (no stage passed), so it renders the
+   pre-rebuild prompt as well. **Not fixed, nothing touched — logged for a decision.** Fixing it is
+   the same one-line shape as the two sites already fixed, but it belongs to the wiring gap (item 1)
+   and therefore inherits the 4-vs-8 cardinality question, which is **Arfeen's call**.
 
 ---
 
@@ -243,11 +262,19 @@ wrong about the reason. **The integration is FULLY BUILT. The blocker is an expi
   `_core/metaOAuth.ts:37` and `routers/meta.ts:162`, nowhere else, and is not cached in a module
   variable — but `process.env` is fixed at process start, so a value change needs the restart Railway
   performs automatically on save.
-- 🔴 **THE BLOCKER: the single stored Meta connection is EXPIRED.** `meta_access_tokens` holds
-  **exactly one row** — connected **2026-05-11**, `tokenExpiresAt` **2026-07-10**, dead ~4 weeks.
-  It DOES carry both `adAccountId` and `pageId`. `getMetaToken` (`metaAPI.ts:79`) returns `null` past
-  expiry, so **every Graph call returns null and `publishToMeta` throws "Failed to create Meta
-  campaign"**. **Reconnecting via Settings → Connect Meta is the WHOLE fix.**
+- ✅ **RESOLVED 2026-08-06 — THE TOKEN IS RECONNECTED AND LIVE.** The expiry blocker recorded here
+  is CLEARED. Verified by direct read-only query against production (token value never selected):
+  `meta_access_tokens` still holds **exactly one row**, `id=3`, `userId=1` — `tokenExpiresAt`
+  **2026-10-05**, i.e. **valid, ~59 days of runway**, `lastRefreshedAt` **2026-08-06 13:36**, with
+  both `adAccountId` and `pageId` present. Note the reconnect **updated the existing row in place**
+  (`connectedAt` is still 2026-05-11); it did not insert a second one, so "exactly one row" remains
+  the correct expectation.
+  ⚠️ **This proves the token is stored and unexpired — NOT that a publish succeeds.** `getMetaToken`
+  (`metaAPI.ts:79`) will now return a token instead of `null`, so the four Graph calls will actually
+  be attempted for the first time. **The first real publish is still unproven live-fire.** If it
+  errors, read the exact Graph error out of the Railway logs rather than guessing — the four calls
+  fail with distinct messages (`Failed to create Meta campaign` / `ad set` / `ad creative` / `ad`),
+  and which one fires localises the problem immediately.
 - ✅ **`adSetId: "temp"` IS NOT A MISSING AD-SET ARCHITECTURE.** The real Meta ad-set id is stored
   correctly beside it as **`metaAdSetId`** (`meta.ts:419`), returned by the mutation and used by
   status sync. `adSetId` is the **internal CoachFlow** grouping nanoid (`schema.ts:1077`, matching
@@ -267,14 +294,22 @@ wrong about the reason. **The integration is FULLY BUILT. The blocker is an expi
   is live. Do not read it.
 
 **Plain answer to "to run one real ad, what is the blocker?"** — on Arfeen's own ad account:
-**reconnect the expired token. That is the entire blocker.** No review, no config, no build. What
-follows is a live-fire test of an existing path, not new work. Onboarding other coaches is the
-separate Advanced Access track above.
+**nothing is blocking it any more.** The token is reconnected, the config is present, the path is
+built. No review, no config, no build. What remains is a live-fire test of an existing path, not new
+work. Onboarding other coaches is the separate Advanced Access track above.
 
-📌 **Housekeeping, 2026-08-06:** `META_APP_SECRET` was exposed in a session transcript by a failed
-redaction and is being rotated. Rotation point is the Railway variable named above; Railway redeploys
-`coachflow` automatically on save. Rotation does not invalidate user tokens — but since the only
-token is expired anyway, rotate and reconnect in one trip.
+**What the first publish will do, read off the code — it does NOT spend by default.** `status`
+defaults to **`PAUSED`** in two independent places: the zod input default (`meta.ts`, the
+`publishToMeta` input schema) and the operator UI's initial state (`client/src/v2/PushKitModal.tsx`,
+`useState<"PAUSED" | "ACTIVE">("PAUSED")`). The same status is applied to campaign, ad set AND ad.
+The daily-budget field starts at **$20 USD** (minimum $1) and is only ever charged once something is
+switched to `ACTIVE`. **A publish left on the defaults creates a real, genuinely-in-Meta but PAUSED
+ad that spends nothing** — which is the correct shape for the first live-fire test.
+
+📌 **Housekeeping, 2026-08-06 — DONE.** `META_APP_SECRET` was exposed in a session transcript by a
+failed redaction and **has been rotated**; the Meta connection was re-established in the same trip
+(see the token row above). Rotation point is the Railway variable named above; Railway redeploys
+`coachflow` automatically on save.
 
 ---
 
@@ -321,7 +356,9 @@ token is expired anyway, rotate and reconnect in one trip.
   rows" would destroy them. Always `WHERE id IN (…)` plus a userId guard — never userId alone.
 - **Write prose-heavy records with Write/Edit, never a bash heredoc** — backticks get shell-substituted.
 - **⚠️ ONLY THE TABLOID DECK IS 4.** `EDITORIAL_VARIATIONS` stays 5.
-- **~309 untracked earlier-session files deliberately left alone.** Never sweep them into a commit.
+- **539 untracked earlier-session files deliberately left alone** (counted 2026-08-06; was recorded
+  as ~309, and it only ever grows as proof runs bank screenshots). Never sweep them into a commit —
+  `git add -A` / `git commit -a` is always wrong in this repo. Stage named paths only.
 - **`railway run` block-buffers stdout.** Two runs today were invisible for 25 minutes while failing.
   Proof scripts log to a file with `appendFileSync` as well as stdout — keep that.
 - **`MYSQLHOST`/`MYSQLPORT`/`MYSQLPASSWORD` are NOT set on the prod service.** Only `DATABASE_URL` is.

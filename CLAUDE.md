@@ -29,7 +29,7 @@ narrative of any past decision is recoverable from git.
 
 ```
 git fetch origin railway-build && git rev-parse HEAD origin/railway-build
-npx tsc --noEmit 2>&1 | grep -c "error TS"     # expect 35
+npx tsc --noEmit 2>&1 | grep -c "error TS"     # expect 34
 pnpm install --frozen-lockfile                  # must pass
 ```
 
@@ -89,7 +89,7 @@ pnpm install --frozen-lockfile                  # must pass
 
 ## 8. Test Gates
 
-- **Type-check baseline:** **35 errors** (`npx tsc --noEmit 2>&1 | grep -c "error TS"`) — must not regress; new work adds ZERO. The repo is **pnpm-only**, and 35 is the pnpm-canonical figure (verified 2026-07-28). The "38" figure came from an `npm ci` tree pinning `@types/node@24.12.0`, whose iterator typings surface two extra pre-existing `TS2802` errors — that path no longer exists, since `package-lock.json` is deleted.
+- **Type-check baseline:** **34 errors** (`npx tsc --noEmit 2>&1 | grep -c "error TS"`) — must not regress; new work adds ZERO. The repo is **pnpm-only**, and 34 is the pnpm-canonical figure (**re-measured 2026-08-06**; it was 35 as at 2026-07-28, and one was retired by the Andromeda image work). The "38" figure came from an `npm ci` tree pinning `@types/node@24.12.0`, whose iterator typings surface two extra pre-existing `TS2802` errors — that path no longer exists, since `package-lock.json` is deleted.
 - **Test suite:** `npx vitest run server/pipeline-fixes.test.ts` — report pass count. Also: `npx vitest run server/lib/complianceFilter.test.ts` and `npx vitest run server/_core/tokenCrypto.test.ts`
 - Never use global vitest output (dominated by pre-existing infrastructure failures)
 - Verify-before-commit: TS baseline holds, vitest passes, atomic commits
