@@ -301,6 +301,20 @@ token is expired anyway, rotate and reconnect in one trip.
 - **A LIVE RENDER IS THE ONLY PROOF OF A LIVE IMAGE PATH** — and for anything involving the text
   overlay, **the COMPOSITE is the only proof**. The raw render passed while the finished ad was broken.
 - **Save proof images to disk BEFORE any teardown.** Teardown outranks the artifact read.
+- **⚠️ TEARDOWN IS NOT DONE WHEN THE DB RECONCILES — IT MUST CLEAR CLOUDINARY TOO, AND THE ORDER IS
+  FIXED: READ THE public_ids, THEN DELETE THE ROWS.** A DB delete never touches Cloudinary, and once
+  the rows are gone **the URLs are unrecoverable from the database** — the images stay hosted
+  forever. `server/lib/adCreativeTeardown.ts` exists precisely for this and does the two steps in the
+  correct order; its docblock records the 30 orphans that accumulated across three runs on
+  2026-07-29 before it was written.
+  **This rule is here because CC broke it on 2026-08-06** — `scripts/regen-canvas-proof.ts` deleted
+  its two rows directly, reported "405 ✅ RECONCILED", and left 4 orphans (raw + composited × 2). A
+  green reconciliation line said the run was clean when it was not.
+  **Recovery, if it happens again:** the ids can still be recovered from Cloudinary by listing —
+  but use `cloudinary.search` sorted by `created_at desc`, **NOT `api.resources()`**, which caps at
+  500 per page in no useful order and returned zero matches on the first attempt.
+  `scripts/sweep-regen-canvas-orphans.ts` is the worked example (dry-run by default, pattern-scoped,
+  refuses to delete unless the match count is exactly what was expected).
 - **Do NOT write to protected services 272–277, or to service 285.**
 - **⚠️ TEARDOWN IS ALWAYS ID-SCOPED, NEVER USER-SCOPED.** Smoke user **117174 OWNS the 25 protected
   creatives on services 272–277** (verified 2026-08-06). A teardown written as "delete this user's
@@ -318,17 +332,38 @@ token is expired anyway, rotate and reconnect in one trip.
 
 ---
 
-## 11. 🟡 HELD, NOT COMMITTED — the two-site canvas + routing fix (2026-08-06)
+## 11. ✅ SHIPPED — the two-site canvas + routing fix (2026-08-06), PROVEN LIVE
 
-Written this session, **deliberately uncommitted and unpushed**, awaiting a live render.
-
-**Files touched:** `_core/adVariations.ts` (adds `FEED_ASPECT`) · `adCreativesGenerator.ts` (imports
-it, same value, zero behaviour change) · `routers/adCreatives.ts` (the two call sites) ·
+**Files:** `_core/adVariations.ts` (adds `FEED_ASPECT`) · `adCreativesGenerator.ts` (imports it, same
+value, zero behaviour change) · `routers/adCreatives.ts` (the two call sites) ·
 `sharedProcedureShapes.test.ts` (routing assertion **inverted** — it previously pinned the defect on
 purpose, with a comment saying it was pinned "so the fix is a deliberate, visible change").
 
-**Gates green:** tsc **34**, all six image suites **108 passed**, gate suites **407 passed**.
+**Gates:** tsc **34**, six image suites **108 passed**, gate suites **407 passed**.
 
-⛔ **DO NOT COMMIT OR PUSH THIS ON GREEN TESTS ALONE.** Both sites change composited pixels on paths
-no automated harness drives (P6b), so the standing rule applies: **Arfeen drives one live regenerate
-and looks at the card first.** Every gate in this repo is blind to whether the picture is good (§6).
+### Proven on prod, not on tests — `scripts/regen-canvas-proof.ts`
+
+The harness calls **`appRouter.createCaller(ctx).adCreatives.regenerateSingle(...)`** — the real tRPC
+procedure including its `setImmediate` background body. It does **not** re-implement the sequence; a
+rebuilt sequence would prove the harness (STANDING RULE 2). Two labelled throwaway rows created and
+regenerated, so **no pre-existing row was read-modify-written**.
+
+| row | style | renderer | emitted | `imageFormat` written |
+|---|---|---|---|---|
+| 460 | `screenshot` | **gpt-image-1** (24.7s) | **1024×1280** | `1024x1280` ✅ |
+| 461 | `person_shocked` | **flux-1.1-pro** | **896×1088** | `896x1088` ✅ |
+
+Both rows were seeded with the old `1080x1080` lie and the fix overwrote each with true emitted
+dimensions. **The person slot correctly STAYED on Flux** — a fix that moved every style would have
+been a regression, not a fix. Images: `docs/screenshots/run-2026-08-06-regen-canvas/`.
+
+**Reconciled:** `adCreatives` 405 → 407 → **405**, running jobs **0**, Cloudinary swept 4/4.
+
+### ⚠️ Judged by Arfeen, and one thing is NOT fixed by this
+
+The person card is clean — face entirely clear of the headline. **On the still life the headline
+crosses the laptop screen and mug while the top ~45% is empty wall**: the legacy PATH A clause says
+*"the main object sits high in the frame"* and the model did not obey. **This fix neither caused nor
+cured that** — these paths were already on the legacy composition at 1:1, and there is no 1:1
+before-shot from this path to compare against. Logged as a separate prompt-adherence issue on the
+legacy still-life composition. Approved for ship by Arfeen on the pixels.

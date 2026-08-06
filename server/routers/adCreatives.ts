@@ -11,7 +11,7 @@ import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
 import { runAdCreativesGeneration, resolveSubjectForService } from "../adCreativesGenerator";
 import { subjectClausesForBatch, describeResolution } from "../_core/subjectDescriptor";
-import { AD_VARIATIONS, liveStyleFor } from "../_core/adVariations";
+import { AD_VARIATIONS, FEED_ASPECT, liveStyleFor } from "../_core/adVariations";
 import { fitTitle } from "../lib/templates/templatePrimitives";
 import { validateCascadePrereqs } from "../_core/cascadeContext";
 
@@ -1073,13 +1073,52 @@ export const adCreativesRouter = router({
             ? (await generateEditorialSceneBriefs([capturedHeadline], capturedNiche))[0]
             : null;
 
+          // ⚠️ CANVAS + ROUTING (fixed 2026-08-06). This site previously passed neither `style` nor
+          // `aspectRatio`, so a regenerate silently diverged from the deck it was replacing: it
+          // emitted 1:1 while its four siblings are 4:5, and a stored `screenshot` row fell to Flux
+          // instead of gpt-image-1 (the bake-off model, 6/6 vs 2/6 on niche relevance). The
+          // editorial branch above always passed 4:5 — only the tabloid branch drifted.
+          //
+          // `style` is already resolved at capture time via liveStyleFor(); it simply was not
+          // forwarded. No awareness stage is passed here BY DESIGN — regenerateSingle reconstructs
+          // from the stored row and has no concept row to read, so it stays on the legacy prompt
+          // path. See sharedProcedureShapes.test.ts.
+          //
+          // ⚠️ THE aspectRatio ARGUMENT TO generateAdImagePrompt IS INERT ON THIS SITE TODAY, and is
+          // passed deliberately anyway. PATH A returns at the `if (!stageAction)` early-exit before
+          // zonePersonFor/zoneStillFor are ever reached, so with no stage the ratio is never read —
+          // the band wording comes from the STATIC compositionPerson/compositionSetting constants.
+          // Measured, that static "lower half" is now MORE accurate, not less: the true reserved
+          // fraction is 0.571 at 1:1, 0.505 at 4:5-Flux and 0.495 at 4:5-gpt, so this canvas move
+          // takes the legacy wording from 7 points under-reserved to within half a point. The
+          // argument goes live, correctly, the moment this site is wired to pass a stage.
           const imageResult = editorialScene
-            ? await genEditorial({ prompt: buildEditorialPrompt(editorialScene, capturedNiche), aspectRatio: "4:5" })
-            : await genImg({ prompt: generateAdImagePrompt(capturedStyle, capturedNiche, capturedProblem) });
+            ? await genEditorial({ prompt: buildEditorialPrompt(editorialScene, capturedNiche), aspectRatio: FEED_ASPECT })
+            : await genImg({
+                prompt: generateAdImagePrompt(
+                  capturedStyle, capturedNiche, capturedProblem,
+                  false,        // uglyMode
+                  undefined,    // subject — P6b, still unresolved on this path
+                  null,         // awareness — legacy path, deliberate
+                  null,         // subType — legacy path, deliberate
+                  FEED_ASPECT,  // LAYER 3: drives the text-safe band
+                ),
+                style: capturedStyle,
+                aspectRatio: FEED_ASPECT,
+              });
           if (!imageResult.url) throw new Error("Failed to generate replacement image");
 
           const imageResponse = await fetch(imageResult.url);
           const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+          // Record what was ACTUALLY emitted, never a nominal constant — the same discipline as
+          // adCreativesGenerator. Flux answers "4:5" with 896x1088 and gpt-image-1 with 1024x1280,
+          // so a regenerate can legitimately change the row's true dimensions (a `screenshot` row
+          // moves renderer). Leaving the stored imageFormat untouched would make the row lie about
+          // its own asset, and the reserved-band maths keys off these dimensions.
+          const regenMeta = await (await import("sharp")).default(rawBuffer).metadata();
+          const regenFormat = `${regenMeta.width ?? "?"}x${regenMeta.height ?? "?"}`;
+          console.log(`[adCreatives.regenerateSingle] emitted ${regenFormat} (requested ${FEED_ASPECT}, style=${capturedStyle})`);
 
           // Dual upload — raw Flux stays around so future recompositeText
           // calls start from a clean background.
@@ -1095,7 +1134,7 @@ export const adCreativesRouter = router({
 
           await bgDb
             .update(adCreativesTable)
-            .set({ imageUrl: s3Url, rawImageUrl })
+            .set({ imageUrl: s3Url, rawImageUrl, imageFormat: regenFormat })
             .where(andBg(eqBg(adCreativesTable.id, capturedId), eqBg(adCreativesTable.userId, capturedUserId)));
 
           await bgDb
@@ -1671,17 +1710,40 @@ export async function generateAdCreativesBatch(params: {
     const variation = variations[i];
     const headline = HEADLINE_FORMULAS[variation.formula](mechanism, params.niche, customerCount);
     const complianceIssues = checkCompliance(headline, params.mainBenefit, params.pressingProblem);
-    const imagePrompt = generateAdImagePrompt(variation.style, params.niche, params.pressingProblem, false, batchSubjectClauses[i]);
+    // ⚠️ CANVAS + ROUTING (fixed 2026-08-06). Same omission as regenerateSingle: neither `style` nor
+    // `aspectRatio` was forwarded, so this loop emitted 1:1 squares while the Auto Mode deck it
+    // mirrors emits 4:5, and its `screenshot` slot never reached gpt-image-1.
+    //
+    // ⚠️ As at regenerateSingle, the aspectRatio argument BELOW is inert today — this site passes no
+    // awareness stage, so generateAdImagePrompt takes PATH A and early-exits before the ratio is
+    // read. It is passed so that wiring the stage here (the open fan-out gap) needs no second edit,
+    // and because the ratio genuinely IS live on the generateImage call that follows.
+    const imagePrompt = generateAdImagePrompt(
+      variation.style, params.niche, params.pressingProblem,
+      false,                     // uglyMode
+      batchSubjectClauses[i],    // P6 cause 2 — already wired on this path
+      null,                      // awareness — this path has no concept row, legacy prompt
+      null,                      // subType — as above
+      FEED_ASPECT,               // LAYER 3 — inert until a stage is passed; see above
+    );
 
     console.log(`[generateAdCreativesBatch] Generating variation ${i + 1}/${variations.length}`);
 
-    // Generate image
-    const imageResult = await generateImage({ prompt: imagePrompt });
+    // Generate image. `style` drives renderer selection (rendererForStyle): the still-life slot
+    // renders on gpt-image-1, the person slots on Flux.
+    const imageResult = await generateImage({ prompt: imagePrompt, style: variation.style, aspectRatio: FEED_ASPECT });
     if (!imageResult.url) throw new Error(`Failed to generate image ${i + 1}`);
 
     // Dual upload: raw Flux output + composited PNG.
     const imageResponse = await fetch(imageResult.url);
     const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+    // Measured, never nominal — see the identical block in adCreativesGenerator. The old hardcoded
+    // "1080x1080" was already wrong for this path and would have become a second, larger lie once
+    // the canvas moved to 4:5 (Flux emits 896x1088, gpt-image-1 1024x1280).
+    const emittedMeta = await (await import("sharp")).default(rawBuffer).metadata();
+    const emittedFormat = `${emittedMeta.width ?? "?"}x${emittedMeta.height ?? "?"}`;
+    console.log(`[generateAdCreativesBatch] variation ${i + 1} emitted ${emittedFormat} (requested ${FEED_ASPECT})`);
     const rawKey = `ad-creatives/${params.userId}/${batchId}/raw-variation-${i + 1}.png`;
     const { url: rawImageUrl } = await storagePut(rawKey, rawBuffer, "image/png");
     const compositedBuffer = await renderAdCreative(rawBuffer, {
@@ -1710,7 +1772,7 @@ export async function generateAdCreativesBatch(params: {
       headline,
       imageUrl: s3Url,
       rawImageUrl,
-      imageFormat: "1080x1080",
+      imageFormat: emittedFormat,
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
       batchId,

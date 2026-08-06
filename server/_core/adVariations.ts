@@ -72,6 +72,24 @@ export const AD_VARIATIONS: readonly AdVariation[] = [
 ] as const;
 
 /**
+ * ─── FEED ASPECT RATIO — ONE source of truth (2026-08-06) ───────────────────
+ *
+ * 4:5 is the feed placement the banked specs describe ([SEPARATION §3]: 4:5
+ * mobile feed, top 14% / bottom 20% UI clearance) and it is what maximises
+ * mobile canvas. Person slots take it natively on Flux; the still life takes it
+ * via gpt-image-1 2:3 + crop (see rendererForStyle).
+ *
+ * ⚠️ THIS LIVES HERE FOR THE SAME REASON AD_VARIATIONS DOES. It began as a
+ * local `const FEED_ASPECT` inside runAdCreativesGeneration, so the two sibling
+ * loops in routers/adCreatives.ts kept rendering 1:1 and nothing in the code
+ * connected them — the identical failure shape this module's docblock was
+ * written about. It must be passed BOTH to generateAdImagePrompt (it drives the
+ * text-safe band) AND to generateImage (it drives the emitted canvas); passing
+ * one without the other reserves a band for a canvas that is never rendered.
+ */
+export const FEED_ASPECT = "4:5";
+
+/**
  * ─── HEADLINE SUPPLY PER DECK ───────────────────────────────────────────────
  *
  * The ad-headline micro-call (`generateContextualAdHeadlines`) is SHARED by two

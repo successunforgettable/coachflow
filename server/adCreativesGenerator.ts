@@ -46,7 +46,7 @@ import {
   resolveSubjectDescriptor, subjectClausesForBatch, describeResolution,
   type SubjectResolution,
 } from "./_core/subjectDescriptor";
-import { AD_VARIATIONS, TABLOID_FORMULAS, type AdVariationFormula } from "./_core/adVariations";
+import { AD_VARIATIONS, FEED_ASPECT, TABLOID_FORMULAS, type AdVariationFormula } from "./_core/adVariations";
 import { awarenessDeckPlan, subTypePlanFor, visibilityTierPlanFor } from "./_core/conceptAxis";
 import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
@@ -572,12 +572,8 @@ export async function runAdCreativesGeneration(
     `[adCreativesGenerator] LAYER1+2+3 plan: ${VARIATIONS.map((v, i) => `${v.style}=${deckAwarenessPlan[i]}/${deckSubTypePlan[i]}/${deckVisibilityPlan[i]}`).join(" ")}`,
   );
 
-  // ─── FEED ASPECT RATIO (2026-08-06) ────────────────────────────────────────
-  // The tabloid deck rendered 1:1 while the EDITORIAL deck already rendered 4:5 (line ~729). 4:5 is
-  // the feed placement the banked specs describe ([SEPARATION §3]: 4:5 mobile feed, top 14% /
-  // bottom 20% UI clearance) and it is what maximises mobile canvas. Person slots take it natively
-  // on Flux; the still life takes it via gpt-image-1 2:3 + crop (see rendererForStyle).
-  const FEED_ASPECT = "4:5";
+  // FEED_ASPECT now comes from _core/adVariations — it was a local const here, which is exactly why
+  // the two sibling loops in routers/adCreatives.ts never got it. Same value, no behaviour change.
 
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
