@@ -52,7 +52,7 @@ import {
   type BodyAngle,
 } from "../adCopyAngles";
 import { awarenessPlanForCount } from "../_core/conceptAxis";
-import { auditBatch, type PdafLabels } from "./pdafDistinctness";
+import { auditBatch, type PdafLabels } from "../_core/pdafDistinctness";
 
 type Row = Record<string, any>;
 

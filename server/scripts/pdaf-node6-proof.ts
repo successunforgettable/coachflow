@@ -25,7 +25,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { headlines } from "../../drizzle/schema";
 import { runHeadlinesGeneration } from "../headlinesGenerator";
-import { auditBatch, type PdafLabels } from "./pdafDistinctness";
+import { auditBatch, type PdafLabels } from "../_core/pdafDistinctness";
 
 const USER_ID = Number(process.argv[2] ?? 1);
 

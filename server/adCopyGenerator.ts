@@ -1,4 +1,5 @@
 import { invokeLLM } from "./_core/llm";
+import type { GateItem } from "./_core/pdafGate";
 import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, scoreAdContent } from "./_core/copywritingRules";
 import { nanoid } from "nanoid";
 import { ensureConceptsForIcp } from "./conceptGenerator";
@@ -1124,11 +1125,167 @@ Format as JSON array:
       `Nothing was saved — regenerate, or add your real figures and client material to your profile first.`,
     );
   }
+
+  // ── P.D.A.F. DISTINCTNESS GATE ──────────────────────────────────────────────
+  // Runs AFTER the compliance gate, deliberately: spending distinctness redrafts on a
+  // variant that will be hard-blocked anyway is wasted work, and every redraft issued
+  // here is re-gated for compliance before it is accepted (see `regenerate` below), so
+  // the two gates cannot disagree about what ships.
+  //
+  // Headlines AND bodies form ONE fused population — publishing recombines them, and the
+  // research treats them as two of the three surfaces Meta fuses into a single meaning.
+  // Link descriptions are excluded by `partitionPopulation`; they keep their awareness
+  // stamp for coordination and are never counted.
+  let gatedInserts: typeof keptInserts = keptInserts;
+  {
+    const { runDistinctnessGate } = await import("./_core/pdafGate");
+    const { BODY_ANGLE_PROMPTS: REGEN_ANGLE_PROMPTS } = await import("./adCopyAngles");
+
+    // Row identity before the DB assigns one: position in the kept array. Stable for the
+    // life of this call, which is all the gate needs.
+    const rowById = new Map<string, any>();
+    const idOf = (i: number) => `${keptInserts[i].contentType}#${i}`;
+
+    // GENERATION PARTNERS, recorded so the deck-wide claim can be checked rather than
+    // argued. The chaining step paired each body with one headline (bodyPartners, by slot);
+    // mapping that back to the headline's gate id lets the ledger say, of every echo it
+    // catches, whether the body echoed its OWN partner — which pairwise checking would also
+    // have caught — or a DIFFERENT headline in the deck, which only a deck-wide check finds
+    // and which is the case that actually ships once publishing recombines the surfaces.
+    const headlineIdByText = new Map<string, string>();
+    keptInserts.forEach((row, i) => {
+      if (row.contentType === "headline") headlineIdByText.set(String(row.content ?? ""), idOf(i));
+    });
+    const partnerTextByAngle = new Map<string, string>();
+    slots.forEach(({ angle }, slotIdx) => {
+      const p = bodyPartners[slotIdx];
+      if (p) partnerTextByAngle.set(String(angle), p);
+    });
+
+    const items: Array<GateItem<string>> = keptInserts.map((row, i) => {
+      const id = idOf(i);
+      rowById.set(id, row);
+      const partnerText = row.contentType === "body"
+        ? partnerTextByAngle.get(String(row.bodyAngle ?? ""))
+        : undefined;
+      return {
+        id,
+        surface: String(row.contentType),
+        text: String(row.content ?? ""),
+        partnerId: partnerText ? (headlineIdByText.get(partnerText) ?? null) : null,
+        labels: {
+          persona: row.persona ?? null,
+          desire: row.desire ?? null,
+          awareness: row.awareness ?? null,
+          format: row.format ?? null,
+        },
+      };
+    });
+
+    const populationSize = items.filter((it) => it.surface !== "link").length;
+    const pools = {
+      desires: conceptDesires.length ? conceptDesires : (fallbackDesire ? [fallbackDesire] : []),
+      awarenessPlan: awarenessPlanForCount(populationSize),
+      formats: Array.from(new Set([
+        ...headlineAngleList.map((a) => a.key),
+        ...availableAngles.map((a) => String(a)),
+      ])),
+    };
+
+    // Redraft ONE piece at a new position on one axis. Returns null unless the redraft is
+    // non-empty AND clears the compliance gate — a distinctness fix that reintroduces a
+    // policy violation must never reach the deck.
+    const redraft = async (row: any, instruction: string): Promise<string | null> => {
+      const resp = await invokeLLM({
+        messages: [
+          { role: "system", content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants.\n\n${NO_CREDENTIAL_FABRICATION_RULE}\n\n${REGISTER_STANDARD}` },
+          { role: "user", content: instruction },
+        ],
+      });
+      const raw = resp.choices[0]?.message?.content;
+      const text = typeof raw === "string" ? raw.trim() : "";
+      if (!text) return null;
+      return gateOne({ ...row, content: text }).ok ? text : null;
+    };
+
+    const facts = `Service: ${service.name}\nTarget Market: ${input.targetMarket}\nPressing Problem: ${resolvedPressingProblem}\nDesired Outcome: ${resolvedDesiredOutcome}\nUnique Mechanism: ${resolvedUniqueMechanism}`;
+
+    const gateResult = await runDistinctnessGate<string>({
+      node: "adCopy (Node 7)",
+      items,
+      pools,
+      regenerate: async ({ item, moves }) => {
+        const row = rowById.get(String(item.id));
+        if (!row) return null;
+        const isBody = row.contentType === "body";
+        // EVERY move is written INTO the prompt and stamped on the row. An axis that labels
+        // output without changing it is precisely the fake diversity this gate exists to
+        // remove — and when the gate says two axes must move to clear the rule, writing only
+        // one of them into the prompt would make the row's labels a lie about its text.
+        const axisLine = moves.map(({ dimension, value }) =>
+          dimension === "desire"
+            ? `THE WANT THIS PIECE SPEAKS TO — the single thread it must follow:\n${value}\n\nStay on this one want. Do not cover every reason someone might hire this coach.`
+            : dimension === "awareness"
+              ? `AWARENESS STAGE — write this to a reader at this stage:\n${String(value).replace(/_/g, " ").toUpperCase()}\n\n${(STAGE_COPY_GUIDANCE as any)[value] ?? (STAGE_HEADLINE_GUIDANCE as any)[value] ?? ""}`
+              : `FORMAT — rewrite this using the "${String(value).replace(/_/g, " ")}" angle:\n${isBody ? (REGEN_ANGLE_PROMPTS as any)[value] ?? "" : ""}`,
+        ).join("\n\n");
+
+        const instruction = isBody
+          ? `${cascadeContext}You are rewriting ONE ad body copy.\n\n${facts}\n\n${axisLine}\n\n${registerPersonGuidance(hasRealProof)}\n\n${physicalGuidance}\n\nCreate ONE body copy (125-150 words). End with: ${input.adCallToAction}.\nReturn ONLY the body text as a single string.\n\n---\n\nIMPORTANT: an earlier version of this piece was too close to another ad in the same set — the two would be treated as one ad and compete against each other. This rewrite must be a genuinely different piece, not a rewording.`
+          : `${cascadeContext}You are rewriting ONE ad HEADLINE.\n\n${facts}\n\n${axisLine}\n\n${registerPersonGuidance(hasRealProof)}\n\nReturn ONLY the headline text as a single string, no quotes, no explanation.\n\n---\n\nIMPORTANT: an earlier version of this headline was too close to another headline in the same set — the two would be treated as one ad and compete against each other. This rewrite must say something genuinely different, not the same thing in other words.`;
+
+        const text = await redraft(row, instruction);
+        if (!text) return null;
+        const nextLabels = { ...item.labels };
+        const next: any = { ...row, content: text };
+        for (const { dimension, value } of moves) {
+          next[dimension] = value;
+          (nextLabels as any)[dimension] = value;
+          if (dimension === "format" && isBody) next.bodyAngle = value;
+        }
+        next.selectionScore = String(
+          scoreAdContent(isBody ? "body" : "headline", text, isBody ? next.bodyAngle : undefined),
+        );
+        rowById.set(String(item.id), next);
+        return {
+          id: item.id,
+          surface: item.surface,
+          text,
+          partnerId: item.partnerId ?? null,
+          labels: nextLabels,
+        };
+      },
+      // Deck-wide anti-echo. The avoid list is EVERY headline in the deck, not just the
+      // one this body happened to echo — otherwise the redraft simply lands on a
+      // different headline and the check fires again next round.
+      rewriteEcho: async ({ item, finding, avoidPhrases }) => {
+        const row = rowById.get(String(item.id));
+        if (!row || row.contentType !== "body") return null;
+        const instruction = `${cascadeContext}You are rewriting the OPENING of ONE ad body copy. Everything else about it stays the same.\n\n${facts}\n\nTHE PROBLEM: this body opens with wording that repeats a headline running in the same set — the shared phrase is "${finding.shared}". When the picture, the headline and the body all say the same thing, the ad is read as one narrow idea and its variants compete against each other instead of reaching different people.\n\nHEADLINES ALREADY IN THIS SET — do not reuse their wording in your opening:\n${avoidPhrases.map((p) => `- ${p}`).join("\n")}\n\nOPENING WORDS — the first sentence carries more weight than any other. The opening 5 to 10 words decide how this ad is categorised and therefore who sees it.\n- Open on the concrete situation, in the vocabulary this field actually uses for it.\n- Do NOT reuse the key nouns and verbs of any headline above.\n- Do NOT open with filler: "Hey", "So", "Look", "Let me tell you", "Imagine", "What if", "Are you tired of", "Ever wondered", "Picture this", "Here's the thing".\n\nHere is the current body copy:\n${row.content}\n\nRewrite it so the opening carries the same meaning in genuinely different words. Keep the length (125-150 words), keep the angle, and end with: ${input.adCallToAction}.\nReturn ONLY the body text as a single string.`;
+        const text = await redraft(row, instruction);
+        if (!text) return null;
+        const next = { ...row, content: text, selectionScore: String(scoreAdContent("body", text, row.bodyAngle)) };
+        rowById.set(String(item.id), next);
+        return { ...item, text };
+      },
+    });
+
+    // Links rejoin the deck untouched — excluded from the population, never dropped by it.
+    gatedInserts = [
+      ...gateResult.kept.map((it) => rowById.get(String(it.id))).filter(Boolean),
+      ...gateResult.excluded.map((it) => rowById.get(String(it.id))).filter(Boolean),
+    ];
+
+    const { formatLedger } = await import("./_core/pdafGate");
+    console.log(formatLedger(gateResult.ledger));
+    (globalThis as any).__ZAP_LAST_PDAF_LEDGER__ = gateResult.ledger;
+  }
+
   // Persistence backstop. The per-variant gate above already dropped violators and drives
   // the retry; this catches anything that gate's field selection missed.
   {
     const { gateBeforePersist } = await import("./_core/persistenceGate");
-    const __g = await gateBeforePersist("adCopy", keptInserts as any[]);
+    const __g = await gateBeforePersist("adCopy", gatedInserts as any[]);
     await db.insert(adCopy).values(__g.kept as any);
   }
 
@@ -1161,15 +1318,20 @@ Format as JSON array:
   // Counts report what was actually PERSISTED, not what was generated. The output gate
   // above drops variants, so returning the pre-drop totals would hand the caller (and the
   // wizard) a number that does not match the deck in the database.
-  // keptInserts already includes anything the retry round recovered.
-  const keptOf = (t: string) => keptInserts.filter((r) => r.contentType === t).length;
+  // keptInserts already includes anything the compliance retry round recovered.
+  //
+  // ⚠️ COUNTED OFF gatedInserts, NOT keptInserts. keptInserts is the post-COMPLIANCE array;
+  // the distinctness gate then evicts, recovers and trims on top of it. Counting the earlier
+  // array told the wizard a deck was larger than the database held — the same defect the
+  // comment above was written to prevent, reintroduced one layer up when the gate landed.
+  const keptOf = (t: string) => gatedInserts.filter((r: any) => r.contentType === t).length;
   return {
     adSetId,
-    count: keptInserts.length,
+    count: gatedInserts.length,
     headlineCount: keptOf("headline"),
     bodyCount: keptOf("body"),
     linkCount: keptOf("link"),
     generatedCount: allInserts.length,
-    droppedCount: allInserts.length - keptInserts.length,
+    droppedCount: allInserts.length - gatedInserts.length,
   };
 }

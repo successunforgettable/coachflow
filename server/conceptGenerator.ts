@@ -90,7 +90,21 @@ set is weighted toward earlier-stage prospects. Write each concept TO the stage 
 ${planLines}
 Return the concepts in exactly this order, each carrying its assigned awareness value. Do NOT
 substitute a different stage, reorder the set, or re-balance the distribution.
-HOOK PATTERN — each concept uses exactly one of these patterns: ${availableHooks.join(", ")}.${hasRealClientMaterial ? "" : "\n(The social-proof and data-chart hooks need a real client account or a real figure to carry them, and this coach's proof is not on the record yet, so this set is built from the other patterns.)"}
+HOOK PATTERN — each concept uses exactly one of these patterns: ${availableHooks.join(", ")}.${hasRealClientMaterial ? "" : `
+(The social-proof and data-chart hooks need a real client account or a real figure to carry them, and this coach's proof is not on the record yet, so this set is built from the other patterns.)
+
+WHAT THIS COACH HAS TO WORK WITH — read this before writing any concept.
+This coach's client results are not on the record. Every concept in this set is therefore
+built from what is genuinely available: the coach's own experience, the method itself, the
+situation the reader is already in, and what the work is designed to do.
+- Write the coach's own account, the method's mechanism, and the reader's situation.
+- Where a piece would normally reach for a client outcome, a number, a testimonial, a
+  named credential or a track record, use the mechanism instead: what the approach does
+  and why it works, stated as design rather than as a result already achieved.
+- A concept that needs a client story or a statistic to stand up is the wrong concept for
+  this coach — choose a different angle rather than supplying the missing proof.
+This is what the set is built from, not a restriction on it: mechanism-led concepts are
+the strongest available shape when proof is not yet on the record.`}
 ${renderHookGuidance(availableHooks)}
 
 REAL-URGENCY RULE (direct_offer_urgency hook): express urgency ONLY from a genuine, coach-supplied deadline or offer. NEVER invent scarcity — no "expires tonight", "gone forever", "price doubles at midnight", fake countdowns, or guaranteed-income claims. If no real deadline exists, use a non-urgency close instead. This copy is screened by Meta ad-policy filters.
@@ -187,9 +201,29 @@ export async function generateConceptsForIcp(params: {
   if (!icp) throw new Error(`ICP ${params.icpId} not found for user ${params.userId}`);
 
   const count = params.count ?? DEFAULT_CONCEPT_COUNT;
+  // ── YIELD: OVER-GENERATE MODESTLY, NEVER PAD ────────────────────────────────
+  // Measured failure this exists to absorb: a launch-stage fixture asked for 8 and kept 4.
+  // The gate blocked all 8 first-pass on `invented_testimonial` / `unearned_authority` and
+  // recovered none on retry — a coach with no proof on the record makes the model reach for
+  // proof it does not have. That is causal, not random, so the fix is two-sided: ask for a
+  // surplus here, AND stop asking for proof-shaped angles at all when there is no proof
+  // (buildConceptPrompt already withholds the social-proof and data-chart hooks; the
+  // instruction added there now says plainly that no client result may be written).
+  //
+  // ⚠️ 1.5×, NOT 2×. The surplus is insurance, not a strategy: concept generation takes
+  // minutes (N concepts × up to 3 gate attempts, plus a per-concept solo pass), so doubling
+  // it doubles a slow path to buy protection against a tail.
+  //
+  // ⚠️ AND NEVER PAD. If the gate still leaves fewer than `count` survivors, the set ships
+  // SHORT and the count is reported. No filler concept, no duplicated concept, no relaxing
+  // the fabrication gate — that gate was right, and a fabricated angle in a live ad is a
+  // worse outcome than a thinner deck.
+  const overGenerateCount = Math.ceil(count * 1.5);
   // The same deterministic plan the prompt assigns, re-derived here so the validator enforces
   // exactly what was asked for. Same input → same plan, so these cannot drift apart.
-  const awarenessPlan = awarenessPlanForCount(count);
+  // Built for the OVER-GENERATED size, so the surplus is cold-weighted too rather than
+  // arriving as an unplanned tail.
+  const awarenessPlan = awarenessPlanForCount(overGenerateCount);
   // Real-proof signal for the third-person unlock — the coach's own supplied client
   // material. Absent (or no serviceId) resolves to first-person-only, the safe direction.
   let hasRealClientMaterial = false;
@@ -207,7 +241,7 @@ export async function generateConceptsForIcp(params: {
     hasRealClientMaterial = !!(svc && (svc.t1 || svc.t2 || svc.t3));
   }
 
-  const prompt = buildConceptPrompt(icp as ConceptIcpInput, count, hasRealClientMaterial);
+  const prompt = buildConceptPrompt(icp as ConceptIcpInput, overGenerateCount, hasRealClientMaterial);
 
   // Generate → structural validate + compliance screen → retry once with combined failContext.
   // Both gates run every attempt: structure (fields/enums/distinct/headline≠hook) AND Meta ad-policy
@@ -320,12 +354,50 @@ export async function generateConceptsForIcp(params: {
     const { recordComplianceGate } = await import("./_core/complianceTelemetry");
     recordComplianceGate({
       asset: "concepts",
-      generated: count,
-      blockedFirstPass: firstPassOk ? 0 : count,
-      recovered: !firstPassOk && skippedCount === 0 ? count : 0,
+      // ⚠️ overGenerateCount, NOT count. The yield fix asks the model for 1.5x the target,
+      // so `count` stopped being the number generated the moment it landed — the live run
+      // logged "generated=8 … kept=10", which is impossible and made the block rate a lie.
+      generated: overGenerateCount,
+      blockedFirstPass: firstPassOk ? 0 : overGenerateCount,
+      recovered: !firstPassOk && skippedCount === 0 ? overGenerateCount : 0,
       kept: concepts.length,
       classes: firstPassLabels,
     });
+  }
+
+  // ── TRIM THE SURPLUS BACK TO THE ASK ────────────────────────────────────────
+  // The over-generation above exists to survive the gate, not to enlarge the set. Cut back
+  // to `count` by taking one concept per awareness stage in rotation, so the trim keeps the
+  // cold-weighted spread rather than lopping off whichever stage happened to be generated
+  // last. If fewer than `count` survived, this is a no-op and the set ships short — see the
+  // never-pad note at overGenerateCount.
+  if (concepts.length > count) {
+    const byStage = new Map<string, RawConcept[]>();
+    for (const c of concepts) {
+      const k = String(c.awareness ?? "");
+      if (!byStage.has(k)) byStage.set(k, []);
+      byStage.get(k)!.push(c);
+    }
+    const picked: RawConcept[] = [];
+    while (picked.length < count) {
+      let tookOne = false;
+      for (const bucket of Array.from(byStage.values())) {
+        if (picked.length >= count) break;
+        const next = bucket.shift();
+        if (next) { picked.push(next); tookOne = true; }
+      }
+      if (!tookOne) break;
+    }
+    console.log(
+      `[conceptGenerator] over-generated ${overGenerateCount}, ${concepts.length} survived the gate, ` +
+      `trimmed to the ${count} asked for (stage-balanced).`,
+    );
+    concepts = picked;
+  } else if (concepts.length < count) {
+    console.warn(
+      `[conceptGenerator] yield short: asked ${count}, over-generated ${overGenerateCount}, ` +
+      `${concepts.length} survived. Shipping short — padding is never correct here.`,
+    );
   }
 
   const conceptSetId = randomUUID();

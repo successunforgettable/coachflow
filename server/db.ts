@@ -93,13 +93,22 @@ export async function getUserByOpenId(openId: string) {
 
 // Headlines helpers
 
-export async function createHeadlines(headlineData: Array<typeof headlines.$inferInsert>) {
+/**
+ * Returns the number of rows ACTUALLY PERSISTED, which is not always what was passed in —
+ * `gateBeforePersist` drops rows that fail the compliance backstop. Callers that report a
+ * count to the coach must use this, not the length of what they handed over: a live run on
+ * 2026-08-07 passed 12 headlines, the backstop dropped one for `promised_result`, and 11
+ * landed while the wizard would have said 12.
+ */
+export async function createHeadlines(headlineData: Array<typeof headlines.$inferInsert>): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   const { gateBeforePersist } = await import("./_core/persistenceGate");
   const __gated = await gateBeforePersist("headlines", headlineData as any[]);
+  if (__gated.kept.length === 0) return 0;
   await db.insert(headlines).values(__gated.kept as any);
+  return __gated.kept.length;
 }
 
 export async function getHeadlinesByUserId(userId: number) {

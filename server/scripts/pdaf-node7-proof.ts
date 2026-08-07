@@ -23,7 +23,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { adCopy, services } from "../../drizzle/schema";
 import { runAdCopyGeneration } from "../adCopyGenerator";
-import { auditBatch, type PdafLabels } from "./pdafDistinctness";
+import { auditBatch, type PdafLabels } from "../_core/pdafDistinctness";
 
 const USER_ID = Number(process.argv[2] ?? 1);
 const LABEL = "ZZ-PDAF-PROOF — throwaway, safe to delete";

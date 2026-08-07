@@ -3,6 +3,7 @@ import { invokeLLM } from "./_core/llm";
 import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, REGISTER_STANDARD, scoreAdContent } from "./_core/copywritingRules";
 import { awarenessPlanForCount, dealAcrossSlots, type AwarenessStage } from "./_core/conceptAxis";
 import { STAGE_HEADLINE_GUIDANCE } from "./adCopyAngles";
+import type { GateItem } from "./_core/pdafGate";
 import type { headlines as headlinesTable } from "../drizzle/schema";
 
 function stripMarkdownJson(content: string): string {
@@ -303,6 +304,11 @@ export async function runHeadlinesGeneration(input: {
   let campaignTypeContext = '';
   let serviceCategory: string | null = null;
   let resolvedIcpId: number | undefined;
+  // Hoisted to function scope so the BLOCKING compliance pass below can build the same
+  // grounding corpus the persistence backstop builds. They were block-local, which is part
+  // of why Node 6 never had a blocking pass of its own.
+  let resolvedService: typeof services.$inferSelect | undefined;
+  let resolvedIcp: typeof idealCustomerProfiles.$inferSelect | undefined;
 
   if (input.serviceId) {
     const db = await getDb();
@@ -311,6 +317,7 @@ export async function runHeadlinesGeneration(input: {
     const serviceData = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);
     if (serviceData.length > 0) {
       const service = serviceData[0];
+      resolvedService = service;
       autoPopData = {
         avatarName: service.avatarName,
         avatarTitle: service.avatarTitle,
@@ -337,6 +344,7 @@ export async function runHeadlinesGeneration(input: {
     }
     if (icp) {
       resolvedIcpId = icp.id;
+      resolvedIcp = icp;
       icpContext = [
         'IDEAL CUSTOMER PROFILE — use this to make every line of copy specific and targeted:',
         icp.pains ? `Their daily pains: ${icp.pains}` : '',
@@ -650,7 +658,210 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
     })
   );
 
-  await createHeadlines(headlinesWithCompliance);
+  // ── TEMPLATE-TOKEN RESOLUTION — no raw [INSERT_*] placeholder ever persists ──
+  // PRE-EXISTING DEFECT, found in persisted rows on the 2026-08-07 Node 6 run:
+  //   "[INSERT_AUTHORITY_TITLE] Revealed What Operations Consultants Who Moved to Retainers…"
+  // Two of eleven shipped headlines carried the raw token. It reaches coaches today.
+  //
+  // The token is not a bug in the model's behaviour — NO_CREDENTIAL_FABRICATION_RULE
+  // explicitly OFFERS "bracketed [INSERT_*] placeholders" as one of three legal ways to
+  // avoid inventing a credential, and that rule is right: a placeholder is far better than
+  // a fabricated award. The bug is that nothing ever RESOLVED the placeholder before the
+  // row was written.
+  //
+  // Resolution order, matching what the rule already permits:
+  //   1. the coach's REAL authority material (services.pressFeatures — the same field
+  //      Node 7 resolves for its "Credible Authority" slot);
+  //   2. otherwise GENERIC ROLE FRAMING, the rule's third option — a description of who is
+  //      speaking that claims no credential at all.
+  // Never a fabricated credential, and never the raw token.
+  {
+    const realAuthority = String((resolvedService as any)?.pressFeatures ?? "").trim();
+    // Generic role framing: names the role, asserts nothing. Deliberately not "award-winning
+    // expert" or similar — inventing standing is precisely what the rule forbids, and a
+    // placeholder is only safe to replace with something that claims no more than it did.
+    const genericRole = "One experienced practitioner";
+    const substitute = realAuthority || genericRole;
+    const TOKEN_RE = /\[INSERT_[A-Z0-9_]*\]/g;
+    let tokensFound = 0;
+    for (const row of headlinesWithCompliance as any[]) {
+      for (const field of ["headline", "subheadline", "eyebrow"] as const) {
+        const v = row[field];
+        if (typeof v !== "string" || !TOKEN_RE.test(v)) continue;
+        TOKEN_RE.lastIndex = 0;
+        tokensFound += (v.match(TOKEN_RE) ?? []).length;
+        // Collapse a doubled space if the token was mid-sentence and the substitute is empty.
+        row[field] = v.replace(TOKEN_RE, substitute).replace(/\s{2,}/g, " ").trim();
+      }
+      TOKEN_RE.lastIndex = 0;
+    }
+    if (tokensFound > 0) {
+      console.log(
+        `[headlinesGenerator] resolved ${tokensFound} unfilled template token(s) using ` +
+        `${realAuthority ? "the coach's real authority material" : "generic role framing"}.`,
+      );
+    }
+  }
+
+  // ── BLOCKING COMPLIANCE PASS — RUNS BEFORE THE DISTINCTNESS GATE ────────────
+  // Restores the designed order, which Node 7 already had and Node 6 did not.
+  //
+  // WHAT WAS WRONG. `checkCompliance` above only SCORES; it drops nothing. The only
+  // blocking check was `gateBeforePersist` inside createHeadlines, which runs AFTER the
+  // distinctness gate. Measured live 2026-08-07: the gate kept 12, the backstop then
+  // dropped 1 for `promised_result`, and 11 landed. That wasted redraft effort on a piece
+  // compliance was always going to discard, and could push a deck under the band floor
+  // with nothing left to backfill from.
+  //
+  // This uses the SAME checkOutput + grounding corpus the backstop builds, so the two
+  // cannot disagree about what is compliant. The backstop stays where it is and becomes a
+  // true backstop — it should now find nothing.
+  //
+  // ⚠️ SCOPE MATCHES THE BACKSTOP EXACTLY. gateBeforePersist no-ops without a serviceId
+  // (it cannot build a corpus without a service), so this pass skips in the same case
+  // rather than inventing enforcement the no-service path never had.
+  let compliantHeadlines = headlinesWithCompliance;
+  if (resolvedService) {
+    const { checkOutput } = await import("./_core/complianceAxis");
+    const { buildCoachCorpus, buildProofSupplied } = await import("./_core/groundingCorpus");
+    const grounding = {
+      corpus: buildCoachCorpus({ service: resolvedService as any, groundingMeta: (resolvedIcp as any)?.groundingMeta }),
+      supplied: buildProofSupplied(resolvedService as any),
+    };
+    const blockedClasses: string[] = [];
+    compliantHeadlines = headlinesWithCompliance.filter((row: any) => {
+      // Headlines are a SHORT field — the same role the backstop's copyFieldsOf assigns and
+      // the role the compliance axis's short-field checks are written for.
+      const res = checkOutput(
+        [{ location: "headline", text: String(row.headline ?? ""), role: "short" as const }],
+        grounding,
+      );
+      if (!res.ok) blockedClasses.push(...res.blocking.map((h) => String(h.classId)));
+      return res.ok;
+    });
+    const blocked = headlinesWithCompliance.length - compliantHeadlines.length;
+    if (blocked > 0) {
+      console.log(
+        `[headlinesGenerator] compliance gate: blocked ${blocked}/${headlinesWithCompliance.length} ` +
+        `headlines before the distinctness gate (classes=[${Array.from(new Set(blockedClasses)).join(",")}]).`,
+      );
+    }
+    // ⚠️ NO RETRY HERE, MATCHING NODE 7'S MEASURED DECISION. Node 7 retries bodies only:
+    // on prod, 100% of its drops were bodies, and a 40-character headline has too little
+    // room for a redraft to change a verdict. Building a headline retry would be building
+    // for a case that has never occurred. The distinctness gate below still has a surplus
+    // to work from, because generation is deliberately larger than the band.
+  }
+
+  // ── P.D.A.F. DISTINCTNESS GATE ──────────────────────────────────────────────
+  // Runs after the per-headline compliance check above and before persistence, the same
+  // order Node 7 uses. Node 6 produces one surface only, so there are no bodies here and
+  // therefore nothing for the deck-wide anti-echo check to act on — it is Node 7 that
+  // carries a body opening capable of echoing a headline. No rewriteEcho is supplied.
+  //
+  // WHAT THE TRIM RETIRES HERE. 25 headlines across 20 (stage × formula) cells must repeat
+  // a cell by pigeonhole, which is exactly where Node 6's 3 residual zero-axis pairs came
+  // from. Trimming to the band puts the count under the cell count so pigeonhole no longer
+  // FORCES a repeat — and the eviction pass above is what guarantees zero, because a
+  // colliding piece is removed by construction rather than hoped away.
+  let gatedHeadlines = compliantHeadlines;
+  {
+    const { runDistinctnessGate, formatLedger } = await import("./_core/pdafGate");
+    const rowById = new Map<string, any>();
+    const items: Array<GateItem<string>> = compliantHeadlines.map((row: any, i: number) => {
+      const id = `headline#${i}`;
+      rowById.set(id, row);
+      return {
+        id,
+        surface: "headline",
+        text: String(row.headline ?? ""),
+        labels: {
+          persona: row.persona ?? null,
+          desire: row.desire ?? null,
+          awareness: row.awareness ?? null,
+          format: row.format ?? null,
+        },
+      };
+    });
+
+    const deckFacts = [
+      `Target Market: ${input.targetMarket}`,
+      `Pressing Problem: ${autoPopData.resolvedPressingProblem ?? input.pressingProblem}`,
+      `Desired Outcome: ${autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome}`,
+      `Unique Mechanism: ${autoPopData.resolvedUniqueMechanism ?? input.uniqueMechanism}`,
+    ].join("\n");
+
+    const gateResult = await runDistinctnessGate<string>({
+      node: "headlines (Node 6)",
+      items,
+      pools: {
+        desires: conceptDesires.length
+          ? conceptDesires
+          : ([[autoPopData.resolvedPressingProblem ?? input.pressingProblem,
+               autoPopData.resolvedDesiredOutcome ?? input.desiredOutcome]
+              .filter(Boolean).join(" ⁝ ")].filter(Boolean) as string[]),
+        awarenessPlan: wholeSetPlan,
+        formats: activeFormulas.map(([f]) => String(f)),
+        // Node 6 cannot move format — see the regenerate callback below for why. Declaring
+        // it here means the gate never PROPOSES format, so no attempt is ever burned on a
+        // move this node would have to refuse.
+        movable: ["desire", "awareness"],
+      },
+      regenerate: async ({ item, moves }) => {
+        const row = rowById.get(String(item.id));
+        if (!row) return null;
+        // FORMAT IS NOT MOVABLE HERE — declared to the gate via pools.movable above, so the
+        // gate never proposes it and never wastes an attempt on it. Moving format means
+        // moving the headline to a different FORMULA, and the formulas do not share a row
+        // shape: `eyebrow` carries an eyebrow plus a subheadline, `authority` a subheadline,
+        // `story`/`question`/`urgency` neither. Redrafting across that boundary would have
+        // to re-derive the other fields from a different JSON schema, and a half-filled row
+        // is worse than an honest drop. Node 7 has no such constraint — its formats are
+        // angles over one row shape — and moves on all three axes.
+        const axisLine = moves.map(({ dimension, value }) => dimension === "desire"
+          ? `THE WANT THIS HEADLINE SPEAKS TO — the single thread it follows:\n${value}\n\nOther headlines in this set speak to different wants. Stay on this one.`
+          : `AWARENESS STAGE — write this headline to a reader at this stage:\n${String(value).replace(/_/g, " ").toUpperCase()}\n\n${STAGE_HEADLINE_GUIDANCE[value as AwarenessStage] ?? ""}`,
+        ).join("\n\n");
+        const resp = await invokeLLM({
+          messages: [
+            { role: "system", content: `You are an expert direct response copywriter specialising in Meta ad headlines for coaches, consultants and speakers.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_CREDENTIAL_FABRICATION_RULE}\n\n${REGISTER_STANDARD}` },
+            { role: "user", content: `${cascadeContext}You are rewriting ONE ad headline in the ${row.formulaType} format.\n\n${deckFacts}\n\n${axisLine}\n\nBANNED PATTERNS — never use: ${BANNED_HEADLINE_PATTERNS.map((p) => `"${p}..."`).join(", ")}\n\nReturn ONLY the headline text as a single string, no quotes, no explanation.\n\n---\n\nIMPORTANT: an earlier version of this headline was too close to another headline in the same set — the two would be treated as one ad and compete against each other. This rewrite must say something genuinely different, not the same thing in other words.` },
+          ],
+        });
+        const raw = resp.choices[0]?.message?.content;
+        const text = typeof raw === "string" ? raw.trim().replace(/^["']|["']$/g, "") : "";
+        if (!text) return null;
+        const nextLabels = { ...item.labels };
+        const next: any = { ...row, headline: text, selectionScore: String(scoreAdContent("headline", text)) };
+        for (const { dimension, value } of moves) {
+          next[dimension] = value;
+          (nextLabels as any)[dimension] = value;
+        }
+        rowById.set(String(item.id), next);
+        return { id: item.id, surface: item.surface, text, labels: nextLabels };
+      },
+    });
+
+    gatedHeadlines = gateResult.kept.map((it) => rowById.get(String(it.id))).filter(Boolean) as typeof compliantHeadlines;
+    console.log(formatLedger(gateResult.ledger));
+    (globalThis as any).__ZAP_LAST_PDAF_LEDGER__ = gateResult.ledger;
+  }
+
+  // ⚠️ ORDERING DEVIATION, RECORDED RATHER THAN SILENTLY LIVED WITH.
+  // The design is compliance-then-distinctness, and Node 7 does exactly that: its
+  // `checkOutput` gate drops violators before the distinctness gate ever sees them. Node 6
+  // has NO blocking compliance pass of its own — `checkCompliance` above only SCORES — so
+  // the real blocking check is `gateBeforePersist` inside createHeadlines, which runs
+  // AFTER this gate. Measured live 2026-08-07: the gate kept 12 and the persistence gate
+  // then dropped 1 for `promised_result`, so 11 landed.
+  //
+  // Consequences, none of which threaten the distinctness guarantee (removing a row can
+  // never CREATE a collapse, so Verdict A holds either way):
+  //   1. effort is spent regenerating pieces compliance later discards;
+  //   2. the deck can land under the band floor with nothing left to backfill from.
+  // Fixing it means giving Node 6 a blocking compliance pass before the gate. Left as-is
+  // for now, deliberately and visibly, rather than reordered without a decision.
+  const persistedCount = await createHeadlines(gatedHeadlines);
   await incrementHeadlineCount(input.userId);
 
   // Pre-compute compliance rewrites — must land before runX returns so the
@@ -684,6 +895,11 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
 
   return {
     headlineSetId,
-    count: allHeadlines.length,
+    // ⚠️ THE PERSISTED COUNT. This was `allHeadlines.length` — correct while every generated
+    // headline was persisted, and a lie the moment the distinctness gate began dropping and
+    // trimming. `gatedHeadlines.length` was the second wrong answer: the compliance backstop
+    // inside createHeadlines drops rows after this gate (12 in, 11 landed, live 2026-08-07).
+    // The wizard shows this number, so it must be what the database actually holds.
+    count: persistedCount,
   };
 }

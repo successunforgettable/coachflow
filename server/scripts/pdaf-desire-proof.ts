@@ -21,7 +21,7 @@ import { getDb } from "../db";
 import { adCopy, headlines, campaignConcepts } from "../../drizzle/schema";
 import { runAdCopyGeneration } from "../adCopyGenerator";
 import { runHeadlinesGeneration } from "../headlinesGenerator";
-import { auditBatch, type PdafLabels } from "./pdafDistinctness";
+import { auditBatch, type PdafLabels } from "../_core/pdafDistinctness";
 
 const SERVICE_ID = Number(process.argv[2]);
 const ICP_ID = Number(process.argv[3]);

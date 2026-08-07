@@ -10,13 +10,16 @@
 **The copy engine is built, proven live, and committed LOCALLY ONLY. Nothing has been pushed, so
 none of it is deployed.** Production is running the image chapter plus the two-site canvas fix.
 
-Three things, in order:
+Two things, in order:
 
-1. **Propose the distinctness-gate design — PROPOSE ONLY, DO NOT BUILD.** See §12.6 for the
-   constraints it has to satisfy.
-2. **The image sprint** — fix the image-baked-text duplication (§12.7) and grow the image deck
-   from 4 to 8 to match the locked copy cardinality.
-3. **Then deploy**, which needs Arfeen's explicit "push" like every other deploy.
+1. **The image sprint** — fix the image-baked-text duplication (§12.7), grow the image deck from 4
+   to 8 to match the locked copy cardinality, and **add the missing userId guard to
+   `sweepAdCreativeBatch` BEFORE tearing down any creatives** (§12.7a).
+2. **Then deploy**, which needs Arfeen's explicit "push" like every other deploy.
+
+✅ **The distinctness gate is DONE** — built, proven live on BOTH nodes, committed locally. See
+§12.6 for the measured before/after numbers, the two defects the first run exposed, and what is
+still unexercised.
 
 ⚠️ **Migration 0097 is ALREADY APPLIED TO PRODUCTION** — four additive nullable columns
 (`persona`, `desire`, `awareness`, `format`) on `headlines` and `adCopy`. Additive and inert: no
@@ -518,16 +521,99 @@ rather than a label.
   none on retry, kept 4 on the per-concept pass. A coach with no proof makes the model reach for
   proof it does not have. This is the yield the over-generate decision above exists to absorb.
 
-### 12.6 The gate — NEXT ACTION, and it is PROPOSE-ONLY
+### 12.6 ✅ THE GATE — BUILT, PROVEN LIVE ON BOTH NODES, COMMITTED LOCAL ONLY
 
-The comparator already exists and is deliberately kept clean:
-`server/scripts/pdafDistinctness.ts` — pure, categorical, no DB, no text analysis, no inference.
-It is written to move into `_core` unchanged when the gate ships. The baseline audit's
-recovery-by-replay lives in a separate file on purpose and is a one-off measurement device.
+**Not deployed.** Committed locally with the rest of the copy chapter; the next push needs a fresh
+explicit "push" from Arfeen like every other deploy.
 
-The gate design must satisfy: the 2-of-4 categorical rule on ASSIGNED axes · deck-wide anti-echo ·
-links excluded · the budget-band cut applied here and nowhere earlier · regenerate-on-collapse
-reusing the existing capped-retry machinery.
+`server/_core/pdafGate.ts`, with the comparator moved from `scripts/` to `_core/pdafDistinctness.ts`
+unchanged — it was written to make that move. Four stages in order: **evict** (max-degree greedy,
+ties to the later item so runs are reproducible) → **regenerate** (capped, reusing
+`COMPLIANCE_RETRY_MAX_ATTEMPTS`, no new ceiling) → **deck-wide anti-echo** → **trim to band**.
+
+Settled by Arfeen 2026-08-07: band defaults to **small (8-12) as an explicit setting, never inferred
+from a Meta daily budget**; Node 6's no-service path keeps its single-desire fallback; anti-echo
+starts at a **shared three-word run, labelled a tunable heuristic in code**. The **2-of-4 categorical
+rule is the sole authority** — no score in the module decides pass or fail.
+
+#### Proven live on production, measured off the stamped 0097 columns
+
+| run | node | before | after | ledger | composition |
+|---|---|---|---|---|---|
+| `vO1S7PVlm6G6EM76qYMX2` | 7 | 35 pairs (7.5%) | **0 (0.0%)** | evicted 19 · recovered 7 · **dropped 12** | 🔴 11 headlines / 1 body |
+| `kxIJSJURbLVZ7SPpleBX0` | 7 | 35 pairs (7.5%) | **0 (0.0%)** | evicted 19 · **recovered 19** · dropped 0 | ✅ **6 / 6** |
+| `XBNb-yre_-dTkWGxDxFx9` | 6 | 29 pairs (9.7%) | **0 (0.0%)** | evicted 13 · recovered 8 · dropped 5 (all honest) | 12 kept, **11 landed** 🔴 |
+| `BcqE6DizGMUFkpNY4XWi5` | 6 | 22 pairs (9.5%) | **0 (0.0%)** | evicted 10 · recovered 6 · dropped 4 (all honest) | ✅ 12 kept, **12 landed** |
+
+Every run: fresh labelled throwaway with a real ICP and 8 concepts (so **desire was genuinely
+live**, not the deck-constant fallback), id-scoped teardown, all four baselines reconciled to
+**adCopy 5424 · headlines 2174 · adCreatives 405 · running jobs 0**. No images rendered on any run,
+so Cloudinary was never involved.
+
+**Deck-wide anti-echo is proven live, not just on fixtures.** Run 2 caught **3 echoes, all against a
+NON-PARTNER headline** (`"scope first sequence"`), zero against a body's own generation partner —
+cases pairwise checking could not have found. The gate records `wasPartner` per finding so this is
+mechanical rather than argued. Run 1 reported it **NOT DEMONSTRATED** and was reported that way.
+
+#### Two defects the first run exposed, both fixed and re-proven
+
+1. **Fall-through tested the POOL, not the OUTCOME.** All 19 evictions chose `desire`; 12 died on it.
+   With persona pinned and format fixed, moving desire alone yields at most two differing axes, and
+   against a survivor sharing awareness AND format it yields one — so the redraft collapsed again and
+   the loop burned all three attempts on an axis that could never separate it.
+   **Fixed:** candidate moves are now SIMULATED against every survivor before any model call, and
+   only a combination that clears the rule is returned; two-axis moves are tried when no single axis
+   works. Nodes declare what they can move (`pools.movable`). Result: **19/19 recovered, 0 dropped.**
+2. **Trim was blind to surface role** and kept 11 headlines / 1 body — safe under 2-of-4 and
+   unshippable. **Fixed:** round-robin quota across surfaces (6/6 at band max 12), slack flowing to
+   whichever surface still has pieces; separation still decides WHICH survive, not how many of each.
+
+⚠️ **They were masking each other** — run 1 showed no echoes because it kept one body. The trim fix
+is what made Verdict B measurable.
+
+#### Node 6 ordering, settled 2026-08-07 (was documented, now fixed)
+
+Node 6 had **no blocking compliance pass of its own** — `checkCompliance` only SCORES — so the real
+block was `gateBeforePersist` running AFTER the gate. Measured: the gate kept 12, the backstop then
+dropped 1 for `promised_result`, 11 landed. **Reordered** to match Node 7 and the design, using the
+same `checkOutput` + grounding corpus so the two cannot disagree; scope matches the backstop exactly
+(skips without a `serviceId`). Live: `blocked 3/25 headlines before the distinctness gate`, and
+ledger KEPT = DB rows = returned count = **12**. No headline retry, matching Node 7's measured
+decision that a 40-character headline has too little room for a redraft to change a verdict.
+
+#### Three coach-facing accuracy bugs fixed alongside
+
+- `runHeadlinesGeneration` returned the **pre-gate** count; `runAdCopyGeneration` counted off the
+  **pre-distinctness** array. Both would have told a coach the deck was larger than the database
+  holds. `createHeadlines` now returns what it actually persisted and both generators report that.
+- Concept telemetry logged the impossible `generated=8 … kept=10` because it still used `count`
+  after the 1.5x over-generation landed. Now uses `overGenerateCount`.
+- **Template-token leak (pre-existing).** Two of eleven persisted headlines shipped
+  `[INSERT_AUTHORITY_TITLE] Revealed What…`. The token is *sanctioned* — the fabrication rule offers
+  bracketed placeholders as a legal alternative to inventing a credential — but nothing ever
+  RESOLVED it before write. Now resolved from `services.pressFeatures`, else generic role framing
+  that claims no credential, never the raw token. Live: `resolved 10 unfilled template token(s)`.
+  ⚠️ **Forward-only.** 216 legacy headline rows still carry raw tokens; Arfeen's call 2026-08-08 is
+  **no backfill** — they are dummy data and go in the pre-launch clean-slate wipe.
+
+#### Yield fix, under real stress
+
+Concepts hit a **100% first-pass block rate** (`invented_testimonial`, `unearned_authority`) on the
+Node 6 run and the 1.5x over-generation still delivered a full set of 8. That is the tail it exists
+to absorb. Never pads — a short set ships short and says so.
+
+#### Gates at commit
+
+`tsc --noEmit` → **34** (baseline held, zero new). **547 tests across 10 suites**, including 32 in
+`_core/pdafGate.test.ts` and 8 in `headlinesTemplateTokens.test.ts`. Both fix families carry
+regression tests that fail against the old behaviour.
+
+#### Still open
+
+- **Node 7's `movable` is all three axes and its format moves are unexercised live** — every Node 7
+  recovery so far landed on desire or awareness. The path is unit-tested only.
+- **`sweepAdCreativeBatch` still has no userId guard** — see §12.7a. Blocks the image sprint's
+  teardown, not this chapter.
 
 ### 12.7 The image-baked-text duplication — for the image sprint
 
@@ -540,6 +626,28 @@ repeat-across-surfaces case the research names as collapse-inducing, live today.
 body's opening — the body's first words are the priming real estate and must stay free.
 
 **No OCR pre-pass is needed for our own ads.** We bake the text in, so we already know the string.
+
+### 12.7a 🔴 BLOCKER FOR THE IMAGE SPRINT — `sweepAdCreativeBatch` has NO userId guard
+
+**NOTED 2026-08-07, NOT FIXED. Fix it before the image sprint tears down any creatives.**
+
+`server/lib/adCreativeTeardown.ts` → `sweepAdCreativeBatch(db, batchId)` is scoped by **`batchId`
+alone**. The file contains **zero references to `userId`** — verified by grep, count 0. Both the
+Cloudinary sweep and the row delete run off `eq(adCreatives.batchId, batchId)` and nothing else.
+
+This contradicts the standing rule in §10: *"TEARDOWN IS ALWAYS ID-SCOPED, NEVER USER-SCOPED …
+Always `WHERE id IN (…)` plus a userId guard."* The module gets the ORDER right (read public_ids,
+then delete rows — the thing it was written for) and gets the COLUMNS right (it sweeps both
+`imageUrl` and `rawImageUrl`, which is the raw + composited pair, the "4 orphans" case). What it
+lacks is the guard.
+
+**Why it matters here specifically:** smoke user **117174 owns the 25 protected creatives on
+services 272-277**, plus 285. A wrong, stale or reused `batchId` would delete outside its intended
+scope with nothing in the function to stop it. `batchId` is a nanoid, so accidental collision is
+implausible — this is a missing seatbelt, not a live bug, and no run has been harmed by it.
+
+**Not a risk to the COPY chapter.** The copy proofs render nothing and never call this function.
+It becomes load-bearing the moment the image sprint starts tearing down rendered creatives.
 
 ### 12.8 Proof + audit tooling (all read-only or teardown-safe)
 
