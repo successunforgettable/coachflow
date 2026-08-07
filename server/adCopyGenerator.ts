@@ -112,6 +112,15 @@ export async function precomputeAdCopyComplianceRewrites(
     const rowsToInsert: Array<typeof complianceRewrites.$inferInsert> = [];
     await processInChunks(flagged, 5, async (row) => {
       if (row.serviceId == null) return;
+      // ⚠️ IMAGE HOOKS ARE NOT REWRITTEN, and this is a decision rather than an omission.
+      // The `complianceRewrites` table types contentType on its own narrower enum, which
+      // does not carry `image_hook` — widening it would be a second migration for a feature
+      // that should not exist anyway. A hook is a SHORT field, and Node 7 already declines
+      // to retry headlines for exactly that reason: measured on prod, 100% of gate drops
+      // were bodies, and a line this short has too little room for a redraft to change a
+      // verdict. A hook that fails compliance is dropped by the output gate like any other
+      // variant, and the deck composites from the remaining hooks.
+      if (row.contentType === "image_hook") return;
       try {
         const storedReasons = Array.isArray(row.violationReasons)
           ? (row.violationReasons as unknown[]).filter((v): v is string => typeof v === "string")
@@ -210,7 +219,7 @@ export async function runAdCopyGeneration(input: {
   liteMode?: boolean;
   userSubscriptionTier?: string | null;
   userRole?: string | null;
-}): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number; generatedCount: number; droppedCount: number }> {
+}): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number; imageHookCount: number; generatedCount: number; droppedCount: number }> {
   const { getDb } = await import("./db");
   const { adCopy, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
@@ -857,6 +866,119 @@ Format as JSON array:
   if (typeof linkContent !== "string") throw new Error("Invalid link response");
   const linkData = JSON.parse(stripMarkdownJson(linkContent));
 
+  // ── IMAGE HOOK — the text baked INTO the picture, as its own surface ────────
+  //
+  // WHAT THIS REPLACES. The compositor's `bodyText` was `resolveAdBodyTexts`, which
+  // truncates an ad-copy BODY row to 140 characters. So the string Meta's OCR reads off the
+  // picture was the body's opening, verbatim — the same words on two of the three surfaces
+  // Meta fuses into one meaning, which the research names as collapse-inducing and which
+  // has been live in production.
+  //
+  // WHY IT IS GENERATED HERE AND NOT IN THE IMAGE PATH. This generator assigns and stamps
+  // the four P.D.A.F. axes. Generating the hook image-side would mean re-deriving axes that
+  // already exist — a label that differs while the copy does not, which is the fake
+  // diversity this whole chapter exists to remove. Written here, the hook arrives carrying
+  // the same persona/desire/awareness/format stamps as the headline and body it ships with,
+  // and one generator can actually enforce the build spec §3 division of labour:
+  //   image = the emotional hook · headline = the proof/mechanism · body = context, opening
+  //   on the priming words.
+  //
+  // ⚠️ THE BODY'S OPENING STAYS FREE. The fix is explicitly NOT to constrain the body — its
+  // first 5-10 words are what decides who Meta shows the ad to. The hook moves out of the
+  // body's way, never the other way round.
+  const HOOK_MAX_CHARS = 60;
+  const hookStagePlan = awarenessPlanForCount(count);
+  const hookDesirePlan = dealAcrossSlots(conceptDesires, count);
+  const hookSlotBlock = hookStagePlan
+    .map((stage, i) => {
+      const hl = headlineTexts.length ? String(headlineTexts[i % headlineTexts.length]) : "(none)";
+      const bodyOpening = bodyResults.length
+        ? String(bodyResults[i % bodyResults.length].body).replace(/\s+/g, " ").slice(0, 140)
+        : "(none)";
+      const d = hookDesirePlan[i] ?? fallbackDesire;
+      return (
+        `IMAGE HOOK ${i + 1} → stage ${stage.replace(/_/g, " ").toUpperCase()}\n` +
+        (d ? `  the want this ad speaks to: ${d}\n` : "") +
+        `  its headline (the proof/mechanism): "${hl}"\n` +
+        `  its body opens (the context): "${bodyOpening}…"\n` +
+        `  say the FEELING those two explain — in words neither of them uses.`
+      );
+    })
+    .join("\n\n");
+
+  const hookPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert Facebook/Instagram ad copywriter. Write ${count} IMAGE HOOK lines — the short line of text that sits ON the picture itself.
+
+Service: ${service.name}
+Target Market: ${input.targetMarket}
+Pressing Problem: ${resolvedPressingProblem}
+Desired Outcome: ${resolvedDesiredOutcome}
+Unique Mechanism: ${resolvedUniqueMechanism}
+
+${icpContext}
+
+WHAT AN IMAGE HOOK IS. An ad has three text surfaces and they are read as ONE message:
+the words on the picture, the headline, and the body. Each does a different job.
+- The PICTURE's line is the emotional hook — the feeling, the moment of recognition.
+- The HEADLINE carries the proof or the mechanism.
+- The BODY carries the context and the specifics.
+Your job is the first one only.
+
+HARD RULES:
+- ${HOOK_MAX_CHARS} characters maximum. Shorter is better. It is set large on a photograph.
+- Say something the headline and body do NOT say. Where they name the mechanism or the
+  numbers, you name the feeling underneath.
+- Use different words from its headline and from its body's opening. Not a paraphrase,
+  not a shortening — a different angle on the same idea.
+- Plain words. No colons, no hashtags, no quotation marks, no ALL CAPS, no emoji.
+- No price, no percentage, no statistic, no client result, no credential.
+- It must read as a complete thought on its own, because it is seen before either of the
+  other two surfaces.
+
+${registerPersonGuidance(hasRealProof)}
+
+SLOT ASSIGNMENT — write one hook per slot, in this exact order, and return them in that order:
+
+${hookSlotBlock}
+
+Format as JSON:
+{
+  "hooks": ["hook 1", "hook 2", ...]
+}`;
+
+  const hookResponse = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content: `${META_COMPLIANCE_RULES}\n\nYou are an expert ad copywriter who specializes in Meta-compliant advertising for coaches, speakers and consultants. Always respond with valid JSON.\n\n${NO_CREDENTIAL_FABRICATION_RULE}\n\n${REGISTER_STANDARD}`,
+      },
+      { role: "user", content: cascadeContext + hookPrompt },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "ad_image_hooks",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: { hooks: { type: "array", items: { type: "string" } } },
+          required: ["hooks"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+  const hookContent = hookResponse.choices[0].message.content;
+  if (typeof hookContent !== "string") throw new Error("Invalid image-hook response");
+  const hookData = JSON.parse(stripMarkdownJson(hookContent));
+  // Enforce the ceiling in code as well as in the prompt. The compositor sets this large
+  // over a photograph; a model that runs long would push the text block into the picture
+  // the prompt told the renderer to keep clear.
+  const hookTexts: string[] = (hookData.hooks ?? [])
+    .map((h: unknown) => String(h ?? "").replace(/\s+/g, " ").replace(/^["']|["']$/g, "").trim())
+    .filter((h: string) => h.length > 0)
+    .map((h: string) => (h.length <= HOOK_MAX_CHARS ? h : h.slice(0, HOOK_MAX_CHARS).replace(/\s+\S*$/, "")));
+  console.log(`[adCopyGenerator] image hooks: ${hookTexts.length}/${count} generated, longest ${Math.max(0, ...hookTexts.map((h) => h.length))} chars`);
+
   // ── Compliance + insert ────────────────────────────────────────────────────
   const allInserts: any[] = [];
 
@@ -1007,6 +1129,55 @@ Format as JSON array:
     linkIdx++;
   }
 
+  let hookIdx = 0;
+  for (const hook of hookTexts) {
+    const complianceResult = await checkCompliance(hook, {
+      userId: input.userId,
+      generatorType: 'adCopy',
+      trackUsage: true,
+    });
+    allInserts.push({
+      userId: input.userId,
+      serviceId: input.serviceId,
+      campaignId: input.campaignId || null,
+      adSetId,
+      adType: input.adType,
+      adStyle: input.adStyle,
+      adCallToAction: input.adCallToAction,
+      contentType: "image_hook" as const,
+      content: hook,
+      // Same four axes as the headline and body this hook ships beside — that is the whole
+      // reason it is generated here. `format` is the surface itself: an image hook is one
+      // architecture, not a family of angles, so recording it as such is truthful, where
+      // leaving it null would read to the gate as "no format assigned".
+      persona: pdafPersona,
+      desire: hookDesirePlan[hookIdx] ?? pdafDesire,
+      awareness: hookStagePlan[hookIdx] ?? null,
+      format: "image_hook",
+      targetMarket: input.targetMarket,
+      productCategory: input.productCategory,
+      specificProductName: input.specificProductName,
+      pressingProblem: input.pressingProblem,
+      desiredOutcome: input.desiredOutcome,
+      uniqueMechanism: input.uniqueMechanism || null,
+      listBenefits: input.listBenefits || null,
+      specificTechnology: input.specificTechnology || null,
+      scientificStudies: input.scientificStudies || null,
+      credibleAuthority: input.credibleAuthority || null,
+      featuredIn: input.featuredIn || null,
+      numberOfReviews: input.numberOfReviews || null,
+      averageReviewRating: input.averageReviewRating || null,
+      totalCustomers: input.totalCustomers || null,
+      testimonials: input.testimonials || null,
+      complianceScore: complianceResult.score,
+      complianceVersion: complianceResult.version,
+      complianceCheckedAt: new Date(),
+      selectionScore: String(scoreAdContent('headline', hook)),
+      violationReasons: complianceResult.issues.length > 0 ? complianceResult.issues.map(i => i.reason) : null,
+    });
+    hookIdx++;
+  }
+
   // ── OUTPUT GATE (compliance axis + fabrication), one shared pass ────────────
   // Disposition here is DROP-THE-VARIANT rather than throw: a deck carries 15-30
   // variants, so removing the few that violate leaves a usable deck and never
@@ -1017,7 +1188,14 @@ Format as JSON array:
     corpus: buildCoachCorpus({ service, groundingMeta: (icp as any)?.groundingMeta }),
     supplied: buildProofSupplied(service),
   };
-  const gateRole = (t: unknown) => t === "headline" ? "short" as const : t === "link" ? "cta" as const : "body" as const;
+  // `image_hook` is a SHORT field, like a headline — a single line set large over a photo.
+  // Left to fall through to "body" it would be judged as prose by the compliance axis, whose
+  // short-field checks exist precisely because a 40-character line cannot carry a
+  // first-person moment and so needs different handling.
+  const gateRole = (t: unknown) =>
+    t === "headline" || t === "image_hook" ? "short" as const
+      : t === "link" ? "cta" as const
+        : "body" as const;
   const gateOne = (row: any) =>
     checkOutput([{ location: String(row.contentType), text: String(row.content ?? ""), role: gateRole(row.contentType) }], gateGrounding);
 
@@ -1331,6 +1509,7 @@ Format as JSON array:
     headlineCount: keptOf("headline"),
     bodyCount: keptOf("body"),
     linkCount: keptOf("link"),
+    imageHookCount: keptOf("image_hook"),
     generatedCount: allInserts.length,
     droppedCount: allInserts.length - gatedInserts.length,
   };

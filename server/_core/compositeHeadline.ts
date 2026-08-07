@@ -215,6 +215,35 @@ export async function resolveAdBodyTexts(
   const stripTokens = (s: string) => s.replace(/\[INSERT[^\]]*\]/gi, "").replace(/\s+/g, " ").trim();
   const hasPrice = (s: string) => /[£$€]\s?\d/.test(s);
   let bodies: string[] = [];
+
+  // ── PREFER THE PURPOSE-BUILT IMAGE HOOK ───────────────────────────────────
+  // 🔴 THE DEFECT THIS FIXES. Below, the fallback path takes an ad-copy BODY row and
+  // truncates it to 140 characters. That made the text Meta's OCR reads off the picture a
+  // verbatim truncation of the body's opening — the same words on two of the three surfaces
+  // Meta fuses into one meaning. The copy research names that exact case as collapse-
+  // inducing, and it has been live in production.
+  //
+  // `image_hook` rows (migration 0098) are written by Node 7 as their OWN surface, carrying
+  // the same P.D.A.F. axes as the headline and body they ship beside, and are checked by the
+  // distinctness gate's deck-wide anti-echo against every body opening in the deck. When
+  // they exist, they are what belongs on the picture.
+  //
+  // ⚠️ THE BODY FALLBACK IS KEPT DELIBERATELY, NOT LEFT BY ACCIDENT. Every service generated
+  // before 0098 has no hook rows, and every pre-0098 batch must still composite rather than
+  // render a picture with no text on it. The fallback is the old behaviour exactly, so
+  // nothing regresses; it simply stops being the normal path.
+  try {
+    const hookRows = await db.select({ content: adCopy.content })
+      .from(adCopy)
+      .where(and(eq(adCopy.userId, userId), eq(adCopy.serviceId, serviceId), eq(adCopy.contentType, "image_hook")))
+      .orderBy(desc(adCopy.id))
+      .limit(limit);
+    const hooks = (hookRows ?? [])
+      .map((r: { content: string | null }) => trimToLength(stripTokens(r?.content ?? ""), 140))
+      .filter((b: string) => b.length > 0 && !hasPrice(b));
+    if (hooks.length > 0) return hooks;
+  } catch { /* fall through to the body path below */ }
+
   try {
     const rows = await db.select({ content: adCopy.content })
       .from(adCopy)

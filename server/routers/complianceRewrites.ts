@@ -215,6 +215,12 @@ async function getSourceRow(
       .where(and(eq(adCopy.id, sourceId), eq(adCopy.userId, userId)))
       .limit(1);
     if (!row) return null;
+    // ⚠️ `image_hook` rows are NOT rewritable, matching the precompute path in
+    // adCopyGenerator. The rewrite tables type contentType on their own narrower enum, and a
+    // hook is a short field for which a redraft cannot meaningfully change a compliance
+    // verdict — the same measured reason headlines are never retried. Returning null makes a
+    // rewrite request for one a clean "nothing to rewrite" rather than a type-cast lie.
+    if (row.contentType === "image_hook") return null;
     return {
       id: row.id,
       text: row.content,
