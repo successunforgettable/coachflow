@@ -1,0 +1,51 @@
+-- 0098 — `image_hook` joins the adCopy contentType enum (out-of-band, travels ALONE)
+--
+-- Widens ONE enum by ONE value:
+--   adCopy.contentType: ("headline","body","link") -> ("headline","body","link","image_hook")
+--
+-- WHY THIS EXISTS. The compositor bakes text INTO the picture, and today that text is
+-- the headline plus `bodyText` — which `resolveAdBodyTexts` produces by truncating an
+-- ad-copy BODY row to its first 140 characters. So the string Meta's OCR reads off the
+-- image is a truncation of the body's opening: the same words, on two of the three
+-- surfaces Meta fuses into one meaning.
+--
+-- That is the exact repeat-across-surfaces case the Andromeda copy research names as
+-- collapse-inducing (docs/andromeda/ZAP_Copy_Engine_Andromeda_Build_Spec.md §3:
+-- "Repeat the same line across all three -> Meta sees redundancy, collapses it to one
+-- Entity ID, suppresses"), and it is live in production today.
+--
+-- THE DECIDED FIX (Arfeen, recorded at CHECKPOINT §12.7): the image surface gets its OWN
+-- short hook line. It is deliberately NOT solved by constraining the body's opening — the
+-- body's first 5-10 words are the priming real estate that decides who Meta shows the ad
+-- to, and they must stay free.
+--
+-- The hook is generated in Node 7 rather than in the image path, so it is written by the
+-- same generator that assigns and stamps the four P.D.A.F. axes. Generating it image-side
+-- would mean re-deriving axes that already exist, which is the fake-diversity failure the
+-- copy chapter exists to remove.
+--
+-- ⚠️ ADDITIVE AND INERT, exactly like 0097. Widening an enum with a new value changes no
+-- existing row: every current row is "headline", "body" or "link" and stays valid. No
+-- deployed code writes or reads `image_hook`, because the code that does is unpushed. Do
+-- NOT treat this migration's presence as evidence the baked-text fix is live.
+--
+-- ⚠️ MIGRATIONS TRAVEL ALONE (CLAUDE.md §5.6 — DB migrations isolated, never bundled with
+-- UI work). This file is the whole change.
+--
+-- REVERSIBILITY. Narrowing the enum back is only safe once no row carries the new value:
+--   SELECT COUNT(*) FROM adCopy WHERE contentType = 'image_hook';   -- must be 0 first
+--   ALTER TABLE `adCopy` MODIFY COLUMN `contentType`
+--     ENUM('headline','body','link') NOT NULL;
+--
+-- IDEMPOTENCE. MySQL has no "ADD VALUE IF NOT EXISTS" for enums; MODIFY is naturally
+-- idempotent because it restates the whole set. Re-running is harmless.
+--
+-- Verify AFTER applying:
+--   SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA = DATABASE()
+--      AND TABLE_NAME = 'adCopy'
+--      AND COLUMN_NAME = 'contentType';
+--   -- expect: enum('headline','body','link','image_hook')
+
+ALTER TABLE `adCopy`
+  MODIFY COLUMN `contentType` ENUM('headline','body','link','image_hook') NOT NULL;

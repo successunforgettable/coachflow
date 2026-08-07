@@ -339,7 +339,12 @@ export const adCopy = mysqlTable("adCopy", {
   adType: mysqlEnum("adType", ["lead_gen", "ecommerce"]).notNull(), // Kong: Lead Gen / Ecommerce
   adStyle: text("adStyle"), // Hero Ad, Weird Authority Ad, Secret Info, Commitment & Consistency
   adCallToAction: text("adCallToAction"), // Download free report, Watch free video, Book free call
-  contentType: mysqlEnum("contentType", ["headline", "body", "link"]).notNull(),
+  // `image_hook` (migration 0098) is the SHORT line baked into the picture. It exists so the
+  // image surface stops carrying a 140-character truncation of a body's opening — the same
+  // words on two of the three surfaces Meta fuses, which is the collapse case the copy
+  // research names. Generated in Node 7 so it carries the same P.D.A.F. axes as the headline
+  // and body it ships beside.
+  contentType: mysqlEnum("contentType", ["headline", "body", "link", "image_hook"]).notNull(),
   bodyAngle: varchar("bodyAngle", { length: 50 }), // Angle type for body variations (Issue 3)
   content: text("content").notNull(), // The actual headline/body/link text
   // Generation parameters for regeneration - 17 Kong fields (expanded to text to handle AI-generated content)
