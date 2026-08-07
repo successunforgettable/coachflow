@@ -13,11 +13,41 @@
  * which is the worse failure. Failures are returned for the caller to report.
  */
 import { adCreatives } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { storageDelete } from "../storage";
+
+/**
+ * ─── PROTECTED SERVICES — NEVER DELETABLE THROUGH THIS HELPER ────────────────
+ *
+ * 29 creatives live on these services: 25 belong to the E2E smoke account (117174) and 4
+ * are Arfeen's own. They are the reason teardown must never be user-scoped — the smoke
+ * user OWNS protected rows, so "delete this user's creatives" would destroy them.
+ *
+ * This list is a SECOND, INDEPENDENT line of defence behind the userId guard, deliberately
+ * not derived from it. If a batchId is wrong, stale or reused, the guard alone would not
+ * help: a wrong batch belonging to the same user passes the userId check cleanly. So the
+ * resolved rows are inspected for these services and the sweep REFUSES before deleting
+ * anything, regardless of what the guard said.
+ *
+ * The cost of being wrong here is unrecoverable — a DB delete makes the Cloudinary URLs
+ * unreadable and the images stay hosted forever with no way to find them.
+ */
+export const PROTECTED_SERVICE_IDS: readonly number[] = [272, 273, 274, 275, 276, 277, 285] as const;
+
+export class ProtectedServiceError extends Error {
+  constructor(public readonly serviceIds: number[], public readonly batchId: string) {
+    super(
+      `REFUSING to sweep batch ${batchId}: it resolves rows on protected service(s) ` +
+      `${serviceIds.join(", ")}. Protected services are ${PROTECTED_SERVICE_IDS.join(", ")} ` +
+      `and are never deletable through this helper. Nothing was deleted.`,
+    );
+    this.name = "ProtectedServiceError";
+  }
+}
 
 export type BatchTeardownResult = {
   batchId: string;
+  userId: number;
   rowsFound: number;
   rowsDeleted: number;
   publicIds: string[];
@@ -53,17 +83,47 @@ export function publicIdFromUrl(url: unknown): string | null {
  * Delete a batch's Cloudinary objects and then its DB rows, in that order.
  * `dryRun` reports exactly what would go without deleting anything — use it to
  * show Arfeen the list before asking for the go-ahead.
+ *
+ * ⚠️ `userId` IS REQUIRED, NOT OPTIONAL. The standing rule is that teardown is always
+ * id-scoped AND userId-guarded, never scoped by one alone. An optional guard is a guard a
+ * caller forgets, and this helper deletes rows whose Cloudinary URLs become unrecoverable
+ * the moment they go — so the type system enforces it instead of a comment asking nicely.
+ * Both the read and the delete carry the guard; guarding only the read would report the
+ * right rows and delete the wrong ones.
+ *
+ * THROWS `ProtectedServiceError` before deleting anything if the resolved rows touch a
+ * protected service. See PROTECTED_SERVICE_IDS for why that check is independent of the
+ * userId guard rather than implied by it.
  */
 export async function sweepAdCreativeBatch(
   db: any,
   batchId: string,
+  userId: number,
   opts: { dryRun?: boolean } = {},
 ): Promise<BatchTeardownResult> {
   const dryRun = opts.dryRun ?? false;
+  const scope = and(eq(adCreatives.batchId, batchId), eq(adCreatives.userId, userId));
+
   const rows = await db
-    .select({ id: adCreatives.id, imageUrl: adCreatives.imageUrl, rawImageUrl: adCreatives.rawImageUrl })
+    .select({
+      id: adCreatives.id,
+      serviceId: adCreatives.serviceId,
+      imageUrl: adCreatives.imageUrl,
+      rawImageUrl: adCreatives.rawImageUrl,
+    })
     .from(adCreatives)
-    .where(eq(adCreatives.batchId, batchId));
+    .where(scope);
+
+  // ── HARD REFUSAL, BEFORE ANY DELETE AND BEFORE ANY CLOUDINARY CALL ────────
+  // Checked on the RESOLVED ROWS, not on the arguments: the question is not "did the
+  // caller mean well" but "what would actually be destroyed". A wrong batchId owned by the
+  // same user passes the userId guard cleanly, which is precisely the case this catches.
+  const touched = Array.from(new Set(
+    (rows as { serviceId?: number | null }[])
+      .map((r) => r.serviceId)
+      .filter((s): s is number => typeof s === "number" && PROTECTED_SERVICE_IDS.includes(s)),
+  )).sort((a, b) => a - b);
+  if (touched.length > 0) throw new ProtectedServiceError(touched, batchId);
 
   // Read the ids BEFORE any delete — they are only recoverable from these rows.
   const publicIds: string[] = Array.from(new Set<string>(
@@ -73,7 +133,7 @@ export async function sweepAdCreativeBatch(
   ));
 
   const result: BatchTeardownResult = {
-    batchId, rowsFound: rows.length, rowsDeleted: 0,
+    batchId, userId, rowsFound: rows.length, rowsDeleted: 0,
     publicIds, cloudinaryDeleted: 0, cloudinaryFailed: [], dryRun,
   };
   if (dryRun) return result;
@@ -84,8 +144,8 @@ export async function sweepAdCreativeBatch(
   }
 
   // Rows go last and unconditionally — a Cloudinary failure must not leave the
-  // database above baseline.
-  const del = await db.delete(adCreatives).where(eq(adCreatives.batchId, batchId));
+  // database above baseline. Same guarded scope as the read.
+  const del = await db.delete(adCreatives).where(scope);
   result.rowsDeleted = (del as { affectedRows?: number })?.affectedRows ?? rows.length;
   return result;
 }
