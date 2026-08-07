@@ -10,12 +10,26 @@
 **The copy engine is built, proven live, and committed LOCALLY ONLY. Nothing has been pushed, so
 none of it is deployed.** Production is running the image chapter plus the two-site canvas fix.
 
-Two things, in order:
+**👉 NEXT ACTION: apply migration 0098, then run the image-hook proof.**
 
-1. **The image sprint** — fix the image-baked-text duplication (§12.7), grow the image deck from 4
-   to 8 to match the locked copy cardinality, and **add the missing userId guard to
-   `sweepAdCreativeBatch` BEFORE tearing down any creatives** (§12.7a).
-2. **Then deploy**, which needs Arfeen's explicit "push" like every other deploy.
+⚠️ **0098 IS WRITTEN BUT NOT APPLIED.** Production still carries the THREE-value enum
+`adCopy.contentType = enum('headline','body','link')` — verified by direct query 2026-08-08. The
+baked-text code is built and green but CANNOT run until 0098 lands: every `image_hook` insert
+fails against the current enum. `server/scripts/imagehook-proof.ts` checks INFORMATION_SCHEMA and
+refuses to start rather than producing a half-deck that would read as a code failure.
+
+Applying it is an `ALTER TABLE` and needs Arfeen's explicit go-ahead (CLAUDE.md §10 names
+migrations in the hard gate, and says schema-only is NOT an exception).
+
+Then, in order:
+
+1. **Apply 0098 → run `imagehook-proof.ts`.** It RENDERS real Cloudinary objects — the first
+   render of this chapter — and saves composite + raw to `docs/screenshots/run-imagehook-proof/`
+   for Arfeen to judge on the pixels. **The COMPOSITE is the proof, never the raw.**
+2. **Tie images to concepts AT FOUR** (§12.11 step 3) — prove it while the deck is still 4 and the
+   existing protections are known-good.
+3. **Grow 4 → 8** with the arity audit (§12.11 step 4).
+4. **Then deploy**, which needs Arfeen's explicit "push" like every other deploy.
 
 ✅ **The distinctness gate is DONE** — built, proven live on BOTH nodes, committed locally. See
 §12.6 for the measured before/after numbers, the two defects the first run exposed, and what is
@@ -627,9 +641,10 @@ body's opening — the body's first words are the priming real estate and must s
 
 **No OCR pre-pass is needed for our own ads.** We bake the text in, so we already know the string.
 
-### 12.7a 🔴 BLOCKER FOR THE IMAGE SPRINT — `sweepAdCreativeBatch` has NO userId guard
+### 12.7a ✅ RESOLVED — `sweepAdCreativeBatch` userId guard (see §12.11 step 1)
 
-**NOTED 2026-08-07, NOT FIXED. Fix it before the image sprint tears down any creatives.**
+**Noted 2026-08-07, FIXED 2026-08-08.** Kept here as the record of what was wrong; the fix and its
+23 tests are described in §12.11 step 1. Original diagnosis below.
 
 `server/lib/adCreativeTeardown.ts` → `sweepAdCreativeBatch(db, batchId)` is scoped by **`batchId`
 alone**. The file contains **zero references to `userId`** — verified by grep, count 0. Both the
@@ -648,6 +663,105 @@ implausible — this is a missing seatbelt, not a live bug, and no run has been 
 
 **Not a risk to the COPY chapter.** The copy proofs render nothing and never call this function.
 It becomes load-bearing the moment the image sprint starts tearing down rendered creatives.
+
+## 12.11 THE IMAGE SPRINT — steps 1 and 2 DONE, nothing applied, nothing proven live
+
+**State at 2026-08-08: built, tsc 34, 574 tests green, committed locally, NOT deployed.**
+**Migration 0098 written but NOT applied. The live proof has NOT been run.**
+
+### Settled decisions (Arfeen, 2026-08-07/08)
+
+- **`image_hook` JOINS the distinctness population.** It is one of the three surfaces Meta fuses
+  (image text / headline / body), which is the exact test the link-exclusion uses to justify
+  excluding a 30-character CTA. So it is counted, unlike links.
+- **Image stage and desire come from the CONCEPT ROWS** (sprint step 3), replacing
+  `awarenessDeckPlan` at eight. This is what dissolves the hole described under step 4 below.
+- The style-list extension and the arity audit ride with the 4 → 8 step, not before it.
+
+### ✅ Step 1 — the `sweepAdCreativeBatch` userId guard (was §12.7a)
+
+`userId` is now a **required positional parameter**, and `and(batchId, userId)` is applied to
+**both the read and the delete** — guarding only the read would report the right rows and delete
+the wrong ones. An optional guard is one a caller forgets, and this function deletes rows whose
+Cloudinary URLs are unrecoverable the moment they go.
+
+**Plus a hard refusal that is independent of the guard.** `PROTECTED_SERVICE_IDS`
+(272-277, 285) is checked against the RESOLVED ROWS — not the arguments — and throws
+`ProtectedServiceError` before touching Cloudinary or the database. It cannot be folded into the
+userId check, because **user 117174 legitimately OWNS services 272-277**: a wrong-but-same-user
+batchId passes the guard cleanly, and that is precisely the case this catches.
+
+**23 tests.** The fake db records the SQL scope it is handed, so the assertions are about what the
+helper actually asks the database to do rather than what its comments claim. Includes: mismatched
+userId deletes nothing and never calls Cloudinary; the delete scope carries both keys; one case per
+protected service; refusal fires even when the userId guard passes; refusal happens BEFORE
+Cloudinary. The pre-existing five `publicIdFromUrl` cases are preserved verbatim — they pin the
+`.png.png` double-suffix behaviour that made the 2026-07-29 orphan recovery possible.
+
+**No production callers** — the only mention anywhere is a comment in
+`scripts/sweep-regen-canvas-orphans.ts` explaining why that one-off does not use it.
+
+### ✅ Step 2 — the baked-text fix (built; NOT proven live)
+
+The compositor was handed `bodyText` from `resolveAdBodyTexts`, which truncates an ad-copy BODY row
+to 140 characters — so the string Meta's OCR read off the picture was the body's opening, verbatim.
+The same words on two of the three fused surfaces. Live in production today.
+
+- **`drizzle/0098_image_hook_content_type.sql`** — widens `adCopy.contentType` by one value.
+  Travels alone. Additive and inert: every existing row stays valid.
+- **Node 7 generates the hook as its own chained surface**, told the build spec §3 division of
+  labour explicitly (picture = the feeling, headline = proof/mechanism, body = context) and to use
+  different words from both. 60-char ceiling enforced in code as well as the prompt — a model
+  running long would push text into the band the renderer was told to keep clear.
+- **Stamped with all four P.D.A.F. axes**, because it is written by the generator that assigns
+  them. Generating it image-side would mean re-deriving axes that already exist, which is the
+  fake-diversity failure this chapter exists to remove.
+- **GATE WIRING CONFIRMED ZERO-CHANGE.** `partitionPopulation` excludes only links, so hooks are
+  counted; and `"image_hook"` was ALREADY in the anti-echo default `targetRoles` with a passing
+  test written before the surface existed. `pdafGate.ts` is untouched by this step.
+- **The compositor prefers hook rows and FALLS BACK to the body truncation** when none exist. Kept
+  deliberately: every service generated before 0098 has no hooks, and must still composite rather
+  than render a picture with no text on it. The fallback is the old behaviour exactly.
+
+**`fitLines` at short strings — checked, not assumed.** The layout is fully derived
+(`bodyBlockH = lines × lineHeight`, with empty-case guards on both the headline and pill gaps). A
+hook fits at FULL size on ≤2 lines with no shrink and no ellipsis on both real canvases, and always
+produces a SHORTER block than the body it replaces — more clear picture, and the text-safe band was
+measured at worst-case content. 8 tests (`compositeShortHook.test.ts`), including the empty case and
+the 60-char worst case.
+
+⚠️ **Two things the type system forced out, both decisions rather than omissions:** `image_hook`
+needed the **short** compliance role (it was falling through to body-prose handling); and the
+compliance-REWRITE tables type on their own narrower enum, so hooks are excluded from rewriting
+rather than adding a second migration — matching the measured decision that short fields are never
+retried.
+
+### 🔴 Remaining, in order
+
+1. **Apply 0098**, then **run `imagehook-proof.ts`** — renders real composites for Arfeen to judge.
+2. **Tie images to concepts, at FOUR slots first.** ⚠️ The comment at `adCreativesGenerator.ts`
+   saying *"adCreativesGenerator has no icpId, and ensureConceptsForIcp is fire-and-forget, so a
+   lookup here would be a race"* is **STALE ON BOTH HALVES**: the cascade caller has `input.icpId`
+   in scope (`orchestration.ts:961`) and simply does not pass it, and concept generation moved to
+   kit creation four nodes earlier in `e91c13d`, so by cascade step 9 the concepts have existed
+   since before step 1. This is threading one argument, not building a lookup.
+3. **Grow 4 → 8**, with the arity audit. ⚠️ **THE REAL RISK IN THE WHOLE SPRINT SITS HERE.**
+   `awarenessDeckPlan` returns distinct cold stages only while `slots <= 4` and DEFERS to
+   `awarenessPlanForCount` above that — so at 8 it silently swaps a distinct-stages guarantee for
+   the proportional 3/3/1/1/0 mix, giving three `unaware` slots. `unaware` has
+   `FACE_ABSENT_AFFINITY = 0` and is **never eligible** for the visibility tier, so those repeats
+   cannot be rescued. Nothing throws, no test fails, and the deck looks fine until Meta collapses
+   it. **Doing step 2 first is what defuses this**, because concept-driven stages replace that call.
+   Also: `AD_VARIATIONS` has 4 entries over 4 styles and needs 8; and its docblock records two call
+   sites that hardcoded `i < 5` and would have crashed on the coach's Generate button — audit every
+   consumer for derived-vs-hardcoded arity.
+4. **Then deploy.**
+
+### Explicitly OUT of scope (unchanged, and none blocks the above)
+
+`generateAsync`'s 1:1 emit · `makeVertical`'s missing aspectRatio (inert, takes PATH A) · the
+editorial engine and its 5 variations · the legacy orphaned Cloudinary objects · the 5-of-8 fan-out
+sites that pass no stage.
 
 ### 12.8 Proof + audit tooling (all read-only or teardown-safe)
 
