@@ -675,6 +675,9 @@ export async function runAdCreativesGeneration(
       headline,
       imageUrl: s3Url,
       rawImageUrl,
+      // The third Cloudinary object. Without this the intermediate leaks on every
+      // render — teardown reads its ids off the row, and this one was never on it.
+      sourceImageUrl: imageResult.url,
       imageFormat: emittedFormat,
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
@@ -783,6 +786,10 @@ export async function runEditorialAdCreativesGeneration(
       headline,
       imageUrl: s3Url,
       rawImageUrl,
+      // Same third object on the editorial path. The editorial engine is out of scope
+      // for this sprint's behaviour, but it leaks identically, and recording a URL
+      // changes nothing about how it renders.
+      sourceImageUrl: imageResult.url,
       imageFormat: "1080x1350",
       // Persist the exact scene so an on-demand 9:16 re-renders the SAME shoot.
       sceneBrief: scene,

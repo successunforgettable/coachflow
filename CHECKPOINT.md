@@ -229,8 +229,32 @@ in-image text, an anatomical failure, or a subject buried under the headline.
 
 ## 8. Gates
 
+⚠️ **RECORD THE COMMAND, NEVER A BARE COUNT.** This section used to carry figures like "574 tests
+green" with no record of which suites produced them. A number with no command behind it **cannot be
+re-verified**, and on 2026-08-08 a fresh session lost a round trip proving exactly that: tsc
+reproduced to the digit, the copy-engine set reproduced to the digit (442), and "574" turned out to
+be unreconstructable because three different sessions had each used a different ad-hoc suite list.
+Every count below now travels with the command that produces it.
+
+**The canonical gate command for the copy engine + image sprint** (13 suites — run this, quote its
+output, and update the number here when the suite list changes):
+
+```
+npx vitest run \
+  server/pipeline-fixes.test.ts server/lib/complianceFilter.test.ts \
+  server/_core/tokenCrypto.test.ts server/adCopyAngles.stageAware.test.ts \
+  server/conceptGenerator.test.ts server/conceptValidator.test.ts \
+  server/_core/pdafGate.test.ts server/headlinesTemplateTokens.test.ts \
+  server/lib/adCreativeTeardown.test.ts server/_core/compositeShortHook.test.ts \
+  server/_core/imageHookRedraft.test.ts server/sharedProcedureShapes.test.ts \
+  server/_core/imageRenderer.test.ts
+```
+
+→ **552 passed across 13 suites** (2026-08-08, after the sweep-completeness and wizard-headline
+fixes). The six-suite copy-engine subset alone is **442**, which is the figure §12.6 quotes.
+
 - `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (CLAUDE.md §8 still says 35 — stale by one;
-  34 re-confirmed 2026-08-06 post-deploy and again after the §11 canvas fix)
+  34 re-confirmed 2026-08-06 post-deploy, after the §11 canvas fix, and again 2026-08-08)
 - **554 tests across 12 suites**, including `server/textSafeZoneCoupling.test.ts`. The copy-engine
   gate set (`pipeline-fixes` + `complianceFilter` + `tokenCrypto` + `adCopyAngles.stageAware` +
   `conceptGenerator` + `conceptValidator`) = **442 passed**, re-run after the copy work.
@@ -666,8 +690,44 @@ It becomes load-bearing the moment the image sprint starts tearing down rendered
 
 ## 12.11 THE IMAGE SPRINT — steps 1 and 2 DONE, nothing applied, nothing proven live
 
-**State at 2026-08-08: built, tsc 34, 574 tests green, committed locally, NOT deployed.**
-**Migration 0098 written but NOT applied. The live proof has NOT been run.**
+**State at 2026-08-08: 0098 AND 0099 APPLIED to production. Steps 1-2 proven live. Two further
+fixes built and proven live. Committed locally, NOT deployed.** Gates: tsc **34**, **552 passed
+across 13 suites** — via the §8 command, not a bare count.
+
+### What the 2026-08-08 live proofs actually established
+
+- **Migration 0098 applied.** `adCopy.contentType` is now four values; 5424 rows unchanged
+  (1714 headline + 1997 body + 1713 link). **0099 applied** the same way: `adCreatives.sourceImageUrl`
+  varchar(500) NULL, 405 rows unchanged. Both additive and inert, exactly like 0097.
+- **Step 2 proven, then found broken, then fixed.** The first run persisted hooks of
+  **74/92/114/127 chars** against a 60-char ceiling — every surviving hook had been gate-recovered,
+  and the gate's `regenerate` callback branched on `isBody`, sweeping `image_hook` into the HEADLINE
+  branch: wrong voice, and the ceiling applied only on first generation. The compositor ellipsised
+  them over the picture. **Fixed** (`redraftSurfaceFor` / `buildHookRedraftInstruction` /
+  `clampHookText`, all module-scope and shared by both call sites) and **re-proven live**: five
+  hooks at **53/59/56/59/51**, in hook voice, no mechanism-name repetition. 18 regression tests pin
+  the four real oversized strings.
+- ⚠️ **THE DECK IS NOT SHIPPABLE AND THAT IS THE OPEN ROCK.** Run 2 kept **6 headlines / 5 hooks /
+  1 body**. Not the trim — **15 of ~17 bodies were dropped at the cap**, every one "no axis move
+  clears 2-of-4", so trim had one body left to rebalance. All 38 evictions chose `desire`. Cause:
+  one shared band of 12 across three surfaces, with persona pinned and only 8 desires, so hooks and
+  bodies compete for the same distinct cells. **Settled by Arfeen 2026-08-08: distinctness is judged
+  WITHIN each surface, not across** — a headline and a body are surfaces of ONE ad, meant to be
+  coherent. The deck-wide anti-echo stays cross-surface, unchanged.
+- **The `…HOW IT…` line was NOT the copy engine.** The image engine has its own headline source;
+  with none passed it falls back to `HEADLINE_FORMULAS`, whose `benefit` formula is
+  `${MECHANISM}: HOW IT WORKS` — 38 chars against a 37-char fitter, so `fitTitle` always ate
+  "WORKS". Auto Mode never had this (it passes contextual headlines); **only the wizard path did**.
+  Fixed at that one call site, with a try/catch falling back to the templates rather than turning a
+  cosmetic defect into a failed generation. Proven live: 34/33/35/35 chars, none truncated.
+- **Sweep completeness (0099) proven END-TO-END.** Every render makes THREE Cloudinary objects; the
+  sweep could only ever see two, so one leaked per render — confirmed by listing: 4 orphans from the
+  first proof run and 4 from the second, **8 legacy orphans outstanding**, needing the pattern-scoped
+  listing sweep. After the fix the sweep resolved **12 ids across 4 rows** and the post-teardown
+  Cloudinary listing showed **all four intermediates GONE — zero orphans from that run**.
+- 📌 **The manual wizard image path is UNGATED** — it does not run through the distinctness gate at
+  all, which is why its four cards share one small line. Noted 2026-08-08, **not this sprint's
+  concern**, and a separate future question from the per-surface work.
 
 ### Settled decisions (Arfeen, 2026-08-07/08)
 

@@ -110,6 +110,10 @@ export async function sweepAdCreativeBatch(
       serviceId: adCreatives.serviceId,
       imageUrl: adCreatives.imageUrl,
       rawImageUrl: adCreatives.rawImageUrl,
+      // The intermediate render (migration 0099). NULL on every row written before that
+      // migration — those orphans are unrecoverable from the database and need the
+      // pattern-scoped listing sweep instead.
+      sourceImageUrl: adCreatives.sourceImageUrl,
     })
     .from(adCreatives)
     .where(scope);
@@ -127,8 +131,14 @@ export async function sweepAdCreativeBatch(
 
   // Read the ids BEFORE any delete — they are only recoverable from these rows.
   const publicIds: string[] = Array.from(new Set<string>(
-    (rows as { imageUrl?: string | null; rawImageUrl?: string | null }[])
-      .flatMap(r => [publicIdFromUrl(r.imageUrl), publicIdFromUrl(r.rawImageUrl)])
+    (rows as { imageUrl?: string | null; rawImageUrl?: string | null; sourceImageUrl?: string | null }[])
+      .flatMap(r => [
+        publicIdFromUrl(r.imageUrl),
+        publicIdFromUrl(r.rawImageUrl),
+        // THREE objects per render, not two. A NULL here is skipped exactly as a NULL
+        // rawImageUrl already is, so legacy rows behave precisely as they did before.
+        publicIdFromUrl(r.sourceImageUrl),
+      ])
       .filter((v): v is string => typeof v === "string" && v.length > 0),
   ));
 

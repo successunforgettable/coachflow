@@ -81,6 +81,7 @@ vi.mock("../../drizzle/schema", () => ({
     batchId: { __name: "batchId" },
     imageUrl: { __name: "imageUrl" },
     rawImageUrl: { __name: "rawImageUrl" },
+    sourceImageUrl: { __name: "sourceImageUrl" },
   },
 }));
 
@@ -230,5 +231,84 @@ describe("publicIdFromUrl", () => {
 
   it("strips the delivery extension and keeps the key's own .png (path-style key)", () => {
     expect(publicIdFromUrl(URL_A)).toBe("ad-creatives/1/b/variation-1.png");
+  });
+});
+
+/**
+ * ─── Migration 0099: the THIRD Cloudinary object ────────────────────────────
+ *
+ * Every render uploads an intermediate `generated/…` object before the raw and
+ * composited copies are stored on the row. Only the latter two were ever recorded,
+ * so the sweep — which reads its ids off the row — cleared two of three and leaked
+ * one per render, permanently. Measured on the 2026-08-08 proof run: four renders,
+ * four orphans left behind after a sweep that reported itself clean.
+ *
+ * These cases are ADDITIVE. The suite above still pins the userId guard and the
+ * protected-service refusal on rows that carry no `sourceImageUrl`, which is exactly
+ * the legacy shape — so the pre-0099 behaviour stays covered rather than replaced.
+ */
+describe("sweepAdCreativeBatch — the intermediate render (migration 0099)", () => {
+  const URL_SRC = "https://res.cloudinary.com/x/image/upload/v1786201235/generated/1786201235005-gd8k7rj.png.png";
+  const B = { batchId: "batch-0099", userId: 117174 };
+
+  it("sweeps THREE objects per row, not two", async () => {
+    const rows = [{ ...row(), sourceImageUrl: URL_SRC } as any];
+    const { db } = fakeDb(rows, B);
+    const res = await sweepAdCreativeBatch(db, B.batchId, B.userId);
+
+    expect(res.publicIds).toHaveLength(3);
+    expect(res.cloudinaryDeleted).toBe(3);
+    expect(res.cloudinaryFailed).toEqual([]);
+  });
+
+  it("includes the intermediate's public id specifically", async () => {
+    const rows = [{ ...row(), sourceImageUrl: URL_SRC } as any];
+    const { db } = fakeDb(rows, B);
+    const res = await sweepAdCreativeBatch(db, B.batchId, B.userId);
+
+    expect(res.publicIds.some((id) => id.includes("generated"))).toBe(true);
+  });
+
+  it("leaves legacy rows behaving EXACTLY as before — a null intermediate is skipped", async () => {
+    // Rows written before 0099 carry NULL here. They must sweep their two objects and
+    // must not produce an empty-string id or a failed Cloudinary call.
+    const rows = [{ ...row(), sourceImageUrl: null } as any];
+    const { db } = fakeDb(rows, B);
+    const res = await sweepAdCreativeBatch(db, B.batchId, B.userId);
+
+    expect(res.publicIds).toHaveLength(2);
+    expect(res.cloudinaryDeleted).toBe(2);
+    expect(res.publicIds.every((id) => id.length > 0)).toBe(true);
+  });
+
+  it("still refuses on a protected service before touching Cloudinary, intermediate or not", async () => {
+    const rows = [{ ...row({ serviceId: PROTECTED_SERVICE_IDS[0] }), sourceImageUrl: URL_SRC } as any];
+    const { db } = fakeDb(rows, B);
+
+    await expect(sweepAdCreativeBatch(db, B.batchId, B.userId)).rejects.toBeInstanceOf(ProtectedServiceError);
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("still deletes nothing on a userId mismatch, intermediate or not", async () => {
+    const rows = [{ ...row(), sourceImageUrl: URL_SRC } as any];
+    const { db, calls } = fakeDb(rows, B);
+    const res = await sweepAdCreativeBatch(db, B.batchId, 999999);
+
+    expect(res.rowsFound).toBe(0);
+    expect(res.publicIds).toEqual([]);
+    expect(calls.deleted).toBe(false);
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("de-duplicates across rows that share an intermediate", async () => {
+    const rows = [
+      { ...row({ id: 1 }), sourceImageUrl: URL_SRC } as any,
+      { ...row({ id: 2 }), sourceImageUrl: URL_SRC } as any,
+    ];
+    const { db } = fakeDb(rows, B);
+    const res = await sweepAdCreativeBatch(db, B.batchId, B.userId);
+
+    // Two rows, identical urls on this fixture -> the id set must not double-count.
+    expect(new Set(res.publicIds).size).toBe(res.publicIds.length);
   });
 });

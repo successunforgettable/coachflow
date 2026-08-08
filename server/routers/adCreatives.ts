@@ -9,7 +9,7 @@ import { storagePut } from "../storage";
 import { renderAdCreative, resolveAdBodyText, resolveAdBodyTexts, reservedBandWording } from "../_core/compositeHeadline";
 import { resolveCampaignCta } from "../_core/campaignCta";
 import { randomBytes, randomUUID } from "crypto";
-import { runAdCreativesGeneration, resolveSubjectForService } from "../adCreativesGenerator";
+import { runAdCreativesGeneration, resolveSubjectForService, generateContextualAdHeadlines } from "../adCreativesGenerator";
 import { subjectClausesForBatch, describeResolution } from "../_core/subjectDescriptor";
 import { AD_VARIATIONS, FEED_ASPECT, liveStyleFor } from "../_core/adVariations";
 import { fitTitle } from "../lib/templates/templatePrimitives";
@@ -929,6 +929,42 @@ export const adCreativesRouter = router({
       const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "adCopy");
       if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
 
+      // ── Contextual headlines, the same source the cascade uses ───────────────
+      // Passing NO headlines makes runAdCreativesGeneration fall back to the legacy
+      // HEADLINE_FORMULAS templates, and those overflow their own limit: the `benefit`
+      // formula is `${MECHANISM}: HOW IT WORKS`, which at a 24-character mechanism name
+      // is 38 characters against a 37-character fitter, so `fitTitle` always eats the
+      // word "WORKS" and bakes "…: HOW IT…" onto the picture. The Auto Mode cascade has
+      // never had this because it passes contextual headlines (orchestration.ts); only
+      // this wizard path fell through, so only wizard users saw it.
+      //
+      // The formulas argument is left at its default (TABLOID_FORMULAS) deliberately —
+      // this deck IS the tabloid deck, and the deck-size mismatch between the two
+      // headline consumers is what once took production down with `headlines_wrong_count`.
+      //
+      // ⚠️ DEGRADE, NEVER FAIL. The micro-call validates ≤38 chars and retries; if it
+      // still exhausts, the old template path is a worse headline but a working one, so
+      // we fall back rather than turning a cosmetic defect into a failed generation.
+      let headlines: { text: string; emphasis: string }[] | undefined;
+      try {
+        headlines = await generateContextualAdHeadlines({
+          productName: input.productName,
+          mainBenefit: input.mainBenefit,
+          targetAudience: input.targetAudience,
+          // Optional on the wizard's input schema, required by the headline prompt.
+          // Empty is the same degradation the legacy template path already had — its
+          // `resolveMechanismName("")` returns "" too — so this loses nothing that was
+          // previously present, and the ≤38-char validator still governs the output.
+          uniqueMechanism: input.uniqueMechanism ?? "",
+          pressingProblem: input.pressingProblem,
+        });
+      } catch (e) {
+        console.warn(
+          `[adCreatives.generate] contextual headlines failed for service ${input.serviceId}; ` +
+          `falling back to HEADLINE_FORMULAS templates —`, e,
+        );
+      }
+
       const { batchId } = await runAdCreativesGeneration({
         userId: ctx.user.id,
         serviceId: input.serviceId,
@@ -939,6 +975,7 @@ export const adCreativesRouter = router({
         mainBenefit: input.mainBenefit,
         pressingProblem: input.pressingProblem,
         adType: input.adType,
+        headlines,
       });
 
       // Re-fetch the batch's rows for the wizard-facing return shape.
