@@ -1,0 +1,54 @@
+-- 0099 — record the INTERMEDIATE render's URL on adCreatives (out-of-band, travels ALONE)
+--
+-- Adds ONE nullable column:
+--   adCreatives.sourceImageUrl VARCHAR(500) NULL
+--
+-- WHY THIS EXISTS. Every ad-image render produces THREE Cloudinary objects, not two:
+--
+--   1. `generated/<ts>-<rand>.png`                   <- the model's output, uploaded by
+--                                                       generateImage / generateEditorialImage
+--   2. `ad-creatives/<user>/<batch>/raw-variation-N` <- stored on adCreatives.rawImageUrl
+--   3. `ad-creatives/<user>/<batch>/variation-N`     <- stored on adCreatives.imageUrl
+--
+-- Only (2) and (3) were ever written to the row, so `sweepAdCreativeBatch` — which reads
+-- its public_ids off the row — could only ever clear two of the three. Object (1) leaked
+-- on EVERY render, permanently: a database delete never touches Cloudinary, and once the
+-- row is gone the URL is unrecoverable from the database (CHECKPOINT §10).
+--
+-- MEASURED, not inferred. The 2026-08-08 image-hook proof run left exactly four orphans,
+-- one per rendered variation, confirmed by listing Cloudinary directly:
+--   generated_1786201235005-gd8k7rj.png · generated_1786201271036-zly0ia.png
+--   generated_1786201284954-7zeh4.png   · generated_1786201298940-mk4f2e.png
+-- The same pattern is visible on batches from weeks earlier, so this is long-standing
+-- rather than new. The leak rate is one object per render, which DOUBLES when the deck
+-- grows from four variations to eight — which is why this lands before that work.
+--
+-- ⚠️ ADDITIVE AND INERT, exactly like 0097 and 0098. A new nullable column changes no
+-- existing row and no existing read: every current row simply carries NULL, and the sweep
+-- skips a NULL exactly as it already skips a NULL `rawImageUrl`.
+--
+-- ⚠️ FORWARD-ONLY BY DESIGN. Rows written before this migration have no intermediate id
+-- recorded and never will — the URL was never persisted anywhere. Their orphans must be
+-- recovered by listing Cloudinary with `cloudinary.search` sorted by `created_at desc`
+-- (NOT `api.resources()`, which caps at 500 per page in no useful order).
+-- `scripts/sweep-regen-canvas-orphans.ts` is the worked example: dry-run by default,
+-- pattern-scoped, and refuses to delete unless the match count is exactly as expected.
+--
+-- ⚠️ MIGRATIONS TRAVEL ALONE (CLAUDE.md §5.6). This file is the whole change.
+--
+-- REVERSIBILITY. Dropping the column loses only the recovery ids for rows written since
+-- it landed; it destroys no image and no creative:
+--   ALTER TABLE `adCreatives` DROP COLUMN `sourceImageUrl`;
+--
+-- IDEMPOTENCE. MySQL has no "ADD COLUMN IF NOT EXISTS". Re-running errors with
+-- ER_DUP_FIELDNAME (1060), which is safe — it means the column is already present.
+--
+-- Verify AFTER applying:
+--   SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA = DATABASE()
+--      AND TABLE_NAME = 'adCreatives'
+--      AND COLUMN_NAME = 'sourceImageUrl';
+--   -- expect: varchar(500) · YES
+
+ALTER TABLE `adCreatives`
+  ADD COLUMN `sourceImageUrl` VARCHAR(500) NULL AFTER `rawImageUrl`;

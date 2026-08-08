@@ -1170,6 +1170,14 @@ export const adCreatives = mysqlTable("adCreatives", {
   // from a clean background so text-only edits don't leave ghost pixels from
   // the previous headline. Nullable for legacy rows predating this column.
   rawImageUrl: varchar("rawImageUrl", { length: 500 }),
+  // The INTERMEDIATE render, uploaded by generateImage/generateEditorialImage under
+  // `generated/…` before the raw and composited copies are stored above. Every render
+  // produces THREE Cloudinary objects, and teardown could only ever see two of them —
+  // so one leaked per render, permanently, because a DB delete never touches Cloudinary
+  // and the URL is unrecoverable once the row is gone. Recorded here so the guarded
+  // sweep can clear all three. Nullable and FORWARD-ONLY: rows written before this
+  // column have no id to recover, and their orphans need a pattern-scoped listing sweep.
+  sourceImageUrl: varchar("sourceImageUrl", { length: 500 }),
   imageFormat: varchar("imageFormat", { length: 20 }).default("1080x1080").notNull(), // Square format
   // Editorial scene brief {mode, action, symbolicObject, zone} persisted at feed
   // batch time so an on-demand 9:16 vertical re-renders flux from the SAME scene
