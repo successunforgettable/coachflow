@@ -3,9 +3,103 @@ import type { GateItem } from "./_core/pdafGate";
 import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, scoreAdContent } from "./_core/copywritingRules";
 import { nanoid } from "nanoid";
 import { ensureConceptsForIcp } from "./conceptGenerator";
+import { AD_VARIATIONS } from "./_core/adVariations";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
+}
+
+// ─── The image-hook surface: ceiling, clamp, and redraft voice ───────────────
+// These live at module scope and are exported because the hook is written in TWO
+// places — first generation, and the distinctness gate's regeneration callback —
+// and the two MUST agree. They did not: the ceiling was enforced only on first
+// generation, so every hook the gate recovered came back uncapped. The live proof
+// on 2026-08-08 persisted hooks of 74/92/114/127 characters, all four of them
+// gate-recovered, and the compositor ellipsised them over the picture.
+//
+// A hook that runs long is not a cosmetic problem. It is set large over a
+// photograph, so the extra lines push the text block into the part of the frame
+// the renderer was told to keep clear.
+
+export const HOOK_MAX_CHARS = 60;
+
+/**
+ * How many image hooks a deck can use — DERIVED from the tabloid deck, never hardcoded.
+ *
+ * A hook exists to sit on a picture, so the useful number of hooks is the number of images
+ * the deck renders. Deriving it means the 4 -> 8 growth updates this automatically; the
+ * `adVariations` docblock records two call sites that hardcoded `i < 5` and would have
+ * crashed the coach's Generate button, which is exactly the drift this avoids.
+ */
+export const IMAGE_HOOK_BAND_MAX = AD_VARIATIONS.length;
+
+/**
+ * Normalise and clamp one image-hook line. Cuts at a word boundary rather than
+ * mid-word. This is THE single implementation — both the first-generation map and
+ * the gate's redraft path call it, so the ceiling cannot drift between them again.
+ */
+export function clampHookText(raw: unknown): string {
+  // ⚠️ TRIM BEFORE STRIPPING QUOTES. The original inline version stripped quotes first,
+  // anchored to ^ and $ — so a reply arriving as `  "…"  ` still had whitespace at both
+  // ends and the strip matched nothing, leaving the quotation marks the prompt bans on
+  // the picture. Corrected here; both call sites intended the strip to work.
+  const s = String(raw ?? "").replace(/\s+/g, " ").trim().replace(/^["']|["']$/g, "").trim();
+  return s.length <= HOOK_MAX_CHARS ? s : s.slice(0, HOOK_MAX_CHARS).replace(/\s+\S*$/, "");
+}
+
+export type RedraftSurface = "body" | "headline" | "image_hook";
+
+/**
+ * Which redraft voice a row takes when the distinctness gate regenerates it.
+ *
+ * ⚠️ THE DEFECT THIS EXISTS TO PREVENT: the callback used to branch on
+ * `isBody`, which silently swept `image_hook` into the HEADLINE branch — so a
+ * recovered hook was prompted "You are rewriting ONE ad HEADLINE", losing both
+ * its 60-character ceiling and the build-spec §3 division of labour. It came
+ * back as a flat headline sitting on the picture, which is the exact
+ * repeat-across-surfaces collapse the hook was introduced to remove.
+ */
+export function redraftSurfaceFor(contentType: string | null | undefined): RedraftSurface {
+  return contentType === "body" ? "body" : contentType === "image_hook" ? "image_hook" : "headline";
+}
+
+/**
+ * The redraft instruction for an image hook — the same division of labour the
+ * first-generation prompt states (picture = the feeling, headline = the proof or
+ * mechanism, body = the context), in the same voice, with the ceiling restated.
+ */
+export function buildHookRedraftInstruction(args: {
+  cascadeContext?: string;
+  facts: string;
+  axisLine: string;
+  register: string;
+}): string {
+  return `${args.cascadeContext ?? ""}You are rewriting ONE IMAGE HOOK — the short line of text that sits ON the picture itself.
+
+${args.facts}
+
+${args.axisLine}
+
+WHAT AN IMAGE HOOK IS. An ad has three text surfaces and they are read as ONE message: the words on the picture, the headline, and the body. Each does a different job.
+- The PICTURE's line is the emotional hook — the feeling, the moment of recognition.
+- The HEADLINE carries the proof or the mechanism.
+- The BODY carries the context and the specifics.
+Your job is the first one only. This is NOT a headline.
+
+HARD RULES:
+- ${HOOK_MAX_CHARS} characters maximum. Shorter is better. It is set large on a photograph.
+- Name the feeling underneath, where the headline and body name the mechanism or the numbers.
+- Plain words. No colons, no hashtags, no quotation marks, no ALL CAPS, no emoji.
+- No price, no percentage, no statistic, no client result, no credential.
+- It must read as a complete thought on its own, because it is seen before either of the other two surfaces.
+
+${args.register}
+
+Return ONLY the hook line as a single string, no quotes, no explanation.
+
+---
+
+IMPORTANT: an earlier version of this hook was too close to another piece in the same set — the two would be treated as one ad and compete against each other. This rewrite must say something genuinely different, not the same thing in other words.`;
 }
 
 // ─── Concurrency-limited map (moved from router) ────────────────────────────
@@ -886,7 +980,8 @@ Format as JSON array:
   // ⚠️ THE BODY'S OPENING STAYS FREE. The fix is explicitly NOT to constrain the body — its
   // first 5-10 words are what decides who Meta shows the ad to. The hook moves out of the
   // body's way, never the other way round.
-  const HOOK_MAX_CHARS = 60;
+  // HOOK_MAX_CHARS is module-scope and shared with the gate's redraft path — see its
+  // docblock for why it must not be re-declared locally.
   const hookStagePlan = awarenessPlanForCount(count);
   const hookDesirePlan = dealAcrossSlots(conceptDesires, count);
   const hookSlotBlock = hookStagePlan
@@ -970,13 +1065,13 @@ Format as JSON:
   const hookContent = hookResponse.choices[0].message.content;
   if (typeof hookContent !== "string") throw new Error("Invalid image-hook response");
   const hookData = JSON.parse(stripMarkdownJson(hookContent));
-  // Enforce the ceiling in code as well as in the prompt. The compositor sets this large
-  // over a photograph; a model that runs long would push the text block into the picture
-  // the prompt told the renderer to keep clear.
+  // Enforce the ceiling in code as well as in the prompt, via the shared clamp the gate's
+  // redraft path also calls. The compositor sets this large over a photograph; a model that
+  // runs long would push the text block into the picture the prompt told the renderer to
+  // keep clear.
   const hookTexts: string[] = (hookData.hooks ?? [])
-    .map((h: unknown) => String(h ?? "").replace(/\s+/g, " ").replace(/^["']|["']$/g, "").trim())
-    .filter((h: string) => h.length > 0)
-    .map((h: string) => (h.length <= HOOK_MAX_CHARS ? h : h.slice(0, HOOK_MAX_CHARS).replace(/\s+\S*$/, "")));
+    .map((h: unknown) => clampHookText(h))
+    .filter((h: string) => h.length > 0);
   console.log(`[adCopyGenerator] image hooks: ${hookTexts.length}/${count} generated, longest ${Math.max(0, ...hookTexts.map((h) => h.length))} chars`);
 
   // ── Compliance + insert ────────────────────────────────────────────────────
@@ -1392,6 +1487,35 @@ Format as JSON:
       node: "adCopy (Node 7)",
       items,
       pools,
+      // ── Per-surface bands (settled 2026-08-08) ──────────────────────────────
+      // One shared band of 12 let three surfaces starve each other: the live run of
+      // 2026-08-08 kept 6 headlines / 5 hooks / 1 BODY, because 15 of ~17 bodies were
+      // dropped at the cap competing with hooks for the same distinct cells. Each surface
+      // now gets its own allowance and cannot spend another's.
+      //
+      // `image_hook` is capped at the number of images the deck will actually render — a
+      // hook with no picture to sit on is not a shippable asset. This is the value that
+      // moves when the deck grows 4 -> 8.
+      surfaceBands: {
+        image_hook: { min: 1, max: IMAGE_HOOK_BAND_MAX },
+      },
+      // ── The hook's format IS its surface ────────────────────────────────────
+      // Taking `format` off the hook's movable axes stops the gate stamping a body/headline
+      // taxonomy onto a hook row — the live run produced hooks labelled `pain_agitation`
+      // and `story`, vocabularies that describe a body angle rather than a picture line.
+      //
+      // ⚠️ CONSEQUENCE, STATED PLAINLY: with persona pinned and format now fixed, a hook has
+      // exactly TWO movable axes. Two differing axes is precisely the pass threshold, so a
+      // hook pair sharing both desire and awareness cannot be recovered at all. That is
+      // acceptable at four hooks and gets tighter as the count rises — measure hook recovery
+      // rate before growing this surface to eight.
+      surfacePools: {
+        image_hook: { movable: ["desire", "awareness"] },
+      },
+      // Hook OPENINGS are now a source, not only a target. Previously `openingRoles` was
+      // ["body"], so a hook echoing another hook — or echoing a headline — was structurally
+      // invisible: hooks could only ever be the thing echoed.
+      antiEcho: { openingRoles: ["body", "image_hook"], targetRoles: ["headline", "image_hook"] },
       regenerate: async ({ item, moves }) => {
         const row = rowById.get(String(item.id));
         if (!row) return null;
@@ -1408,11 +1532,26 @@ Format as JSON:
               : `FORMAT — rewrite this using the "${String(value).replace(/_/g, " ")}" angle:\n${isBody ? (REGEN_ANGLE_PROMPTS as any)[value] ?? "" : ""}`,
         ).join("\n\n");
 
-        const instruction = isBody
-          ? `${cascadeContext}You are rewriting ONE ad body copy.\n\n${facts}\n\n${axisLine}\n\n${registerPersonGuidance(hasRealProof)}\n\n${physicalGuidance}\n\nCreate ONE body copy (125-150 words). End with: ${input.adCallToAction}.\nReturn ONLY the body text as a single string.\n\n---\n\nIMPORTANT: an earlier version of this piece was too close to another ad in the same set — the two would be treated as one ad and compete against each other. This rewrite must be a genuinely different piece, not a rewording.`
-          : `${cascadeContext}You are rewriting ONE ad HEADLINE.\n\n${facts}\n\n${axisLine}\n\n${registerPersonGuidance(hasRealProof)}\n\nReturn ONLY the headline text as a single string, no quotes, no explanation.\n\n---\n\nIMPORTANT: an earlier version of this headline was too close to another headline in the same set — the two would be treated as one ad and compete against each other. This rewrite must say something genuinely different, not the same thing in other words.`;
+        // ⚠️ BRANCH ON THE SURFACE, NEVER ON `isBody` ALONE. A two-way isBody split sent
+        // `image_hook` rows down the HEADLINE path — uncapped and in the wrong voice.
+        const surface = redraftSurfaceFor(row.contentType);
+        const instruction =
+          surface === "body"
+            ? `${cascadeContext}You are rewriting ONE ad body copy.\n\n${facts}\n\n${axisLine}\n\n${registerPersonGuidance(hasRealProof)}\n\n${physicalGuidance}\n\nCreate ONE body copy (125-150 words). End with: ${input.adCallToAction}.\nReturn ONLY the body text as a single string.\n\n---\n\nIMPORTANT: an earlier version of this piece was too close to another ad in the same set — the two would be treated as one ad and compete against each other. This rewrite must be a genuinely different piece, not a rewording.`
+            : surface === "image_hook"
+              ? buildHookRedraftInstruction({
+                  cascadeContext,
+                  facts,
+                  axisLine,
+                  register: registerPersonGuidance(hasRealProof),
+                })
+              : `${cascadeContext}You are rewriting ONE ad HEADLINE.\n\n${facts}\n\n${axisLine}\n\n${registerPersonGuidance(hasRealProof)}\n\nReturn ONLY the headline text as a single string, no quotes, no explanation.\n\n---\n\nIMPORTANT: an earlier version of this headline was too close to another headline in the same set — the two would be treated as one ad and compete against each other. This rewrite must say something genuinely different, not the same thing in other words.`;
 
-        const text = await redraft(row, instruction);
+        const drafted = await redraft(row, instruction);
+        if (!drafted) return null;
+        // The ceiling is re-applied HERE as well as in the prompt. A prompt-only rule is a
+        // rule the model can run past, which is exactly how the defect reached production.
+        const text = surface === "image_hook" ? clampHookText(drafted) : drafted;
         if (!text) return null;
         const nextLabels = { ...item.labels };
         const next: any = { ...row, content: text };
@@ -1438,7 +1577,32 @@ Format as JSON:
       // different headline and the check fires again next round.
       rewriteEcho: async ({ item, finding, avoidPhrases }) => {
         const row = rowById.get(String(item.id));
-        if (!row || row.contentType !== "body") return null;
+        if (!row) return null;
+
+        // ── Hooks are rewritable too ───────────────────────────────────────────
+        // This callback used to return null for anything that was not a body, so a hook
+        // echo was DETECTED and then silently discarded — the finding went in the ledger
+        // and nothing changed. With hook openings now a source, that would have made the
+        // new detection useless. A hook rewrite is a fresh short line, not an opening
+        // repair, so it takes the hook voice and the hook ceiling.
+        if (row.contentType === "image_hook") {
+          const hookInstruction = `${cascadeContext}You are rewriting ONE IMAGE HOOK — the short line of text that sits ON the picture itself.\n\n${facts}\n\nTHE PROBLEM: this hook shares wording with another piece running in the same set — the shared phrase is "${finding.shared}". When the picture, the headline and the body all say the same thing, the ad is read as one narrow idea and its variants compete against each other instead of reaching different people.\n\nWORDING ALREADY IN THIS SET — do not reuse any of it:\n${avoidPhrases.map((p) => `- ${p}`).join("\n")}\n\nWHAT AN IMAGE HOOK IS. The picture's line is the emotional hook — the feeling, the moment of recognition. The headline carries the proof or the mechanism; the body carries the context. Your job is the first one only. This is NOT a headline.\n\nHARD RULES:\n- ${HOOK_MAX_CHARS} characters maximum. Shorter is better. It is set large on a photograph.\n- Name the feeling underneath, in words none of the lines above use.\n- Plain words. No colons, no hashtags, no quotation marks, no ALL CAPS, no emoji.\n- No price, no percentage, no statistic, no client result, no credential.\n\nHere is the current hook:\n${row.content}\n\n${registerPersonGuidance(hasRealProof)}\n\nReturn ONLY the hook line as a single string, no quotes, no explanation.`;
+          const drafted = await redraft(row, hookInstruction);
+          if (!drafted) return null;
+          const hookText = clampHookText(drafted);
+          if (!hookText) return null;
+          const nextRow: any = { ...row, content: hookText };
+          rowById.set(String(item.id), nextRow);
+          return {
+            id: item.id,
+            surface: item.surface,
+            text: hookText,
+            partnerId: item.partnerId ?? null,
+            labels: { ...item.labels },
+          };
+        }
+
+        if (row.contentType !== "body") return null;
         const instruction = `${cascadeContext}You are rewriting the OPENING of ONE ad body copy. Everything else about it stays the same.\n\n${facts}\n\nTHE PROBLEM: this body opens with wording that repeats a headline running in the same set — the shared phrase is "${finding.shared}". When the picture, the headline and the body all say the same thing, the ad is read as one narrow idea and its variants compete against each other instead of reaching different people.\n\nHEADLINES ALREADY IN THIS SET — do not reuse their wording in your opening:\n${avoidPhrases.map((p) => `- ${p}`).join("\n")}\n\nOPENING WORDS — the first sentence carries more weight than any other. The opening 5 to 10 words decide how this ad is categorised and therefore who sees it.\n- Open on the concrete situation, in the vocabulary this field actually uses for it.\n- Do NOT reuse the key nouns and verbs of any headline above.\n- Do NOT open with filler: "Hey", "So", "Look", "Let me tell you", "Imagine", "What if", "Are you tired of", "Ever wondered", "Picture this", "Here's the thing".\n\nHere is the current body copy:\n${row.content}\n\nRewrite it so the opening carries the same meaning in genuinely different words. Keep the length (125-150 words), keep the angle, and end with: ${input.adCallToAction}.\nReturn ONLY the body text as a single string.`;
         const text = await redraft(row, instruction);
         if (!text) return null;

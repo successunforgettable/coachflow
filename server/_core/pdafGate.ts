@@ -84,6 +84,40 @@ export function resolveBudgetBand(explicit?: BudgetBand | null): BudgetBand {
 export function bandMax(band: BudgetBand): number {
   return DISTINCT_TARGET_BY_BAND[band].max;
 }
+/**
+ * A per-surface override of the band. Settled by Arfeen 2026-08-08.
+ *
+ * ⚠️ WHY SURFACES GET THEIR OWN BANDS. One shared band of 12 across three surfaces let them
+ * starve each other. Measured on the live run of 2026-08-08 (adSet NUTz86js4K4fovKp0ZxT1):
+ * the deck kept **6 headlines / 5 image hooks / 1 body**. Not a trim failure — 15 of ~17
+ * bodies were dropped at the cap, every one "no axis move clears 2-of-4", so by the time
+ * trim ran there was a single body left to rebalance. Persona is pinned and format is fixed
+ * per piece, so with 8 desires the supply of distinct (desire × awareness × format) cells is
+ * finite, and the surface generated in the largest quantity loses the race for them.
+ *
+ * A deck with one body cannot ship: twelve ads cannot share a single body.
+ */
+export type SurfaceBandOverride = { min?: number; max?: number };
+
+/** Per-surface accounting. The shippability question is asked SURFACE BY SURFACE. */
+export type SurfaceLedger = {
+  surface: string;
+  populationSize: number;
+  bandMin: number;
+  bandMax: number;
+  collapsingPairsBefore: number;
+  collapseRateBefore: number;
+  collapsingPairsAfter: number;
+  collapseRateAfter: number;
+  evicted: number;
+  recovered: number;
+  dropped: number;
+  trimmed: number;
+  kept: number;
+  /** kept >= bandMin. False is the "unshippable surface" signal the shared band could not see. */
+  meetsFloor: boolean;
+};
+
 export function bandMin(band: BudgetBand): number {
   return DISTINCT_TARGET_BY_BAND[band].min;
 }
@@ -94,8 +128,13 @@ export type GateItem<TId> = {
   id: TId;
   labels: PdafLabels;
   /**
-   * Which text surface this piece is. Drives anti-echo roles, and nothing else —
-   * the P.D.A.F. comparison is blind to it.
+   * Which text surface this piece is.
+   *
+   * ⚠️ UPDATED 2026-08-08. This used to read "drives anti-echo roles, and nothing else —
+   * the P.D.A.F. comparison is blind to it." That is no longer true, and the change is the
+   * point: distinctness is now judged WITHIN a surface. `comparePair` itself is still blind
+   * to surface — the GROUPING is what changed, not the comparison — but a headline and a
+   * body are never compared, because they are two surfaces of one ad rather than two ads.
    */
   surface: string;
   /** The finished copy. Used ONLY by anti-echo, never by the P.D.A.F. comparison. */
@@ -706,6 +745,15 @@ export type GateLedger = {
   keptCount: number;
   /** Kept rows by surface — the shippability check the first cut had no way to see. */
   keptBySurface: Record<string, number>;
+  /**
+   * Per-surface detail. Distinctness is judged WITHIN a surface (settled 2026-08-08), so the
+   * aggregate pair counts above are the SUM of these — never a cross-surface comparison. A
+   * headline and a body are two surfaces of ONE ad and are meant to be coherent; counting
+   * them as a collapsing pair measured the wrong thing and starved the body surface.
+   */
+  bySurface: Record<string, SurfaceLedger>;
+  /** Surfaces that finished below their band floor. Empty is the shippable case. */
+  surfacesBelowFloor: string[];
 };
 
 export function emptyLedger(node: string, band: BudgetBand): GateLedger {
@@ -727,6 +775,8 @@ export function emptyLedger(node: string, band: BudgetBand): GateLedger {
     trimmed: [],
     keptCount: 0,
     keptBySurface: {},
+    bySurface: {},
+    surfacesBelowFloor: [],
   };
 }
 
@@ -741,6 +791,25 @@ export function formatLedger(l: GateLedger): string {
     `evicted ${l.evicted.length} · recovered ${l.recovered.length} · dropped at cap ${l.droppedAtCap.length} · trimmed ${l.trimmed.length} · KEPT ${l.keptCount}`,
     `KEPT COMPOSITION: ${Object.entries(l.keptBySurface).map(([k, v]) => `${k} ${v}`).join(" · ") || "(none)"}`,
   ];
+  // Per-surface is the shippability view. The aggregate above can look healthy while one
+  // surface sits at a single row — which is exactly what the shared band produced.
+  const surfaceRows = Object.values(l.bySurface);
+  if (surfaceRows.length > 0) {
+    lines.push("PER SURFACE (distinctness is judged WITHIN a surface):");
+    for (const s of surfaceRows) {
+      lines.push(
+        `  ${s.surface.padEnd(12)} pop ${String(s.populationSize).padStart(3)} · ` +
+        `collapse ${s.collapsingPairsBefore} (${pct(s.collapseRateBefore)}) -> ${s.collapsingPairsAfter} (${pct(s.collapseRateAfter)}) · ` +
+        `evicted ${s.evicted} recovered ${s.recovered} dropped ${s.dropped} trimmed ${s.trimmed} · ` +
+        `KEPT ${s.kept}/band ${s.bandMin}-${s.bandMax} ${s.meetsFloor ? "✅" : "🔴 BELOW FLOOR"}`,
+      );
+    }
+    lines.push(
+      l.surfacesBelowFloor.length === 0
+        ? "  ✅ every surface is at or above its floor — the deck is shippable on composition."
+        : `  🔴 UNSHIPPABLE: ${l.surfacesBelowFloor.join(", ")} below floor. A deck cannot ship a surface that thin.`,
+    );
+  }
   for (const e of l.evicted) lines.push(`  evicted   ${e.id} — ${e.collisions} collision(s), axis to move: ${e.axis ?? "none available"}`);
   for (const r of l.recovered) lines.push(`  recovered ${r.id} — moved ${r.axis} -> "${String(r.value).slice(0, 48)}" on attempt ${r.attempt}`);
   for (const d of l.droppedAtCap) lines.push(`  DROPPED   ${d.id} — ${d.reason === "no_move_available" ? "NO available axis move clears 2-of-4 (honest drop)" : d.reason === "regenerate_failed" ? "the redraft never came back clean" : "the redraft still collapsed"} [axis sought: ${d.axis ?? "none"}]`);
@@ -789,6 +858,19 @@ export async function runDistinctnessGate<TId>(args: {
   items: Array<GateItem<TId>>;
   pools: AxisPools;
   band?: BudgetBand | null;
+  /**
+   * Per-surface band overrides. Unset surfaces take the resolved global band. Node 7 caps
+   * `image_hook` at the number of images the deck will actually render — a hook with no
+   * picture to sit on is not a shippable asset.
+   */
+  surfaceBands?: Record<string, SurfaceBandOverride>;
+  /**
+   * Per-surface pool overrides, merged over `pools`. Node 7 uses this to take `format` off
+   * the image hook's movable axes: a hook's format IS its surface, so moving it stamps a
+   * body/headline taxonomy (`pain_agitation`, `story`) onto a hook row and describes it
+   * with a vocabulary that does not apply.
+   */
+  surfacePools?: Record<string, Partial<AxisPools>>;
   regenerate: RegenerateFn<TId>;
   rewriteEcho?: EchoRewriteFn<TId>;
   antiEcho?: { minRun?: number; openingRoles?: readonly string[]; targetRoles?: readonly string[] };
@@ -801,53 +883,105 @@ export async function runDistinctnessGate<TId>(args: {
   ledger.populationSize = population.length;
   ledger.excludedCount = excluded.length;
 
-  const before = auditBatch(population.map((p) => ({ id: String(p.id), labels: p.labels })));
-  ledger.collapsingPairsBefore = before.collapsingPairs.length;
-  ledger.collapseRateBefore = Number.isFinite(before.collapseRate) ? before.collapseRate : 0;
+  // ── Group by surface. THIS IS THE CHANGE. ─────────────────────────────────
+  // Distinctness is judged WITHIN a surface, never across (settled 2026-08-08). Meta
+  // collapses whole ADS, and an ad is the fused triple of image text, headline and body —
+  // so two headlines competing is a real signal, while a headline "colliding" with a body
+  // it will only ever ship ALONGSIDE is not. Comparing across surfaces made three surfaces
+  // fight for one pool of distinct cells and starved the largest of them.
+  const surfaces: string[] = population
+    .map((p) => p.surface)
+    .filter((s, i, a) => a.indexOf(s) === i);
+  // Returns tuples rather than a Map: `for…of` over a Map trips TS2802 under this repo's
+  // compiler target, which is a pre-existing constraint and not worth a config change here.
+  const groupsOf = (items: Array<GateItem<TId>>): Array<[string, Array<GateItem<TId>>]> =>
+    surfaces.map((s) => [s, items.filter((i) => i.surface === s)]);
+  const bandFor = (surface: string) => {
+    const o = args.surfaceBands?.[surface];
+    return { min: o?.min ?? bandMin(band), max: o?.max ?? bandMax(band) };
+  };
+  const poolsFor = (surface: string): AxisPools => ({
+    ...args.pools,
+    ...(args.surfacePools?.[surface] ?? {}),
+  });
 
-  // ── evict + regenerate, capped ────────────────────────────────────────────
-  let survivors = [...population];
-  let queue: Array<{ item: GateItem<TId>; eviction: Eviction<TId>; reason: DropReason }> = [];
-  {
-    const plan = planEvictions(population);
-    survivors = plan.keep;
-    const byId = new Map(population.map((p) => [String(p.id), p]));
-    queue = plan.evictions.map((e) => ({ item: byId.get(String(e.id))!, eviction: e, reason: "no_move_available" as DropReason }));
-    ledger.evicted = plan.evictions.map((e) => ({
-      id: String(e.id), collisions: e.collisions, axis: e.axis,
-    }));
+  const populationBySurface = groupsOf(population);
+  for (const [surface, items] of populationBySurface) {
+    const b = bandFor(surface);
+    const bef = auditBatch(items.map((p) => ({ id: String(p.id), labels: p.labels })));
+    ledger.bySurface[surface] = {
+      surface,
+      populationSize: items.length,
+      bandMin: b.min,
+      bandMax: b.max,
+      collapsingPairsBefore: bef.collapsingPairs.length,
+      collapseRateBefore: Number.isFinite(bef.collapseRate) ? bef.collapseRate : 0,
+      collapsingPairsAfter: 0,
+      collapseRateAfter: 0,
+      evicted: 0, recovered: 0, dropped: 0, trimmed: 0, kept: 0,
+      meetsFloor: false,
+    };
+    ledger.collapsingPairsBefore += bef.collapsingPairs.length;
   }
+  // The aggregate rate is the population-weighted mean of the per-surface rates, so it stays
+  // a rate rather than becoming a sum of fractions.
+  ledger.collapseRateBefore = population.length
+    ? Object.values(ledger.bySurface)
+        .reduce((acc, s) => acc + s.collapseRateBefore * s.populationSize, 0) / population.length
+    : 0;
 
-  for (let attempt = 1; attempt <= COMPLIANCE_RETRY_MAX_ATTEMPTS && queue.length > 0; attempt++) {
-    const stillFailing: typeof queue = [];
-    // Sequential, not parallel: each redraft's target value depends on what the survivors
-    // already carry, so two concurrent redrafts would both aim at the same empty slot and
-    // land on top of each other.
-    for (const { item, eviction } of queue) {
-      // The suggestion is now SIMULATED against the survivors before any model call, so a
-      // piece is only asked to redraft on a move that would actually separate it. null here
-      // means no combination of available axes can clear the rule — an honest drop.
-      const suggestion = suggestReassignment(eviction, item, survivors, args.pools);
-      if (!suggestion) { stillFailing.push({ item, eviction, reason: "no_move_available" }); continue; }
-      let candidate: GateItem<TId> | null = null;
-      try {
-        candidate = await args.regenerate({ item, moves: suggestion.moves, attempt });
-      } catch { candidate = null; }
-      if (!candidate) { stillFailing.push({ item, eviction, reason: "regenerate_failed" }); continue; }
-      // Re-gate: the redraft must clear 2-of-4 against every survivor, or it is discarded.
-      const collides = survivors.some((s) => comparePair(candidate!.labels, s.labels).collapses);
-      if (collides) { stillFailing.push({ item, eviction, reason: "redraft_still_collapsed" }); continue; }
-      survivors.push(candidate);
-      ledger.recovered.push({
-        id: String(item.id),
-        axis: suggestion.moves.map((m) => m.dimension).join("+"),
-        value: suggestion.moves.map((m) => m.value).join(" | "),
-        attempt,
-      });
+  // ── evict + regenerate, capped — PER SURFACE ──────────────────────────────
+  let survivors: Array<GateItem<TId>> = [];
+  for (const [surface, items] of populationBySurface) {
+    const sl = ledger.bySurface[surface];
+    let kept: Array<GateItem<TId>>;
+    let queue: Array<{ item: GateItem<TId>; eviction: Eviction<TId>; reason: DropReason }>;
+    {
+      const plan = planEvictions(items);
+      kept = plan.keep;
+      const byId = new Map(items.map((p) => [String(p.id), p]));
+      queue = plan.evictions.map((e) => ({ item: byId.get(String(e.id))!, eviction: e, reason: "no_move_available" as DropReason }));
+      sl.evicted = plan.evictions.length;
+      for (const e of plan.evictions) ledger.evicted.push({ id: String(e.id), collisions: e.collisions, axis: e.axis });
     }
-    queue = stillFailing;
+
+    const pools = poolsFor(surface);
+    for (let attempt = 1; attempt <= COMPLIANCE_RETRY_MAX_ATTEMPTS && queue.length > 0; attempt++) {
+      const stillFailing: typeof queue = [];
+      // Sequential, not parallel: each redraft's target value depends on what the survivors
+      // already carry, so two concurrent redrafts would both aim at the same empty slot and
+      // land on top of each other.
+      for (const { item, eviction } of queue) {
+        // Simulated against THIS SURFACE'S survivors before any model call, so a piece is
+        // only asked to redraft on a move that would actually separate it. null means no
+        // combination of available axes can clear the rule — an honest drop.
+        const suggestion = suggestReassignment(eviction, item, kept, pools);
+        if (!suggestion) { stillFailing.push({ item, eviction, reason: "no_move_available" }); continue; }
+        let candidate: GateItem<TId> | null = null;
+        try {
+          candidate = await args.regenerate({ item, moves: suggestion.moves, attempt });
+        } catch { candidate = null; }
+        if (!candidate) { stillFailing.push({ item, eviction, reason: "regenerate_failed" }); continue; }
+        // Re-gate against this surface's survivors, or the redraft is discarded.
+        const collides = kept.some((s) => comparePair(candidate!.labels, s.labels).collapses);
+        if (collides) { stillFailing.push({ item, eviction, reason: "redraft_still_collapsed" }); continue; }
+        kept.push(candidate);
+        sl.recovered += 1;
+        ledger.recovered.push({
+          id: String(item.id),
+          axis: suggestion.moves.map((m) => m.dimension).join("+"),
+          value: suggestion.moves.map((m) => m.value).join(" | "),
+          attempt,
+        });
+      }
+      queue = stillFailing;
+    }
+    sl.dropped = queue.length;
+    for (const { item, eviction, reason } of queue) {
+      ledger.droppedAtCap.push({ id: String(item.id), axis: eviction.axis, reason });
+    }
+    survivors.push(...kept);
   }
-  ledger.droppedAtCap = queue.map(({ item, eviction, reason }) => ({ id: String(item.id), axis: eviction.axis, reason }));
 
   // ── deck-wide anti-echo ───────────────────────────────────────────────────
   if (args.rewriteEcho) {
@@ -885,16 +1019,40 @@ export async function runDistinctnessGate<TId>(args: {
     ).map((f) => ({ id: f.id, against: f.againstId, shared: f.shared, wasPartner: f.wasPartner }));
   }
 
-  // ── trim ──────────────────────────────────────────────────────────────────
+  // ── trim — PER SURFACE, to that surface's own ceiling ─────────────────────
+  // A shared ceiling meant a surface with many survivors could consume the whole allowance
+  // and leave another at one row. Each surface is now cut to its own max, so no surface can
+  // spend another's slots.
   if (!args.skipTrim) {
-    const t = trimToBand(survivors, bandMax(band));
-    survivors = t.keep;
-    ledger.trimmed = t.trimmed.map((x) => String(x.id));
+    const trimmed: Array<GateItem<TId>> = [];
+    for (const [surface, items] of groupsOf(survivors)) {
+      const t = trimToBand(items, bandFor(surface).max);
+      trimmed.push(...t.keep);
+      const sl = ledger.bySurface[surface];
+      if (sl) sl.trimmed = t.trimmed.length;
+      for (const x of t.trimmed) ledger.trimmed.push(String(x.id));
+    }
+    survivors = trimmed;
   }
 
-  const after = auditBatch(survivors.map((s) => ({ id: String(s.id), labels: s.labels })));
-  ledger.collapsingPairsAfter = after.collapsingPairs.length;
-  ledger.collapseRateAfter = Number.isFinite(after.collapseRate) ? after.collapseRate : 0;
+  // ── after, per surface then aggregated ────────────────────────────────────
+  for (const [surface, items] of groupsOf(survivors)) {
+    const sl = ledger.bySurface[surface];
+    if (!sl) continue;
+    const aft = auditBatch(items.map((s) => ({ id: String(s.id), labels: s.labels })));
+    sl.collapsingPairsAfter = aft.collapsingPairs.length;
+    sl.collapseRateAfter = Number.isFinite(aft.collapseRate) ? aft.collapseRate : 0;
+    sl.kept = items.length;
+    sl.meetsFloor = items.length >= sl.bandMin;
+    ledger.collapsingPairsAfter += aft.collapsingPairs.length;
+  }
+  ledger.collapseRateAfter = survivors.length
+    ? Object.values(ledger.bySurface)
+        .reduce((acc, s) => acc + s.collapseRateAfter * s.kept, 0) / survivors.length
+    : 0;
+  ledger.surfacesBelowFloor = Object.values(ledger.bySurface)
+    .filter((s) => !s.meetsFloor)
+    .map((s) => s.surface);
   ledger.keptCount = survivors.length;
   ledger.keptBySurface = survivors.reduce((acc, s2) => {
     acc[s2.surface] = (acc[s2.surface] ?? 0) + 1;

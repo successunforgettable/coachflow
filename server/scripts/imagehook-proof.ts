@@ -32,7 +32,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { adCopy, adCreatives, services, idealCustomerProfiles, campaignConcepts } from "../../drizzle/schema";
 import { runAdCopyGeneration } from "../adCopyGenerator";
-import { runAdCreativesGeneration } from "../adCreativesGenerator";
+import { runAdCreativesGeneration, generateContextualAdHeadlines } from "../adCreativesGenerator";
 import { ensureConceptsForIcp, conceptJobId } from "../conceptGenerator";
 import { contentWords, type GateLedger, formatLedger } from "../_core/pdafGate";
 
@@ -134,6 +134,32 @@ async function main() {
   rule();
   say(ledger ? formatLedger(ledger) : "🔴 NO LEDGER FOUND — investigate before reading anything below.");
 
+  // ── 0. PER-SURFACE SHIPPABILITY — the reason for the rework ────────────────
+  say("\n" + "─".repeat(78));
+  say("0. PER-SURFACE BANDS — every surface at or above its floor");
+  rule();
+  if (!ledger?.bySurface || Object.keys(ledger.bySurface).length === 0) {
+    say("🔴 FAIL — the ledger carries no per-surface detail. The gate did not run per surface.");
+  } else {
+    for (const s of Object.values(ledger.bySurface)) {
+      say(
+        `   ${s.surface.padEnd(12)} kept ${String(s.kept).padStart(2)} / band ${s.bandMin}-${s.bandMax} · ` +
+        `collapse ${s.collapsingPairsBefore} -> ${s.collapsingPairsAfter} · ` +
+        `evicted ${s.evicted} recovered ${s.recovered} dropped ${s.dropped} trimmed ${s.trimmed} ` +
+        `${s.meetsFloor ? "✅" : "🔴 BELOW FLOOR"}`,
+      );
+    }
+    const bodyKept = ledger.bySurface["body"]?.kept ?? 0;
+    say("");
+    say(`bodies kept: ${bodyKept}   (the 2026-08-08 shared-band run kept 1 — unshippable)`);
+    say(ledger.surfacesBelowFloor.length === 0
+      ? "✅ PASS — every surface is at or above its floor."
+      : `🔴 FAIL — below floor: ${ledger.surfacesBelowFloor.join(", ")}`);
+    say(bodyKept > 1
+      ? "✅ PASS — the body surface is no longer starved."
+      : "🔴 FAIL — bodies are still being starved; the rework did not achieve its purpose.");
+  }
+
   const rows: any[] = await db
     .select({ id: adCopy.id, contentType: adCopy.contentType, content: adCopy.content,
               persona: adCopy.persona, desire: adCopy.desire, awareness: adCopy.awareness, format: adCopy.format })
@@ -196,11 +222,47 @@ async function main() {
   say("\n" + "─".repeat(78));
   say("4. RENDER — the composite is the only thing that proves this");
   rule();
+  // ⚠️ MIRROR THE CASCADE — pass contextual headlines, do not fall through.
+  // This harness previously passed no `headlines`, so `runAdCreativesGeneration` took the
+  // legacy HEADLINE_FORMULAS branch. That branch's `benefit` formula is
+  // `${MECHANISM}: HOW IT WORKS`, which at this brief's 24-character mechanism is 38
+  // characters against a 37-character fitter — so every composite baked
+  // "THE SCOPE-FIRST SEQUENCE: HOW IT…" and the truncation read as a render defect when it
+  // was the harness taking a path no production caller takes any more.
+  //
+  // The length guard at adCreativesGenerator.ts:535 is satisfied by construction:
+  // `generateContextualAdHeadlines` defaults to TABLOID_FORMULAS, which is
+  // `AD_VARIATIONS.map(v => v.formula)` — derived from the same deck this renders, so the
+  // two cannot drift. ICP fields are passed for parity with orchestration.ts.
+  const adHeadlines = await generateContextualAdHeadlines({
+    productName: BRIEF.specificProductName,
+    mainBenefit: BRIEF.desiredOutcome,
+    targetAudience: BRIEF.targetMarket,
+    uniqueMechanism: BRIEF.uniqueMechanism,
+    pressingProblem: BRIEF.pressingProblem,
+    icpPains: BRIEF.pressingProblem,
+    icpFears: "that raising the model loses the client entirely, and that the pipeline goes quiet for a quarter",
+    icpObjections: "my clients would never agree to a retainer; my work is genuinely project-shaped",
+    icpBuyingTriggers: "a month where billable hours dropped but workload did not",
+  });
+  say(`contextual headlines: ${adHeadlines.length} generated`);
+  let headlineFaults = 0;
+  for (const h of adHeadlines) {
+    const bad = h.text.includes("…") || h.text.length > 38;
+    if (bad) headlineFaults += 1;
+    say(`   (${String(h.text.length).padStart(2)} chars)${bad ? " 🔴" : ""} ${h.text}   [accent: ${h.emphasis ?? "—"}]`);
+  }
+  say(headlineFaults === 0
+    ? "✅ every baked headline is within the house limit and un-truncated."
+    : `🔴 ${headlineFaults} headline(s) still truncated or over 38 chars.`);
+  say("");
+
   const creativeRes = await runAdCreativesGeneration({
     userId: USER_ID, serviceId, niche: "operations consulting",
     productName: BRIEF.specificProductName, uniqueMechanism: BRIEF.uniqueMechanism,
     targetAudience: BRIEF.targetMarket, mainBenefit: BRIEF.desiredOutcome,
     pressingProblem: BRIEF.pressingProblem, adType: "lead_gen",
+    headlines: adHeadlines,
   } as any);
   const batchId = (creativeRes as any).batchId;
   say(`rendered batchId=${batchId}`);

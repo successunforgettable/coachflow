@@ -7,29 +7,69 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-**The copy engine is built, proven live, and committed LOCALLY ONLY. Nothing has been pushed, so
-none of it is deployed.** Production is running the image chapter plus the two-site canvas fix.
+**The copy engine, the distinctness gate and the per-surface rework are built, proven live on both
+nodes, and committed LOCALLY ONLY. Nothing has been pushed, so none of it is deployed.** Production
+is running the image chapter plus the two-site canvas fix. Migrations 0097, 0098 and 0099 ARE
+applied to production (all additive and inert) — do not treat their presence as evidence the code
+that uses them is live.
 
-**👉 NEXT ACTION: apply migration 0098, then run the image-hook proof.**
+**👉 NEXT ACTION: publish-path build step 1 — reroute the published headline and body to draw from
+the gated Node 7 pool.**
 
-⚠️ **0098 IS WRITTEN BUT NOT APPLIED.** Production still carries the THREE-value enum
-`adCopy.contentType = enum('headline','body','link')` — verified by direct query 2026-08-08. The
-baked-text code is built and green but CANNOT run until 0098 lands: every `image_hook` insert
-fails against the current enum. `server/scripts/imagehook-proof.ts` checks INFORMATION_SCHEMA and
-refuses to start rather than producing a half-deck that would read as a code failure.
+🔴 **WHY THIS OUTRANKS EVERYTHING ELSE IN THE SPRINT. The gated copy reaches nothing live.**
+Traced end to end 2026-08-09, in code, not recalled:
 
-Applying it is an `ALTER TABLE` and needs Arfeen's explicit go-ahead (CLAUDE.md §10 names
-migrations in the hard gate, and says schema-only is NOT an exception).
+- The **published headline** is `selectedCreative.headline` (`PushKitModal.tsx:263`) — a row from
+  the ad-creatives batch, written by `generateContextualAdHeadlines`, a SEPARATE micro-call inside
+  the image engine. It has its own ≤38-char validator but **no P.D.A.F. axes, no concept desire, no
+  awareness stamp, and it never passes through the gate.**
+- The **published body** comes from `deriveDefaultBody` — landing-page **subheadline**, else
+  **eyebrowHeadline**, else operator-typed. **The adCopy body pool is not in that priority list at
+  all.**
+- So of Meta's three fused surfaces, **only the baked image hook is gated.** The 12 gated headlines
+  and 12 gated bodies are generated, gated, and never shipped.
+- ⚠️ **CHECKPOINT §12.7 SAYS THE PUBLISHED PRIMARY TEXT COMES FROM THE adCopy TABLE. That is TRUE
+  OF V1 ONLY** (`AdCopyDetail.tsx:246-247` → `PublishToMetaDialog`), and `client/src/pages/` is
+  read-only legacy per CLAUDE.md §5. It is FALSE of the live V2 path. Corrected here rather than
+  left to mislead the next session — the §15a failure mode exactly.
+- **Assessed as an unfinished GAP, not a design decision.** Nothing in the build spec says publish
+  should draw from the creative row; spec §3 requires the three surfaces to ship as a coordinated
+  set, which only means anything if the coordinated set is what ships.
 
-Then, in order:
+### The approved publish-path design (Arfeen, 2026-08-09) — build sequence
 
-1. **Apply 0098 → run `imagehook-proof.ts`.** It RENDERS real Cloudinary objects — the first
-   render of this chapter — and saves composite + raw to `docs/screenshots/run-imagehook-proof/`
-   for Arfeen to judge on the pixels. **The COMPOSITE is the proof, never the raw.**
-2. **Tie images to concepts AT FOUR** (§12.11 step 3) — prove it while the deck is still 4 and the
-   existing protections are known-good.
-3. **Grow 4 → 8** with the arity audit (§12.11 step 4).
-4. **Then deploy**, which needs Arfeen's explicit "push" like every other deploy.
+1. **Reroute the published headline and body to the gated pool.** Retire the image-side headline
+   generation from the tabloid render path so the picture and the headline FIELD carry the SAME
+   gated line — two different headlines would be spec §3's "three unrelated messages", worse than
+   repetition. ⚠️ The reroute inherits no length guard (the ≤38 validator lives in the retired
+   side-generation), so it needs an explicit length rule. Record provenance on the published row,
+   which also closes the `adSetId: "temp"` traceability gap in §8c.
+2. **Stamp `conceptId` on `adCopy`** — additive migration, travels alone. Pair by id, NEVER by
+   matching desire/awareness label text: two concepts can share a stage and a silent mispair is
+   invisible.
+3. **Tie images to concepts** — additive `conceptId` on `adCreatives`. Also defuses the
+   `awarenessDeckPlan` trap (distinct stages guaranteed only at ≤4 slots).
+4. **Ad assembly: one concept → one ad.** Headline, body, hook and image all descend from the same
+   persona/desire/awareness concept. **Each body is used by AT MOST ONE ad; if bodies run short the
+   campaign ships FEWER ads rather than reusing one** — the never-pad rule applied to assembly.
+   Today every ad in a push ships the identical operator-typed body, a 100% duplication rate.
+   Fixing the pairing also strengthens the anti-echo: it currently checks a pool that can be
+   recombined arbitrarily at publish, whereas with fixed concept pairing **what is checked is what
+   ships**.
+5. **Congruence: THE LANDING PAGE IS THE ANCHOR — LOCKED.** The gated body aligns TO the page,
+   never the page to the body. The page is the destination, exists earlier in the cascade, is what
+   Meta scans for compliance, and one page serves many ads — regenerating it per winning ad breaks
+   that shape. Seeding the page from a winner is a POST-LAUNCH optimisation, not this build.
+   `checkAdToPageMatch` (`meta.ts:304`, already called at publish) is promoted from advisory to
+   gate, and the page's own lines join the anti-echo avoid-list so the body agrees with the page
+   without parroting it — today's degenerate default IS the subheadline.
+6. **Only then** revisit the hook bar and 4 → 8.
+
+📌 **Step 1 does NOT depend on concepts** and can land alone. Step 4 does depend on steps 2 and 3.
+📌 **Open, not designed over:** how a coach reviews and confirms N assembled ads. `publishToMeta`
+builds ONE ad per call; the multi-ad UI shape needs its own look before step 4 is specified.
+
+7. **Then deploy**, which needs Arfeen's explicit "push" like every other deploy.
 
 ✅ **The distinctness gate is DONE** — built, proven live on BOTH nodes, committed locally. See
 §12.6 for the measured before/after numbers, the two defects the first run exposed, and what is
@@ -796,6 +836,71 @@ compliance-REWRITE tables type on their own narrower enum, so hooks are excluded
 rather than adding a second migration — matching the measured decision that short fields are never
 retried.
 
+### ✅ PER-SURFACE DISTINCTNESS — BUILT, PROVEN LIVE ON BOTH NODES, COMMITTED LOCAL ONLY
+
+**Settled by Arfeen 2026-08-08: distinctness is judged WITHIN a surface, never across.** Meta
+collapses whole ADS, and an ad is the fused triple of image text / headline / body — so two
+headlines competing is a real delivery signal, while a headline "colliding" with the body it only
+ever ships ALONGSIDE is not. The deck-wide anti-echo stays CROSS-surface, unchanged.
+
+**What the shared band was doing.** Live run 2026-08-08 (adSet `NUTz86js4K4fovKp0ZxT1`) kept
+**6 headlines / 5 hooks / 1 BODY**. Not a trim failure — **15 of ~17 bodies were dropped at the
+cap**, every one "no axis move clears 2-of-4", so trim had one body left to rebalance. Persona
+pinned + 8 desires = a finite supply of distinct cells, and the surface generated in the largest
+quantity lost the race. A deck with one body cannot ship.
+
+**After, measured on TWO independent live runs:**
+
+| run | headline | body | image_hook |
+|---|---|---|---|
+| `qAGvRhVPiLdDjpGDm-fUW` | 12 kept, 5 evicted, **5 recovered**, 0 dropped | **12 kept**, 6 evicted, **6 recovered**, 0 dropped | 4 kept, 11 evicted, **0 recovered**, 11 dropped |
+| contextual-headline rerun | 12 kept, 4 evicted, **4 recovered**, 0 dropped | **12 kept**, 4 evicted, **4 recovered**, 0 dropped | 4 kept, 11 evicted, **0 recovered**, 11 dropped |
+
+Bodies 1 → 12. Every surface at or above floor, zero collapsing pairs anywhere.
+
+**Node 6 re-proved live at parity — and the first result was a false alarm worth recording.**
+`pdaf-node6-proof.ts` passes NO serviceId, so the generator resolves no ICP, finds no concepts, and
+falls back to a SINGLE deck-constant desire. With persona pinned, desire constant and Node 6 unable
+to move format, only awareness can move: one axis cannot clear 2-of-4, so `recovered 0` is FORCED,
+and `KEPT 4` is the ceiling (4 awareness stages). Its collapse-BEFORE of **127 pairs / 42.3%**
+reproduces the documented baseline exactly, which is what proves the population and comparison are
+unchanged. `pdaf-node6-icp-proof.ts` was written to build the §12.6 configuration (service + ICP +
+concepts, live desire) and returned **KEPT 12 / band 8-12 ✅**, matching §12.6, with one surface in
+the ledger, per-surface equal to aggregate, and ledger KEPT equal to the rows in the database.
+⚠️ **Never compare a no-service Node 6 run against §12.6 and call the difference a regression.**
+
+**Also in this commit:**
+- **The hook's format IS its surface.** `format` off the hook's movable axes — the gate was stamping
+  `pain_agitation` and `story` onto hook rows.
+- **Anti-echo gained hook OPENINGS as a source** (`openingRoles` was `["body"]`, so a hook echoing
+  another hook was structurally invisible) **and `rewriteEcho` now handles hook rows** — without
+  that second half the new detection would find echoes and silently discard them.
+- **The hook-regeneration fix**: the gate's `regenerate` branched on `isBody`, sweeping `image_hook`
+  into the HEADLINE branch — wrong voice, and the 60-char ceiling applied only on first generation.
+  All four hooks on the first live run were gate-recovered and came back at **74/92/114/127 chars**,
+  ellipsised over the picture. Now `redraftSurfaceFor` / `buildHookRedraftInstruction` /
+  `clampHookText`, module-scope and shared by both call sites.
+- **The proof harness passes contextual headlines**, mirroring the cascade. It previously fell
+  through to HEADLINE_FORMULAS and baked `THE SCOPE-FIRST SEQUENCE: HOW IT…`, which read as a render
+  defect but was the harness taking a path no production caller takes any more.
+
+### 🔴 THE 4 → 8 HOOK BLOCKER — measured twice, do not build over it
+
+`image_hook` shows a green tick only because its floor is 1. Underneath, on BOTH runs: **11 evicted,
+0 recovered, 4 surviving.** The hook surface's natural distinct capacity is **exactly 4** — today's
+deck size, so nothing looks wrong. At eight it falls short, and recovery cannot rescue it: with
+persona pinned and format now fixed, a hook has TWO movable axes against a two-axis threshold, so
+any hook pair sharing desire and awareness is unrecoverable by construction. **This is the cost of
+the format-taxonomy fix, accepted deliberately.**
+
+⚠️ **The proposed relaxation — hold hooks to anti-echo only — rests on a premise that DOES NOT
+HOLD.** Verified 2026-08-09: `adCreatives` has **no persona/desire/awareness/conceptId/icpId
+column**, so the image contributes **ZERO** categorical axes; awareness shapes the shot at prompt
+time and is discarded. And there is **no ad-assembly step at all** — `publishToMeta` takes one
+headline, one body, one image and creates one ad, so nothing computes ad-level distinctness. Ad-level
+2-of-4 holds only CONDITIONALLY: for two ads using a different headline AND a different body from
+the gated pool. Resolve the publish path and image→concept first.
+
 ### 🔴 Remaining, in order
 
 1. **Apply 0098**, then **run `imagehook-proof.ts`** — renders real composites for Arfeen to judge.
@@ -847,6 +952,27 @@ sites that pass no stage.
 - **Kit creation is the earliest SAFE concept trigger.** `icps.sharpenWithLadder` regenerates a
   profile in place and is documented as sitting "BEFORE the kit exists, so nothing downstream has
   consumed the ICP yet". Triggering at ICP creation would make a sharpen leave a stale concept set.
+
+### 12.12 Teardown ledger — 2026-08-09, all four proofs cleared
+
+Torn down and reconciled EXACTLY to baseline: adCopy **5424** · headlines **2174** · adCreatives
+**405** · running jobs **0**. Protected verified per service, not in aggregate:
+`272:5 273:5 275:5 276:5 277:5 285:4` = **29**, all seven service rows present, never touched — the
+refusal never needed to fire because every batch resolved to services 301/303.
+
+- Node 7 per-surface — service 301, ICP 275, batch `batch-1786213463599-60a8e800`
+- Node 7 contextual-headline — service 303, ICP 277, batch `batch-1786217580577-5456dea6`
+- Node 6 no-service — headline rows 2330-2333
+- Node 6 ICP-backed — service 302, ICP 276, headlineSet `INvexs9yh7JLQ3Eyy48Rz`
+
+**Migration 0099 proven at teardown:** each sweep resolved **12 public ids across 4 rows — three per
+row**. Under the old code each would have cleared 8 and leaked 4. Cloudinary verified by direct
+listing, not by the sweep's self-report: both batches GONE.
+
+⚠️ **8 legacy orphans remain** (4 at `generated_17862073*`, 4 at `generated_17862012*`), both sets
+from runs that PREDATE 0099. Their urls were never recorded and are unrecoverable from the database;
+they need the pattern-scoped listing sweep (`cloudinary.search` sorted by `created_at desc`, NOT
+`api.resources()`). Not yet done.
 
 ### 12.10 Baselines to reconcile every proof run against
 
