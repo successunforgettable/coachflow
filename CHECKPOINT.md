@@ -13,8 +13,20 @@ is running the image chapter plus the two-site canvas fix. Migrations 0097, 0098
 applied to production (all additive and inert) — do not treat their presence as evidence the code
 that uses them is live.
 
-**👉 NEXT ACTION: publish-path build step 1 — reroute the published headline and body to draw from
-the gated Node 7 pool.**
+**Copy distinctness is BANKED at `e2eff85`** (per-surface gate + hook-regeneration fix + harness),
+on top of `b9cf6d2` (sweep completeness + wizard headline) and `38140a6` (migration 0099).
+
+**👉 NEXT ACTION: BUILD publish-path step 1 — reroute the published headline and body to draw from
+the gated Node 7 pool, and PROVE IT AT THE PAYLOAD LEVEL BEFORE ANY LIVE RUN.**
+
+Step 1 in full: headline and body both from the gated pool · the image bakes the SAME headline the
+Meta field carries (two different headlines is spec §3's "three unrelated messages", worse than
+repetition) · an explicit length rule, because retiring the side-generation also retires its ≤38
+validator · retire `generateContextualAdHeadlines` from the tabloid render path · record provenance
+on the published row, which also closes the `adSetId: "temp"` gap in §8c.
+
+**Prove it by capturing the outgoing payload and diffing against the control below. The live paused
+run is a SEPARATE step needing Arfeen's word.**
 
 🔴 **WHY THIS OUTRANKS EVERYTHING ELSE IN THE SPRINT. The gated copy reaches nothing live.**
 Traced end to end 2026-08-09, in code, not recalled:
@@ -35,6 +47,71 @@ Traced end to end 2026-08-09, in code, not recalled:
 - **Assessed as an unfinished GAP, not a design decision.** Nothing in the build spec says publish
   should draw from the creative row; spec §3 requires the three surfaces to ship as a coordinated
   set, which only means anything if the coordinated set is what ships.
+
+### 🔴 THE PUBLISH SURFACE — traced 2026-08-09. ONE PUSH MAKES ONE AD, IN ITS OWN CAMPAIGN.
+
+There is **no fan-out and no batch step.** `handlePush` calls `fireMeta()` once, which calls
+`publishToMeta` once, built from ONE creative chosen in a single `<select>`
+(`PushKitModal.tsx:470`) plus ONE body textarea. The `Promise.allSettled` in that file is **Meta
+and GHL in parallel — two platforms, not several ads.**
+
+And each call builds a COMPLETE new hierarchy: `createCampaign` → `createAdSet` →
+`createAdCreative` → `createAd` (`meta.ts:340-396`). **Four ads today = four separate campaigns and
+four separate ad sets.** No code path anywhere adds an ad to an EXISTING ad set.
+
+⚠️ **THIS IS THE REAL CONTENT OF STEP 4, AND IT IS A SERVER CAPABILITY, NOT A UI CHANGE.** The
+point of shipping distinct variants is that Meta compares them INSIDE ONE AD SET and distributes
+across them. Four ads in four campaigns do not compete in a shared auction — they are four
+unrelated campaigns with separate budgets, which defeats the distinctness work no matter how good
+the copy is. Step 4 must add "publish N ads into one campaign/ad set" before any multi-select UI
+means anything.
+
+### 🔴 META CONTROL RUN — 2026-08-09. BLOCKED BY OUR OWN GATE, NOT BY META.
+
+Run as userId **1** (the token is bound to user 1; the smoke account cannot publish). LP **221**
+(`https://zapcampaigns.com/p/campaign-221`, service 270), verified genuinely live by HTTP 200 /
+31KB rather than by a database row. Creative **368** (`person_shocked`/`benefit`). Harness:
+`server/scripts/meta-control-publish.ts`, which ports `buildMetaInput()` and `deriveDefaultBody()`
+VERBATIM so the capture reflects shipped behaviour.
+
+**THE CONTROL PAYLOAD — keep this; the reroute run is diffed against it:**
+
+| field | value |
+|---|---|
+| headline (Meta headline field) | `"Lose the mum tummy. Feel like you."` (34 chars) — the CREATIVE ROW's headline, image-side, ungated |
+| body (Meta primary text) | `"This is not a workout class and it is not a meal plan handout. It is the explanation nobody gave you at your 6-week check — why your postpartum body responds differently to everything you used to do, and exactly what to do instead."` (231 chars) — landing-page `freeAngle.subheadline`, kit 185's angle |
+| linkUrl | `https://zapcampaigns.com/p/campaign-221` · status PAUSED · dailyBudget $1 |
+
+**ZERO of the four Graph calls fired.** `publishToMeta` blocked at `meta.ts:316` — before
+`createCampaign` at `:340` — with `classes=[second_person_protected_attribute]`. The gate is RIGHT:
+the body says *"your postpartum body"* and *"nobody gave you at your 6-week check"* — second-person
+assertions about a protected attribute.
+
+🔑 **THIS IS THE STRONGEST ARGUMENT FOR STEP 1, STRONGER THAN THE DISTINCTNESS CASE.** The landing
+page subheadline was written as PAGE copy and never passed the compliance layer as AD copy. Gated
+Node 7 bodies DO pass it at generation. So the live path can hard-fail at the final step on copy
+nobody ever screened for this use, after the coach has done everything right. **No retry was
+attempted on a different LP — picking one whose subheadline happens to pass would have buried the
+finding.**
+
+✅ **THE META CONNECTION IS CONFIRMED LIVE.** `getCampaigns` returned **25 real campaigns** off the
+account, so token, app config and the Graph READ path all work today. Token expires **2026-10-05**
+(~58 days). Only the WRITE path is still unproven — and it is unproven because our own gate never
+let it try. Nothing was created: `ZZ-CONTROL present? false`, verified by read-back.
+⚠️ **This ad account carries Arfeen's REAL advertising** (`[ME] CBO | Leads | UAE`, `Crypto Workshop
+GCC/UAE`). It is not an empty sandbox — scope every future live-fire accordingly.
+
+### 📌 PARKED — none of these block step 1
+
+- **Meta-side campaign orphans.** The account shows **FIVE** campaigns named "Auto Campaign Kit"
+  while `meta_published_ads` holds **TWO** rows. Most plausibly a publish that got past
+  `createCampaign` and failed later, leaving an orphan — the same shape as the Cloudinary orphan
+  class. **Observed, not concluded; needs its own look.**
+- **Eight Cloudinary orphans** from runs predating 0099 (`generated_17862073*` ×4,
+  `generated_17862012*` ×4). Urls never recorded, unrecoverable from the database; they need the
+  pattern-scoped listing sweep (`cloudinary.search` sorted `created_at desc`, NOT `api.resources()`).
+- **The live PAUSED reroute run** — pending Arfeen's explicit word, and only after the payload-level
+  proof passes.
 
 ### The approved publish-path design (Arfeen, 2026-08-09) — build sequence
 
