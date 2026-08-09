@@ -524,21 +524,46 @@ Every number, rating, review count, client story and named outcome in this copy 
   // ICP, a generation that failed, a coach whose set is still in flight — every
   // piece takes the single deck-constant desire it used before this change, and
   // nothing regresses. The axis simply goes quiet rather than breaking the run.
+  // ── The desire axis, and WHICH CONCEPT SUPPLIED IT (migration 0101) ───────
+  // This used to select `desire` alone and de-duplicate by that string, so the concept's
+  // identity was destroyed before it reached a single row. Step 4 pairs an ad's surfaces by
+  // concept, and that join has to be on an integer — two concepts can share an awareness
+  // stage, `desire` is long free text a generator may rephrase, and a silent mispair
+  // produces a plausible-looking but internally incoherent ad with nothing to detect it.
+  //
+  // ⚠️ THE DEDUPE IS KEPT, DELIBERATELY. Removing it would let two concepts sharing a desire
+  // both enter the deal, which WEAKENS the desire axis — the distinctness comparison is on
+  // the desire STRING, so two slots holding the same string differ on zero axes there. The
+  // map below preserves insertion order and keeps the FIRST concept per distinct desire, so
+  // `conceptDesires` is byte-identical to what the previous code produced and every plan
+  // built from it is unchanged. What is new is only that each desire can now name its source.
+  //
+  // ⚠️ Where two concepts genuinely share a desire, the stamp points at the first. That is a
+  // real ambiguity rather than a bug: the column records which concept supplied the DESIRE,
+  // and on a shared desire the answer is not unique. Concepts vary Desire × Awareness, so
+  // this should be rare — but assembly must not assume conceptId partitions the deck evenly.
   let conceptDesires: string[] = [];
+  const conceptIdByDesire = new Map<string, number>();
   if (icp?.id) {
     try {
       const { campaignConcepts } = await import("../drizzle/schema");
       const rows = await db
-        .select({ desire: campaignConcepts.desire })
+        .select({ id: campaignConcepts.id, desire: campaignConcepts.desire })
         .from(campaignConcepts)
         .where(eq(campaignConcepts.icpId, icp.id));
-      conceptDesires = Array.from(
-        new Set(rows.map((r: any) => String(r.desire ?? "").trim()).filter(Boolean)),
-      );
+      for (const r of rows as any[]) {
+        const d = String(r.desire ?? "").trim();
+        if (!d || conceptIdByDesire.has(d)) continue;
+        conceptIdByDesire.set(d, Number(r.id));
+      }
+      conceptDesires = Array.from(conceptIdByDesire.keys());
     } catch (err) {
       console.warn(`[adCopyGenerator] desire axis unavailable for icp ${icp.id}:`, err instanceof Error ? err.message : err);
     }
   }
+  /** The concept a row's dealt desire came from. NULL for the deck-constant fallback. */
+  const conceptIdFor = (desire: unknown): number | null =>
+    conceptIdByDesire.get(String(desire ?? "").trim()) ?? null;
   const fallbackDesire = [resolvedPressingProblem, resolvedDesiredOutcome].filter(Boolean).join(" ⁝ ") || null;
   console.log(`[adCopyGenerator] desire axis: ${conceptDesires.length} distinct desires from concepts` +
     `${conceptDesires.length ? "" : " — falling back to the single deck-constant desire"}`);
@@ -1105,6 +1130,9 @@ Format as JSON:
       // Slot i of the headline plan produced headline i — positional, as issued.
       persona: pdafPersona,
       desire: headlineSlots[headlineIdx]?.desire ?? pdafDesire,
+      // Stamped from the SAME value written to `desire` above, so the column can never
+      // disagree with the axis it names. NULL when the deck-constant fallback supplied it.
+      conceptId: conceptIdFor(headlineSlots[headlineIdx]?.desire),
       awareness: headlineSlots[headlineIdx]?.stage ?? null,
       format: headlineSlots[headlineIdx]?.angle.key ?? null,
       targetMarket: input.targetMarket,
@@ -1153,6 +1181,7 @@ Format as JSON:
       // reuses bodyAngle rather than introducing a second label for the same idea.
       persona: pdafPersona,
       desire: bodyDesirePlan[bodyIdx] ?? pdafDesire,
+      conceptId: conceptIdFor(bodyDesirePlan[bodyIdx]),
       awareness: slots[bodyIdx]?.stage ?? null,
       format: result.angle,
       targetMarket: input.targetMarket,
@@ -1198,6 +1227,9 @@ Format as JSON:
       // would read as "no format assigned" to the gate.
       persona: pdafPersona,
       desire: linkDesirePlan[linkIdx] ?? pdafDesire,
+      // Links are excluded from the distinctness POPULATION but still carry their axes for
+      // coordination; stamping them too keeps the table coherent and costs nothing.
+      conceptId: conceptIdFor(linkDesirePlan[linkIdx]),
       awareness: linkStagePlan[linkIdx] ?? null,
       format: "link_description",
       targetMarket: input.targetMarket,
@@ -1247,6 +1279,7 @@ Format as JSON:
       // leaving it null would read to the gate as "no format assigned".
       persona: pdafPersona,
       desire: hookDesirePlan[hookIdx] ?? pdafDesire,
+      conceptId: conceptIdFor(hookDesirePlan[hookIdx]),
       awareness: hookStagePlan[hookIdx] ?? null,
       format: "image_hook",
       targetMarket: input.targetMarket,
@@ -1559,6 +1592,12 @@ Format as JSON:
           next[dimension] = value;
           (nextLabels as any)[dimension] = value;
           if (dimension === "format" && isBody) next.bodyAngle = value;
+          // ⚠️ THE STAMP MUST FOLLOW THE AXIS. The gate moves `desire` to a different value
+          // drawn from the same concept-derived pool, so a conceptId left pointing at the
+          // ORIGINAL concept would silently become a lie — precisely the label-that-does-
+          // not-match-content failure this chapter exists to remove, and invisible because
+          // the row would still look fully stamped.
+          if (dimension === "desire") next.conceptId = conceptIdFor(value);
         }
         next.selectionScore = String(
           scoreAdContent(isBody ? "body" : "headline", text, isBody ? next.bodyAngle : undefined),

@@ -382,6 +382,18 @@ export const adCopy = mysqlTable("adCopy", {
   desire: text("desire"),
   awareness: varchar("awareness", { length: 32 }),
   format: varchar("format", { length: 64 }),
+  // ── Which CONCEPT supplied this row's desire (migration 0101) ──────────────
+  // Step 4 pairs an ad's four surfaces so they descend from ONE concept. That join must
+  // be on an integer: two concepts can share an awareness stage, `desire` is long free
+  // text a generator may rephrase, and a silent mispair yields a plausible-looking but
+  // internally incoherent ad with nothing anywhere to detect it.
+  //
+  // ⚠️ SCOPE: this records WHICH CONCEPT SUPPLIED THE DESIRE, and nothing more. Awareness
+  // still comes from the cold-weighted `awarenessPlanForCount` allocation, deliberately
+  // unchanged — making awareness concept-derived moves the deck's stage mix and needs its
+  // own live re-proof. NULL on every row predating this, and on any row whose ICP had no
+  // concepts; assembly must read NULL as "not concept-keyed", never as a default concept.
+  conceptId: int("conceptId").references(() => campaignConcepts.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

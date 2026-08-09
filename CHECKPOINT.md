@@ -58,13 +58,74 @@ gate on the landing-page body (`second_person_protected_attribute`) — page cop
 ad copy, so the live path could hard-fail at the final step after the coach did everything right.
 The gated body clears that gate: **control 1 blocking hit, rerouted 0**, same gate, same service.
 
-**👉 NEXT ACTION: STEP 2 — stamp `conceptId` on `adCopy`** (additive migration, travels alone),
-toward concept-keyed assembly. Pair by ID, NEVER by matching desire/awareness label text: two
-concepts can share a stage and a silent mispair is invisible.
+## ✅ STEP 2, FIRST HALF — conceptId PLUMBING AND STAMP, PROVEN (2026-08-09)
+
+**Migration 0101 APPLIED** — `adCopy.conceptId INT NULL`, FK to `campaignConcepts(id)` with
+`DELETE_RULE = SET NULL`, plus `idx_adCopy_conceptId`. Row counts identical either side, zero
+non-null values (no backfill), protected 29. ~2s per statement, no rebuild. This DB is **MySQL
+9.4.0 with 81 real FK constraints**; the name follows adCopy's existing
+`adCopy_<col>_<reftable>_<refcol>_fk` convention.
+
+**Proven live on one throwaway (both nodes, one concept generation):**
+
+1. **Deck shape UNDISTURBED** — headline 12 / body 12 / hook 4, collapse 6→0, 4→0, 30→0, every
+   surface at or above floor. Awareness is still the cold-weighted `awarenessPlanForCount`; this
+   half changed nothing about it, and the shape matching two prior runs is the evidence.
+2. **Stamps RESOLVE** — 28 counted rows, **stamped 28 · unstamped 0 · MISMATCHED 0 · DANGLING 0**,
+   **8 of 8 concepts represented**. Verified by comparing the stamped concept's `desire` against
+   the ROW's own desire, not by checking the column is non-null — a stamp pointing at the wrong
+   concept is worse than none, because it looks complete.
+3. **The `regenerate` re-stamp is verified by that same zero** — 7 rows were recovered on a moved
+   axis. The gate moves `desire` to another value from the same pool, so a conceptId left pointing
+   at the ORIGINAL concept would silently become a lie. `regenerate` now re-derives it.
+
+### ⚠️ THE DEDUPE WAS KEPT ON PURPOSE — it rides with the awareness switch in step 2b
+
+The brief said to remove the dedupe-by-desire-string. Removing it would let two concepts sharing a
+desire BOTH enter the deal, and since the distinctness comparison is on the desire STRING, two
+slots holding the same string differ on ZERO axes there — weakening the desire axis and moving the
+deck shape, which is precisely what proof 1 holds constant. The dedupe now keeps the FIRST concept
+per distinct desire in insertion order, so `conceptDesires` is byte-identical to the old output and
+every plan built from it is unchanged; only the identity is now preserved alongside.
+**Cost, stated plainly:** where two concepts share a desire the stamp points at the first. That is
+a real ambiguity, not a bug — the column records which concept supplied the DESIRE, and on a shared
+desire there is no unique answer. Assembly must not assume `conceptId` partitions the deck evenly.
+
+📌 `dealAcrossSlots` turned out to be **already generic (`<T>`)**, so no signature changed and
+`headlinesGenerator` was never touched. `link` rows are stamped too — excluded from the
+distinctness population but they carry axes for coordination, so a hole there would be incoherent.
+
+**👉 NEXT ACTION: STEP 2b — make awareness concept-derived**, and remove the dedupe with it. That
+moves the deck's stage mix away from cold weighting, so both nodes need a live re-proof.
+⚠️ **Fix the Node 6 crash below FIRST** — step 2b cannot be proven on a node that cannot run.
 
 ⚠️ **Step 1 delivers GATED and COMPLIANT, not yet COHERENT.** The resolver picks the strongest
 headline and body INDEPENDENTLY, so the proven ad paired a `solution_aware` headline with a
 `problem_aware` body. Both good, both compliant, different stages. That is what step 4 fixes.
+
+### 🔴 NODE 6 CRASHES ON UNEXPECTED MODEL OUTPUT — PRE-EXISTING, IN DEPLOYED CODE
+
+`headlinesGenerator.ts:579` calls `parsed.headlines.forEach(...)` with **no array guard**, in the
+`story` / `question` / `urgency` branch. On 2026-08-09 the model returned a different shape and the
+generator threw an unhandled `TypeError: parsed.headlines.forEach is not a function`, killing the
+whole run. It had already resolved its 8 desires — the failure is downstream of anything
+concept-related.
+
+⚠️ **NOT caused by the step-2 work, verified rather than assumed:** the working tree touched exactly
+`drizzle/schema.ts` and `server/adCopyGenerator.ts`; `headlinesGenerator.ts` was untouched. **This
+is in DEPLOYED code**, so a real coach hits it whenever the model returns an off-shape response —
+the other generators degrade, this one crashes.
+
+**Node 6 is therefore UNPROVEN for step 2, not broken by it.** A crash is not evidence of
+equivalence, and it was not reported as one. Fix the guard, then re-prove Node 6 before step 2b.
+
+### 📌 OPEN — unit coverage for the step-1 code, before step 4
+
+Step 1 shipped with **zero new tests** (568 before, 568 after). `publishCopySource.resolveGatedPublishCopy`,
+`measureHeadlineFit` and the `metaAPI` by-id fetchers are proven live but have no unit coverage.
+Step 4's assembly builds directly on the resolver, so close this first.
+⚠️ Also: the step-1 commit gate ran **8 suites (501)** rather than the canonical 14 (**568**) that §8
+records. Nothing was lost — the six omitted suites account for exactly 67 — but run the §8 command.
 
 ### 🔴 TWO PRE-LAUNCH DEFECTS FOUND WHILE PROVING THIS — neither is fixed
 
