@@ -1,5 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import type { GateItem } from "./_core/pdafGate";
+import type { AwarenessStage } from "./_core/conceptAxis";
+import type { ConceptSlot } from "./_core/conceptPlan";
 import { BANNED_HEADLINE_PATTERNS, META_COMPLIANCE_NOTES, NO_CREDENTIAL_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, scoreAdContent } from "./_core/copywritingRules";
 import { nanoid } from "nanoid";
 import { ensureConceptsForIcp } from "./conceptGenerator";
@@ -316,7 +318,7 @@ export async function runAdCopyGeneration(input: {
 }): Promise<{ adSetId: string; count: number; headlineCount: number; bodyCount: number; linkCount: number; imageHookCount: number; generatedCount: number; droppedCount: number }> {
   const { getDb } = await import("./db");
   const { adCopy, services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
-  const { eq, and } = await import("drizzle-orm");
+  const { eq, and, ne } = await import("drizzle-orm");
   const { getCascadeContext } = await import("./_core/cascadeContext");
   const { checkCompliance } = await import("./lib/complianceChecker");
 
@@ -511,7 +513,10 @@ Every number, rating, review count, client story and named outcome in this copy 
   // Planned across the WHOLE SET and dealt, never per angle — the fix proven on
   // Node 6, where per-format planning left 10 zero-axis pairs and starved
   // product_aware of every slot.
-  const { awarenessPlanForCount, dealAcrossSlots } = await import("./_core/conceptAxis");
+  // dealAcrossSlots is no longer used here directly — planSlots (in _core/conceptPlan) owns
+  // the dealing now, so the two callers cannot drift apart.
+  const { awarenessPlanForCount, isAwarenessStage, AWARENESS_STAGES } =
+    await import("./_core/conceptAxis");
   const { STAGE_HEADLINE_GUIDANCE } = await import("./adCopyAngles");
 
   // ── DESIRE AXIS ─────────────────────────────────────────────────────────────
@@ -524,52 +529,67 @@ Every number, rating, review count, client story and named outcome in this copy 
   // ICP, a generation that failed, a coach whose set is still in flight — every
   // piece takes the single deck-constant desire it used before this change, and
   // nothing regresses. The axis simply goes quiet rather than breaking the run.
-  // ── The desire axis, and WHICH CONCEPT SUPPLIED IT (migration 0101) ───────
-  // This used to select `desire` alone and de-duplicate by that string, so the concept's
-  // identity was destroyed before it reached a single row. Step 4 pairs an ad's surfaces by
-  // concept, and that join has to be on an integer — two concepts can share an awareness
-  // stage, `desire` is long free text a generator may rephrase, and a silent mispair
-  // produces a plausible-looking but internally incoherent ad with nothing to detect it.
+  // ── THE CONCEPT PLAN (step 2b) ──────────────────────────────────────────────
+  // A concept is a (desire, awareness) UNIT, and BOTH axes now come off the same row. Before
+  // this, desire was read from the concept set while awareness came from a separate synthetic
+  // allocation (awarenessPlanForCount), so the pair stamped on a row need not have matched any
+  // concept that actually existed. Step 4 pairs an ad's surfaces by concept; that is only
+  // meaningful if a row is a faithful instance of one.
   //
-  // ⚠️ THE DEDUPE IS KEPT, DELIBERATELY. Removing it would let two concepts sharing a desire
-  // both enter the deal, which WEAKENS the desire axis — the distinctness comparison is on
-  // the desire STRING, so two slots holding the same string differ on zero axes there. The
-  // map below preserves insertion order and keeps the FIRST concept per distinct desire, so
-  // `conceptDesires` is byte-identical to what the previous code produced and every plan
-  // built from it is unchanged. What is new is only that each desire can now name its source.
+  // ⚠️ THE DEDUPE-BY-DESIRE-STRING IS REMOVED, which step 2a deliberately deferred to here.
+  // It was only safe while awareness was planned separately. Now that a concept carries its
+  // own stage, two concepts sharing a desire but differing in awareness are genuinely
+  // different slots — conceptValidator enforces distinct desire × awareness pairs at the set
+  // level — and dropping one of them destroys a real slot. Identity is the id, never the text.
   //
-  // ⚠️ Where two concepts genuinely share a desire, the stamp points at the first. That is a
-  // real ambiguity rather than a bug: the column records which concept supplied the DESIRE,
-  // and on a shared desire the answer is not unique. Concepts vary Desire × Awareness, so
-  // this should be rare — but assembly must not assume conceptId partitions the deck evenly.
-  let conceptDesires: string[] = [];
-  const conceptIdByDesire = new Map<string, number>();
+  // ⚠️ ROW ORDER IS NOW LOAD-BEARING and therefore explicit. The plan is dealt in row order,
+  // so an unordered SELECT would make the deck's stage mix depend on MySQL's return order.
+  // That did not matter while awareness came from a synthetic plan; it does now.
+  //
+  // One set per ICP is guaranteed upstream: ensureConceptsForIcp deletes any prior set for the
+  // icpId before inserting. If that ever changes, this must scope to the newest conceptSetId.
+  const {
+    planSlots: planSlotsFor, desireLabelFor, conceptPool,
+    conceptFromLabel: conceptFromLabelIn, measureConceptCoherence,
+  } = await import("./_core/conceptPlan");
+  let concepts: ConceptSlot[] = [];
   if (icp?.id) {
     try {
       const { campaignConcepts } = await import("../drizzle/schema");
       const rows = await db
-        .select({ id: campaignConcepts.id, desire: campaignConcepts.desire })
+        .select({
+          id: campaignConcepts.id,
+          desire: campaignConcepts.desire,
+          awareness: campaignConcepts.awareness,
+        })
         .from(campaignConcepts)
-        .where(eq(campaignConcepts.icpId, icp.id));
-      for (const r of rows as any[]) {
-        const d = String(r.desire ?? "").trim();
-        if (!d || conceptIdByDesire.has(d)) continue;
-        conceptIdByDesire.set(d, Number(r.id));
-      }
-      conceptDesires = Array.from(conceptIdByDesire.keys());
+        .where(and(eq(campaignConcepts.icpId, icp.id), ne(campaignConcepts.status, "dismissed")))
+        .orderBy(campaignConcepts.id);
+      concepts = (rows as any[])
+        .map((r) => ({
+          id: Number(r.id),
+          desire: String(r.desire ?? "").trim(),
+          awareness: r.awareness as AwarenessStage,
+        }))
+        .filter((c) => c.desire && isAwarenessStage(c.awareness));
     } catch (err) {
-      console.warn(`[adCopyGenerator] desire axis unavailable for icp ${icp.id}:`, err instanceof Error ? err.message : err);
+      console.warn(`[adCopyGenerator] concept plan unavailable for icp ${icp.id}:`, err instanceof Error ? err.message : err);
     }
   }
-  /** The concept a row's dealt desire came from. NULL for the deck-constant fallback. */
-  const conceptIdFor = (desire: unknown): number | null =>
-    conceptIdByDesire.get(String(desire ?? "").trim()) ?? null;
+  const conceptById = new Map<number, ConceptSlot>(concepts.map((c) => [c.id, c]));
   const fallbackDesire = [resolvedPressingProblem, resolvedDesiredOutcome].filter(Boolean).join(" ⁝ ") || null;
-  console.log(`[adCopyGenerator] desire axis: ${conceptDesires.length} distinct desires from concepts` +
-    `${conceptDesires.length ? "" : " — falling back to the single deck-constant desire"}`);
 
-  const headlineStagePlan = awarenessPlanForCount(count);
-  const headlineDesirePlan = dealAcrossSlots(conceptDesires, count);
+  // The gate's desire axis is keyed on the stamped conceptId, never on desire prose —
+  // see _core/conceptPlan.ts, which holds the rule and its unit coverage.
+  const conceptFromLabel = (label: unknown): ConceptSlot | null =>
+    conceptFromLabelIn(label, conceptById);
+  const planSlots = (n: number) => planSlotsFor(concepts, n, fallbackDesire);
+
+  console.log(`[adCopyGenerator] concept plan: ${concepts.length} concepts, stage mix ` +
+    AWARENESS_STAGES.map((s) => `${s}:${concepts.filter((c) => c.awareness === s).length}`).join(" ") +
+    `${concepts.length ? "" : " — falling back to the cold plan and the deck-constant desire"}`);
+
+  const headlinePlan = planSlots(count);
   // Angles dealt with the capacity-based algorithm ported from Node 6, rather than
   // a plain index rotation. The rotation left 3 pairs differing on ZERO axes on the
   // live Node 7 run, because a stage group longer than the angle list repeated an
@@ -594,10 +614,11 @@ Every number, rating, review count, client story and named outcome in this copy 
     }
   }
 
-  const headlineSlots = headlineStagePlan.map((stage, i) => ({
-    stage,
+  const headlineSlots = headlinePlan.map((p, i) => ({
+    stage: p.stage,
     angle: angleSlotsByIndex[i],
-    desire: headlineDesirePlan[i] ?? fallbackDesire,
+    desire: p.desire ?? fallbackDesire,
+    conceptId: p.conceptId,
   }));
 
   const headlineAngles = headlineSlots
@@ -713,39 +734,50 @@ Format as JSON array:
   // already know the brand, and nothing for the Unaware reader the prospecting research allocates
   // 37.5% of the batch to.
   //
-  // The stage per slot comes from awarenessPlanForCount — the SAME deterministic allocation the
-  // concept generator uses, so ad copy and concepts describe the same funnel shape.
+  // ── SUPERSEDED BY STEP 2b: the stage now comes off the CONCEPT ROW ─────────
+  // This block used to read: "the stage per slot comes from awarenessPlanForCount … reading a
+  // concept row here would be a race, because ensureConceptsForIcp (line ~356) is
+  // fire-and-forget and never delays ad-copy generation."
   //
-  // ⚠️ Why the plan and not a concept row: ensureConceptsForIcp above is fire-and-forget and
-  // explicitly never delays ad-copy generation, so no concept exists yet when this runs. Reading
-  // one here would be a race. Deriving the stage from the shared plan gives the same stages the
-  // concepts will carry, with no ordering dependency.
+  // ⚠️ THAT RACE IS REAL AND HAS NOT BEEN REMOVED — it has been given a defined outcome. On the
+  // very first cascade for a new ICP the concept set genuinely may not have landed yet, the
+  // SELECT returns nothing, and planSlots falls back to exactly this allocation with the
+  // deck-constant desire. So the race costs the concept axis on that one run and never produces
+  // a wrong stamp: a row either descends from a real concept or is honestly unstamped. What it
+  // must NOT do is silently look correct, which is why the fallback writes conceptId = NULL
+  // rather than guessing.
   //
-  // Verified at the deck sizes actually used: the plan's largest-remainder apportionment already
-  // spans a warmer stage at 3 slots (unaware, problem_aware, solution_aware) and all four at 8+.
   // The 25% warmer tail that …Prospecting Campaign Ad Concept Distribution §3 calls "a vital
-  // safeguard against Entity-ID pigeonholing" is therefore preserved without special-casing.
-  // awarenessPlanForCount is already in scope — imported above for the headline
-  // plan, so headlines, bodies and links all spend the SAME allocation function.
+  // safeguard against Entity-ID pigeonholing" is now preserved UPSTREAM instead — by the
+  // concept-generation top-up, which restores any stage the concept gate killed off. That is
+  // the trade step 2b makes: one weighting, carried by real concepts, instead of two
+  // allocations that agreed only by construction.
   const { angleForStage, STAGE_COPY_GUIDANCE } = await import('./adCopyAngles');
   const slotCount = input.liteMode ? 3 : availableAngles.length;
-  const stagePlan = awarenessPlanForCount(slotCount);
+  // Concept-derived (step 2b). The body ANGLE is still chosen from the stage, so angleForStage
+  // now walks the concept-derived stages rather than the synthetic plan's.
+  const stagePlan = planSlots(slotCount);
 
   // One angle per planned slot. Where a stage's mapped angles are exhausted — inevitable on the
   // full 18-slot deck, since 4 stages × 3 mapped angles cannot cover 18 — the slot backfills from
   // the remaining angles in the previous array order but KEEPS its planned stage guidance. Deck
   // size is therefore byte-identical to the old slice(0, n) behaviour, with no angle issued twice.
   const usedAngles = new Set<(typeof availableAngles)[number]>();
-  const slots: Array<{ angle: (typeof availableAngles)[number]; stage: (typeof stagePlan)[number] }> = [];
-  for (const stage of stagePlan) {
-    const mapped = angleForStage(stage, availableAngles, usedAngles);
+  const slots: Array<{
+    angle: (typeof availableAngles)[number];
+    stage: AwarenessStage;
+    desire: string | null;
+    conceptId: number | null;
+  }> = [];
+  for (const p of stagePlan) {
+    const mapped = angleForStage(p.stage, availableAngles, usedAngles);
     const angle = mapped ?? availableAngles.find((a) => !usedAngles.has(a));
     if (!angle) break; // angles exhausted — cannot happen while slotCount <= availableAngles.length
     usedAngles.add(angle);
-    slots.push({ angle, stage });
+    slots.push({ angle, stage: p.stage, desire: p.desire, conceptId: p.conceptId });
   }
-  // Desire per body slot, from the same concept set the headlines used.
-  const bodyDesirePlan = dealAcrossSlots(conceptDesires, slots.length);
+  // The desire travels ON the slot now — the separate bodyDesirePlan is gone, because a body's
+  // desire and its stage must come from the same concept rather than from two parallel arrays.
 
   // ── FIELD CHAINING (build spec §3) ──────────────────────────────────────────
   // The three text surfaces used to be generated in parallel silos: headlines,
@@ -780,16 +812,20 @@ Format as JSON array:
 
   const bodyPartners: Array<string | null> = slots.map(({ stage }, i) => partnerHeadlineFor(stage, i));
 
-  const bodyPromises = slots.map(async ({ angle, stage }, slotIdx) => {
+  const bodyPromises = slots.map(async ({ angle, stage, desire }, slotIdx) => {
     const anglePrompt = BODY_ANGLE_PROMPTS[angle];
     const stageGuidance = STAGE_COPY_GUIDANCE[stage];
     const partnerHeadline = bodyPartners[slotIdx];
-    const slotDesire = bodyDesirePlan[slotIdx] ?? fallbackDesire;
+    const slotDesire = desire ?? fallbackDesire;
 
     // The desire is written INTO the prompt, not merely recorded on the row. A
     // dimension that labels output without changing it is the fake-diversity the
     // whole exercise exists to remove.
-    const desireBlock = bodyDesirePlan.length
+    // Gated on `concepts.length`, NOT on `slotDesire`. In the no-concept fallback every slot
+    // carries the same deck-constant desire, and writing it into all 16 prompts would be a new
+    // instruction on a path this step is required not to change: the column records it, the
+    // prompt does not. That is exactly what the removed `bodyDesirePlan.length` test did.
+    const desireBlock = concepts.length && slotDesire
       ? `THE WANT THIS PIECE SPEAKS TO — the single thread it follows:
 ${slotDesire}
 
@@ -905,10 +941,9 @@ Return ONLY the body text as a single string, no JSON wrapper.`;
   // stage now, from the same whole-set allocation — previously they had none, which
   // made every link in a set indistinguishable from every other on the axes that
   // decide Entity-ID clustering.
-  const linkStagePlan = awarenessPlanForCount(count);
-  const linkDesirePlan = dealAcrossSlots(conceptDesires, count);
-  const linkSlotBlock = linkStagePlan
-    .map((stage, i) => {
+  const linkPlan = planSlots(count);
+  const linkSlotBlock = linkPlan
+    .map(({ stage }, i) => {
       const hl = headlineTexts.length ? String(headlineTexts[i % headlineTexts.length]) : "(none)";
       const bodyOpening = bodyResults.length
         ? String(bodyResults[i % bodyResults.length].body).replace(/\s+/g, " ").slice(0, 140)
@@ -1007,15 +1042,16 @@ Format as JSON array:
   // body's way, never the other way round.
   // HOOK_MAX_CHARS is module-scope and shared with the gate's redraft path — see its
   // docblock for why it must not be re-declared locally.
-  const hookStagePlan = awarenessPlanForCount(count);
-  const hookDesirePlan = dealAcrossSlots(conceptDesires, count);
-  const hookSlotBlock = hookStagePlan
-    .map((stage, i) => {
+  const hookPlan = planSlots(count);
+  const hookSlotBlock = hookPlan
+    .map(({ stage, desire }, i) => {
       const hl = headlineTexts.length ? String(headlineTexts[i % headlineTexts.length]) : "(none)";
       const bodyOpening = bodyResults.length
         ? String(bodyResults[i % bodyResults.length].body).replace(/\s+/g, " ").slice(0, 140)
         : "(none)";
-      const d = hookDesirePlan[i] ?? fallbackDesire;
+      // planSlots already resolves this to the deck-constant desire when there are no
+      // concepts, which is exactly what `hookDesirePlan[i] ?? fallbackDesire` did before.
+      const d = desire;
       return (
         `IMAGE HOOK ${i + 1} → stage ${stage.replace(/_/g, " ").toUpperCase()}\n` +
         (d ? `  the want this ad speaks to: ${d}\n` : "") +
@@ -1130,9 +1166,11 @@ Format as JSON:
       // Slot i of the headline plan produced headline i — positional, as issued.
       persona: pdafPersona,
       desire: headlineSlots[headlineIdx]?.desire ?? pdafDesire,
-      // Stamped from the SAME value written to `desire` above, so the column can never
-      // disagree with the axis it names. NULL when the deck-constant fallback supplied it.
-      conceptId: conceptIdFor(headlineSlots[headlineIdx]?.desire),
+      // ⚠️ CARRIED ON THE SLOT, NEVER LOOKED UP BY TEXT. Step 2a resolved this id by matching
+      // the desire string back to a concept, which was ambiguous the moment two concepts
+      // shared a desire. The slot now holds the id it was planned from, so the stamp cannot
+      // be wrong. NULL only on the deck-constant fallback, where no concept supplied it.
+      conceptId: headlineSlots[headlineIdx]?.conceptId ?? null,
       awareness: headlineSlots[headlineIdx]?.stage ?? null,
       format: headlineSlots[headlineIdx]?.angle.key ?? null,
       targetMarket: input.targetMarket,
@@ -1180,8 +1218,8 @@ Format as JSON:
       // Bodies already carried a stage and an angle; 0097 records them. `format`
       // reuses bodyAngle rather than introducing a second label for the same idea.
       persona: pdafPersona,
-      desire: bodyDesirePlan[bodyIdx] ?? pdafDesire,
-      conceptId: conceptIdFor(bodyDesirePlan[bodyIdx]),
+      desire: slots[bodyIdx]?.desire ?? pdafDesire,
+      conceptId: slots[bodyIdx]?.conceptId ?? null,
       awareness: slots[bodyIdx]?.stage ?? null,
       format: result.angle,
       targetMarket: input.targetMarket,
@@ -1226,11 +1264,11 @@ Format as JSON:
       // family of angles — so it is recorded as such rather than left null, which
       // would read as "no format assigned" to the gate.
       persona: pdafPersona,
-      desire: linkDesirePlan[linkIdx] ?? pdafDesire,
+      desire: linkPlan[linkIdx]?.desire ?? pdafDesire,
       // Links are excluded from the distinctness POPULATION but still carry their axes for
       // coordination; stamping them too keeps the table coherent and costs nothing.
-      conceptId: conceptIdFor(linkDesirePlan[linkIdx]),
-      awareness: linkStagePlan[linkIdx] ?? null,
+      conceptId: linkPlan[linkIdx]?.conceptId ?? null,
+      awareness: linkPlan[linkIdx]?.stage ?? null,
       format: "link_description",
       targetMarket: input.targetMarket,
       productCategory: input.productCategory,
@@ -1278,9 +1316,9 @@ Format as JSON:
       // architecture, not a family of angles, so recording it as such is truthful, where
       // leaving it null would read to the gate as "no format assigned".
       persona: pdafPersona,
-      desire: hookDesirePlan[hookIdx] ?? pdafDesire,
-      conceptId: conceptIdFor(hookDesirePlan[hookIdx]),
-      awareness: hookStagePlan[hookIdx] ?? null,
+      desire: hookPlan[hookIdx]?.desire ?? pdafDesire,
+      conceptId: hookPlan[hookIdx]?.conceptId ?? null,
+      awareness: hookPlan[hookIdx]?.stage ?? null,
       format: "image_hook",
       targetMarket: input.targetMarket,
       productCategory: input.productCategory,
@@ -1481,7 +1519,10 @@ Format as JSON:
         partnerId: partnerText ? (headlineIdByText.get(partnerText) ?? null) : null,
         labels: {
           persona: row.persona ?? null,
-          desire: row.desire ?? null,
+          // ⚠️ THE STAMPED CONCEPT ID, NOT THE DESIRE PROSE. Two rows collapse on this axis
+          // when they came from the SAME concept row, never when a generator happened to
+          // phrase two different wants alike. See desireLabelFor.
+          desire: desireLabelFor(row.conceptId, row.desire ?? null),
           awareness: row.awareness ?? null,
           format: row.format ?? null,
         },
@@ -1490,8 +1531,22 @@ Format as JSON:
 
     const populationSize = items.filter((it) => it.surface !== "link").length;
     const pools = {
-      desires: conceptDesires.length ? conceptDesires : (fallbackDesire ? [fallbackDesire] : []),
-      awarenessPlan: awarenessPlanForCount(populationSize),
+      // ⚠️ A POOL OF CONCEPT IDS. Keyed on identity, so it needs no de-duplication: ids are
+      // unique by definition, where a list of desire STRINGS had to be de-duplicated by text
+      // and silently merged two concepts that happened to share a want. This is the change
+      // that makes the dedupe removal safe — the gate can no longer confuse two concepts,
+      // and it can no longer treat one concept's two appearances as distinct.
+      desires: concepts.length ? conceptPool(concepts) : (fallbackDesire ? [fallbackDesire] : []),
+      // ⚠️ THE PLAN THE GATE REPAIRS TOWARD MUST BE THE PLAN THE DECK WAS BUILT FROM.
+      // suggestAwarenessFromSlack moves a row to whichever stage is most under-represented
+      // against this array and NEVER introduces a stage the array does not contain. Left as
+      // awarenessPlanForCount(populationSize) it would pull rows back toward the synthetic
+      // cold plan and could stamp a stage no concept holds — reintroducing precisely the
+      // label-without-a-concept state this step removes. Links are excluded from the
+      // population, so linkPlan is excluded here too.
+      awarenessPlan: concepts.length
+        ? [...headlinePlan, ...stagePlan, ...hookPlan].map((p) => p.stage)
+        : awarenessPlanForCount(populationSize),
       formats: Array.from(new Set([
         ...headlineAngleList.map((a) => a.key),
         ...availableAngles.map((a) => String(a)),
@@ -1557,9 +1612,13 @@ Format as JSON:
         // output without changing it is precisely the fake diversity this gate exists to
         // remove — and when the gate says two axes must move to clear the rule, writing only
         // one of them into the prompt would make the row's labels a lie about its text.
+        //
+        // ⚠️ THE DESIRE MOVE ARRIVES AS A CONCEPT ID and must be resolved to that concept's
+        // PROSE before it reaches a prompt — writing the label itself would put the literal
+        // text "concept:49" in front of the model.
         const axisLine = moves.map(({ dimension, value }) =>
           dimension === "desire"
-            ? `THE WANT THIS PIECE SPEAKS TO — the single thread it must follow:\n${value}\n\nStay on this one want. Do not cover every reason someone might hire this coach.`
+            ? `THE WANT THIS PIECE SPEAKS TO — the single thread it must follow:\n${conceptFromLabel(value)?.desire ?? value}\n\nStay on this one want. Do not cover every reason someone might hire this coach.`
             : dimension === "awareness"
               ? `AWARENESS STAGE — write this to a reader at this stage:\n${String(value).replace(/_/g, " ").toUpperCase()}\n\n${(STAGE_COPY_GUIDANCE as any)[value] ?? (STAGE_HEADLINE_GUIDANCE as any)[value] ?? ""}`
               : `FORMAT — rewrite this using the "${String(value).replace(/_/g, " ")}" angle:\n${isBody ? (REGEN_ANGLE_PROMPTS as any)[value] ?? "" : ""}`,
@@ -1589,15 +1648,22 @@ Format as JSON:
         const nextLabels = { ...item.labels };
         const next: any = { ...row, content: text };
         for (const { dimension, value } of moves) {
-          next[dimension] = value;
           (nextLabels as any)[dimension] = value;
+          if (dimension === "desire") {
+            // ⚠️ THE STAMP MOVES BY ID, AND THE PROSE FOLLOWS THE STAMP — never the reverse.
+            // The gate hands back a concept id, so the row is re-pointed at that concept and
+            // its `desire` column is rewritten from the concept's own text. Step 2a resolved
+            // this the other way round (text → id) and could not be exact once two concepts
+            // shared a want. A move to a label with no concept behind it (only possible on
+            // the no-concept fallback, where the pool is one desire string) writes the string
+            // and clears the stamp rather than leaving a stale one.
+            const moved = conceptFromLabel(value);
+            next.desire = moved ? moved.desire : value;
+            next.conceptId = moved ? moved.id : null;
+            continue;
+          }
+          next[dimension] = value;
           if (dimension === "format" && isBody) next.bodyAngle = value;
-          // ⚠️ THE STAMP MUST FOLLOW THE AXIS. The gate moves `desire` to a different value
-          // drawn from the same concept-derived pool, so a conceptId left pointing at the
-          // ORIGINAL concept would silently become a lie — precisely the label-that-does-
-          // not-match-content failure this chapter exists to remove, and invisible because
-          // the row would still look fully stamped.
-          if (dimension === "desire") next.conceptId = conceptIdFor(value);
         }
         next.selectionScore = String(
           scoreAdContent(isBody ? "body" : "headline", text, isBody ? next.bodyAngle : undefined),
@@ -1660,6 +1726,28 @@ Format as JSON:
     const { formatLedger } = await import("./_core/pdafGate");
     console.log(formatLedger(gateResult.ledger));
     (globalThis as any).__ZAP_LAST_PDAF_LEDGER__ = gateResult.ledger;
+    // The pools the gate actually received, exposed so a proof run can show — rather than
+    // assert — that the desire axis was keyed on concept ids and not on desire prose.
+    (globalThis as any).__ZAP_LAST_PDAF_POOLS__ = {
+      desires: pools.desires,
+      awarenessPlan: pools.awarenessPlan,
+      formats: pools.formats,
+    };
+
+    // ── CONCEPT COHERENCE, MEASURED RATHER THAN ASSERTED ──────────────────────
+    // A stamp that RESOLVES is not the same as a stamp that is TRUE, so every row is
+    // checked against the concept it points at — desire prose AND stage — not merely for
+    // being non-null. `stageMoved` counts rows the GATE moved to a different awareness than
+    // their concept holds: those rows still truthfully record which concept supplied the
+    // desire, so it is reported as its own number rather than folded into a fault count.
+    if (concepts.length) {
+      const c = measureConceptCoherence(gatedInserts as any[], concepts);
+      console.log(`[adCopyGenerator] concept coherence: rows=${c.rows} stamped=${c.stamped} ` +
+        `unstamped=${c.unstamped} DANGLING=${c.dangling} DESIRE-MISMATCH=${c.desireMismatch} ` +
+        `stage-moved-by-gate=${c.stageMoved} · concepts represented=` +
+        `${c.conceptsRepresented}/${concepts.length}`);
+      (globalThis as any).__ZAP_LAST_CONCEPT_COHERENCE__ = c;
+    }
   }
 
   // Persistence backstop. The per-variant gate above already dropped violators and drives

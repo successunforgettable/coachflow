@@ -21,6 +21,7 @@ import {
   DEFAULT_CONCEPT_COUNT,
   CANDIDATE_HOOK_AWARENESS_MAP,
   awarenessPlanForCount,
+  type AwarenessStage,
 } from "./_core/conceptAxis";
 import { validateConceptSetStructure, screenConceptCompliance, type RawConcept } from "./_core/conceptValidator";
 import { REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance } from "./_core/copywritingRules";
@@ -53,15 +54,34 @@ function renderHookGuidance(availableHooks: readonly string[]): string {
   return `${status}\n${lines.join("\n")}`;
 }
 
-export function buildConceptPrompt(icp: ConceptIcpInput, count: number, hasRealClientMaterial: boolean = false): string {
+export function buildConceptPrompt(
+  icp: ConceptIcpInput,
+  count: number,
+  hasRealClientMaterial: boolean = false,
+  /**
+   * Override the per-slot awareness assignment. Omitted (the normal case) the plan is the
+   * cold-weighted apportionment for `count`. Supplied, the caller dictates each slot's stage —
+   * used ONLY by the top-up pass, which asks for the specific stages the gate killed off.
+   */
+  planOverride?: readonly AwarenessStage[],
+  /**
+   * Desires already in this set. The top-up runs against a set that already exists, so the
+   * set-level "no two concepts share a desire × awareness pair" rule has to be extended to
+   * concepts the model cannot see.
+   */
+  existingDesires: readonly string[] = [],
+): string {
   const persona = icp.angleName || icp.name || "this ideal customer";
   // COLD-WEIGHTED, DETERMINISTIC. The stage for each slot is decided here, not by the model — see
   // COLD_WEIGHTED_STAGE_MIX in _core/conceptAxis.ts for the research citation and the recorded
   // counter-evidence. Previously the prompt asked the model to "span all 5 stages" and only the
   // desire × awareness PAIR was enforced, which meant a set could legally put all 8 concepts at one
   // stage (8 different desires = 8 distinct pairs) and still pass.
-  const awarenessPlan = awarenessPlanForCount(count);
+  const awarenessPlan = planOverride ?? awarenessPlanForCount(count);
   const planLines = awarenessPlan.map((stage, i) => `  - Concept ${i + 1}: ${stage}`).join("\n");
+  const existingBlock = existingDesires.length
+    ? `\nWANTS ALREADY COVERED BY THIS PERSON'S EXISTING CONCEPTS — every concept you write must lead with a DIFFERENT want from all of these:\n${existingDesires.map((d) => `- ${d}`).join("\n")}\n`
+    : "";
   // PROOF-DEPENDENT HOOKS. social_proof asks for a client result; data_chart asks for a
   // figure. Both are offered only once the coach's proof is on the record — otherwise the
   // set is built from the remaining patterns and the prompt never asks for something the
@@ -84,7 +104,7 @@ Goals: ${icp.goals || "(none provided)"}
 Fears: ${icp.fears || "(none provided)"}
 Objections: ${icp.objections || "(none provided)"}
 Buying triggers: ${icp.buyingTriggers || "(none provided)"}
-
+${existingBlock}
 AWARENESS — ASSIGNED PER CONCEPT, NOT CHOSEN. This is a cold-traffic, broad-targeting batch, so the
 set is weighted toward earlier-stage prospects. Write each concept TO the stage assigned to its slot:
 ${planLines}
@@ -261,8 +281,14 @@ export async function generateConceptsForIcp(params: {
     ? { corpus: buildCoachCorpus({ service: gateService, groundingMeta: (icp as any)?.groundingMeta }), supplied: buildProofSupplied(gateService) }
     : undefined;
 
-  const gate = (cs: RawConcept[]): { ok: boolean; failContext: string; labels: string } => {
-    const structure = validateConceptSetStructure(cs, awarenessPlan);
+  // `plan` is a parameter because the top-up pass gates a set against the stages IT asked for,
+  // not against the full batch's plan — validating a 1-concept top-up against a 12-slot plan
+  // would fail on slot adherence every time.
+  const gate = (
+    cs: RawConcept[],
+    plan: readonly AwarenessStage[] = awarenessPlan,
+  ): { ok: boolean; failContext: string; labels: string } => {
+    const structure = validateConceptSetStructure(cs, plan);
     const compliance = screenConceptCompliance(cs);
     const output = checkOutput(
       cs.flatMap((c, i) => [
@@ -317,23 +343,26 @@ export async function generateConceptsForIcp(params: {
   // slot adherence — are deliberately NOT re-applied here: they describe the shape of a full set,
   // and a set that has had failures removed is smaller by definition. The awareness distribution
   // degrades accordingly, which is the accepted cost of delivering something rather than nothing.
+  // Hoisted to function scope: the top-up pass below applies the same per-concept test, and a
+  // second copy of it would be a second place for the two to drift apart.
+  const conceptPassesAlone = (c: RawConcept, i: number): boolean => {
+    const cmp = screenConceptCompliance([c]);
+    if (!cmp.ok) return false;
+    const out = checkOutput(
+      [
+        { location: `concept[${i}].hook`, text: c.hook, role: "short" as const },
+        { location: `concept[${i}].headline`, text: c.headline, role: "short" as const },
+        { location: `concept[${i}].shortText`, text: c.shortText, role: "body" as const },
+        { location: `concept[${i}].longText`, text: c.longText, role: "body" as const },
+      ],
+      grounding,
+      { requireGrounding: true },
+    );
+    return out.ok;
+  };
+
   let skippedCount = 0;
   if (!result.ok) {
-    const conceptPassesAlone = (c: RawConcept, i: number): boolean => {
-      const cmp = screenConceptCompliance([c]);
-      if (!cmp.ok) return false;
-      const out = checkOutput(
-        [
-          { location: `concept[${i}].hook`, text: c.hook, role: "short" as const },
-          { location: `concept[${i}].headline`, text: c.headline, role: "short" as const },
-          { location: `concept[${i}].shortText`, text: c.shortText, role: "body" as const },
-          { location: `concept[${i}].longText`, text: c.longText, role: "body" as const },
-        ],
-        grounding,
-        { requireGrounding: true },
-      );
-      return out.ok;
-    };
     const survivors = concepts.filter((c, i) => conceptPassesAlone(c, i));
     skippedCount = concepts.length - survivors.length;
     if (survivors.length === 0) {
@@ -398,6 +427,92 @@ export async function generateConceptsForIcp(params: {
       `[conceptGenerator] yield short: asked ${count}, over-generated ${overGenerateCount}, ` +
       `${concepts.length} survived. Shipping short — padding is never correct here.`,
     );
+  }
+
+  // ── TOP-UP: RESTORE A STAGE THE GATE KILLED OFF (Arfeen's call, 2026-08-10) ─
+  //
+  // WHY THIS EXISTS NOW AND NOT BEFORE. Until step 2b the ad deck planned its own awareness
+  // mix, so a concept set missing a stage cost nothing downstream — the deck manufactured the
+  // stage regardless. From 2b the deck's stages ARE the concepts' stages, so a stage the gate
+  // killed is a stage that disappears from every headline, body, hook and link in the campaign.
+  // On the live set as at 2026-08-10 that was product_aware: 6 of 8 concepts survived and the
+  // warmer tail the prospecting research calls "a vital safeguard against Entity-ID
+  // pigeonholing" was gone. Restoring it here keeps the cold weighting an intention rather than
+  // an accident of what the gate happened to pass.
+  //
+  // ⚠️ RESTORE, NEVER PAD. Three hard limits, in this order:
+  //   1. Only a stage at ZERO is topped up. An under-represented stage is left alone — that is
+  //      the accepted cost of partial delivery, and topping it up would be padding.
+  //   2. Never past the target count. If the set already holds `count`, the stage is NOT
+  //      restored and the shortfall is reported: evicting a concept the gate passed to make
+  //      room would be destroying good work to satisfy a distribution.
+  //   3. ONE call. If the top-up itself fails the gate, the set ships without that stage and
+  //      says so. No retry loop, no second attempt, no relaxing the gate.
+  {
+    const targetPlan = awarenessPlanForCount(count);
+    const want = new Map<AwarenessStage, number>();
+    for (const s of targetPlan) want.set(s, (want.get(s) ?? 0) + 1);
+    const have = new Map<string, number>();
+    for (const c of concepts) have.set(String(c.awareness), (have.get(String(c.awareness)) ?? 0) + 1);
+
+    const killed = AWARENESS_STAGES.filter((s) => (want.get(s) ?? 0) > 0 && (have.get(s) ?? 0) === 0);
+    const room = count - concepts.length;
+
+    if (killed.length && room <= 0) {
+      console.warn(
+        `[conceptGenerator] top-up SKIPPED: stage(s) [${killed.join(", ")}] have no concept, but the ` +
+        `set is already at the target of ${count}. Restoring would mean evicting a concept the gate ` +
+        `passed. Shipping without ${killed.join(", ")}.`,
+      );
+    } else if (killed.length) {
+      // Coldest-first, so if room is tighter than the shortfall the colder stage is restored
+      // first — the same tie-break awarenessPlanForCount uses.
+      const topUpPlan: AwarenessStage[] = [];
+      for (const s of killed) {
+        for (let k = 0; k < (want.get(s) ?? 0) && topUpPlan.length < room; k++) topUpPlan.push(s);
+      }
+      console.log(
+        `[conceptGenerator] top-up: stage(s) [${killed.join(", ")}] were killed by the gate; ` +
+        `asking for ${topUpPlan.length} replacement concept(s) in ONE call (room=${room}).`,
+      );
+      try {
+        const topUpPrompt = buildConceptPrompt(
+          icp as ConceptIcpInput,
+          topUpPlan.length,
+          hasRealClientMaterial,
+          topUpPlan,
+          concepts.map((c) => String(c.desire ?? "")).filter(Boolean),
+        );
+        const topUps = await invokeConcepts(topUpPrompt, "");
+        const setResult = gate(topUps, topUpPlan);
+        // The set-level verdict is used as a fast path only. When it fails, the same
+        // per-concept test the partial-delivery path uses decides who survives — a top-up
+        // that is 1 concept has no meaningful set-level shape to check.
+        const kept = setResult.ok ? topUps : topUps.filter((c, i) => conceptPassesAlone(c, i));
+        // Slot adherence is enforced HERE as well as in the prompt: a top-up that came back at
+        // the wrong stage would restore nothing while looking like a success.
+        const onPlan = kept.filter((c) => topUpPlan.includes(c.awareness as AwarenessStage));
+        const room2 = count - concepts.length;
+        const added = onPlan.slice(0, Math.max(0, room2));
+        concepts = [...concepts, ...added];
+        console.log(
+          `[conceptGenerator] top-up result: asked ${topUpPlan.length}, returned ${topUps.length}, ` +
+          `passed ${kept.length}, on-plan ${onPlan.length}, ADDED ${added.length}. ` +
+          `Set is now ${concepts.length}/${count}.`,
+        );
+        if (added.length === 0) {
+          console.warn(
+            `[conceptGenerator] top-up recovered nothing for [${killed.join(", ")}] — shipping ` +
+            `without that stage rather than padding.`,
+          );
+        }
+      } catch (err) {
+        // A failed top-up must never take the whole set down: the concepts already gated and
+        // trimmed are good, and losing them to recover a distribution would be the worse trade.
+        console.warn(`[conceptGenerator] top-up call failed, shipping the set as-is:`,
+          err instanceof Error ? err.message : err);
+      }
+    }
   }
 
   const conceptSetId = randomUUID();

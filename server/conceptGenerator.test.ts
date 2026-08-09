@@ -92,3 +92,29 @@ describe("buildConceptPrompt — one person, many angles (Desire × Awareness)",
     expect(p).toMatch(/headline/); // headline must differ from hook
   });
 });
+
+describe("buildConceptPrompt — the top-up pass (step 2b)", () => {
+  it("assigns exactly the stages the top-up asked for, not the cold apportionment", () => {
+    const p = buildConceptPrompt(icp, 1, false, ["product_aware"]);
+    expect(p).toContain("Concept 1: product_aware");
+    expect(p).not.toContain("Concept 1: unaware");
+    expect(p).not.toContain("Concept 2:");
+  });
+
+  it("still assigns the cold plan when no override is given", () => {
+    const p = buildConceptPrompt(icp, 8);
+    expect(p).toContain("Concept 1: unaware");
+    expect(p).toContain("Concept 8:");
+  });
+
+  it("names the wants already in the set so a top-up cannot duplicate one it cannot see", () => {
+    const p = buildConceptPrompt(icp, 1, false, ["product_aware"], ["an existing want", "another one"]);
+    expect(p).toContain("WANTS ALREADY COVERED");
+    expect(p).toContain("- an existing want");
+    expect(p).toContain("- another one");
+  });
+
+  it("omits that block entirely on a normal first-pass set", () => {
+    expect(buildConceptPrompt(icp, 8)).not.toContain("WANTS ALREADY COVERED");
+  });
+});
