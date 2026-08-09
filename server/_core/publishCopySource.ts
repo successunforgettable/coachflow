@@ -36,6 +36,13 @@ export type GatedPiece = {
   desire: string | null;
   awareness: string | null;
   format: string | null;
+  /**
+   * The concept this piece descends from (migration 0101), carried so a consumer can record
+   * WHICH concept it used without re-querying and without matching on `desire` text. The image
+   * path stamps it onto adCreatives (migration 0102). NULL where the piece predates concepts or
+   * its ICP had none.
+   */
+  conceptId: number | null;
   /** Compliance provenance — screened at GENERATION, not at publish. */
   complianceCheckedAt: Date | null;
   complianceScore: number | null;
@@ -76,6 +83,9 @@ const toPiece = (r: any): GatedPiece => ({
   desire: r.desire ?? null,
   awareness: r.awareness ?? null,
   format: r.format ?? null,
+  // Kept as a NUMBER (or null) — never stringified, never compared to `desire`. It is an
+  // identity, and the whole point of carrying it is that it either matches or it does not.
+  conceptId: r.conceptId == null ? null : Number(r.conceptId),
   complianceCheckedAt: r.complianceCheckedAt ?? null,
   complianceScore: r.complianceScore ?? null,
   complianceVersion: r.complianceVersion ?? null,
@@ -135,6 +145,7 @@ export async function resolveGatedPublishCopy(
     .select({
       id: adCopy.id, content: adCopy.content, contentType: adCopy.contentType,
       persona: adCopy.persona, desire: adCopy.desire, awareness: adCopy.awareness, format: adCopy.format,
+      conceptId: adCopy.conceptId,
       complianceCheckedAt: adCopy.complianceCheckedAt, complianceScore: adCopy.complianceScore,
       complianceVersion: adCopy.complianceVersion, selectionScore: adCopy.selectionScore,
     })

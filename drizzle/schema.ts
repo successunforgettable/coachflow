@@ -1200,6 +1200,25 @@ export const adCreatives = mysqlTable("adCreatives", {
   // what lets anyone answer "did this ad actually ship gated copy?" after the fact. NULL
   // means the legacy template path produced the headline — which is itself the signal.
   headlineAdCopyId: int("headlineAdCopyId"),
+  // ── THE CONCEPT WHOSE HEADLINE THIS PICTURE BAKES (step 3, migration 0102) ──
+  // Carried as an INTEGER straight from the gated-copy resolver, beside the headlineAdCopyId
+  // above. Step 4 pairs an ad's surfaces by concept identity; that join must never be on
+  // matching desire or awareness text, because two concepts can share a stage and `desire` is
+  // free text a generator may rephrase — a silent mispair looks perfectly plausible.
+  //
+  // ⚠️ ITS HONEST LIMIT — read this before treating it as "this image IS that concept".
+  // It records where the picture's WORDS came from, not where its PICTURE came from:
+  //   · the rendered SCENE follows `awarenessDeckPlan` (four distinct stages, coldest first),
+  //     which is a separate allocation and is NOT concept-sourced. A creative stamped with a
+  //     product_aware concept can depict a solution_aware scene.
+  //   · the on-picture HOOK line comes from an `image_hook` adCopy row chosen independently
+  //     (`resolveAdBodyTexts`), whose identity is discarded — its concept may differ from this.
+  //
+  // NULL means "not concept-keyed", never a default concept. It is NULL for every row
+  // generated before 0102, for the editorial path, for the two router insert sites (three of
+  // the five unwired fan-out sites — a creative they produce genuinely did not come from a
+  // concept), and wherever the legacy template path supplied the headline.
+  conceptId: int("conceptId").references(() => campaignConcepts.id, { onDelete: "set null" }),
   imageFormat: varchar("imageFormat", { length: 20 }).default("1080x1080").notNull(), // Square format
   // Editorial scene brief {mode, action, symbolicObject, zone} persisted at feed
   // batch time so an on-demand 9:16 vertical re-renders flux from the SAME scene
@@ -1231,6 +1250,7 @@ export const adCreatives = mysqlTable("adCreatives", {
   serviceIdIdx: index("idx_adCreatives_serviceId").on(table.serviceId),
   campaignIdIdx: index("idx_adCreatives_campaignId").on(table.campaignId),
   batchIdIdx: index("idx_adCreatives_batchId").on(table.batchId),
+  conceptIdIdx: index("idx_adCreatives_conceptId").on(table.conceptId),
 }));
 
 export type AdCreative = typeof adCreatives.$inferSelect;

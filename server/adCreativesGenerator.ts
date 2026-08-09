@@ -587,7 +587,10 @@ export async function runAdCreativesGeneration(
   // ⚠️ The image-side micro-call is RETIRED from this path. It was the only length guard
   // (≤38 chars with retries), so selection now runs on `measureHeadlineFit` — actual glyph
   // widths on the actual canvas — inside `resolveGatedPublishCopy`.
-  let gatedHeadlines: Array<{ text: string; adCopyId: number }> = [];
+  // `conceptId` rides along beside `adCopyId` (step 3, migration 0102) — an integer carried
+  // straight from the resolver, so the creative can record WHICH concept its headline came from
+  // without a second query and without ever comparing desire or awareness text.
+  let gatedHeadlines: Array<{ text: string; adCopyId: number; conceptId: number | null }> = [];
   if (!input.headlines && input.serviceId) {
     const { resolveGatedPublishCopy } = await import("./_core/publishCopySource");
     const gated = await resolveGatedPublishCopy(db, input.userId, input.serviceId, { canvasWidth: 896 });
@@ -597,10 +600,10 @@ export async function runAdCreativesGeneration(
     if (usable.length > 0) {
       // Deal across the deck so four creatives carry four DIFFERENT gated headlines; cycle
       // only if the gated set is smaller than the deck.
-      gatedHeadlines = Array.from({ length: VARIATIONS.length }, (_, i) => ({
-        text: usable[i % usable.length].text,
-        adCopyId: usable[i % usable.length].id,
-      }));
+      gatedHeadlines = Array.from({ length: VARIATIONS.length }, (_, i) => {
+        const pick = usable[i % usable.length];
+        return { text: pick.text, adCopyId: pick.id, conceptId: pick.conceptId ?? null };
+      });
       console.log(
         `[adCreativesGenerator] baking GATED headlines from adSet ${gated.adSetId} — ` +
         `${usable.length} usable, ${gated.rejectedForWidth.length} rejected on rendered width`,
@@ -722,6 +725,12 @@ export async function runAdCreativesGeneration(
       // PROVENANCE: which gated adCopy row this picture's headline came from. Null when the
       // legacy template path produced it, which is itself the signal that the row is ungated.
       headlineAdCopyId: gatedForSlot?.adCopyId ?? null,
+      // ⚠️ THE CONCEPT WHOSE HEADLINE THIS PICTURE BAKES — and nothing wider. The rendered
+      // SCENE still comes from awarenessDeckPlan, and the on-picture hook line comes from a
+      // separately-chosen image_hook row, so this is truthful about the picture's WORDS only.
+      // See the column's docblock in drizzle/schema.ts. Carried as the integer the resolver
+      // returned: no lookup, no text comparison, so the stamp cannot point at the wrong concept.
+      conceptId: gatedForSlot?.conceptId ?? null,
       imageFormat: emittedFormat,
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
