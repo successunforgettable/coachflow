@@ -1,4 +1,4 @@
-# CHECKPOINT — the Andromeda image chapter is LIVE; the COPY chapter is built and PROVEN, held local
+# CHECKPOINT — image chapter LIVE; COPY + CONCEPT-PAIRING chapter PROVEN, held local through step 3
 
 **For a cold terminal with no memory of the session that produced this.** Read this file, then
 `docs/handovers/STATE.md`. Everything below was verified in-session, not recalled.
@@ -7,14 +7,104 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-**The copy engine, the distinctness gate and the per-surface rework are built, proven live on both
-nodes, and committed LOCALLY ONLY. Nothing has been pushed, so none of it is deployed.** Production
-is running the image chapter plus the two-site canvas fix. Migrations 0097, 0098 and 0099 ARE
-applied to production (all additive and inert) — do not treat their presence as evidence the code
-that uses them is live.
+# 👉 STEP 4 — AD ASSEMBLY. **PROPOSE FIRST.** Build nothing until Arfeen gives the word.
 
-**Copy distinctness is BANKED at `e2eff85`** (per-surface gate + hook-regeneration fix + harness),
-on top of `b9cf6d2` (sweep completeness + wizard headline) and `38140a6` (migration 0099).
+One concept → one ad: headline, body, hook and image all descending from the same concept.
+Steps 1, 2a, 2b and 3 exist to make that pairing possible; step 4 is where it is used.
+**Read §0a below before proposing — three measured findings constrain the design, and one of
+them (the publish surface) means step 4 is a SERVER CAPABILITY, not a UI change.**
+
+### Where the repo is — as at 2026-08-10
+
+⚠️ **This block deliberately names only the SHAs that CANNOT go stale — the per-step commits, which
+are immutable once made. For "where is HEAD right now", run the command. §1 records that this file
+hardcoded a moving SHA three times and went stale three times; writing one here would be the fourth.**
+
+```
+git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08
+```
+
+| | |
+|---|---|
+| Branch | `railway-build`. HEAD is this CHECKPOINT commit, sitting on top of **`269947c`** (step 3). |
+| `origin/railway-build` | **`51eda78` — UNCHANGED since before this sprint. NOTHING here is deployed.** |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08`, updated to HEAD and SHA-verified after a fetch each time. **It does NOT deploy.** |
+| Deploy discipline | Pushing `railway-build` IS an instant production deploy (~4s, no gate). It needs a fresh explicit "push" from Arfeen every time; no prior authorisation carries forward. |
+
+⚠️ **MIGRATIONS 0097 – 0102 ARE ALL APPLIED TO PRODUCTION.** Every one is additive and inert.
+**Do NOT re-apply any of them — 0102 least of all, it was applied 2026-08-10.** Their presence is
+NOT evidence that the code using them is live; the schema is deliberately ahead of the code.
+
+| migration | what | applied |
+|---|---|---|
+| 0097 | P.D.A.F. axes on `headlines` + `adCopy` | ✅ |
+| 0098 | `image_hook` content type | ✅ |
+| 0099 | `adCreatives.sourceImageUrl` (the third Cloudinary object) | ✅ |
+| 0100 | publish-copy provenance on `meta_published_ads` + `adCreatives.headlineAdCopyId` | ✅ |
+| 0101 | `adCopy.conceptId` | ✅ |
+| 0102 | `adCreatives.conceptId` | ✅ **2026-08-10** |
+
+### The chapter, banked and proven — all LOCAL ONLY
+
+| commit | what | proven |
+|---|---|---|
+| `e2eff85` | copy distinctness engine (per-surface gate, hook regeneration, harness) | live, both nodes |
+| `64f5dc8` | **step 1** — the published headline and body come from the gated pool | live, real paused Meta ad, read back by id |
+| `20a0f39` | **step 2a** — `adCopy.conceptId` plumbing and stamp | live, 28/28 stamped |
+| `a313717` | Node 6 hardening — an off-shape model response no longer zeroes the deck | live, the guard fired for real |
+| `8502f36` | **step 2b** — ad-copy awareness is concept-derived; dedupe removed; gate keyed on conceptId; concept top-up | live, both nodes |
+| `269947c` | **step 3** — `adCreatives.conceptId`, tabloid cascade only | live, 4 real renders, 4/4 stamped |
+
+### ✅ STEP 3 — PROVEN LIVE (2026-08-10)
+
+Four real renders on a throwaway. **4/4 stamped · 0 unstamped · 0 DANGLING · 0 JOIN-MISMATCH** —
+each stamp equal to the concept of the `adCopy` row named by `headlineAdCopyId`, established by
+joining on ids and never by comparing text. The render deck came back **UNDISTURBED**: four slots,
+the same style sequence, and the generator's Layer 1+2+3 line **byte-identical (188 chars)** to an
+expectation computed BEFORE the run from `awarenessDeckPlan`/`subTypePlanFor`/`visibilityTierPlanFor`.
+Teardown swept **12 public_ids → 12 Cloudinary objects deleted, 0 failures** (exactly 3 per
+creative). Reconciled: adCopy 5424 · headlines 2174 · adCreatives 405 (0 stamped) · protected 29.
+
+⚠️ **What the stamp MEANS:** the concept whose HEADLINE the picture bakes — not "the picture
+descends from that concept". The scene still comes from `awarenessDeckPlan`, and the on-picture
+hook comes from a separately-chosen `image_hook` row. See §0a.
+
+---
+
+## 0a. WHAT STEP 4 MUST DESIGN AROUND — measured, not assumed
+
+1. **The A-vs-B gap: 3 of 4 pictures DISAGREE** (measured 2026-08-10). The concept whose headline a
+   picture bakes is usually NOT the concept whose hook line it carries, because the two are dealt
+   independently. The one agreement in that run was a modulo coincidence, not a mechanism.
+   **Consequence: pairing an image to its copy by `adCreatives.conceptId` is sound for the headline
+   surface and INSUFFICIENT for the whole picture.** Closing it means giving `resolveAdBodyTexts`
+   (`_core/compositeHeadline.ts:265`) a way to return the hook row's id, which it currently discards.
+2. **8 copy rows were moved off their concept's stage by the distinctness gate** (step 2b run, of 43).
+   Legitimate — the row still truthfully records which concept supplied its DESIRE — but such a row
+   is no longer a whole-concept instance. **Step 4 must decide whether a stage-moved row is still
+   eligible to be assembled into that concept's ad.** Not a defect; an unmade decision.
+3. **Editorial creatives and the two router insert sites carry `conceptId = NULL` by design.** They
+   are three of the five unwired fan-out sites (§5.1). Assembly must read NULL as "not
+   concept-keyed" and skip, never as a default concept.
+4. 🔴 **THE PUBLISH SURFACE IS THE REAL CONTENT OF STEP 4 — see §"THE PUBLISH SURFACE" below.**
+   One push makes ONE ad in its OWN campaign. Four ads today = four campaigns and four ad sets, so
+   they never compete in one auction and the distinctness work is defeated no matter how good the
+   copy is. **This is a server capability, not a UI change**, and it must land before any
+   multi-select UI means anything.
+
+### 🔴 NEW IMAGE-SPRINT DEFECT — a short hook deck duplicates the on-image line (2026-08-10)
+
+Node 7 kept **3** image hooks on the step-3 run, not 4. The hook surface is the fragile one — with
+persona pinned and format fixed it has only two movable axes — and it landed at 3 against a band of
+1–4, so it was above floor and shipped. But the image path takes `bodyTexts[i % bodyTexts.length]`
+over 4 slots, so **two pictures baked the IDENTICAL on-image hook line** (adCopy row 6044 on slots 1
+and 4). That is duplication on the exact surface Meta's OCR reads.
+
+Not fixed, not in step 3's scope. It belongs with the queued image work and it **interacts with the
+4 → 8 cardinality decision**: growing the deck to 8 makes the shortfall worse, not better, unless
+the hook band grows with it. Options are to cap the deck at the number of DISTINCT hooks, or to let
+a picture ship with no hook line rather than a repeated one — Arfeen's call, and it needs the hook
+recovery rate measured first (CHECKPOINT already warns to measure that before growing the surface).
 
 ## ✅ PUBLISH-PATH STEP 1 — PROVEN END TO END ON A REAL PAUSED AD (2026-08-09)
 
@@ -79,25 +169,44 @@ non-null values (no backfill), protected 29. ~2s per statement, no rebuild. This
    axis. The gate moves `desire` to another value from the same pool, so a conceptId left pointing
    at the ORIGINAL concept would silently become a lie. `regenerate` now re-derives it.
 
-### ⚠️ THE DEDUPE WAS KEPT ON PURPOSE — it rides with the awareness switch in step 2b
+### ✅ SUPERSEDED BY STEP 2b — the dedupe is GONE, and removing it mattered
 
-The brief said to remove the dedupe-by-desire-string. Removing it would let two concepts sharing a
-desire BOTH enter the deal, and since the distinctness comparison is on the desire STRING, two
-slots holding the same string differ on ZERO axes there — weakening the desire axis and moving the
-deck shape, which is precisely what proof 1 holds constant. The dedupe now keeps the FIRST concept
-per distinct desire in insertion order, so `conceptDesires` is byte-identical to the old output and
-every plan built from it is unchanged; only the identity is now preserved alongside.
-**Cost, stated plainly:** where two concepts share a desire the stamp points at the first. That is
-a real ambiguity, not a bug — the column records which concept supplied the DESIRE, and on a shared
-desire there is no unique answer. Assembly must not assume `conceptId` partitions the deck evenly.
+2a kept the dedupe-by-desire-string deliberately and deferred its removal to 2b. **2b removed it
+(`8502f36`), and the live run proved it was not a theoretical concern:** the generated set held 8
+concepts with only **6 distinct desires** — two pairs sharing a want and differing only in stage.
+Under the old code those two concepts were erased before reaching a single row, a quarter of the
+set, silently. All 8 reached the deck.
+
+The 2a "stamp points at the first" ambiguity is therefore **retired**: the plan carries the concept
+id on the slot, so the insert path performs no lookup at all, and the gate's desire axis is keyed
+on `concept:<id>` rather than on prose. Two rows collapse on that axis when they came from the SAME
+concept row, never because a generator phrased two wants alike.
 
 📌 `dealAcrossSlots` turned out to be **already generic (`<T>`)**, so no signature changed and
 `headlinesGenerator` was never touched. `link` rows are stamped too — excluded from the
 distinctness population but they carry axes for coordination, so a hole there would be incoherent.
 
-**👉 NEXT ACTION: STEP 2b — make awareness concept-derived**, and remove the dedupe with it. That
-moves the deck's stage mix away from cold weighting, so both nodes need a live re-proof.
-Node 6 can carry that re-proof: its crash was fixed and proven in `a313717` (see NODE 6 HARDENED).
+### ✅ STEP 2b — PROVEN LIVE, BOTH NODES (2026-08-10)
+
+Node 7: collapse **43 pairs (13.2%) → 0**, KEPT headline 12 / body 12 / hook 4, every surface above
+floor. 28 counted rows — **stamped 28 · unstamped 0 · desire-mismatch 0 · dangling 0 · 8/8 concepts
+represented**. The ungated link band came back `unaware 6 · problem 5 · solution 2 · product 2` —
+the same weighting the old cold plan produced, now carried by real concepts. Node 6 UNCHANGED by
+design (its table has no `conceptId` column): non-regression run collapse 25 → 0, KEPT 12/band 8–12,
+persisted 12 = ledger 12 = returned 12.
+
+**The concept top-up is BUILT and its restore branch has FIRED live, but it has never successfully
+restored a stage.** Forced-condition run 2026-08-10: the concept gate killed `product_aware` on its
+own (7/12 survived, 5 blocked on `invented_testimonial`/`unearned_authority`), the branch fired
+correctly — one targeted call, right stage, `room=1` — and **the replacement concept failed the same
+gate** (`asked 1, returned 1, passed 0, ADDED 0`). Never-pad held: no other stage moved, the set
+stayed at 7 ≤ 8, and it reported the shortfall. **Root cause is structural, not luck:**
+`product_aware`'s primary hook is `social_proof` and its first secondary is `data_chart`, both
+withheld when the coach has no client material, so the model reaches for authority it has not earned
+and is blocked. Fixing it means giving the top-up call a proof-free product-aware framing — a PROMPT
+change, not a control-flow one — and it is Arfeen's call. 📌 Instrumentation gap worth closing at the
+same time: the top-up logs `passed 0` but not the failure CLASSES, which are already in the gate
+result.
 
 ⚠️ **Step 1 delivers GATED and COMPLIANT, not yet COHERENT.** The resolver picks the strongest
 headline and body INDEPENDENTLY, so the proven ad paired a `solution_aware` headline with a
