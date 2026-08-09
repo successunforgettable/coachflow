@@ -191,12 +191,31 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
     if (kit.data && !campaignName) setCampaignName(kitName || "Campaign");
   }, [kit.data, kitName, campaignName]);
 
-  // Default body from LP subheadline (one-shot, unless user typed something)
+  // ── PUBLISH-PATH STEP 1: the body comes from the GATED pool ────────────────
+  // It used to default to the landing page's subheadline. That is PAGE copy: written for a
+  // page, never screened as ad copy, and it is exactly what the 2026-08-09 control publish
+  // was BLOCKED on (second_person_protected_attribute) — the coach doing everything right
+  // and hitting a wall at the final step. Gated bodies are compliance-screened at generation
+  // and carry the four axes the distinctness gate enforced.
+  //
+  // `deriveDefaultBody` is kept and still exported for its tests, but is now only reached
+  // when no gated copy exists — and that fallback is surfaced to the operator rather than
+  // being silent, because a silent fallback is indistinguishable from the old defect.
+  const gatedCopy = trpc.meta.getGatedPublishCopy.useQuery(
+    { serviceId: serviceId || 0 },
+    { enabled: !!serviceId },
+  );
+  const gatedBody = (gatedCopy.data as any)?.body ?? null;
+  const gatedUnavailable = (gatedCopy.data as any)?.unavailableReason ?? null;
+
   useEffect(() => {
-    if (lp.data && !bodyDirty && !body) {
+    if (bodyDirty || body) return;
+    if (gatedBody?.text) { setBody(String(gatedBody.text)); return; }
+    // Only if the service has no gated copy at all.
+    if (gatedCopy.isFetched && !gatedBody && lp.data) {
       setBody(deriveDefaultBody(lp.data, lpAngle));
     }
-  }, [lp.data, lpAngle, body, bodyDirty]);
+  }, [gatedBody, gatedCopy.isFetched, lp.data, lpAngle, body, bodyDirty]);
 
   const selectedCreative = useMemo(
     () => batch.data?.find((c: any) => c.variationNumber === selectedVariation) ?? null,
@@ -260,8 +279,17 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
       .map(c => c.trim().toUpperCase())
       .filter(Boolean);
     return {
+      // The creative row's headline IS the gated line now — the render path bakes gated
+      // copy onto the picture, so reading it here keeps the baked headline and the Meta
+      // headline field identical by construction rather than by a second lookup that
+      // could drift.
       headline: selectedCreative.headline as string,
       body: body.trim(),
+      // Provenance (migration 0100): which gated rows actually shipped. NULL means the
+      // legacy ungated path produced this ad, which is the signal worth keeping.
+      headlineAdCopyId: (selectedCreative as any).headlineAdCopyId ?? undefined,
+      bodyAdCopyId: gatedBody?.id ?? undefined,
+      copyAdSetId: (gatedCopy.data as any)?.adSetId ?? undefined,
       linkUrl: lpPublicUrl,
       imageUrl: (selectedCreative.imageUrl as string) || undefined,
       // When this concept has an on-demand 9:16, publish placement-aware

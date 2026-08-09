@@ -201,6 +201,28 @@ export const metaRouter = router({
   }),
 
   /**
+   * The GATED copy a published ad should carry, for the publish modal.
+   *
+   * Replaces two ungated sources on the V2 path: `selectedCreative.headline` (an image-engine
+   * side-generation) and `deriveDefaultBody` (the landing page's subheadline). The landing
+   * page body is the one the 2026-08-09 control run was BLOCKED on — page copy is written for
+   * a page and never screened as ad copy, so it can fail compliance at the final step.
+   *
+   * Returns candidates as well as a default so the operator can still choose; what it will
+   * not do is hand back a row that was never gated or never compliance-screened.
+   */
+  getGatedPublishCopy: protectedProcedure
+    .input(z.object({ serviceId: z.number(), canvasWidth: z.number().optional() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { resolveGatedPublishCopy } = await import("../_core/publishCopySource");
+      return resolveGatedPublishCopy(db, ctx.user.id, input.serviceId, {
+        canvasWidth: input.canvasWidth,
+      });
+    }),
+
+  /**
    * Publish ad copy to Meta Ads Manager
    * Creates campaign, ad set, ad creative, and ad in one flow
    */
@@ -220,6 +242,15 @@ export const metaRouter = router({
         // in the ad copy to their filled values before publishing. Optional so
         // callers without a registry context still publish (tokens left raw).
         serviceId: z.number().optional(),
+        // ── Provenance (publish-path step 1, migration 0100) ─────────────────
+        // Which gated adCopy rows produced this ad. Optional so the legacy path and
+        // any caller without gated copy still publishes — but a NULL is then recorded,
+        // which is how "this ad shipped ungated copy" stays visible after the fact
+        // rather than being indistinguishable from a missing feature.
+        headlineAdCopyId: z.number().optional(),
+        bodyAdCopyId: z.number().optional(),
+        /** The CoachFlow adCopy.adSetId the copy came from — replaces the "temp" placeholder. */
+        copyAdSetId: z.string().max(21).optional(),
         // Campaign settings
         campaignName: z.string().min(1),
         objective: z.enum(["OUTCOME_AWARENESS", "OUTCOME_ENGAGEMENT", "OUTCOME_LEADS", "OUTCOME_SALES", "OUTCOME_TRAFFIC"]),
@@ -414,7 +445,11 @@ export const metaRouter = router({
           
           await db.insert(metaPublishedAds).values({
             userId: ctx.user.id,
-            adSetId: "temp", // Will be passed from frontend in next iteration
+            // The CoachFlow ad set that produced this copy, when the caller knows it.
+            // Falls back to the historical "temp" placeholder rather than changing the
+            // column's NOT NULL contract — see §8c: "temp" means only that the row is not
+            // traceable back to its copy, and the provenance columns below now carry that.
+            adSetId: input.copyAdSetId ?? "temp",
             metaCampaignId: campaign.id,
             metaAdSetId: adSet.id,
             metaAdId: ad.id,
@@ -423,6 +458,10 @@ export const metaRouter = router({
             status: input.status,
             objective: input.objective,
             dailyBudget: input.dailyBudget?.toString(),
+            // PROVENANCE (migration 0100). NULL here says the legacy ungated path produced
+            // this ad — which is the signal worth recording, not an omission.
+            headlineAdCopyId: input.headlineAdCopyId ?? null,
+            bodyAdCopyId: input.bodyAdCopyId ?? null,
           });
         }
 

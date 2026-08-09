@@ -16,17 +16,66 @@ that uses them is live.
 **Copy distinctness is BANKED at `e2eff85`** (per-surface gate + hook-regeneration fix + harness),
 on top of `b9cf6d2` (sweep completeness + wizard headline) and `38140a6` (migration 0099).
 
-**👉 NEXT ACTION: BUILD publish-path step 1 — reroute the published headline and body to draw from
-the gated Node 7 pool, and PROVE IT AT THE PAYLOAD LEVEL BEFORE ANY LIVE RUN.**
+## ✅ PUBLISH-PATH STEP 1 — PROVEN END TO END ON A REAL PAUSED AD (2026-08-09)
 
-Step 1 in full: headline and body both from the gated pool · the image bakes the SAME headline the
-Meta field carries (two different headlines is spec §3's "three unrelated messages", worse than
-repetition) · an explicit length rule, because retiring the side-generation also retires its ≤38
-validator · retire `generateContextualAdHeadlines` from the tabloid render path · record provenance
-on the published row, which also closes the `adSetId: "temp"` gap in §8c.
+**META RETURNED THE GATED COPY ON ALL THREE FUSED SURFACES.** Read back BY ID from the live ad
+before anything was deleted — not from our request, and not from a list endpoint:
 
-**Prove it by capturing the outgoing payload and diffing against the control below. The live paused
-run is a SEPARATE step needing Arfeen's word.**
+| surface | Meta's stored value | source |
+|---|---|---|
+| headline field | `"Postpartum stalls don't respond to less — here's why"` | gated adCopy **5889** (solution_aware/curiosity) |
+| primary text | 964 chars, byte-identical | gated adCopy **5902** (problem_aware/pain_agitation) |
+| baked on the image | same string as the headline field | adCreatives 482 |
+
+✅ headline === 5889 · ✅ body === 5902 (964/964) · ✅ baked === field · ✅ NOT the ungated control
+headline · ✅ NOT the landing-page subheadline body · ✅ **PAUSED at campaign, ad set AND ad**
+(`daily_budget=2000` = AED 20.00; nothing could deliver, nothing spent) · ✅ campaign deleted and
+confirmed by id (`status=DELETED` — Meta SOFT-deletes, so the id stays readable, which is exactly
+why a by-id read beats a list check) · ✅ provenance persisted: `meta_published_ads` carried
+`headlineAdCopyId=5889 bodyAdCopyId=5902` and a real `adSetId` beside legacy rows still showing
+`temp`/NULL.
+
+**Migration 0100 APPLIED** — 3 additive nullable columns, row counts identical before and after,
+zero non-null values (no backfill), ALTERs 2.08s/2.23s. 0097, 0098, 0099, 0100 are ALL applied while
+the code using them is NOT deployed. Schema is deliberately ahead of code.
+
+**All step-1 throwaways torn down** and reconciled EXACTLY: adCopy **5424** · headlines **2174** ·
+adCreatives **405** · meta_published_ads **2** · protected `272:5 273:5 275:5 276:5 277:5 285:4` =
+**29**. The sweep cleared **3 Cloudinary objects for 1 row** — 0099 working; pre-0099 it would have
+cleared 2 and leaked 1.
+
+### What step 1 shipped
+
+`_core/publishCopySource.ts` (resolver — REFUSES ungated or unscreened rows rather than falling
+back, because a silent fallback is indistinguishable from the defect being removed) ·
+`measureHeadlineFit` (the length rule, measured in RENDERED WIDTH on the real canvas with the real
+font — the 52-char proven headline would have been rejected by the retired ≤38-char guard yet fits
+with 9px to spare at 896px) · gated headlines baked by the render path so picture and field match by
+construction · `metaAPI` by-id fetchers · provenance wiring · `meta.getGatedPublishCopy`.
+
+🔑 **THE STRONGEST RESULT IS NOT DISTINCTNESS.** The control run was BLOCKED by our own compliance
+gate on the landing-page body (`second_person_protected_attribute`) — page copy is never screened as
+ad copy, so the live path could hard-fail at the final step after the coach did everything right.
+The gated body clears that gate: **control 1 blocking hit, rerouted 0**, same gate, same service.
+
+**👉 NEXT ACTION: STEP 2 — stamp `conceptId` on `adCopy`** (additive migration, travels alone),
+toward concept-keyed assembly. Pair by ID, NEVER by matching desire/awareness label text: two
+concepts can share a stage and a silent mispair is invisible.
+
+⚠️ **Step 1 delivers GATED and COMPLIANT, not yet COHERENT.** The resolver picks the strongest
+headline and body INDEPENDENTLY, so the proven ad paired a `solution_aware` headline with a
+`problem_aware` body. Both good, both compliant, different stages. That is what step 4 fixes.
+
+### 🔴 TWO PRE-LAUNCH DEFECTS FOUND WHILE PROVING THIS — neither is fixed
+
+1. **The `dailyBudget` floor is CURRENCY-UNAWARE.** `publishToMeta` accepts `z.number().min(1)`,
+   which assumes USD. The ad account is denominated in **AED**, and `createAdSet` rejected a budget
+   of 1 with `blame_field_specs [["daily_budget"]]` — *"must be more than AED3.00"*. A coach on any
+   non-USD account entering 1 or 2 hits this. The modal's default of 20 masks it.
+2. **No low-balance guard on the Anthropic key.** A payload proof burned ~10 minutes polling before
+   failing with *"credit balance is too low"*. When credit runs out EVERY generator fails — concepts,
+   copy, headlines, landing pages — and the only signal is a 400 deep in a run. Second occurrence
+   (first: 2026-07-24). Wanted: a cheap pre-flight and a coach-facing message.
 
 🔴 **WHY THIS OUTRANKS EVERYTHING ELSE IN THE SPRINT. The gated copy reaches nothing live.**
 Traced end to end 2026-08-09, in code, not recalled:

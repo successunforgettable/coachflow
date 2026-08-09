@@ -138,6 +138,45 @@ function wrapGreedy(font: Font, text: string, maxWidth: number, fontSize: number
   return lines;
 }
 
+/** The headline block never exceeds three lines — the compositor's own ceiling. */
+export const HEADLINE_MAX_LINES = 3;
+
+/**
+ * Will this headline TRUNCATE when baked onto a canvas of width `W`?
+ *
+ * ⚠️ MEASURED IN RENDERED WIDTH, NEVER IN CHARACTERS. A character count is the wrong unit:
+ * "WWWW" and "iiii" are the same length and nothing like the same width, and the compositor
+ * upper-cases the headline before laying it out, which widens it again. This runs the REAL
+ * layout — the same `getFont("headline")`, the same padding maths, the same `fitLines`
+ * cascade the renderer uses — and reports whether the result ends in an ellipsis.
+ *
+ * This exists because the publish reroute retires the image-side headline micro-call, and
+ * that micro-call was the only thing enforcing a length ceiling (≤38 chars, with retries).
+ * Gated Node 7 headlines are written to Meta's ~40-character field and have never been
+ * measured against a canvas. Selecting on this function is what replaces that guard.
+ *
+ * Keep the parameters in lockstep with `renderAdCreative` below — they are duplicated here
+ * deliberately (a shared helper would have to thread the whole layout state), so a change
+ * to the headline block's padding, start size, min size or line ceiling must be made twice.
+ */
+export function measureHeadlineFit(
+  text: string,
+  W: number,
+  zone?: "lower" | "left" | "bottom",
+): { fits: boolean; truncated: boolean; lines: string[]; fontSize: number; widestLine: number; maxWidth: number } {
+  const font = getFont("headline");
+  const padX = Math.round(W * 0.06);
+  const contentW = W - padX * 2;
+  const colW = zone === "left" ? Math.round(W * 0.50) : contentW;
+  const headText = String(text ?? "").trim().toUpperCase();
+  const headStart = Math.max(40, Math.min(Math.round(W / 8), Math.round(W / 12)));
+  const headMin = Math.max(30, Math.round(W / 20));
+  const { lines, fontSize } = fitLines(font, headText, colW, headStart, headMin, HEADLINE_MAX_LINES);
+  const truncated = lines.some((l) => l.endsWith("…"));
+  const widestLine = lines.reduce((m, l) => Math.max(m, font.getAdvanceWidth(l, fontSize)), 0);
+  return { fits: !truncated, truncated, lines, fontSize, widestLine: Math.round(widestLine), maxWidth: colW };
+}
+
 /** Font-size cascade: shrink until it fits maxWidth within maxLines. */
 function fitLines(
   font: Font, text: string, maxWidth: number, startSize: number, minSize: number, maxLines: number,

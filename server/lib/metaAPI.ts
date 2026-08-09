@@ -358,6 +358,111 @@ export async function getAdCreatives(
 /**
  * Create a new campaign
  */
+// ─── Fetch a single object BY ID ─────────────────────────────────────────────
+//
+// ⚠️ WHY THESE EXIST. The list endpoints above cannot verify a fresh publish. On
+// 2026-08-09 a real ad was created — all four Graph calls succeeded — and the creative was
+// NOT in `getAdCreatives(..., { limit: 200 })`; the newest ids returned were months old.
+// `getCampaigns` was unreliable in the same way, reporting a just-deleted campaign as
+// present and a moments-later read as absent. The endpoints take a `limit` but no ordering,
+// so "not in the list" carries no information about whether the object exists.
+//
+// That cost the read-back on the first complete publish this product ever made: the
+// assertions reported failure when the truth was that the READ had failed, which is a
+// different thing and must never be reported as the same thing.
+//
+// A GET on `/{object-id}` is exact. Use these to verify anything just written.
+
+/** Meta returns `error` in the body on a missing/inaccessible object; surface it plainly. */
+async function graphGetById(
+  accessToken: string,
+  objectId: string,
+  fields: string,
+  label: string,
+): Promise<any | null> {
+  const url = new URL(`https://graph.facebook.com/v21.0/${objectId}`);
+  url.searchParams.set("access_token", accessToken);
+  url.searchParams.set("fields", fields);
+
+  const response = await fetch(url.toString());
+  const text = await response.text();
+
+  if (!response.ok) {
+    // A deleted object answers 400 with code 100 — that is a legitimate ANSWER ("gone"),
+    // not a transport failure, so it returns null rather than throwing. Everything else
+    // throws, because a caller must never read a network fault as "the object is absent".
+    let parsed: any = null;
+    try { parsed = text ? JSON.parse(text) : null; } catch { /* keep raw text below */ }
+    const code = parsed?.error?.code;
+    if (response.status === 400 && (code === 100 || code === 803)) return null;
+    throw new Error(`Meta API ${label} HTTP ${response.status}: ${text || "empty body"}`);
+  }
+  if (!text) return null;
+  return JSON.parse(text);
+}
+
+/**
+ * One ad creative by id — the authoritative read of what Meta STORES for an ad's copy.
+ *
+ * `title` is the headline field and `body` is the primary text. Both are also mirrored
+ * inside `object_story_spec.link_data` (`name` and `message`), which is where they live
+ * when the creative was built from a link spec, so both shapes are returned.
+ */
+export async function getAdCreativeById(
+  userId: number,
+  creativeId: string,
+): Promise<
+  | (MetaAdCreative & { objectStorySpec?: any; effectiveTitle: string; effectiveBody: string })
+  | null
+> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return null;
+
+  const c = await graphGetById(
+    accessToken,
+    creativeId,
+    "id,name,status,thumbnail_url,image_url,body,title,object_story_spec",
+    "getAdCreativeById",
+  );
+  if (!c) return null;
+
+  const link = c.object_story_spec?.link_data ?? {};
+  return {
+    id: c.id,
+    name: c.name,
+    status: c.status,
+    thumbnailUrl: c.thumbnail_url,
+    imageUrl: c.image_url,
+    body: c.body,
+    title: c.title,
+    objectStorySpec: c.object_story_spec,
+    // What actually renders on the ad, wherever Meta chose to keep it.
+    effectiveTitle: String(c.title ?? link.name ?? ""),
+    effectiveBody: String(c.body ?? link.message ?? ""),
+  } as any;
+}
+
+/** One campaign by id. Returns null when the object is gone — the deletion check. */
+export async function getCampaignById(userId: number, campaignId: string): Promise<any | null> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return null;
+  return graphGetById(accessToken, campaignId, "id,name,status,objective,effective_status", "getCampaignById");
+}
+
+/** One ad set by id — `status` here is what proves an ad set is PAUSED, not our request. */
+export async function getAdSetById(userId: number, adSetId: string): Promise<any | null> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return null;
+  return graphGetById(accessToken, adSetId, "id,name,status,effective_status,daily_budget,campaign_id", "getAdSetById");
+}
+
+/** One ad by id, including the creative it points at. */
+export async function getAdById(userId: number, adId: string): Promise<any | null> {
+  const accessToken = await getMetaToken(userId);
+  if (!accessToken) return null;
+  return graphGetById(accessToken, adId, "id,name,status,effective_status,adset_id,creative{id}", "getAdById");
+}
+
 export async function createCampaign(
   userId: number,
   params: {

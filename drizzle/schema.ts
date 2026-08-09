@@ -1107,6 +1107,11 @@ export const metaPublishedAds = mysqlTable("meta_published_ads", {
   status: mysqlEnum("status", ["ACTIVE", "PAUSED", "ARCHIVED", "DELETED"]).default("PAUSED").notNull(),
   objective: varchar("objective", { length: 100 }), // Campaign objective
   dailyBudget: decimal("dailyBudget", { precision: 10, scale: 2 }), // Daily budget in dollars
+  // PROVENANCE (publish-path step 1): which gated adCopy rows actually shipped. Before this,
+  // a published ad recorded no link back to the copy that produced it — `adSetId` was written
+  // as the literal string "temp" (§8c), so nothing could be traced. NULL on legacy rows.
+  headlineAdCopyId: int("headlineAdCopyId"),
+  bodyAdCopyId: int("bodyAdCopyId"),
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
   lastSyncedAt: timestamp("lastSyncedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1178,6 +1183,11 @@ export const adCreatives = mysqlTable("adCreatives", {
   // sweep can clear all three. Nullable and FORWARD-ONLY: rows written before this
   // column have no id to recover, and their orphans need a pattern-scoped listing sweep.
   sourceImageUrl: varchar("sourceImageUrl", { length: 500 }),
+  // PROVENANCE (publish-path step 1): the gated `adCopy.id` whose text is baked onto this
+  // picture. The publish path reads the headline off this row, so recording the source is
+  // what lets anyone answer "did this ad actually ship gated copy?" after the fact. NULL
+  // means the legacy template path produced the headline — which is itself the signal.
+  headlineAdCopyId: int("headlineAdCopyId"),
   imageFormat: varchar("imageFormat", { length: 20 }).default("1080x1080").notNull(), // Square format
   // Editorial scene brief {mode, action, symbolicObject, zone} persisted at feed
   // batch time so an on-demand 9:16 vertical re-renders flux from the SAME scene

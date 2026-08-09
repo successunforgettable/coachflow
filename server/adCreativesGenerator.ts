@@ -575,12 +575,53 @@ export async function runAdCreativesGeneration(
   // FEED_ASPECT now comes from _core/adVariations — it was a local const here, which is exactly why
   // the two sibling loops in routers/adCreatives.ts never got it. Same value, no behaviour change.
 
+  // ── PUBLISH-PATH STEP 1: the picture bakes GATED copy ──────────────────────
+  // The headline baked onto the image must be the SAME line that goes into Meta's headline
+  // field. Two different headlines on one ad is spec §3's "three unrelated messages", which
+  // is worse than repetition — Meta cannot find a stable meaning.
+  //
+  // The publish path reads the headline off the CREATIVE ROW, so making the creative carry
+  // a gated headline is what makes the field gated too — there is no second place to keep
+  // them in step, and nothing to drift.
+  //
+  // ⚠️ The image-side micro-call is RETIRED from this path. It was the only length guard
+  // (≤38 chars with retries), so selection now runs on `measureHeadlineFit` — actual glyph
+  // widths on the actual canvas — inside `resolveGatedPublishCopy`.
+  let gatedHeadlines: Array<{ text: string; adCopyId: number }> = [];
+  if (!input.headlines && input.serviceId) {
+    const { resolveGatedPublishCopy } = await import("./_core/publishCopySource");
+    const gated = await resolveGatedPublishCopy(db, input.userId, input.serviceId, { canvasWidth: 896 });
+    const usable = gated.headlineCandidates.filter(
+      (c) => !gated.rejectedForWidth.some((r) => r.id === c.id),
+    );
+    if (usable.length > 0) {
+      // Deal across the deck so four creatives carry four DIFFERENT gated headlines; cycle
+      // only if the gated set is smaller than the deck.
+      gatedHeadlines = Array.from({ length: VARIATIONS.length }, (_, i) => ({
+        text: usable[i % usable.length].text,
+        adCopyId: usable[i % usable.length].id,
+      }));
+      console.log(
+        `[adCreativesGenerator] baking GATED headlines from adSet ${gated.adSetId} — ` +
+        `${usable.length} usable, ${gated.rejectedForWidth.length} rejected on rendered width`,
+      );
+    } else {
+      console.warn(
+        `[adCreativesGenerator] no usable gated headline for service ${input.serviceId} ` +
+        `(${gated.unavailableReason ?? "none"}) — falling back to HEADLINE_FORMULAS templates`,
+      );
+    }
+  }
+
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
     const variation = VARIATIONS[i];
+    const gatedForSlot = gatedHeadlines[i];
     const hl = input.headlines
       ? input.headlines[i]
-      : { text: HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount), emphasis: undefined as string | undefined };
+      : gatedForSlot
+        ? { text: gatedForSlot.text, emphasis: undefined as string | undefined }
+        : { text: HEADLINE_FORMULAS[variation.formula](mechanism, input.niche, customerCount), emphasis: undefined as string | undefined };
     const headline = hl.text;
 
     const complianceIssues = checkCompliance(
@@ -678,6 +719,9 @@ export async function runAdCreativesGeneration(
       // The third Cloudinary object. Without this the intermediate leaks on every
       // render — teardown reads its ids off the row, and this one was never on it.
       sourceImageUrl: imageResult.url,
+      // PROVENANCE: which gated adCopy row this picture's headline came from. Null when the
+      // legacy template path produced it, which is itself the signal that the row is ungated.
+      headlineAdCopyId: gatedForSlot?.adCopyId ?? null,
       imageFormat: emittedFormat,
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
