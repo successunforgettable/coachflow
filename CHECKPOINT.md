@@ -97,7 +97,7 @@ distinctness population but they carry axes for coordination, so a hole there wo
 
 **👉 NEXT ACTION: STEP 2b — make awareness concept-derived**, and remove the dedupe with it. That
 moves the deck's stage mix away from cold weighting, so both nodes need a live re-proof.
-⚠️ **Fix the Node 6 crash below FIRST** — step 2b cannot be proven on a node that cannot run.
+Node 6 can carry that re-proof: its crash was fixed and proven in `a313717` (see NODE 6 HARDENED).
 
 ⚠️ **Step 1 delivers GATED and COMPLIANT, not yet COHERENT.** The resolver picks the strongest
 headline and body INDEPENDENTLY, so the proven ad paired a `solution_aware` headline with a
