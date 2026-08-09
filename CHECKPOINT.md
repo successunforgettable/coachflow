@@ -103,21 +103,51 @@ moves the deck's stage mix away from cold weighting, so both nodes need a live r
 headline and body INDEPENDENTLY, so the proven ad paired a `solution_aware` headline with a
 `problem_aware` body. Both good, both compliant, different stages. That is what step 4 fixes.
 
-### 🔴 NODE 6 CRASHES ON UNEXPECTED MODEL OUTPUT — PRE-EXISTING, IN DEPLOYED CODE
+### ✅ NODE 6 HARDENED — the crash is now survivable (2026-08-09)
 
-`headlinesGenerator.ts:579` calls `parsed.headlines.forEach(...)` with **no array guard**, in the
-`story` / `question` / `urgency` branch. On 2026-08-09 the model returned a different shape and the
-generator threw an unhandled `TypeError: parsed.headlines.forEach is not a function`, killing the
-whole run. It had already resolved its 8 desires — the failure is downstream of anything
-concept-related.
+**The defect.** All THREE branches consumed the model's `headlines` with a bare `.forEach` and no
+shape check — `story`/`question`/`urgency`, `eyebrow`, and `authority`. A JSON schema is a REQUEST,
+not a guarantee. Worse, the five formulas ran in a **`Promise.all`**, so ONE off-shape response
+rejected the whole batch and the coach got **zero** headlines. Guarding one branch would have closed
+nothing.
 
-⚠️ **NOT caused by the step-2 work, verified rather than assumed:** the working tree touched exactly
-`drizzle/schema.ts` and `server/adCopyGenerator.ts`; `headlinesGenerator.ts` was untouched. **This
-is in DEPLOYED code**, so a real coach hits it whenever the model returns an off-shape response —
-the other generators degrade, this one crashes.
+**The fix, in four parts:**
 
-**Node 6 is therefore UNPROVEN for step 2, not broken by it.** A crash is not evidence of
-equivalence, and it was not reported as one. Fix the guard, then re-prove Node 6 before step 2b.
+1. **`headlineItemsFrom`** — container guard on all three branches. Not an array → contribute 0 for
+   that formula, logged loudly, the rest of the deck lands.
+2. **`structuredHeadlineFields`** — per-element safety for `eyebrow` (`item.eyebrow/.main/.sub`) and
+   `authority` (`item.main/.sub`). A missing `main` DROPS the element, because `headline` is NOT
+   NULL and it would otherwise fail at insert far from its cause; `sub`/`eyebrow` are nullable so
+   absent ones degrade to null rather than discarding a good headline. The string branch got the
+   same check — a non-string element would reach the insert as an object.
+3. **`Promise.allSettled`**, and the per-formula catch LOGS WITHOUT RETHROWING. Two layers on
+   purpose: the catch handles the normal case, `allSettled` covers anything thrown OUTSIDE the try.
+4. **A summary line** (attempted / settled / rejected / collected) so a short deck is visible in one
+   line — and **all-formulas-empty still THROWS**, because persisting an empty set and reporting
+   success is worse than failing.
+
+**No retry**, deliberately: this generator has never had one around the LLM call, and adding one
+inside a crash fix would smuggle in new behaviour.
+
+**Proven both ways.** 29 unit cases in `headlineItemsGuard.test.ts` — bad shapes across all five
+formula names, plus valid-shape pass-through for each branch so the guards are shown NOT to perturb
+a normal deck. And the live run **exercised the fix for real**: the `story` formula returned
+`headlines` as a **string**, the guard caught it, and the other four still produced a full deck —
+`KEPT 12/band 8-12`, collapse 18 → 0, `question 4 · eyebrow 4 · authority 2 · urgency 2`, ledger
+KEPT = rows = returned = 12. Under the old code that identical run would have crashed.
+
+Node 6 is now PROVEN for step 2 as well — the parity result step 2a never reached.
+
+### 🔴 PRE-LAUNCH — the `story` formula systematically returns the wrong shape
+
+**Lower severity than the crash, but not fixed.** `story` returned a non-array `headlines` on BOTH
+runs that reached it (2026-08-09, twice). Two for two on one formula is a pattern in its prompt or
+schema, not model variance.
+
+The guard makes it **survivable, not fixed**: every story run silently costs a fifth of the deck —
+12 kept instead of the ~15 five formulas would give — and the only trace is one `console.error`. Fix
+the story prompt/schema before launch, and check whether `FORMULA_SCHEMAS.story` differs from its
+four siblings in a way that invites the wrong shape.
 
 ### 📌 OPEN — unit coverage for the step-1 code, before step 4
 
@@ -127,7 +157,7 @@ Step 4's assembly builds directly on the resolver, so close this first.
 ⚠️ Also: the step-1 commit gate ran **8 suites (501)** rather than the canonical 14 (**568**) that §8
 records. Nothing was lost — the six omitted suites account for exactly 67 — but run the §8 command.
 
-### 🔴 TWO PRE-LAUNCH DEFECTS FOUND WHILE PROVING THIS — neither is fixed
+### 🔴 TWO PRE-LAUNCH DEFECTS FOUND WHILE PROVING STEP 1 — neither is fixed
 
 1. **The `dailyBudget` floor is CURRENCY-UNAWARE.** `publishToMeta` accepts `z.number().min(1)`,
    which assumes USD. The ad account is denominated in **AED**, and `createAdSet` rejected a budget

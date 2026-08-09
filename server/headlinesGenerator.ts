@@ -10,6 +10,64 @@ function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, '').trim();
 }
 
+/**
+ * The model's `headlines` field, as an array — or an empty array when it is anything else.
+ *
+ * ⚠️ WHY THIS EXISTS. `parsed.headlines.forEach(...)` was called with no shape check. A JSON
+ * schema is a REQUEST, not a guarantee: on 2026-08-09 a live Node 6 run died with
+ * `TypeError: parsed.headlines.forEach is not a function` after it had already resolved its
+ * desires and stage plan. Because the formula loop runs inside `Promise.all`, that one
+ * off-shape response killed all five formulas and the entire deck — and it is in DEPLOYED
+ * code, so a real coach hits it whenever the model answers oddly.
+ *
+ * Returning `[]` lets the caller contribute nothing for that formula while the rest of the
+ * deck lands. That is the existing "ship short and say so" behaviour, not a new retry.
+ *
+ * Non-array entries inside a valid array are NOT filtered here: the three call sites read
+ * different item shapes (a bare string, `{eyebrow,main,sub}`, `{main,sub}`), so judging item
+ * validity belongs to them. This guards the CONTAINER only, which is what threw.
+ */
+/**
+ * One ELEMENT of a structured formula's array, or null when it cannot be used.
+ *
+ * `eyebrow` reads `item.eyebrow/.main/.sub` and `authority` reads `item.main/.sub`. The
+ * container guard below only proves the array is an array — an element inside it can still
+ * be a string, a null, or an object missing `main`, and `headline` is a NOT NULL column, so
+ * a missing `main` would fail at insert time with an error nowhere near its cause.
+ *
+ * `sub` and `eyebrow` are nullable columns, so absent ones degrade to null rather than
+ * discarding an otherwise good headline. Only a missing `main` drops the element.
+ */
+export function structuredHeadlineFields(
+  item: unknown,
+  formulaType: string,
+  idx: number,
+): { main: string; sub: string | null; eyebrow: string | null } | null {
+  const asText = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
+  if (!item || typeof item !== "object") {
+    console.error(`[headlinesGenerator] ${formulaType}[${idx}]: element is ${item === null ? "null" : typeof item}, not an object — skipping it.`);
+    return null;
+  }
+  const main = asText((item as any).main);
+  if (!main) {
+    console.error(`[headlinesGenerator] ${formulaType}[${idx}]: element has no usable \`main\` — skipping it. Keys: ${Object.keys(item as object).join(",") || "(none)"}`);
+    return null;
+  }
+  return { main, sub: asText((item as any).sub), eyebrow: asText((item as any).eyebrow) };
+}
+
+export function headlineItemsFrom(parsed: unknown, formulaType: string): any[] {
+  const raw = (parsed as any)?.headlines;
+  if (Array.isArray(raw)) return raw;
+  console.error(
+    `[headlinesGenerator] ${formulaType}: model returned \`headlines\` as ` +
+    `${raw === null ? "null" : Array.isArray(raw) ? "array" : typeof raw} — ` +
+    `contributing 0 headlines for this formula rather than throwing and killing the deck. ` +
+    `Received keys: ${parsed && typeof parsed === "object" ? Object.keys(parsed as object).join(",") || "(none)" : "(not an object)"}`,
+  );
+  return [];
+}
+
 // ─── Pre-compute compliance rewrites helper ─────────────────────────────────
 // Moved from server/routers/headlines.ts as part of Auto Mode Phase B1.
 // Feature flag: ENABLE_COMPLIANCE_REWRITES. Off by default — when unset or
@@ -474,7 +532,17 @@ The headline must signal physical presence — city, venue, date. Reference the 
 
   // 5 formulas in parallel via tool-use; per-formula filter respects
   // input.headlineStyle (undefined = all 5; specific enum = 1).
-  await Promise.all(
+  //
+  // ⚠️ allSettled, NOT all. This was `Promise.all`, so ONE formula rejecting took the whole
+  // batch down and the coach got ZERO headlines — which is what a single off-shape model
+  // response did on 2026-08-09. The per-branch guards below stop the common cause, but a
+  // wholesale-rejecting batch means any future throw anywhere in a formula's body has the
+  // same catastrophic blast radius. Isolation is the structural fix; the guards are the
+  // specific one, and both are wanted.
+  //
+  // No retry, deliberately: this generator has never had one around the LLM call, and
+  // adding one inside a crash fix would smuggle in new behaviour. Considered separately.
+  const formulaOutcomes = await Promise.allSettled(
     activeFormulas
       .map(async ([formulaType, promptTemplate], formulaIndex) => {
         const modifiedTemplate = promptTemplate
@@ -576,7 +644,27 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
           });
 
           if (formulaType === "story" || formulaType === "question" || formulaType === "urgency") {
-            parsed.headlines.forEach((headline: string, idx: number) => {
+            // ⚠️ GUARD THE MODEL'S SHAPE. `parsed.headlines` was consumed with a bare
+            // `.forEach`, which throws `TypeError: … is not a function` the moment the model
+            // answers with anything but an array. Observed live 2026-08-09: the run died
+            // AFTER resolving its desires and its stage plan, and because this map runs
+            // inside a `Promise.all` over the five formulas, ONE off-shape response killed
+            // the whole deck rather than costing one formula.
+            //
+            // Degrading = this formula contributes NOTHING and the rest of the deck lands.
+            // That matches the standing "a short set ships short and says so" rule; it does
+            // not pad, and it does not invent a retry this generator has never had.
+            const items = headlineItemsFrom(parsed, formulaType);
+            if (items.length === 0) return;
+            items.forEach((raw: unknown, idx: number) => {
+              // These elements are bare strings. A non-string here would reach the insert
+              // as an object and fail far from its cause, so it is skipped the same way a
+              // malformed structured element is.
+              const headline = typeof raw === "string" ? raw.trim() : "";
+              if (!headline) {
+                console.error(`[headlinesGenerator] ${formulaType}[${idx}]: element is ${raw === null ? "null" : typeof raw}, not a usable string — skipping it.`);
+                return;
+              }
               allHeadlines.push({
                 userId: input.userId,
                 serviceId: input.serviceId,
@@ -594,7 +682,15 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
               });
             });
           } else if (formulaType === "eyebrow") {
-            parsed.headlines.forEach((item: { eyebrow: string; main: string; sub: string }, idx: number) => {
+            // Same container guard as `story` — and it matters as much here, because the
+            // formulas run in one settled batch: an unguarded throw in ANY branch used to
+            // reject the whole thing and zero the deck, so guarding 579 alone closed
+            // nothing on its own.
+            const items = headlineItemsFrom(parsed, formulaType);
+            if (items.length === 0) return;
+            items.forEach((raw: unknown, idx: number) => {
+              const item = structuredHeadlineFields(raw, "eyebrow", idx);
+              if (!item) return;   // one bad element is skipped; its siblings still land
               allHeadlines.push({
                 userId: input.userId,
                 serviceId: input.serviceId,
@@ -612,7 +708,11 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
               });
             });
           } else if (formulaType === "authority") {
-            parsed.headlines.forEach((item: { main: string; sub: string }, idx: number) => {
+            const items = headlineItemsFrom(parsed, formulaType);
+            if (items.length === 0) return;
+            items.forEach((raw: unknown, idx: number) => {
+              const item = structuredHeadlineFields(raw, "authority", idx);
+              if (!item) return;
               allHeadlines.push({
                 userId: input.userId,
                 serviceId: input.serviceId,
@@ -631,11 +731,33 @@ Return ONLY valid JSON, no markdown, no explanations.\n\n${META_COMPLIANCE_NOTES
             });
           }
         } catch (error) {
-          console.error(`Failed to generate ${formulaType} headlines:`, error);
-          throw new Error(`Failed to generate ${formulaType} headlines`);
+          // Logged loudly and NOT rethrown: this formula contributes nothing and the rest
+          // of the deck lands. A short deck is never silent — the line below plus the
+          // summary after the batch are what make it visible.
+          console.error(`[headlinesGenerator] ${formulaType}: FAILED, contributing 0 headlines —`, error);
         }
       })
   );
+
+  // Anything that escaped the per-formula catch (a throw outside the try, an async edge)
+  // is isolated by allSettled and surfaced here rather than silently swallowed.
+  const rejected = formulaOutcomes.filter((o) => o.status === "rejected");
+  for (const r of rejected) {
+    console.error("[headlinesGenerator] a formula rejected OUTSIDE its own catch —", (r as PromiseRejectedResult).reason);
+  }
+  console.log(
+    `[headlinesGenerator] formulas: ${activeFormulas.length} attempted · ` +
+    `${formulaOutcomes.length - rejected.length} settled · ${rejected.length} rejected · ` +
+    `${allHeadlines.length} headline(s) collected before compliance`,
+  );
+  if (allHeadlines.length === 0) {
+    // Every formula produced nothing. That is a genuine failure worth surfacing rather
+    // than persisting an empty set and reporting success.
+    throw new Error(
+      `Headline generation produced no usable headlines across ${activeFormulas.length} formula(s) — ` +
+      `see the per-formula errors above.`,
+    );
+  }
 
   // Per-headline compliance check + score before insert
   const headlinesWithCompliance = await Promise.all(
