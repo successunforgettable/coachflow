@@ -1219,6 +1219,27 @@ export const adCreatives = mysqlTable("adCreatives", {
   // the five unwired fan-out sites — a creative they produce genuinely did not come from a
   // concept), and wherever the legacy template path supplied the headline.
   conceptId: int("conceptId").references(() => campaignConcepts.id, { onDelete: "set null" }),
+  // ── WHICH image_hook ROW WAS BAKED ONTO THIS PICTURE (step 4a, migration 0103) ──
+  // The companion to `headlineAdCopyId` above: that one records the picture's HEADLINE
+  // surface, this one its short on-image hook line. Together they are what makes the
+  // picture's words checkable by id.
+  //
+  // ⚠️ IT EXISTS BECAUSE THE HOOK IS THE ONE SURFACE A JOIN CANNOT RECOVER. An assembled
+  // ad's concept is `headlineAdCopyId` → `adCopy.conceptId`, so it needs no column. Once
+  // composited, the hook exists only as pixels inside a Cloudinary object; nothing else
+  // anywhere records which row produced them, and recovering it by comparing baked text
+  // would be exactly the string-matching this chapter refuses (hooks are short, the
+  // compositor clamps and uppercases what it draws).
+  //
+  // NO FK and NO INDEX, deliberately — it follows `headlineAdCopyId`, not `conceptId`.
+  // ON DELETE SET NULL is right for a grouping key and wrong for provenance: it would
+  // erase the record of what was baked into a picture that still exists.
+  //
+  // NULL means "this row does not record a hook identity" — NOT "no hook was drawn". It is
+  // NULL for every row rendered before 0103, for the editorial path and the two router
+  // insert sites, and for the legacy fallback where the baked line is a 140-character
+  // truncation of a BODY row rather than a purpose-built hook.
+  hookAdCopyId: int("hookAdCopyId"),
   imageFormat: varchar("imageFormat", { length: 20 }).default("1080x1080").notNull(), // Square format
   // Editorial scene brief {mode, action, symbolicObject, zone} persisted at feed
   // batch time so an on-demand 9:16 vertical re-renders flux from the SAME scene

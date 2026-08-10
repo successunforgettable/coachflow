@@ -223,6 +223,195 @@ export const metaRouter = router({
     }),
 
   /**
+   * STEP 4b — the concept-keyed assembly plan for a service. READ-ONLY.
+   *
+   * One concept → one ad, every surface descending from it, paired by id and never by label
+   * text. Returns the ads AND the ledger: a short set is a correct result, and the ledger is
+   * what makes it legible rather than mysterious. Writes nothing and calls no Meta endpoint.
+   */
+  previewAssembledAds: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      batchId: z.string().optional(),
+      adSetId: z.string().optional(),
+      canvasWidth: z.number().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { assembleConceptAds } = await import("../_core/adAssembly");
+      return assembleConceptAds(db, ctx.user.id, input.serviceId, {
+        batchId: input.batchId, adSetId: input.adSetId, canvasWidth: input.canvasWidth,
+      });
+    }),
+
+  /**
+   * STEP 4c — publish N assembled ads into ONE campaign and ONE ad set.
+   *
+   * ⚠️ NOT WIRED AND NOT INVOKED. No client code calls this. The live multi-ad push is step
+   * 4c, it runs against an account carrying real advertising, and it needs Arfeen's explicit
+   * word on the day. It is written here so the capability and its ordering exist and are
+   * unit-proven before that authorisation is asked for.
+   *
+   * WHY IT IS SEPARATE FROM `publishToMeta` RATHER THAN AN EXTENSION OF IT. That mutation is
+   * the single-ad path proven end to end on a real paused ad on 2026-08-09, and it remains
+   * the way an editorial or ungated creative is published. Changing its shape to serve N ads
+   * would put the proven path at risk for no gain.
+   *
+   * The ordering that keeps the ad account clean lives in `_core/multiAdPublish.ts` with the
+   * Graph calls injected, so it is provable without touching Meta: screen every ad FIRST,
+   * refuse before creating anything if none survives, then one campaign, one ad set, and a
+   * creative plus an ad per survivor.
+   *
+   * 📌 The screen below repeats the field shape used by `publishToMeta`'s gate deliberately
+   * rather than refactoring that block out of the proven path. Unify the two AFTER 4c has
+   * been proven live, not before.
+   */
+  publishAssembledAds: protectedProcedure
+    .input(z.object({
+      serviceId: z.number(),
+      batchId: z.string().optional(),
+      adSetId: z.string().optional(),
+      linkUrl: z.string().url(),
+      campaignName: z.string().min(1),
+      objective: z.enum(["OUTCOME_AWARENESS", "OUTCOME_ENGAGEMENT", "OUTCOME_LEADS", "OUTCOME_SALES", "OUTCOME_TRAFFIC"]),
+      callToAction: z.string().optional(),
+      dailyBudget: z.number().min(1).optional(),
+      lifetimeBudget: z.number().min(1).optional(),
+      targeting: z.object({
+        countries: z.array(z.string()).optional(),
+        ageMin: z.number().min(18).max(65).optional(),
+        ageMax: z.number().min(18).max(65).optional(),
+        genders: z.array(z.number()).optional(),
+      }).optional(),
+      startTime: z.string().optional(),
+      endTime: z.string().optional(),
+      status: z.enum(["ACTIVE", "PAUSED"]).default("PAUSED"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { assembleConceptAds } = await import("../_core/adAssembly");
+      const { publishAssembledAds: runPublish } = await import("../_core/multiAdPublish");
+      const { createCampaign, createAdSet, createAdCreative, createAd } = await import("../lib/metaAPI");
+      const { checkOutput, checkAdToPageMatch } = await import("../_core/complianceAxis");
+      const { buildCoachCorpus, buildProofSupplied } = await import("../_core/groundingCorpus");
+      const { services, idealCustomerProfiles, landingPages, metaPublishedAds } = await import("../../drizzle/schema");
+
+      const { ads, ledger } = await assembleConceptAds(db, ctx.user.id, input.serviceId, {
+        batchId: input.batchId, adSetId: input.adSetId,
+      });
+      if (ads.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            `No coherent ad could be assembled for this campaign. ${ledger.unavailableReason ?? ""} ` +
+            `Concepts seen ${ledger.conceptsSeen}, creatives ${ledger.creativesSeen}.`,
+        });
+      }
+
+      // Token resolution and the grounding corpus, resolved once for the whole push.
+      const resolvedMap = await buildResolvedMap(ctx.user.id, input.serviceId);
+      const rt = (s: string) => (resolvedMap ? resolveTokensInText(s, resolvedMap) : s);
+      const [svc] = await db.select().from(services)
+        .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))).limit(1);
+      const [gateIcp] = await db.select().from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.serviceId, input.serviceId)).limit(1);
+      let pageText = "";
+      try {
+        const [lp] = await db.select().from(landingPages)
+          .where(and(eq(landingPages.publicUrl, input.linkUrl), eq(landingPages.userId, ctx.user.id))).limit(1);
+        const content = (lp as any)?.content;
+        if (content && typeof content === "object") {
+          pageText = ["eyebrowHeadline", "mainHeadline", "subheadline", "problemAgitation",
+            "solutionIntro", "uniqueMechanism"].map((k) => content[k])
+            .filter((v) => typeof v === "string").join(" ");
+        }
+      } catch { /* destination not resolvable — the other checks still apply */ }
+
+      const callToAction = input.callToAction ? rt(input.callToAction) : undefined;
+      const campaignName = rt(input.campaignName);
+
+      const result = await runPublish(
+        { createCampaign, createAdSet, createAdCreative, createAd },
+        {
+          userId: ctx.user.id,
+          campaignName,
+          objective: input.objective,
+          linkUrl: input.linkUrl,
+          status: input.status,
+          dailyBudget: input.dailyBudget,
+          lifetimeBudget: input.lifetimeBudget,
+          callToAction,
+          targeting: {
+            geoLocations: input.targeting?.countries ? { countries: input.targeting.countries } : { countries: ["US"] },
+            ageMin: input.targeting?.ageMin,
+            ageMax: input.targeting?.ageMax,
+            genders: input.targeting?.genders,
+          },
+          startTime: input.startTime,
+          endTime: input.endTime,
+          ads: ads.map((a) => ({
+            conceptId: a.conceptId,
+            headline: rt(a.headline.text),
+            body: rt(a.body.text),
+            headlineAdCopyId: a.headline.id,
+            bodyAdCopyId: a.body.id,
+            imageUrl: a.creative.imageUrl,
+            verticalImageUrl: a.creative.verticalImageUrl,
+          })),
+          // FAIL CLOSED, per ad, on the RESOLVED copy — the same shape publishToMeta uses.
+          screen: async (a) => {
+            const gate = checkOutput(
+              [
+                { location: "headline", text: a.headline, role: "short" as const },
+                { location: "body", text: a.body, role: "body" as const },
+                ...(callToAction ? [{ location: "callToAction", text: callToAction, role: "cta" as const }] : []),
+              ],
+              svc
+                ? {
+                    corpus: buildCoachCorpus({ service: svc, groundingMeta: (gateIcp as any)?.groundingMeta }),
+                    supplied: buildProofSupplied(svc),
+                  }
+                : undefined,
+              { requireGrounding: true },
+            );
+            const blocking = [...(gate?.blocking ?? [])];
+            if (pageText) {
+              const match = checkAdToPageMatch(`${a.headline} ${a.body}`, pageText);
+              if (!match.ok) blocking.push(...(match.blocking as any));
+            }
+            return {
+              blocked: blocking.length > 0,
+              classes: Array.from(new Set(blocking.map((h: any) => String(h.classId)))),
+            };
+          },
+        },
+      );
+
+      // Provenance: one row per ad that actually landed, all sharing one campaign and ad set.
+      for (const p of result.published) {
+        await db.insert(metaPublishedAds).values({
+          userId: ctx.user.id,
+          adSetId: ledger.adSetId ?? "temp",
+          metaCampaignId: result.campaignId!,
+          metaAdSetId: result.adSetId!,
+          metaAdId: p.metaAdId,
+          metaCreativeId: p.metaCreativeId,
+          campaignName,
+          status: input.status,
+          objective: input.objective,
+          dailyBudget: input.dailyBudget?.toString(),
+          headlineAdCopyId: p.headlineAdCopyId ?? undefined,
+          bodyAdCopyId: p.bodyAdCopyId ?? undefined,
+        } as any);
+      }
+
+      return { ...result, ledger };
+    }),
+
+  /**
    * Publish ad copy to Meta Ads Manager
    * Creates campaign, ad set, ad creative, and ad in one flow
    */

@@ -1,0 +1,78 @@
+-- 0103 — adCreatives rows record WHICH image_hook row was baked onto the picture (travels ALONE)
+--
+-- Adds ONE nullable column:
+--   adCreatives.hookAdCopyId INT NULL
+--
+-- ⚠️ NOT APPLIED. Written alongside the step-4a build so the code and its schema travel
+-- together, and applied only on Arfeen's explicit word like every other migration.
+--
+-- WHY THIS EXISTS — the A-vs-B gap, measured 2026-08-10. On the step-3 proof run, 3 of 4
+-- pictures carried an on-image hook line from a DIFFERENT concept than the headline they
+-- baked. The cause is mechanical rather than subtle: the picture's two text surfaces are
+-- dealt independently. `adCreatives.conceptId` (0102) records the concept of the HEADLINE,
+-- and `resolveAdBodyTexts` selected the hook rows and returned `string[]`, discarding the
+-- ids it had just read; the generator then dealt them `bodyTexts[i % bodyTexts.length]`.
+-- Two independent deals over the same four slots agree only by coincidence — the one
+-- agreement in that run was a modulo coincidence, not a mechanism.
+--
+-- Step 4a picks the hook BY CONCEPT and records which row it baked. Without this column the
+-- agreement could only ever be checked by comparing the baked TEXT against candidate rows,
+-- which is precisely the string-matching this chapter has refused everywhere else: hooks are
+-- short, a generator may phrase two alike, and the compositor clamps and uppercases what it
+-- draws. An id either matches or it does not.
+--
+-- ⚠️ WHY THIS IS NOT DERIVABLE, UNLIKE THE AD'S CONCEPT. An assembled ad's concept needs no
+-- column: it is `headlineAdCopyId` → `adCopy.conceptId`, a join away. The hook is not. Once
+-- composited it exists only as PIXELS inside a Cloudinary object, and nothing else on the row
+-- or anywhere in the database says which row produced them. A value that cannot be recovered
+-- by a join is the only kind that earns a column here.
+--
+-- ⚠️ NO FOREIGN KEY AND NO INDEX — DELIBERATE, AND IT DIVERGES FROM 0101/0102 ON PURPOSE.
+-- This column follows `headlineAdCopyId` (0100), which is its true sibling: both are
+-- PROVENANCE pointers at an `adCopy` row, sitting on `adCreatives`.
+--   · No FK. 0101/0102 point at `campaignConcepts` with ON DELETE SET NULL, which is right
+--     for a grouping key. It is WRONG for provenance: every proof run in this chapter tears
+--     its copy down, and SET NULL would erase the record of what was baked into a picture
+--     that still exists. A dangling id is honest and still answers "which row shipped";
+--     a blanked one silently becomes indistinguishable from "never had a hook".
+--   · No index. It is read one row at a time by id, never scanned or grouped —
+--     `headlineAdCopyId` is unindexed for the same reason. An index here would cost writes
+--     on every render and serve no query anyone makes.
+--
+-- ⚠️ NULL IS MEANINGFUL AND MUST NOT BE READ AS "NO HOOK EXISTS". It means only that this
+-- row does not record one. Three real cases produce it, and assembly distinguishes none of
+-- them from each other — it treats them all as "hook identity unknown":
+--   · every row rendered before this migration (all 405 of them);
+--   · the editorial path and the two router insert sites, which do not stamp;
+--   · the legacy fallback inside `resolveAdBodyTexts`, where the baked line is a 140-char
+--     truncation of a BODY row rather than a purpose-built hook — kept deliberately so that
+--     services generated before 0098 still composite rather than rendering a picture with no
+--     text on it.
+--
+-- ⚠️ ADDITIVE AND INERT, like 0097 / 0098 / 0099 / 0100 / 0101 / 0102. A new nullable column
+-- changes no existing row and no existing read; all 405 current rows simply carry NULL.
+-- NO BACKFILL, and none is possible: the rows it would describe predate the concept-keyed
+-- pick, and inferring one from baked text is the string-matching this column exists to avoid.
+--
+-- ⚠️ MIGRATIONS TRAVEL ALONE (CLAUDE.md §5.6). This file is the whole change.
+--
+-- ⚠️ TEARDOWN ORDER IS UNCHANGED BY THIS MIGRATION, because there is no FK to trip over. The
+-- order from 0102 still governs:
+--   read the three Cloudinary ids → delete the objects → delete adCreatives → delete adCopy
+--   → delete campaignConcepts.
+--
+-- REVERSIBILITY:
+--   ALTER TABLE `adCreatives` DROP COLUMN `hookAdCopyId`;
+--
+-- IDEMPOTENCE. MySQL has no "ADD COLUMN IF NOT EXISTS". Re-running errors with
+-- ER_DUP_FIELDNAME (1060), which is safe — it means the change is already present.
+--
+-- Verify AFTER applying:
+--   SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+--     FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='adCreatives' AND COLUMN_NAME='hookAdCopyId';
+--   SELECT COUNT(*) total, COUNT(hookAdCopyId) stamped FROM adCreatives;
+--   -- expect: int / YES / NULL default, and 405 / 0
+
+ALTER TABLE `adCreatives`
+  ADD COLUMN `hookAdCopyId` INT NULL AFTER `conceptId`;

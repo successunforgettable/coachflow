@@ -249,11 +249,53 @@ function trimToLength(s: string, max: number): string {
 export async function resolveAdBodyTexts(
   db: any, userId: number, serviceId: number | null | undefined, limit = 5,
 ): Promise<string[]> {
+  const rows = await resolveAdOnImageTextRows(db, userId, serviceId, limit);
+  return rows.map((r) => r.text);
+}
+
+/**
+ * One candidate line for the picture, WITH the identity of the row it came from.
+ *
+ * `id`/`conceptId` are null only for the `mainBenefit` source, which is not an adCopy row
+ * at all. `source` is what tells a caller whether the line is a purpose-built hook or the
+ * legacy body truncation — the two are different surfaces and must not be conflated.
+ */
+export type OnImageTextRow = {
+  id: number | null;
+  conceptId: number | null;
+  awareness: string | null;
+  text: string;
+  source: "image_hook" | "body" | "mainBenefit";
+};
+
+/**
+ * The same selection as `resolveAdBodyTexts`, returning the ROWS instead of only their text.
+ *
+ * 🔴 WHY THIS EXISTS — the A-vs-B gap measured 2026-08-10. `resolveAdBodyTexts` read the hook
+ * rows and then threw their ids away, returning `string[]`. The generator dealt those strings
+ * `bodyTexts[i % bodyTexts.length]` while the picture's HEADLINE was dealt separately from
+ * the gated pool, so on the step-3 proof 3 of 4 pictures carried a hook line from a different
+ * concept than the headline baked beside it. Two independent deals over four slots agree only
+ * by coincidence — and the one agreement in that run was exactly that.
+ *
+ * The ids were always in the database; nothing needed generating. Handing them back is what
+ * lets the caller pick BY CONCEPT and then record which row it baked (`hookAdCopyId`,
+ * migration 0103), so the agreement is provable afterwards by id rather than by comparing
+ * baked text.
+ *
+ * ⚠️ SELECTION AND FILTERING ARE UNCHANGED. Same three sources in the same order, same
+ * newest-first ordering, same token stripping, same 140-char trim and the same no-price rule.
+ * `resolveAdBodyTexts` is now a thin wrapper over this, so the three call sites that only
+ * want strings keep their exact previous behaviour.
+ */
+export async function resolveAdOnImageTextRows(
+  db: any, userId: number, serviceId: number | null | undefined, limit = 5,
+): Promise<OnImageTextRow[]> {
   if (serviceId == null) return [];
   // Robust to markdown-escaped underscores in stored copy (e.g. "[INSERT\_X]").
   const stripTokens = (s: string) => s.replace(/\[INSERT[^\]]*\]/gi, "").replace(/\s+/g, " ").trim();
   const hasPrice = (s: string) => /[£$€]\s?\d/.test(s);
-  let bodies: string[] = [];
+  let bodies: OnImageTextRow[] = [];
 
   // ── PREFER THE PURPOSE-BUILT IMAGE HOOK ───────────────────────────────────
   // 🔴 THE DEFECT THIS FIXES. Below, the fallback path takes an ad-copy BODY row and
@@ -271,37 +313,103 @@ export async function resolveAdBodyTexts(
   // before 0098 has no hook rows, and every pre-0098 batch must still composite rather than
   // render a picture with no text on it. The fallback is the old behaviour exactly, so
   // nothing regresses; it simply stops being the normal path.
+  const toRows = (rs: any[], source: "image_hook" | "body"): OnImageTextRow[] =>
+    (rs ?? [])
+      .map((r: any) => ({
+        id: r?.id == null ? null : Number(r.id),
+        conceptId: r?.conceptId == null ? null : Number(r.conceptId),
+        awareness: r?.awareness ?? null,
+        text: trimToLength(stripTokens(r?.content ?? ""), 140),
+        source,
+      }))
+      .filter((b: OnImageTextRow) => b.text.length > 0 && !hasPrice(b.text));
+
   try {
-    const hookRows = await db.select({ content: adCopy.content })
+    const hookRows = await db.select({
+        id: adCopy.id, content: adCopy.content,
+        conceptId: adCopy.conceptId, awareness: adCopy.awareness,
+      })
       .from(adCopy)
       .where(and(eq(adCopy.userId, userId), eq(adCopy.serviceId, serviceId), eq(adCopy.contentType, "image_hook")))
       .orderBy(desc(adCopy.id))
       .limit(limit);
-    const hooks = (hookRows ?? [])
-      .map((r: { content: string | null }) => trimToLength(stripTokens(r?.content ?? ""), 140))
-      .filter((b: string) => b.length > 0 && !hasPrice(b));
+    const hooks = toRows(hookRows, "image_hook");
     if (hooks.length > 0) return hooks;
   } catch { /* fall through to the body path below */ }
 
   try {
-    const rows = await db.select({ content: adCopy.content })
+    const rows = await db.select({
+        id: adCopy.id, content: adCopy.content,
+        conceptId: adCopy.conceptId, awareness: adCopy.awareness,
+      })
       .from(adCopy)
       .where(and(eq(adCopy.userId, userId), eq(adCopy.serviceId, serviceId), eq(adCopy.contentType, "body")))
       .orderBy(desc(adCopy.id))
       .limit(limit);
-    bodies = (rows ?? [])
-      .map((r: { content: string | null }) => trimToLength(stripTokens(r?.content ?? ""), 140))
-      .filter((b: string) => b.length > 0 && !hasPrice(b));
+    bodies = toRows(rows, "body");
   } catch { /* fall through to mainBenefit */ }
   if (bodies.length === 0) {
     try {
       const [svc] = await db.select({ mainBenefit: services.mainBenefit })
         .from(services).where(eq(services.id, serviceId)).limit(1);
       const fallback = trimToLength(stripTokens(svc?.mainBenefit ?? ""), 140);
-      if (fallback) bodies = [fallback];
+      // Not an adCopy row, so it carries no identity — null id, null concept. A caller must
+      // read that as "unknown", never as "no concept".
+      if (fallback) bodies = [{ id: null, conceptId: null, awareness: null, text: fallback, source: "mainBenefit" }];
     } catch { /* leave empty */ }
   }
   return bodies;
+}
+
+/**
+ * Deal one on-image hook row to each deck slot, BY CONCEPT.
+ *
+ * `slotConcepts[i]` is the concept of the gated headline that slot i bakes (null when the
+ * slot has no gated headline — the wizard/legacy paths). The returned array is the same
+ * length as the deck; a null entry means that slot ships with NO hook line.
+ *
+ * THE THREE RULES, in order, and the third is the one worth arguing about:
+ *
+ *  1. **Concept first.** A slot takes an unused hook row whose `conceptId` equals its
+ *     headline's. This is the whole point: it closes the A-vs-B gap where 3 of 4 pictures
+ *     carried a hook from a different concept than the headline beside it.
+ *  2. **Then any unused row.** A concept with no hook of its own still gets a line rather
+ *     than a blank band. The mismatch is recorded rather than hidden — the creative row
+ *     stores which row was baked, so it is measurable afterwards instead of assumed.
+ *  3. **NEVER the same row twice.** When the rows run out the slot gets NOTHING, and that
+ *     is deliberate. The old code dealt `bodyTexts[i % bodyTexts.length]`, so a short deck
+ *     REPEATED a line: on the 2026-08-10 run Node 7 returned 3 hooks for 4 slots and two
+ *     pictures baked the identical line (adCopy 6044 on slots 1 and 4) — duplication on the
+ *     exact surface Meta's OCR reads. An empty band is a visible symptom of a short hook
+ *     deck; a repeated line is an invisible collapse. Preferring the visible one is the
+ *     never-pad rule applied to pixels.
+ *     ⚠️ It follows that a short hook deck now shows up as a picture with no line on it.
+ *     That is the intended signal, and the fix is to grow the hook band — not to reuse.
+ *
+ * Pure and synchronous, so the dealing is testable without rendering anything.
+ */
+export function dealHooksByConcept(
+  rows: OnImageTextRow[],
+  slotConcepts: Array<number | null>,
+  slots: number,
+): Array<OnImageTextRow | null> {
+  const out: Array<OnImageTextRow | null> = new Array(slots).fill(null);
+  const used = new Set<number>();
+
+  for (let i = 0; i < slots; i++) {
+    const want = slotConcepts[i] ?? null;
+    if (want == null) continue;
+    const idx = rows.findIndex((r, j) => !used.has(j) && r.conceptId != null && r.conceptId === want);
+    if (idx >= 0) { out[i] = rows[idx]; used.add(idx); }
+  }
+
+  for (let i = 0; i < slots; i++) {
+    if (out[i]) continue;
+    const idx = rows.findIndex((_, j) => !used.has(j));
+    if (idx >= 0) { out[i] = rows[idx]; used.add(idx); }
+  }
+
+  return out;
 }
 
 /**

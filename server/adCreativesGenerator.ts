@@ -52,7 +52,7 @@ import { invokeLLM } from "./_core/llm";
 import { generateImage, generateEditorialImage } from "./_core/imageGeneration";
 import { buildEditorialPrompt, EDITORIAL_VARIATIONS, generateEditorialSceneBriefs } from "./_core/editorialPrompt";
 import { storagePut } from "./storage";
-import { renderAdCreative, deriveAccent, resolveAdBodyTexts } from "./_core/compositeHeadline";
+import { renderAdCreative, deriveAccent, resolveAdBodyTexts, resolveAdOnImageTextRows, dealHooksByConcept } from "./_core/compositeHeadline";
 import { ctaForCampaignType } from "./_core/campaignCta";
 import { randomBytes } from "crypto";
 import {
@@ -544,7 +544,9 @@ export async function runAdCreativesGeneration(
   // P8: the body DECK, rotated per variation below — resolving a single line
   // here is what made all five creatives share one body.
   const ctaLabel = ctaForCampaignType(input.campaignType);
-  const bodyTexts = await resolveAdBodyTexts(db, input.userId, input.serviceId, VARIATIONS.length);
+  // Step 4a: the ROWS, not just their text. The ids were always in the database and were being
+  // discarded — see resolveAdOnImageTextRows and dealHooksByConcept below.
+  const hookRows = await resolveAdOnImageTextRows(db, input.userId, input.serviceId, VARIATIONS.length);
 
   // P6 cause 2: resolve the subject ONCE per batch. Arfeen's locked rule — one
   // audience, one depiction; an actually-mixed audience, both. `subjectClause`
@@ -616,10 +618,31 @@ export async function runAdCreativesGeneration(
     }
   }
 
+  // ── STEP 4a: THE ON-IMAGE HOOK IS DEALT BY CONCEPT, NOT BY MODULO ──────────
+  // Both of the picture's text surfaces now descend from the same concept wherever the deck
+  // allows it, and which row was baked is recorded on the row (`hookAdCopyId`, migration
+  // 0103) so the agreement is checkable afterwards by id.
+  const hookForSlot = dealHooksByConcept(
+    hookRows,
+    gatedHeadlines.map((g) => g?.conceptId ?? null),
+    VARIATIONS.length,
+  );
+  {
+    const matched = hookForSlot.filter((h, i) =>
+      h?.conceptId != null && h.conceptId === (gatedHeadlines[i]?.conceptId ?? null)).length;
+    const blank = hookForSlot.filter((h) => h == null).length;
+    console.log(
+      `[adCreativesGenerator] on-image hooks — ${hookRows.length} candidate row(s), ` +
+      `concept-matched ${matched}/${VARIATIONS.length}, no-line ${blank} ` +
+      `(a slot ships NO hook line rather than repeating one already baked in this deck)`,
+    );
+  }
+
   let createdCount = 0;
   for (let i = 0; i < VARIATIONS.length; i++) {
     const variation = VARIATIONS[i];
     const gatedForSlot = gatedHeadlines[i];
+    const hookForThisSlot = hookForSlot[i];
     const hl = input.headlines
       ? input.headlines[i]
       : gatedForSlot
@@ -685,7 +708,7 @@ export async function runAdCreativesGeneration(
     const compositedBuffer = await renderAdCreative(rawBuffer, {
       headline,
       emphasis: hl.emphasis,
-      bodyText: bodyTexts.length ? bodyTexts[i % bodyTexts.length] : "",
+      bodyText: hookForThisSlot?.text ?? "",
       ctaLabel,
       // Compositor half of the zone contract — the photo prompt above was told
       // to leave this band clean. Centring and anchoring are unchanged; the
@@ -731,6 +754,11 @@ export async function runAdCreativesGeneration(
       // See the column's docblock in drizzle/schema.ts. Carried as the integer the resolver
       // returned: no lookup, no text comparison, so the stamp cannot point at the wrong concept.
       conceptId: gatedForSlot?.conceptId ?? null,
+      // WHICH image_hook row was baked (step 4a, migration 0103). NULL means this row does
+      // not record one — either no line was drawn, or the legacy body/mainBenefit fallback
+      // supplied it. Never inferred from the baked text: the compositor clamps and
+      // uppercases what it draws, so text matching is exactly the wrong instrument.
+      hookAdCopyId: hookForThisSlot?.source === "image_hook" ? hookForThisSlot.id : null,
       imageFormat: emittedFormat,
       complianceChecked: true,
       complianceIssues: complianceIssues.length > 0 ? JSON.stringify(complianceIssues) : null,
