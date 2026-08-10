@@ -7,24 +7,35 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 STEP 4c — THE LIVE MULTI-AD PUSH. **HELD.** It needs its OWN plan and a fresh explicit word.
+# 👉 RUN STEP 4c. The harness is BUILT and waiting. It needs **two separate words** on the day.
 
-**Steps 4a and 4b are DONE and PROVEN LIVE** (`793d4ed`, 2026-08-10). One concept → one ad now
-resolves for real: 4 concepts in the deck produced 4 complete coherent ads, 0 dropped.
+Steps 4a and 4b are done and proven live (`793d4ed`); the 4c harness is built and unit-proven
+(`e862c76`). ⚠️ **The 4c harness has NEVER been run against Meta.** The only Graph traffic so far
+is the read-only pre-flight.
 
-**4c is the last link, and it is the one that touches Meta.** The capability is already written —
-`_core/multiAdPublish.ts`, one campaign and one ad set for N ads — with the four Graph calls
-INJECTED, so it is unit-proven and **has never been invoked**. What remains is the live push, and
-it runs against an account carrying Arfeen's REAL advertising. It comes back as its own plan
-carrying, before anything fires: the Meta token and app secret re-read (not recalled) · userId **1**
-(the token is bound to user 1; the smoke account cannot publish) · PAUSED at campaign, ad set AND
-ad with a budget above the AED 3 floor · a Meta-side teardown removing the campaign, ad set and
-every ad confirmed BY ID (Meta soft-deletes, so a by-id read beats a list check) · and
-`meta_published_ads` reconciled back to **2** with no new orphans — the account already shows five
-"Auto Campaign Kit" campaigns against two rows and must not gain a sixth. The assertion that
-matters is that **all ads share one `adset_id`**, read from Meta's stored values.
+```
+npx tsx server/scripts/meta-4c-preflight.ts                      # READ-ONLY, re-run this FIRST
+railway run … npx tsx server/scripts/step4c-multiad-publish.ts --publish     # word #1
+railway run … npx tsx server/scripts/step4c-multiad-publish.ts --teardown    # word #2, SEPARATE
+```
 
-**Read §0a — four things are open, and two of them are decisions rather than work.**
+**With no flag the script prints its plan and exits without a single call** — verified by running it
+deliberately without `railway run`, so no production credential was in the environment. `--publish`
+begins with a live `GET /me`; a stale or rejected token stops everything before any object exists.
+
+⚠️ **It writes to `act_1254349025145319` ("KS 1") — ACTIVE, billed in AED, ~AED 1,168,324 lifetime
+spend across ~200 REAL campaigns. It is Arfeen's own advertising account, not a sandbox.** It runs
+as **userId 1** because the Meta token is bound to user 1; the 117174 smoke account cannot publish.
+
+**What it proves:** N assembled ads in ONE campaign and ONE ad set. Meta only compares variants
+inside one ad set, so until that holds the whole distinctness chapter buys nothing at delivery time.
+The load-bearing assertion is that **every ad's `adset_id` is the same value**, read back from
+Meta's stored state rather than from our own request.
+
+📌 **Re-run the read-only pre-flight on the day rather than trusting the numbers below** — the token
+expires 2026-10-05, and the orphan inventory is a point-in-time read.
+
+**Full design: `docs/handovers/STEP_4C_PLAN.md`. Read §0a — four things are open.**
 
 ### Where the repo is — as at 2026-08-10
 
@@ -38,7 +49,7 @@ git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publis
 
 | | |
 |---|---|
-| Branch | `railway-build`. HEAD is this CHECKPOINT commit, sitting on top of **`793d4ed`** (steps 4a + 4b). |
+| Branch | `railway-build`. HEAD is this CHECKPOINT commit, sitting on top of **`e862c76`** (the 4c harness). |
 | `origin/railway-build` | **`51eda78` — UNCHANGED since before this sprint. NOTHING here is deployed.** |
 | Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08`, updated to HEAD and SHA-verified after a fetch each time. **It does NOT deploy.** |
 | Deploy discipline | Pushing `railway-build` IS an instant production deploy (~4s, no gate). It needs a fresh explicit "push" from Arfeen every time; no prior authorisation carries forward. |
@@ -73,6 +84,7 @@ Verified after applying: `int / YES / NULL default`, 0 FKs, 405 rows unchanged, 
 | `8502f36` | **step 2b** — ad-copy awareness is concept-derived; dedupe removed; gate keyed on conceptId; concept top-up | live, both nodes |
 | `269947c` | **step 3** — `adCreatives.conceptId`, tabloid cascade only | live, 4 real renders, 4/4 stamped |
 | `793d4ed` | **steps 4a + 4b** — hook identity (0103), concept-keyed assembly, step-1 tests, inert multi-ad publish | live, 4 ads from 4 concepts, 0 dropped |
+| `e862c76` | **4c harness** — metaSafety / publishLedger / metaTeardown + the flagged publish script | ⚠️ unit-proven with fakes only; **NEVER run against Meta** |
 
 ### ✅ STEP 3 — PROVEN LIVE (2026-08-10)
 
@@ -118,8 +130,19 @@ skipped and never defaulted. Full design and the live ledger: `docs/handovers/ST
    **Whether that is the right strictness is Arfeen's call, and it is not settled.** Tightening it
    would trade ad count for surface purity; the 4b run is the only measurement so far (3 match,
    1 mismatch, 0 dropped).
-4. **STEP 4c IS HELD FOR ITS OWN GATE** — see §0. The capability is written, unit-proven with
-   injected Graph calls, and **has never been invoked**. Nothing about it has touched Meta.
+4. **STEP 4c IS BUILT AND UNRUN** — see §0 for the commands. Everything is unit-proven with
+   injected Graph calls and **has never been invoked against Meta**. Three facts it depends on,
+   all measured read-only on 2026-08-10 and all worth re-checking on the day:
+   · the ad account is **AED**, ACTIVE, ~AED 1.17M lifetime spend, ~200 real campaigns;
+   · the token is live (Meta answered `GET /me`) and expires **2026-10-05**;
+   · **the three pre-existing orphans are `120246733286970626`, `120246731977370626`,
+     `120246731522130626`** — hardcoded in `_core/metaSafety.ts` and refused by the teardown guard.
+     They are NOT 4c's to clean up; a run that tidied them would destroy the evidence for a
+     question nobody has decided. 4c's only obligation is to not add a sixth.
+   ⚠️ **The AED budget floor is where our currency-unaware `z.number().min(1)` finally bites.**
+   `createAdSet` sends `dailyBudget * 100` minor units, so `1` sends AED 1.00 and Meta rejects it.
+   The harness pins **20** (proven accepted) and refuses below 4. **Zero is not an option** — an ad
+   set with no budget is rejected outright. The coach-facing defect stays parked and unfixed.
 
 📌 **The coach-facing review UI (4d) is deliberately unstarted.** The server capability is proven
 first so the pixels can be argued about separately.
