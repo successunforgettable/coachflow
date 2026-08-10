@@ -7,12 +7,24 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 STEP 4 — AD ASSEMBLY. **PROPOSE FIRST.** Build nothing until Arfeen gives the word.
+# 👉 STEP 4c — THE LIVE MULTI-AD PUSH. **HELD.** It needs its OWN plan and a fresh explicit word.
 
-One concept → one ad: headline, body, hook and image all descending from the same concept.
-Steps 1, 2a, 2b and 3 exist to make that pairing possible; step 4 is where it is used.
-**Read §0a below before proposing — three measured findings constrain the design, and one of
-them (the publish surface) means step 4 is a SERVER CAPABILITY, not a UI change.**
+**Steps 4a and 4b are DONE and PROVEN LIVE** (`793d4ed`, 2026-08-10). One concept → one ad now
+resolves for real: 4 concepts in the deck produced 4 complete coherent ads, 0 dropped.
+
+**4c is the last link, and it is the one that touches Meta.** The capability is already written —
+`_core/multiAdPublish.ts`, one campaign and one ad set for N ads — with the four Graph calls
+INJECTED, so it is unit-proven and **has never been invoked**. What remains is the live push, and
+it runs against an account carrying Arfeen's REAL advertising. It comes back as its own plan
+carrying, before anything fires: the Meta token and app secret re-read (not recalled) · userId **1**
+(the token is bound to user 1; the smoke account cannot publish) · PAUSED at campaign, ad set AND
+ad with a budget above the AED 3 floor · a Meta-side teardown removing the campaign, ad set and
+every ad confirmed BY ID (Meta soft-deletes, so a by-id read beats a list check) · and
+`meta_published_ads` reconciled back to **2** with no new orphans — the account already shows five
+"Auto Campaign Kit" campaigns against two rows and must not gain a sixth. The assertion that
+matters is that **all ads share one `adset_id`**, read from Meta's stored values.
+
+**Read §0a — four things are open, and two of them are decisions rather than work.**
 
 ### Where the repo is — as at 2026-08-10
 
@@ -26,13 +38,13 @@ git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publis
 
 | | |
 |---|---|
-| Branch | `railway-build`. HEAD is this CHECKPOINT commit, sitting on top of **`269947c`** (step 3). |
+| Branch | `railway-build`. HEAD is this CHECKPOINT commit, sitting on top of **`793d4ed`** (steps 4a + 4b). |
 | `origin/railway-build` | **`51eda78` — UNCHANGED since before this sprint. NOTHING here is deployed.** |
 | Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08`, updated to HEAD and SHA-verified after a fetch each time. **It does NOT deploy.** |
 | Deploy discipline | Pushing `railway-build` IS an instant production deploy (~4s, no gate). It needs a fresh explicit "push" from Arfeen every time; no prior authorisation carries forward. |
 
-⚠️ **MIGRATIONS 0097 – 0102 ARE ALL APPLIED TO PRODUCTION.** Every one is additive and inert.
-**Do NOT re-apply any of them — 0102 least of all, it was applied 2026-08-10.** Their presence is
+⚠️ **MIGRATIONS 0097 – 0103 ARE ALL APPLIED TO PRODUCTION.** Every one is additive and inert.
+**Do NOT re-apply any of them — 0103 least of all, it was applied 2026-08-10.** Their presence is
 NOT evidence that the code using them is live; the schema is deliberately ahead of the code.
 
 | migration | what | applied |
@@ -42,7 +54,13 @@ NOT evidence that the code using them is live; the schema is deliberately ahead 
 | 0099 | `adCreatives.sourceImageUrl` (the third Cloudinary object) | ✅ |
 | 0100 | publish-copy provenance on `meta_published_ads` + `adCreatives.headlineAdCopyId` | ✅ |
 | 0101 | `adCopy.conceptId` | ✅ |
-| 0102 | `adCreatives.conceptId` | ✅ **2026-08-10** |
+| 0102 | `adCreatives.conceptId` | ✅ 2026-08-10 |
+| 0103 | `adCreatives.hookAdCopyId` — which image_hook row the picture baked | ✅ **2026-08-10** |
+
+📌 **0103 carries NO foreign key and NO index, deliberately.** It follows `headlineAdCopyId` (0100),
+not `conceptId` (0101/0102): `ON DELETE SET NULL` is right for a grouping key and WRONG for
+provenance — it would erase the record of what was baked into a picture that still exists.
+Verified after applying: `int / YES / NULL default`, 0 FKs, 405 rows unchanged, 0 stamped.
 
 ### The chapter, banked and proven — all LOCAL ONLY
 
@@ -54,6 +72,7 @@ NOT evidence that the code using them is live; the schema is deliberately ahead 
 | `a313717` | Node 6 hardening — an off-shape model response no longer zeroes the deck | live, the guard fired for real |
 | `8502f36` | **step 2b** — ad-copy awareness is concept-derived; dedupe removed; gate keyed on conceptId; concept top-up | live, both nodes |
 | `269947c` | **step 3** — `adCreatives.conceptId`, tabloid cascade only | live, 4 real renders, 4/4 stamped |
+| `793d4ed` | **steps 4a + 4b** — hook identity (0103), concept-keyed assembly, step-1 tests, inert multi-ad publish | live, 4 ads from 4 concepts, 0 dropped |
 
 ### ✅ STEP 3 — PROVEN LIVE (2026-08-10)
 
@@ -71,40 +90,54 @@ hook comes from a separately-chosen `image_hook` row. See §0a.
 
 ---
 
-## 0a. WHAT STEP 4 MUST DESIGN AROUND — measured, not assumed
+## 0a. WHAT IS OPEN — four items, and two of them are DECISIONS, not work
 
-1. **The A-vs-B gap: 3 of 4 pictures DISAGREE** (measured 2026-08-10). The concept whose headline a
-   picture bakes is usually NOT the concept whose hook line it carries, because the two are dealt
-   independently. The one agreement in that run was a modulo coincidence, not a mechanism.
-   **Consequence: pairing an image to its copy by `adCreatives.conceptId` is sound for the headline
-   surface and INSUFFICIENT for the whole picture.** Closing it means giving `resolveAdBodyTexts`
-   (`_core/compositeHeadline.ts:265`) a way to return the hook row's id, which it currently discards.
-2. **8 copy rows were moved off their concept's stage by the distinctness gate** (step 2b run, of 43).
-   Legitimate — the row still truthfully records which concept supplied its DESIRE — but such a row
-   is no longer a whole-concept instance. **Step 4 must decide whether a stage-moved row is still
-   eligible to be assembled into that concept's ad.** Not a defect; an unmade decision.
-3. **Editorial creatives and the two router insert sites carry `conceptId = NULL` by design.** They
-   are three of the five unwired fan-out sites (§5.1). Assembly must read NULL as "not
-   concept-keyed" and skip, never as a default concept.
-4. 🔴 **THE PUBLISH SURFACE IS THE REAL CONTENT OF STEP 4 — see §"THE PUBLISH SURFACE" below.**
-   One push makes ONE ad in its OWN campaign. Four ads today = four campaigns and four ad sets, so
-   they never compete in one auction and the distinctness work is defeated no matter how good the
-   copy is. **This is a server capability, not a UI change**, and it must land before any
-   multi-select UI means anything.
+**The three findings step 4 was designed around are now CLOSED.** The A-vs-B gap is fixed at the
+source and inverted (3 of 4 now AGREE); the 8 gate-moved rows are handled by judging awareness
+coherence row-to-row on the live stamps, so there is deliberately no moved-row rule; NULL stamps are
+skipped and never defaulted. Full design and the live ledger: `docs/handovers/STEP_4_PLAN.md`.
 
-### 🔴 NEW IMAGE-SPRINT DEFECT — a short hook deck duplicates the on-image line (2026-08-10)
+1. 🔑 **THE COHERENCE CAP — NEW, and it sharpens the 4 → 8 decision.** On the 4b run the four kept
+   HOOKS carried concepts 175/176/177/178 while the four dealt HEADLINES carried 175/177/178/179.
+   Concept 179 had no hook of its own, so slot 4 took the fallback and shipped a hook from another
+   concept. **Root cause: distinctness is judged WITHIN each surface, so each surface keeps its own
+   survivors and their concept coverage need not line up.** Hook-to-headline agreement is therefore
+   capped by how much the two surfaces' surviving concept sets OVERLAP, and that cap tightens as the
+   deck grows. ⚠️ **This is a second, independent reason the hook surface is the binding constraint
+   on 4 → 8**, alongside the already-measured "natural distinct capacity is exactly 4". Not a defect
+   in the deal — the deal did what it is specified to do.
+2. **THE BLANK-HOOK-BAND BRANCH HAS NEVER FIRED LIVE.** When the hook rows run out a slot bakes NO
+   line rather than repeating one already in the deck — an empty band is a visible symptom, a
+   repeated line is an invisible collapse. Built and unit-tested; the 4b run had 4 hooks for 4 slots
+   so it was never exercised, and **no composite with a blank band has ever been judged on pixels.**
+   The 4b harness names such files `…-BLANK-HOOK-BAND.png` so they are impossible to miss.
+3. **SHIP-VERSUS-DROP STRICTNESS — an open product decision.** Today a **mismatched but unique**
+   hook SHIPS and is recorded (`hook.agreement: "mismatch"`); only a **duplicate hook string** drops
+   the later ad. The reasoning is that the hook is already baked by assembly time, so discarding a
+   rendered picture over a surface that can no longer be re-chosen ships fewer ads for no gain.
+   **Whether that is the right strictness is Arfeen's call, and it is not settled.** Tightening it
+   would trade ad count for surface purity; the 4b run is the only measurement so far (3 match,
+   1 mismatch, 0 dropped).
+4. **STEP 4c IS HELD FOR ITS OWN GATE** — see §0. The capability is written, unit-proven with
+   injected Graph calls, and **has never been invoked**. Nothing about it has touched Meta.
 
-Node 7 kept **3** image hooks on the step-3 run, not 4. The hook surface is the fragile one — with
-persona pinned and format fixed it has only two movable axes — and it landed at 3 against a band of
-1–4, so it was above floor and shipped. But the image path takes `bodyTexts[i % bodyTexts.length]`
-over 4 slots, so **two pictures baked the IDENTICAL on-image hook line** (adCopy row 6044 on slots 1
-and 4). That is duplication on the exact surface Meta's OCR reads.
+📌 **The coach-facing review UI (4d) is deliberately unstarted.** The server capability is proven
+first so the pixels can be argued about separately.
 
-Not fixed, not in step 3's scope. It belongs with the queued image work and it **interacts with the
-4 → 8 cardinality decision**: growing the deck to 8 makes the shortfall worse, not better, unless
-the hook band grows with it. Options are to cap the deck at the number of DISTINCT hooks, or to let
-a picture ship with no hook line rather than a repeated one — Arfeen's call, and it needs the hook
-recovery rate measured first (CHECKPOINT already warns to measure that before growing the surface).
+### ✅ FIXED IN 4a — the short hook deck no longer duplicates the on-image line
+
+**The defect, for the record.** Node 7 kept **3** image hooks on the step-3 run, not 4. The hook
+surface is the fragile one — with persona pinned and format fixed it has only two movable axes — and
+it landed at 3 against a band of 1–4, so it was above floor and shipped. The image path then took
+`bodyTexts[i % bodyTexts.length]` over 4 slots, so **two pictures baked the IDENTICAL on-image hook
+line** (adCopy row 6044 on slots 1 and 4) — duplication on the exact surface Meta's OCR reads.
+
+**Fixed by `dealHooksByConcept` (`793d4ed`): the deal NEVER reuses a row.** A slot with nothing left
+bakes no hook at all. Arfeen's call was taken the "ship with no line rather than a repeated one" way,
+because an empty band is a visible symptom of a short deck while a repeated line is an invisible
+collapse. ⚠️ **That branch has still never fired live** — see §0a item 2 — and it **still interacts
+with 4 → 8**: growing the deck to 8 makes the shortfall worse unless the hook band grows with it,
+and §0a item 1 adds a second, independent cap on top of that.
 
 ## ✅ PUBLISH-PATH STEP 1 — PROVEN END TO END ON A REAL PAUSED AD (2026-08-09)
 
@@ -210,7 +243,11 @@ result.
 
 ⚠️ **Step 1 delivers GATED and COMPLIANT, not yet COHERENT.** The resolver picks the strongest
 headline and body INDEPENDENTLY, so the proven ad paired a `solution_aware` headline with a
-`problem_aware` body. Both good, both compliant, different stages. That is what step 4 fixes.
+`problem_aware` body. Both good, both compliant, different stages.
+✅ **CLOSED BY STEP 4b (`793d4ed`)** — `_core/adAssembly.ts` chooses the surfaces together and
+requires the headline and body to share one awareness stage. Proven live: all 4 assembled ads
+stage-coherent. ⚠️ `resolveGatedPublishCopy` itself is UNCHANGED and still picks independently — it
+is the pool, and assembly is what pairs from it. Do not read this as the resolver having been fixed.
 
 ### ✅ NODE 6 HARDENED — the crash is now survivable (2026-08-09)
 
@@ -375,7 +412,7 @@ GCC/UAE`). It is not an empty sandbox — scope every future live-fire according
    invisible.
 3. **Tie images to concepts** — additive `conceptId` on `adCreatives`. Also defuses the
    `awarenessDeckPlan` trap (distinct stages guaranteed only at ≤4 slots).
-4. **Ad assembly: one concept → one ad.** Headline, body, hook and image all descend from the same
+4. ✅ **DONE (`793d4ed`) — Ad assembly: one concept → one ad.** Headline, body, hook and image all descend from the same
    persona/desire/awareness concept. **Each body is used by AT MOST ONE ad; if bodies run short the
    campaign ships FEWER ads rather than reusing one** — the never-pad rule applied to assembly.
    Today every ad in a push ships the identical operator-typed body, a 100% duplication rate.
