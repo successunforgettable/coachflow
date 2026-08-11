@@ -7,21 +7,61 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 RUN STEP 4c. The harness is BUILT and waiting. It needs **two separate words** on the day.
+# 👉 RUN STEP 4c. The harness is now THREE phases. It needs **a word per phase** on the day.
 
-Steps 4a and 4b are done and proven live (`793d4ed`); the 4c harness is built and unit-proven
-(`e862c76`). ⚠️ **The 4c harness has NEVER been run against Meta.** The only Graph traffic so far
-is the read-only pre-flight.
+Steps 4a and 4b are done and proven live (`793d4ed`); the 4c harness was built and unit-proven
+(`e862c76`) and has since been **reworked into three phases** after its first live attempt failed.
+
+### 🔴 THE 2026-08-10 ATTEMPT — IT FAILED, AND IT NEVER REACHED META
+
+One `--publish` run was attempted. **It died at the landing-page publish gate on an unfilled
+`[INSERT_PRICE]` placeholder — BEFORE a single Graph call.** Confirmed clean afterwards: no
+`/tmp/step4c-ledger.jsonl` was ever created, `meta_published_ads` was still **2**, and **nothing
+exists on the ad account**. The local rows it had already made were cleared by
+`server/scripts/step4c-failed-run-cleanup.ts` (kept in-tree as the incident record) and reconciled
+exactly to baseline. **4c is therefore still UNPROVEN, and that attempt consumed the publish word.**
+
+⚠️ **`placeholderValues` was NOT the mechanism and seeding it would not have helped.** The
+landing-page publisher never calls `buildResolvedMap`; that registry is read only at the Meta and
+GHL export points. The gate scans the RENDERED HTML for `[INSERT_*]`. The only thing that clears a
+token on a PAGE is writing the answer INTO the stored content, which is what the coach-facing
+operator intake does via `applyOperatorAnswer`.
+
+### ✅ ALL THREE GAPS ARE NOW FIXED (built 2026-08-11, unit-proven with fakes, NEVER RUN)
+
+| gap | fix |
+|---|---|
+| the page could not clear its own gate | `--prepare` derives the page's operator questions and answers **every** one through `applyOperatorAnswer` — the coach's own path, not a test shortcut — from a token-keyed table with a REAL price (never the `__FREE__` sentinel, which routes a different template) and a non-fabricating hedge for unknown tokens. It then re-derives, re-renders, and **hard-stops if any token survives**. |
+| teardown could not clean a pre-Meta failure | the state file is now written **incrementally, one id at a time as each row is created**; and when neither the ledger nor the state names a campaign, teardown **SKIPS the Meta phase** and runs the local sweep. ⚠️ `assertDeletableCampaign` is **UNCHANGED** — every non-null id still hits the full protected-id refusal. A ledger/state DISAGREEMENT is a STOP, never a skip. |
+| ~12 min of generation sat inside the publish window | **the run is split into three phases.** `--prepare` builds the throwaway and touches Meta not at all; `--publish` is short and its failure surface is only what 4c tests; a failed publish retries against the SAME prepared set. |
 
 ```
 npx tsx server/scripts/meta-4c-preflight.ts                      # READ-ONLY, re-run this FIRST
-railway run … npx tsx server/scripts/step4c-multiad-publish.ts --publish     # word #1
-railway run … npx tsx server/scripts/step4c-multiad-publish.ts --teardown    # word #2, SEPARATE
+railway run … npx tsx server/scripts/step4c-multiad-publish.ts --prepare     # local + page only
+railway run … npx tsx server/scripts/step4c-multiad-publish.ts --publish     # the ad-account write
+railway run … npx tsx server/scripts/step4c-multiad-publish.ts --teardown    # SEPARATE word
 ```
+
+⚠️ **`--prepare` and `--publish` must run on the SAME machine** — the state file and ledger live in
+`/tmp`, and `assertPublishable` refuses a state prepared on another host. `--publish` also refuses
+if the prepared service is no longer in the database (already torn down) or if the state has already
+published (a second run would leave two campaigns standing).
 
 **With no flag the script prints its plan and exits without a single call** — verified by running it
 deliberately without `railway run`, so no production credential was in the environment. `--publish`
 begins with a live `GET /me`; a stale or rejected token stops everything before any object exists.
+
+### 🔴 A DEAD GATE WAS FOUND AND FIXED IN THE PUBLISH PHASE — it is now LIVE
+
+The publish phase built its ad-to-page compliance text from `lpRow.content` — **a column
+`landingPages` does not have.** It was always `undefined`, so the page text was always `""` and
+**`checkAdToPageMatch` NEVER RAN.** That silently defeated the whole reason 4c generates its own
+landing page (plan §2: so the gate is judged against a page the copy agrees with). It now reads the
+**active angle**, the same one the publisher renders.
+
+⚠️ **This is a behaviour change: a previously dead gate is now a live blocking surface inside
+`--publish`.** It is the correct fix, but if the first proving run should not carry that surface it
+is a one-line revert — Arfeen's call.
 
 ⚠️ **It writes to `act_1254349025145319` ("KS 1") — ACTIVE, billed in AED, ~AED 1,168,324 lifetime
 spend across ~200 REAL campaigns. It is Arfeen's own advertising account, not a sandbox.** It runs
@@ -130,7 +170,9 @@ skipped and never defaulted. Full design and the live ledger: `docs/handovers/ST
    **Whether that is the right strictness is Arfeen's call, and it is not settled.** Tightening it
    would trade ad count for surface purity; the 4b run is the only measurement so far (3 match,
    1 mismatch, 0 dropped).
-4. **STEP 4c IS BUILT AND UNRUN** — see §0 for the commands. Everything is unit-proven with
+4. **STEP 4c IS BUILT, ATTEMPTED ONCE, AND STILL UNPROVEN** — see §0 for the attempt, the three
+   fixes and the commands. The 2026-08-10 run **died before any Graph call** and the account is
+   confirmed untouched; the harness is now three phases. Everything remains unit-proven with
    injected Graph calls and **has never been invoked against Meta**. Three facts it depends on,
    all measured read-only on 2026-08-10 and all worth re-checking on the day:
    · the ad account is **AED**, ACTIVE, ~AED 1.17M lifetime spend, ~200 real campaigns;
@@ -143,6 +185,25 @@ skipped and never defaulted. Full design and the live ledger: `docs/handovers/ST
    `createAdSet` sends `dailyBudget * 100` minor units, so `1` sends AED 1.00 and Meta rejects it.
    The harness pins **20** (proven accepted) and refuses below 4. **Zero is not an option** — an ad
    set with no budget is rejected outright. The coach-facing defect stays parked and unfixed.
+
+5. 📌 **PARKED — the page render is duplicated in two places and can drift.** `--prepare`'s
+   early "is the rendered page token-free?" check **mirrors** `landingPagePublisher`'s render
+   dispatch (`styleForPageType` → the three style discriminators → `renderLandingPageHtml`, with
+   the same testimonial injection and the same coach-asset fetch) rather than sharing one function
+   with it. Accepted deliberately for the harness build: the publisher's own gate still runs a
+   moment later and remains the authority, so the worst case of drift is a duplicated error
+   message, never a page that publishes with a token in it. **The proper fix is to extract ONE
+   shared render helper both call** — that is a change to production code and wants its own pass.
+6. 🔴 **PARKED, AND IT WILL BITE SILENTLY — the coach-scoped answer snapshot must grow with the
+   registry.** A coach-scoped operator answer writes OUTSIDE the throwaway, onto the owner's own
+   `users` row; today `[INSERT_BOOKING_URL]` → `users.bookingUrl` is **the only** token with
+   `scope: "coach"` in `OPERATOR_TOKEN_REGISTRY`. `--prepare` snapshots the prior value before
+   writing and `--teardown` restores it, including restoring it to NULL when there was nothing
+   there before. ⚠️ **If any NEW coach-scoped token is ever added to the registry, that snapshot
+   must be extended or teardown will silently stop reversing it** — the throwaway would be deleted
+   while a made-up value stayed on the real account, with no error anywhere. There is a comment at
+   the snapshot site saying so; this is the second place, because the person adding a registry
+   entry will not be reading the harness.
 
 📌 **The coach-facing review UI (4d) is deliberately unstarted.** The server capability is proven
 first so the pixels can be argued about separately.
@@ -676,8 +737,16 @@ npx vitest run \
   server/_core/imageRenderer.test.ts
 ```
 
-→ **552 passed across 13 suites** (2026-08-08, after the sweep-completeness and wizard-headline
-fixes). The six-suite copy-engine subset alone is **442**, which is the figure §12.6 quotes.
+→ **556 passed across 13 suites** (re-measured 2026-08-11). It read **552** from 2026-08-08 and had
+gone stale by four: the 4c harness rework touched none of these thirteen files, so the delta
+predates it and the doc was simply behind. The six-suite copy-engine subset alone is **442**, which
+is the figure §12.6 quotes.
+
+**The 4c safety set** — `metaSafety` · `metaTeardown` · `publishLedger` · `multiAdPublish` ·
+`adAssembly` · `adCreativeTeardown` · `operatorFields` · **`step4cPageAnswers`** ·
+**`step4cRunState`** → **217 passed across 9 suites, 0 skipped** (2026-08-11). The last two are new
+with the three-phase rework and are **39 of that 217**. Scanned for `.skip` / `.todo` / `.only` /
+`xit` / `xdescribe`: none present in any of the nine, so nothing is silently excluded.
 
 - `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (CLAUDE.md §8 still says 35 — stale by one;
   34 re-confirmed 2026-08-06 post-deploy, after the §11 canvas fix, and again 2026-08-08)
