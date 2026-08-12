@@ -51,6 +51,67 @@ published (a second run would leave two campaigns standing).
 deliberately without `railway run`, so no production credential was in the environment. `--publish`
 begins with a live `GET /me`; a stale or rejected token stops everything before any object exists.
 
+### ✅ THE MINIMUM-TWO-ADS FLOOR — built 2026-08-12, unit-proven with fakes, NEVER RUN
+
+**The floor is now ONE exported constant — `MIN_ADS = 2` in `_core/multiAdPublish.ts` — enforced at
+three points that finally mean the same thing.** It is deliberately a constant and not a parameter:
+a caller-supplied minimum would be a path straight back to the one-ad campaign being closed.
+
+**What was actually wrong, and it was worse than one missing check.** Three counts lived in three
+files enforcing three different things, and the number 2 appeared ONLY in the throwaway harness:
+
+| point | before | now |
+|---|---|---|
+| assembly output | core and tRPC both refused on **exactly zero** | refuses below `MIN_ADS`, before the screen is even called |
+| **post-screening survivor count** | refused on **exactly zero** — 🔴 **a single survivor sailed through into a real campaign, ad set, creative and ad, and every layer reported success** | refuses below `MIN_ADS` in the SAME branch as the zero-survivor refusal, creating nothing at all |
+| final published count | core had **no check whatsoever**; the harness printed one **after** the campaign existed and after the `meta_published_ads` provenance rows were inserted — advisory, never a floor | reported on a new `belowFloor` field (see below) |
+
+🔑 **The post-screening survivor count is the load-bearing one, and the reason is structural: it is
+the LAST count taken while Meta still holds nothing.** It is therefore the only point that can
+enforce the floor by creating nothing. A single survivor is not a reduced success — it is a
+multi-ad push with no second ad to share an ad set with, which is the entire purpose of this path;
+`publishToMeta` is the single-ad way and does it better.
+
+**`meta.publishAssembledAds` (the tRPC procedure) also refuses below the floor**, throwing
+`BAD_REQUEST` beside the existing zero-assembly throw, so a caller gets a usable message rather than
+a silent refusal object. The core refuses independently regardless — belt and braces, deliberately.
+⚠️ **That procedure is NOT WIRED TO ANY CLIENT** — verified by grep over `client/src`, zero hits,
+consistent with the module's own "NOT WIRED, NOT INVOKED" docblock. **So today's exposure is the 4c
+harness path and any FUTURE wiring, not a live coach-facing path.** That makes the fix cheaper to
+land, not less worth landing — and it means nobody should read this as a coach-facing bug fixed.
+
+`publishToMeta` (the legacy single-ad path) is **UNCHANGED and must stay so** — it publishes exactly
+one ad by design and a two-ad floor there would be wrong.
+
+#### 📌 POINT THREE IS REPORTED, NOT AUTO-TORN-DOWN — a deliberate decision
+
+An under-floor campaign can arise **only** from per-ad Graph failures AFTER creation, because the
+survivor floor guarantees at least `MIN_ADS` ads entered the loop. When it happens the result
+carries `belowFloor` (non-null) and **nothing is un-created**. Three reasons, all standing:
+
+1. it preserves the **create-only publish / delete-only teardown separation** — a publish path that
+   deletes is a publish path that can delete the wrong thing;
+2. it honours the module's **keep-what-landed rule** — auto-deleting destroys a good ad to tidy up
+   a bad one;
+3. it leaves the call with the operator, who can see the account.
+
+**Therefore the operator MUST run teardown on a below-floor result. It does not clean itself.**
+
+#### 🔑 OPERATING RULE — at the read-back between `--publish` and `--teardown`
+
+**`belowFloor` MUST be null before proceeding. A below-floor result means RUN TEARDOWN — never
+retry.** Retrying leaves the under-floor campaign standing and adds a second one beside it, which is
+exactly the orphan class already visible on the account (five "Auto Campaign Kit" campaigns against
+two `meta_published_ads` rows). The harness prints the field as `🔴 BELOW FLOOR:` so it cannot be
+missed in the log.
+
+**Unit-proven with fakes, never run:** three assembled ads screened down to one survivor asserts all
+four Graph fakes were never called and the refusal names "only 1 of 3"; two survivors publish into
+one ad set with a single asserted `adset_id` and leave `belowFloor` null. Six pre-existing single-ad
+fixtures had to become two-ad fixtures — forced, since under the floor a one-ad fixture now proves
+the opposite of its own point. **No existing assertion was removed or weakened**; the conversions
+changed setup data only.
+
 ### 🔴 A DEAD GATE WAS FOUND AND FIXED IN THE PUBLISH PHASE — it is now LIVE
 
 The publish phase built its ad-to-page compliance text from `lpRow.content` — **a column
@@ -748,8 +809,20 @@ is the figure §12.6 quotes.
 with the three-phase rework and are **39 of that 217**. Scanned for `.skip` / `.todo` / `.only` /
 `xit` / `xdescribe`: none present in any of the nine, so nothing is silently excluded.
 
-- `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (CLAUDE.md §8 still says 35 — stale by one;
-  34 re-confirmed 2026-08-06 post-deploy, after the §11 canvas fix, and again 2026-08-08)
+- `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (34 re-confirmed 2026-08-06 post-deploy after
+  the §11 canvas fix, again 2026-08-08, and again 2026-08-12 either side of the min-2 floor)
+  ⚠️ **ONLY THE COUNT 34 HAS EVER BEEN STORED — there is NO per-error baseline list anywhere in this
+  repo.** So "the baseline held" can only ever mean the COUNT reproduced; it has never meant the same
+  34 errors. Two errors could swap — one fixed, one introduced — and every gate in this file would
+  pass. **If that distinction matters for a given change, capture the list BEFORE touching anything
+  and diff it, because there is nothing to diff against after the fact.** A list was captured
+  2026-08-12 to a session scratchpad as `tsc-now.txt`; ⚠️ **that path is ephemeral session scratch and
+  will NOT survive**, so the command above is the only durable source. As at that capture the 34 sat
+  in: `V2GeneratorWizard.tsx` 8 · `AdminDashboard.tsx` 7 · `V2LandingPageResultPanel.tsx` 3 ·
+  `V2AdImageCreator.tsx` 3 · `admin.ts` 2 · `oauth.ts` 2 · then one each in `campaignKits.ts`,
+  `autoMode.ts`, `landingPageHtml.ts`, `_core/index.ts`, `icpEnrichment.ts`,
+  `V2WhatsAppResultPanel.tsx`, `ComplianceWarningPanel.tsx`, `AdminContentModeration.tsx`,
+  `CampaignCreativesSection.tsx` — all pre-existing legacy/V2 files, none in the publish path.
 - **554 tests across 12 suites**, including `server/textSafeZoneCoupling.test.ts`. The copy-engine
   gate set (`pipeline-fixes` + `complianceFilter` + `tokenCrypto` + `adCopyAngles.stageAware` +
   `conceptGenerator` + `conceptValidator`) = **442 passed**, re-run after the copy work.
@@ -914,9 +987,16 @@ failed redaction and **has been rotated**; the Meta connection was re-establishe
   rows" would destroy them. Always `WHERE id IN (…)` plus a userId guard — never userId alone.
 - **Write prose-heavy records with Write/Edit, never a bash heredoc** — backticks get shell-substituted.
 - **⚠️ ONLY THE TABLOID DECK IS 4.** `EDITORIAL_VARIATIONS` stays 5.
-- **539 untracked earlier-session files deliberately left alone** (counted 2026-08-06; was recorded
-  as ~309, and it only ever grows as proof runs bank screenshots). Never sweep them into a commit —
-  `git add -A` / `git commit -a` is always wrong in this repo. Stage named paths only.
+- **Untracked earlier-session files are deliberately left alone: 331 as at 2026-08-12.** Never sweep
+  them into a commit — `git add -A` / `git commit -a` is always wrong in this repo. Stage named
+  paths only.
+  ⚠️ **CORRECTED 2026-08-12 — this line used to say "539 … and it only ever grows". BOTH HALVES WERE
+  WRONG.** It reads **331** now, DOWN from 539 on 2026-08-06, so something cleared proof files
+  between those dates and the "only ever grows" claim is false. **Do not treat any count here as a
+  tripwire** — a drop is not evidence of a deletion incident and a rise is not evidence of a leak;
+  these are untracked proof screenshots, not tracked state. The count is a point-in-time
+  observation. **The rule that matters is "stage named paths only", and it does not depend on the
+  number.**
 - **`railway run` block-buffers stdout.** Two runs today were invisible for 25 minutes while failing.
   Proof scripts log to a file with `appendFileSync` as well as stdout — keep that.
 - **`MYSQLHOST`/`MYSQLPORT`/`MYSQLPASSWORD` are NOT set on the prod service.** Only `DATABASE_URL` is.

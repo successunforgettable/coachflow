@@ -293,7 +293,7 @@ export const metaRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       const { assembleConceptAds } = await import("../_core/adAssembly");
-      const { publishAssembledAds: runPublish } = await import("../_core/multiAdPublish");
+      const { publishAssembledAds: runPublish, MIN_ADS } = await import("../_core/multiAdPublish");
       const { createCampaign, createAdSet, createAdCreative, createAd } = await import("../lib/metaAPI");
       const { checkOutput, checkAdToPageMatch } = await import("../_core/complianceAxis");
       const { buildCoachCorpus, buildProofSupplied } = await import("../_core/groundingCorpus");
@@ -307,6 +307,19 @@ export const metaRouter = router({
           code: "BAD_REQUEST",
           message:
             `No coherent ad could be assembled for this campaign. ${ledger.unavailableReason ?? ""} ` +
+            `Concepts seen ${ledger.conceptsSeen}, creatives ${ledger.creativesSeen}.`,
+        });
+      }
+      // THE FLOOR, point one — refused here so the caller gets a usable message, and refused
+      // again inside `runPublish` regardless. A single assembled ad has no second ad to share an
+      // ad set with, which is the entire point of this path; `publishToMeta` is the single-ad way.
+      if (ads.length < MIN_ADS) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            `Only ${ads.length} coherent ad could be assembled and at least ${MIN_ADS} are needed ` +
+            `for a multi-ad push — a single ad shares an ad set with nothing. ` +
+            `${ledger.unavailableReason ?? ""} ` +
             `Concepts seen ${ledger.conceptsSeen}, creatives ${ledger.creativesSeen}.`,
         });
       }

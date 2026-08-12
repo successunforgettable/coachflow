@@ -17,8 +17,8 @@
  *    leave a shell behind on a fully-blocked push, which is the shape of the orphan class
  *    already visible on the account (five "Auto Campaign Kit" campaigns against two
  *    `meta_published_ads` rows).
- * 2. **IF NOTHING SURVIVES, REFUSE — and create nothing.** Not an empty campaign, not an
- *    empty ad set.
+ * 2. **IF FEWER THAN `MIN_ADS` SURVIVE, REFUSE — and create nothing.** Not an empty campaign,
+ *    not an empty ad set, and not a one-ad campaign either. See THE FLOOR below.
  * 3. **ONE campaign, ONE ad set, then a creative and an ad per surviving assembled ad.**
  * 4. **A FAILURE MID-LOOP KEEPS WHAT LANDED.** The campaign and ad set are real and hold the
  *    ads that succeeded; tearing them down would destroy good ads to tidy up a bad one. The
@@ -31,7 +31,40 @@
  *
  * ⚠️ NOT WIRED, NOT INVOKED. Nothing calls this yet. The live multi-ad push is step 4c and
  * needs Arfeen's explicit word on the day, on an account that carries real advertising.
+ *
+ * ── THE FLOOR ───────────────────────────────────────────────────────────────────────────
+ *
+ * This module exists to put N ads into ONE ad set so Meta can compare them in one auction.
+ * A campaign carrying a SINGLE ad buys none of that: there is nothing to compare, nothing to
+ * distribute budget across, and the entire distinctness chapter upstream — the gate, the
+ * concept stamps, the assembly — has produced a plain single-ad push that `publishToMeta`
+ * already does better. So one surviving ad is not a small success, it is a failed multi-ad
+ * push, and it must refuse exactly as zero survivors refuses.
+ *
+ * `MIN_ADS` is the ONE number, and it means the same thing at all three points a count exists:
+ *
+ *   · **assembly output** — what the caller handed in (`params.ads`);
+ *   · **post-screening survivor count** — what came through the compliance and ad-to-page
+ *     screen. This is the load-bearing one: it is the last count taken while nothing exists
+ *     on Meta yet, so it is the only one that can still refuse by creating nothing;
+ *   · **final published count** — what Meta actually accepted.
+ *
+ * The first two REFUSE and create nothing. The third cannot: by the time it is known, the
+ * campaign, the ad set and the ads that succeeded are real, and this module's standing rule is
+ * that a failure mid-loop KEEPS what landed rather than destroying good ads to tidy up a bad
+ * one. So the third point REPORTS the shortfall on `belowFloor` instead of hiding it, and the
+ * caller decides — the only way to reach it is per-ad Graph failures AFTER creation, since the
+ * survivor floor guarantees at least `MIN_ADS` ads entered the loop.
+ *
+ * It is deliberately a constant and not a parameter. A caller-supplied minimum would be a path
+ * back to a one-ad campaign, which is the thing being closed.
  */
+
+/**
+ * The floor. Two ads is the smallest set that can prove shared ad-set membership and the
+ * smallest that gives Meta anything to compare; below it, nothing is created at all.
+ */
+export const MIN_ADS = 2;
 
 /** The four Graph calls, injected. Signatures mirror `server/lib/metaAPI.ts` exactly. */
 export type MetaWriteDeps = {
@@ -88,6 +121,15 @@ export type MultiAdPublishResult = {
   failed: Array<{ index: number; conceptId: number | null; stage: "creative" | "ad"; message: string }>;
   /** Set when nothing was created at all. Null when a campaign exists. */
   refusedReason: string | null;
+  /**
+   * The third floor point. Set when a campaign DOES exist but fewer than `MIN_ADS` ads actually
+   * landed — reachable only through per-ad Graph failures after creation, because the survivor
+   * floor guarantees at least `MIN_ADS` entered the loop. Nothing is un-created here (a mid-loop
+   * failure keeps what landed), so this reports the shortfall rather than hiding it. Null when
+   * the floor was met, and null when the push refused before creating anything — in that case
+   * `refusedReason` already carries it.
+   */
+  belowFloor: string | null;
 };
 
 export async function publishAssembledAds(
@@ -95,11 +137,20 @@ export async function publishAssembledAds(
   params: MultiAdPublishParams,
 ): Promise<MultiAdPublishResult> {
   const result: MultiAdPublishResult = {
-    campaignId: null, adSetId: null, published: [], blocked: [], failed: [], refusedReason: null,
+    campaignId: null, adSetId: null, published: [], blocked: [], failed: [],
+    refusedReason: null, belowFloor: null,
   };
 
+  // ── 0. FLOOR, point one: what the caller handed in ─────────────────────────
   if (params.ads.length === 0) {
     result.refusedReason = "no assembled ads were supplied; nothing was created";
+    return result;
+  }
+  if (params.ads.length < MIN_ADS) {
+    result.refusedReason =
+      `only ${params.ads.length} assembled ad(s) were supplied and at least ${MIN_ADS} are ` +
+      `required — a single ad shares an ad set with nothing; ` +
+      `no campaign, ad set, creative or ad was created`;
     return result;
   }
 
@@ -122,11 +173,19 @@ export async function publishAssembledAds(
     survivors.push({ index: i, ad });
   }
 
-  // ── 2. Nothing survived → refuse, and leave no shell behind ────────────────
-  if (survivors.length === 0) {
-    result.refusedReason =
-      `all ${params.ads.length} assembled ad(s) were blocked by the compliance gate; ` +
-      `no campaign, ad set, creative or ad was created`;
+  // ── 2. FLOOR, point two: too few survived → refuse, and leave no shell behind ──
+  //
+  // This is the last count taken while Meta still holds nothing, so it is the only point that
+  // can enforce the floor by creating nothing. A single survivor is NOT a reduced success — it
+  // is a multi-ad push that has no second ad to share an ad set with — and it refuses on the
+  // same terms as zero, for the same reason: no orphan shell, no spend, nothing to tear down.
+  if (survivors.length < MIN_ADS) {
+    result.refusedReason = survivors.length === 0
+      ? `all ${params.ads.length} assembled ad(s) were blocked by the compliance gate; ` +
+        `no campaign, ad set, creative or ad was created`
+      : `only ${survivors.length} of ${params.ads.length} assembled ad(s) survived screening and ` +
+        `at least ${MIN_ADS} are required — a single ad shares an ad set with nothing; ` +
+        `no campaign, ad set, creative or ad was created`;
     return result;
   }
 
@@ -208,6 +267,18 @@ export async function publishAssembledAds(
       headlineAdCopyId: ad.headlineAdCopyId,
       bodyAdCopyId: ad.bodyAdCopyId,
     });
+  }
+
+  // ── 5. FLOOR, point three: what Meta actually accepted ─────────────────────
+  //
+  // Reported, not enforced by deletion. The campaign, the ad set and the ads that succeeded are
+  // real by now, and the standing rule above is that a mid-loop failure KEEPS what landed. So
+  // the shortfall is surfaced for the caller to act on rather than papered over as a success.
+  if (result.published.length < MIN_ADS) {
+    result.belowFloor =
+      `${result.published.length} of ${survivors.length} screened ad(s) landed on Meta and at ` +
+      `least ${MIN_ADS} are required; campaign ${result.campaignId} and its ad set exist and are ` +
+      `below the floor — nothing was removed, so they need tearing down deliberately`;
   }
 
   return result;

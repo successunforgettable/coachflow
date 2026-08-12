@@ -68,7 +68,7 @@ import { runLandingPagePublish } from "../landingPagePublisher";
 import { ensureConceptsForIcp, conceptJobId } from "../conceptGenerator";
 import { sweepAdCreativeBatch } from "../lib/adCreativeTeardown";
 import { assembleConceptAds, describeAssembly } from "../_core/adAssembly";
-import { publishAssembledAds } from "../_core/multiAdPublish";
+import { publishAssembledAds, MIN_ADS } from "../_core/multiAdPublish";
 import { createPublishLedger, readLedgerLines } from "../_core/publishLedger";
 import { readBackPublishedSet, teardownRecordedCampaign } from "../_core/metaTeardown";
 import {
@@ -83,7 +83,9 @@ import {
 
 const USER_ID = 1; // the Meta token is bound to user 1; the smoke account cannot publish
 const MAX_ADS = 3; // two would prove shared membership; three shows it is not a special case
-const MIN_ADS = 2; // below this the structural claim is unprovable — stop
+// MIN_ADS — the floor — is imported from `_core/multiAdPublish`, not redeclared here. It used to
+// be a local 2 that happened to agree with the core's behaviour; it no longer has to agree by
+// luck, and the harness now stops on exactly the number the publish core itself enforces.
 
 const STATE = "/tmp/step4c-state.json";
 const LEDGER = "/tmp/step4c-ledger.jsonl";
@@ -611,6 +613,7 @@ async function publish() {
   for (const b of result.blocked) say(`   blocked concept ${b.conceptId}: ${b.classes.join(", ")}`);
   for (const f of result.failed) say(`   🔴 failed concept ${f.conceptId} at ${f.stage}: ${f.message}`);
   if (result.refusedReason) say(`   REFUSED: ${result.refusedReason}`);
+  if (result.belowFloor) say(`   🔴 BELOW FLOOR: ${result.belowFloor}`);
 
   // The Meta ids reach the state file immediately, beside the ledger that already holds them.
   saveState({
