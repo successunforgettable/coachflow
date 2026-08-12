@@ -112,6 +112,101 @@ fixtures had to become two-ad fixtures — forced, since under the floor a one-a
 the opposite of its own point. **No existing assertion was removed or weakened**; the conversions
 changed setup data only.
 
+### 🔴 THE 2026-08-12 ATTEMPT (ATTEMPT 2) — DIED ON A FALSE POSITIVE, AND NEVER REACHED META
+
+`--prepare` was run once. It built the whole throwaway — service 313 · ICP 287 · 8 concepts ·
+adSet `MqGYlX-BFJdSz1xjRUzUM` (12 headlines / 12 bodies / **3 hooks**) · batch
+`batch-1786538755783-e2ae8858` · creatives 495–498 · landing page 238 — and then **died at the
+operator-token assertion, before publishing the page and before any Graph call.** Confirmed by
+three independent checks: the ledger was 0 bytes, a scan for `graph.facebook` / the four create
+calls / `GET /me` / the ad account id returned 0 hits, and `assertTokenLive` lives only in
+`publish()`, which was never invoked. **Teardown ran clean and reconciled EXACTLY** — adCopy 5424 ·
+headlines 2174 · adCreatives 405 · concepts 6 · published 2 · protected 29 — with Cloudinary
+verified GONE by direct HTTP on all 12 objects, not by the sweep's self-report.
+
+🔑 **IT WAS A FALSE POSITIVE. THE PAGE IT WAS ABOUT TO PUBLISH WAS ALREADY CLEAN.** The active angle
+was `original` and carried **zero** tokens; the single `[INSERT_CART_CLOSE]` lived only in
+`dollarAngle`, **an angle the publisher never renders**. The answering pass derives its questions
+from the ACTIVE angle, so it could never plan an answer for it; the assertion then scanned ALL FOUR
+columns. No input could satisfy both. ⚠️ **The thrown message's own advice — "add the token to
+`CANNED_OPERATOR_ANSWERS`" — would NOT have fixed it**, because a token in a non-active angle is
+never planned and so never applied.
+
+#### ✅ FIX 1 — the final token assertion is scoped to the ACTIVE angle (2026-08-12)
+
+`assertActiveAngleHasNoOperatorTokens` (`_core/step4cPageAnswers.ts`) replaces the four-column loop.
+The active angle is the only one that renders, publishes, and is judged by `checkAdToPageMatch`.
+⚠️ **The answering pass still applies every answer to ALL FOUR angles, deliberately — only the
+ASSERTION narrowed.** If a coach later makes another angle active, the product's OWN publish gate
+re-scans the newly rendered page at that moment, which is the right place for that check rather than
+a harness that ran days earlier. **Do not restore the all-angles loop; it was the defect, not a
+safeguard.** Scoping down also makes the error message's advice true again — a token that now
+reaches the assertion IS in the active angle, so `collectTokens` saw it and a canned answer really
+would apply.
+
+#### ✅ FIX 2 — the `booking_url` snake_case crash (2026-08-12)
+
+`OPERATOR_TOKEN_REGISTRY` carries `path: "bookingUrl"`; the DB column is **`users.booking_url`**. The
+snapshot READ was raw SQL (`sql.identifier("bookingUrl")`) and failed with **`ERROR 1054 Unknown
+column 'bookingUrl'`** — reproduced directly on production. The WRITE and the teardown RESTORE go
+through Drizzle, which maps the key, so they were always correct. **Any page needing
+`[INSERT_BOOKING_URL]` therefore hard-crashed `--prepare`, meaning the coach-scoped snapshot path
+had NEVER ONCE EXECUTED.** §0a item 6 assumed it worked; it did not.
+
+Fixed by `dbColumnNameFor`, which derives the real column from the **schema object**, so the raw-SQL
+name and the JS key cannot drift. 🔑 **Two representations, one per API, and that is correct:** raw
+SQL needs `booking_url`, Drizzle's `.set()` needs `bookingUrl`, so `coachFieldsBefore` stays keyed by
+the JS KEY — re-keying it to snake_case would silently break the teardown restore. **This makes the
+snapshot-and-restore path executable for the first time.** CLAUDE.md §9 trap 1, caught at the
+boundary: an unmapped path now throws a named error instead of a bare 1054 far from its cause.
+
+Gates: tsc **34**, 4c safety set **241 passed across 9 suites** (up from 217, +17 new cases).
+
+#### 🔴 THE NEW BLOCKER BEFORE ANY 4c RE-RUN — the page does not pass compliance
+
+Screened read-only through the same `checkOutput` the persistence gate uses, on the content captured
+before teardown. **THE ACTIVE ANGLE CARRIES 2 BLOCKING HITS:**
+
+| angle | blocking | what |
+|---|---|---|
+| **`original`** ◀ ACTIVE | **2** | `promised_result` @ `faq[6].answer` ("within twelve weeks of completing the programme, I will work with you") · `deceptive_urgency` @ `scarcityUrgency` |
+| `godfather` | 1 | `second_person_protected_attribute` @ `scarcityUrgency` |
+| `free` | 2 | `deceptive_urgency` @ `guarantee` and @ `scarcityUrgency` |
+| `dollar` | 1 | `second_person_protected_attribute` @ `scarcityUrgency` |
+
+**All four angles carry at least one blocking claim.** This is a COPY-ENGINE problem upstream of the
+harness — neither fix above touches it. It matters to 4c because **`checkAdToPageMatch` reads that
+page at `--publish`**, so a re-run gets past the token gate and points ads at a non-compliant page.
+**Resolve this before spending another prepare cycle.**
+
+📌 Probe hygiene: the first pass read `res.hits` and reported 0 blocking. `checkOutput` returns
+**`blocking` / `advisories`**, not `hits`. `ok: false` beside a zero count is what exposed it. Any
+future probe must assert against the real shape — a wrong property name reads exactly like a pass.
+
+#### 📌 RECONCILED — the retry-log vs persistence-gate disagreement
+
+The `[persistenceGate]` line reported six classes while the retry log showed four failures and never
+mentioned `original`. Both mechanisms confirmed in code:
+
+1. **"Every row" is ONE row.** `gateBeforePersist` receives `[__row]` — a single `landingPages` row —
+   and its extractor **flattens all four angles** into one text set. The class union therefore spans
+   every angle, and **nothing in that message can be attributed to `original`.**
+2. **The union also carries DISCARDED attempts.** `__lpSink` is passed into `generateAllAngles`,
+   accumulates the generation-time validator's hits across every angle and every retry, and arrives
+   as `legacyHits` at tier 2. So classes from attempts that were successfully retried away still
+   appear — which accounts for `unearned_authority`, `invented_testimonial` and `invented_guarantee`,
+   none of which any surviving angle carries.
+
+⚠️ **What is NOT explained away: `original` never appears in the retry log, yet carries two blocking
+claims.** The generation-time gate passed it and the persistence screen does not. Both hits sit in
+`scarcityUrgency` and a deep `faq[]` entry. **HYPOTHESIS, NOT CONFIRMED:** the generation-time gate
+screens a narrower field set than the 78 fields `copyFieldsOfJson` extracts, so a page can pass
+generation while carrying blocking claims in fields that gate never reads. Confirm before relying
+on it.
+
+📌 Note the shape: one stage working per-angle while another works across all four fused — the same
+asymmetry as Fix 1. Worth checking whether it recurs elsewhere.
+
 ### 🔴 A DEAD GATE WAS FOUND AND FIXED IN THE PUBLISH PHASE — it is now LIVE
 
 The publish phase built its ad-to-page compliance text from `lpRow.content` — **a column

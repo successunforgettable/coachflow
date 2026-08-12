@@ -13,9 +13,10 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  CANNED_OPERATOR_ANSWERS, GENERIC_FALLBACK_ANSWER, OPERATOR_TOKEN_RE,
-  assertNoOperatorTokens, assertNoSentinelAnswers, cannedAnswerFor, collectTokens,
-  planOperatorAnswers,
+  ANGLE_COLS, CANNED_OPERATOR_ANSWERS, GENERIC_FALLBACK_ANSWER, OPERATOR_TOKEN_RE,
+  activeAngleColumn, assertActiveAngleHasNoOperatorTokens, assertNoOperatorTokens,
+  assertNoSentinelAnswers, cannedAnswerFor, collectTokens, dbColumnNameFor, planOperatorAnswers,
+  snapshotCoachColumn,
 } from "./step4cPageAnswers";
 import { applyOperatorAnswer, deriveOperatorQuestions } from "../lib/templates/operatorFields";
 import { NA_SENTINEL } from "../lib/templates/operatorFields";
@@ -172,5 +173,148 @@ describe("end to end against the REAL operator path — the token is actually cl
     const applied = applyOperatorAnswer(pageWithPrice, "[INSERT_PRICE]", CANNED_OPERATOR_ANSWERS["[INSERT_PRICE]"]);
     expect((applied.content as any).price.amount).not.toBe(NA_SENTINEL.FREE);
     expect(applied.resolution.isNa).toBe(false);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FIX 1 — the stored-content assertion is scoped to the ACTIVE angle
+//
+// The 2026-08-12 prepare run died on [INSERT_CART_CLOSE] living only in dollarAngle while
+// `original` was active. The page it was about to publish was already clean. These cases pin the
+// scope in BOTH directions: a non-active angle must not fail the run, and the active angle must
+// still fail it. A test that only proved the first half would pass against a deleted assertion.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const cleanAngle = { headline: "Scope first, then price", faq: [{ answer: "No tokens here" }] };
+const tokenAngle = { headline: "Close the cart [INSERT_CART_CLOSE]", faq: [] };
+
+describe("the stored-content assertion covers the ACTIVE angle only", () => {
+  it("a token in a NON-ACTIVE angle does not fail the run — that angle never renders", () => {
+    const row = {
+      originalAngle: cleanAngle, godfatherAngle: cleanAngle,
+      freeAngle: cleanAngle, dollarAngle: tokenAngle,
+    };
+    expect(() => assertActiveAngleHasNoOperatorTokens(row, "original")).not.toThrow();
+  });
+
+  it("the exact 2026-08-12 shape no longer fails prepare", () => {
+    const row = { originalAngle: cleanAngle, dollarAngle: { cta: "[INSERT_CART_CLOSE]" } };
+    expect(() => assertActiveAngleHasNoOperatorTokens(row, "original")).not.toThrow();
+  });
+
+  it("a token in the ACTIVE angle STILL fails, and names the token", () => {
+    const row = { originalAngle: tokenAngle, dollarAngle: cleanAngle };
+    expect(() => assertActiveAngleHasNoOperatorTokens(row, "original"))
+      .toThrow(/\[INSERT_CART_CLOSE\]/);
+  });
+
+  it("scope follows activeAngle rather than always meaning `original`", () => {
+    // Inverted on purpose: the token now sits in `original` while `dollar` is active. If the
+    // assertion silently always read originalAngle, this would throw and the scoping would be a
+    // coincidence rather than a rule.
+    const row = { originalAngle: tokenAngle, dollarAngle: cleanAngle };
+    expect(() => assertActiveAngleHasNoOperatorTokens(row, "dollar")).not.toThrow();
+  });
+
+  it("an active angle carrying a token fails whichever angle is active", () => {
+    const row = { originalAngle: cleanAngle, dollarAngle: tokenAngle };
+    expect(() => assertActiveAngleHasNoOperatorTokens(row, "dollar")).toThrow(/INSERT_CART_CLOSE/);
+  });
+
+  it("a null activeAngle falls back to original, and still catches a token there", () => {
+    expect(() => assertActiveAngleHasNoOperatorTokens({ originalAngle: tokenAngle }, null))
+      .toThrow(/INSERT_CART_CLOSE/);
+    expect(() => assertActiveAngleHasNoOperatorTokens({ originalAngle: cleanAngle }, undefined))
+      .not.toThrow();
+  });
+
+  it("an absent active column falls back to original rather than passing vacuously", () => {
+    const row = { originalAngle: tokenAngle };
+    expect(() => assertActiveAngleHasNoOperatorTokens(row, "godfather")).toThrow(/INSERT_CART_CLOSE/);
+  });
+
+  it("a page with no content at all does not throw", () => {
+    expect(() => assertActiveAngleHasNoOperatorTokens({}, "original")).not.toThrow();
+  });
+
+  it("activeAngleColumn maps the enum to the stored column, and rejects nonsense", () => {
+    expect(activeAngleColumn("original")).toBe("originalAngle");
+    expect(activeAngleColumn("dollar")).toBe("dollarAngle");
+    expect(activeAngleColumn(null)).toBe("originalAngle");
+    expect(activeAngleColumn("not-an-angle")).toBe("originalAngle");
+    expect(ANGLE_COLS).toHaveLength(4);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FIX 2 — the coach-scoped snapshot read must use the DATABASE column name
+//
+// `users.bookingUrl` is stored as `booking_url`. The snapshot read is raw SQL, so handing it the
+// Drizzle key produced `ERROR 1054 Unknown column 'bookingUrl'` and hard-crashed prepare on any
+// page needing a booking-URL token. The write and the teardown restore go through Drizzle and
+// always used the key correctly — so the fix is at the raw-SQL boundary only.
+// ══════════════════════════════════════════════════════════════════════════════
+
+/** Shaped like a Drizzle table: JS key → column object carrying the real DB name. */
+const fakeUsers = {
+  id: { name: "id" },
+  bookingUrl: { name: "booking_url" },
+  coachName: { name: "coach_name" },
+  noName: {},
+};
+
+describe("coach-scoped columns resolve to their real database name", () => {
+  it("maps the registry path bookingUrl to booking_url", () => {
+    expect(dbColumnNameFor(fakeUsers, "bookingUrl")).toBe("booking_url");
+  });
+
+  it("throws a named error for a path the schema does not carry", () => {
+    expect(() => dbColumnNameFor(fakeUsers, "notAColumn")).toThrow(/notAColumn/);
+  });
+
+  it("throws rather than guessing when a column exposes no database name", () => {
+    expect(() => dbColumnNameFor(fakeUsers, "noName")).toThrow(/no database name/);
+  });
+
+  it("SNAPSHOT READ EXECUTES and is handed the SNAKE_CASE name, not the JS key", async () => {
+    const seen: string[] = [];
+    const snap = await snapshotCoachColumn(fakeUsers, "bookingUrl", async (dbColumn) => {
+      seen.push(dbColumn);
+      return "https://cal.example/prior";
+    });
+    // The whole bug in one assertion: pre-fix this received "bookingUrl" and MySQL threw 1054.
+    expect(seen).toEqual(["booking_url"]);
+    expect(snap.dbColumn).toBe("booking_url");
+    expect(snap.prior).toBe("https://cal.example/prior");
+  });
+
+  it("round-trips the value under the JS KEY, because teardown restores through Drizzle", async () => {
+    const snap = await snapshotCoachColumn(fakeUsers, "bookingUrl", async () => "https://cal.example/prior");
+    const coachFieldsBefore: Record<string, string | null> = { [snap.key]: snap.prior };
+    // Teardown does `db.update(users).set({ [column]: before })` — Drizzle wants the JS key.
+    expect(Object.keys(coachFieldsBefore)).toEqual(["bookingUrl"]);
+    expect(coachFieldsBefore.bookingUrl).toBe("https://cal.example/prior");
+  });
+
+  it("A NULL PRIOR ROUND-TRIPS AS NULL — restoring to empty is the common first run", async () => {
+    const snap = await snapshotCoachColumn(fakeUsers, "bookingUrl", async () => null);
+    expect(snap.prior).toBeNull();
+    const restore: Record<string, string | null> = { [snap.key]: snap.prior };
+    expect(restore.bookingUrl).toBeNull();
+    expect("bookingUrl" in restore).toBe(true); // present-and-null, not absent
+  });
+
+  it("an undefined read is normalised to null so teardown restores explicitly", async () => {
+    const snap = await snapshotCoachColumn(fakeUsers, "bookingUrl", async () => undefined);
+    expect(snap.prior).toBeNull();
+  });
+
+  it("read, write and restore all agree: raw SQL gets booking_url, Drizzle gets bookingUrl", async () => {
+    const sqlSaw: string[] = [];
+    const snap = await snapshotCoachColumn(fakeUsers, "bookingUrl", async (c) => { sqlSaw.push(c); return null; });
+    expect(sqlSaw[0]).toBe("booking_url");        // the READ, raw SQL
+    expect(snap.key).toBe("bookingUrl");           // the WRITE, Drizzle .set()
+    expect(snap.key).toBe("bookingUrl");           // the RESTORE, Drizzle .set()
+    expect(snap.dbColumn).not.toBe(snap.key);      // the two representations are genuinely different
   });
 });

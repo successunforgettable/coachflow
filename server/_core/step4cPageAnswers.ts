@@ -181,3 +181,117 @@ export function assertNoOperatorTokens(rendered: string, where: string): void {
     `CANNED_OPERATOR_ANSWERS in step4cPageAnswers.ts rather than loosening the gate.`,
   );
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// THE ACTIVE ANGLE — what the stored-content assertion is allowed to look at
+// ══════════════════════════════════════════════════════════════════════════════
+
+/** The four stored angle columns on `landingPages`. */
+export const ANGLE_COLS = ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const;
+export type AngleCol = (typeof ANGLE_COLS)[number];
+
+/** `activeAngle` is an enum of bare names; the stored column appends `Angle`. */
+export function activeAngleColumn(activeAngle: string | null | undefined): AngleCol {
+  const col = `${activeAngle || "original"}Angle`;
+  return (ANGLE_COLS as readonly string[]).includes(col) ? (col as AngleCol) : "originalAngle";
+}
+
+/**
+ * THE STORED-CONTENT TOKEN ASSERTION — deliberately scoped to the ACTIVE ANGLE ONLY.
+ *
+ * ⚠️ NON-ACTIVE ANGLES ARE OUT OF SCOPE ON PURPOSE. Do not "fix" this by restoring the loop over
+ * `ANGLE_COLS`; that is the defect this replaced, not a safeguard that was lost.
+ *
+ * **Why.** A landing page stores four angles and publishes exactly one — the active one.
+ * `landingPagePublisher` renders the active angle, the publish gate scans THAT rendered HTML, and
+ * `checkAdToPageMatch` judges THAT text. A token sitting in an angle nobody renders cannot reach
+ * any of them.
+ *
+ * **The failure it caused (2026-08-12).** The answering pass derives its questions from the ACTIVE
+ * angle (`collectTokens` + `deriveOperatorQuestions`), so it can only ever plan answers for tokens
+ * it can see there. The old assertion then checked ALL FOUR columns. A token living only in
+ * `dollarAngle` while `original` was active was therefore unreachable by the answering pass and
+ * fatal to the assertion — no input could satisfy both. `--prepare` died on `[INSERT_CART_CLOSE]`
+ * in a non-active angle while the page it was about to publish was already clean.
+ *
+ * 📌 **The coach-switches-angle case is covered, and not by this assertion.** If a coach later
+ * makes a different angle active, the product's OWN publish gate re-scans the newly rendered page
+ * at that moment and holds it then. That is the right place for it: the check belongs to whatever
+ * is actually being published, not to a throwaway harness that ran days earlier.
+ *
+ * 📌 Scoping this down also makes `assertNoOperatorTokens`'s own advice true again. A token that
+ * reaches here is by definition IN the active angle, so `collectTokens` did see it, so it WOULD be
+ * planned once `CANNED_OPERATOR_ANSWERS` carries it. Under the old all-angles scope that advice was
+ * simply wrong — a canned answer for a token in a non-active angle is never planned, never applied.
+ */
+export function assertActiveAngleHasNoOperatorTokens(
+  row: Record<string, unknown>,
+  activeAngle: string | null | undefined,
+): void {
+  const col = activeAngleColumn(activeAngle);
+  const content = row[col] ?? row.originalAngle;
+  if (!content) return;
+  assertNoOperatorTokens(JSON.stringify(content), `stored content (${col}, the ACTIVE angle)`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COACH-SCOPED COLUMNS — the Drizzle key and the DB column are NOT the same string
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resolve a registry `path` (a Drizzle JS key) to the REAL database column name.
+ *
+ * 🔴 **The bug this exists to kill.** `OPERATOR_TOKEN_REGISTRY` carries `path: "bookingUrl"`, and
+ * `applyOperatorAnswer` hands that straight back as `coachColumn.column`. Drizzle's `.set()` maps
+ * that key to `booking_url` for us, so the WRITE and the teardown RESTORE were always correct. But
+ * the snapshot READ was raw SQL — `sql.identifier("bookingUrl")` — which emits a column MySQL does
+ * not have and fails with `ERROR 1054 Unknown column 'bookingUrl'`. Reproduced directly on
+ * production 2026-08-12.
+ *
+ * Net effect before this fix: any page whose operator questions included `[INSERT_BOOKING_URL]`
+ * hard-crashed `--prepare` at the snapshot line. The read ran BEFORE the write, so it threw first
+ * and no unreversed write could occur — fail-safe, but it meant the coach-scoped snapshot path had
+ * never once executed. CHECKPOINT §0a item 6 assumed it worked; it did not.
+ *
+ * 🔑 **Two representations, one per API, and that is correct — not a smell.** Raw SQL needs the DB
+ * column (`booking_url`); Drizzle's `.set()` needs the JS key (`bookingUrl`). So `coachFieldsBefore`
+ * stays keyed by the JS KEY, because teardown restores through Drizzle. Re-keying it to the DB name
+ * would silently break the restore. Both names are derived HERE from the one schema object, so they
+ * cannot drift apart.
+ *
+ * This is CLAUDE.md §9 trap 1 (snake_case DB column vs JS key) caught at the boundary: an unmapped
+ * key now throws an explicit error naming the key, instead of a bare 1054 far from its cause.
+ */
+export function dbColumnNameFor(table: Record<string, any>, key: string): string {
+  const col = table?.[key];
+  if (!col) {
+    throw new Error(
+      `STOP — no column "${key}" on this table, so its real database name cannot be resolved. ` +
+      `A coach-scoped registry entry names a path that the schema does not carry.`,
+    );
+  }
+  const name = col?.name;
+  if (typeof name !== "string" || name.length === 0) {
+    throw new Error(
+      `STOP — column "${key}" exposes no database name, so raw SQL against it would be a guess.`,
+    );
+  }
+  return name;
+}
+
+/**
+ * Read a coach-scoped column's PRIOR value before anything overwrites it, so teardown can restore
+ * it — including restoring it to NULL when there was nothing there to begin with.
+ *
+ * The caller supplies `read`, which receives the resolved DATABASE column name. Keeping the query
+ * injected is what lets this be proven with a fake instead of a live row.
+ */
+export async function snapshotCoachColumn(
+  table: Record<string, any>,
+  key: string,
+  read: (dbColumn: string) => Promise<string | null | undefined>,
+): Promise<{ key: string; dbColumn: string; prior: string | null }> {
+  const dbColumn = dbColumnNameFor(table, key);
+  const prior = await read(dbColumn);
+  return { key, dbColumn, prior: prior ?? null };
+}

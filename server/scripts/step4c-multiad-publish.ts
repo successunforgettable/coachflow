@@ -75,7 +75,8 @@ import {
   PINNED_DAILY_BUDGET_AED, assertDailyBudgetFloor, assertSafeCampaignName, campaignLabelFor,
 } from "../_core/metaSafety";
 import {
-  assertNoOperatorTokens, assertNoSentinelAnswers, collectTokens, planOperatorAnswers,
+  ANGLE_COLS, assertActiveAngleHasNoOperatorTokens, assertNoOperatorTokens, assertNoSentinelAnswers,
+  collectTokens, planOperatorAnswers, snapshotCoachColumn,
 } from "../_core/step4cPageAnswers";
 import {
   assertPublishable, emptyRunState, mergeRunState, metaPhasePlan, type Step4cRunState,
@@ -198,7 +199,9 @@ async function protectedTotal(db: any): Promise<string> {
 // FIX 1 — the throwaway page answers its own operator questions
 // ══════════════════════════════════════════════════════════════════════════════
 
-const ANGLE_COLS = ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const;
+// ANGLE_COLS now lives in `_core/step4cPageAnswers` beside the active-angle assertion that has to
+// agree with it. The WRITE loop below still applies each answer to ALL FOUR angles deliberately —
+// only the ASSERTION is scoped to the active one. See `assertActiveAngleHasNoOperatorTokens`.
 
 /**
  * Clear every operator token on the throwaway page THROUGH THE COACH'S OWN PATH.
@@ -270,11 +273,17 @@ async function answerPageOperatorQuestions(
     // and teardown must know it happened.
     if (coachColumn) {
       if (!(coachColumn.column in coachFieldsBefore)) {
-        const [priorRow] = await db.execute(
-          sql`SELECT ${sql.identifier(coachColumn.column)} AS v FROM users WHERE id = ${USER_ID}`,
-        ) as any;
-        const prior = Array.isArray(priorRow) ? priorRow[0] : priorRow;
-        coachFieldsBefore[coachColumn.column] = prior?.v ?? null;
+        // The registry path is a Drizzle JS key (`bookingUrl`); raw SQL needs the real column
+        // (`booking_url`). Resolved off the schema so the two can never drift. Keyed by the JS KEY
+        // below, because teardown restores through Drizzle's `.set()`, which wants the key.
+        const snap = await snapshotCoachColumn(users as any, coachColumn.column, async (dbColumn) => {
+          const [priorRow] = await db.execute(
+            sql`SELECT ${sql.identifier(dbColumn)} AS v FROM users WHERE id = ${USER_ID}`,
+          ) as any;
+          const prior = Array.isArray(priorRow) ? priorRow[0] : priorRow;
+          return prior?.v ?? null;
+        });
+        coachFieldsBefore[snap.key] = snap.prior;
       }
       await db.update(users).set({ [coachColumn.column]: coachColumn.value } as any).where(eq(users.id, USER_ID));
       say(`   ⚠️ wrote users.${coachColumn.column} for user ${USER_ID} — a coach-scoped answer, not a ` +
@@ -293,10 +302,11 @@ async function answerPageOperatorQuestions(
       `${remaining.map((q) => q.token).join(", ")}. The publish gate would hold it.`,
     );
   }
-  for (const col of ANGLE_COLS) {
-    const angle = (after as any)[col];
-    if (angle) assertNoOperatorTokens(JSON.stringify(angle), `stored content (${col})`);
-  }
+  // Scoped to the ACTIVE angle — the only one that renders, publishes, and is judged by
+  // `checkAdToPageMatch`. A token parked in a non-active angle is deliberately NOT a failure here;
+  // if a coach later makes that angle active, the product's own publish gate re-scans and holds it
+  // then. Full reasoning at `assertActiveAngleHasNoOperatorTokens`.
+  assertActiveAngleHasNoOperatorTokens(after as any, angleKey);
   return { answeredTokens: plan.map((p) => p.token), coachFieldsBefore };
 }
 
