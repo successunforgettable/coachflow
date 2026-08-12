@@ -7,10 +7,93 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 RUN STEP 4c. The harness is now THREE phases. It needs **a word per phase** on the day.
+# 👉 THE BLOCKER IS THE COMPLIANCE LAYER, NOT 4c AND NOT THE COPY ENGINE.
 
-Steps 4a and 4b are done and proven live (`793d4ed`); the 4c harness was built and unit-proven
-(`e862c76`) and has since been **reworked into three phases** after its first live attempt failed.
+### STATE AT SHUTDOWN — 2026-08-13
+
+| | |
+|---|---|
+| HEAD | **`087873a`** on `railway-build`, working tree clean |
+| Since then | **NOTHING HAS BEEN DONE.** No run, no write, no deploy |
+| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is 25 ahead / 0 behind |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` at **`087873a`**, SHA-for-SHA. **It does NOT deploy** |
+| The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
+
+**The 4c harness is DONE.** Both failed attempts were diagnosed, fixed and banked — the 08-10 token
+gap (three-phase rework, `f528800`) and the 08-12 false-positive assertion plus the `booking_url`
+crash (`087873a`). Teardown reconciled exactly to baseline both times. **No harness work is pending.**
+
+### 🔑 THE REFRAME — this is a CLASSIFIER PRECISION problem sitting under a COVERAGE gap
+
+The exact-text analysis on **2026-08-12** changed what this blocker is. It had been recorded as "the
+copy engine writes non-compliant pages." **It is not.** Reading the actual flagged sentences against
+Meta's own policy, **the copy is mostly fine and the gate is mostly wrong.**
+
+**The coverage gap.** The generation-time gate screens a **hardcoded list of 11 top-level fields**
+(`landingPageGenerator.ts:769-774`) while the persistence extractor walks **78**. The headline "67 of
+78 unscreened" overstates the exposure, though: 42 of the 78 are labels, headings or numeric-ish
+scaffolding. **The real exposure is ~28 unscreened PROSE fields** (median 57 words), concentrated in
+`faq` 11 · `consultationOutline` 10 · `bonuses` 3 · `quizSection` 2 · `guarantee` 1 ·
+`scarcityUrgency` 1. **All 6 of the page's blocking hits landed in fields the generation gate never
+reads.**
+
+**The precision finding — 3 of the 6 hits are CLASSIFIER DEFECTS**, graded against Meta's own policy:
+
+| # | field | flagged as | why it is a defect |
+|---|---|---|---|
+| 1 | `godfather.scarcityUrgency` | `second_person_protected_attribute` | fires on **business** attributes. Meta's Personal Attributes policy covers **protected personal traits** — race, health, finances, religion, orientation. *"your client relationships"* is a business fact, not a protected trait |
+| 2 | `dollar.scarcityUrgency` | `second_person_protected_attribute` | same class of error, same business-attribute confusion |
+| 3 | `godfather.scarcityUrgency` | (the anchor half) | **`resolveAnchors` carries second person ACROSS a sentence boundary** onto *"That work cannot be done at scale."* — a sentence with no second person and no attribute in it at all |
+| 4 | `free.guarantee` | `deceptive_urgency` | *"The Session Produces A Written Output Or We Run It Again"* — **a guarantee with NO DEADLINE anywhere in it.** Deceptive urgency requires a time claim; there is none |
+
+**The other 2 are POSTURE CALLS, not defects.** Two `deceptive_urgency` hits fire on honest
+**structural-scarcity cohort-cap headings** (*"This Cohort Is Limited To Eight Consultants"*, whose
+own body says *"Not as a marketing device — as a structural requirement"*). And one `promised_result`
+fires on a **conditional service guarantee** — *"if the structure has not produced a retainer
+conversation within twelve weeks, I will work with you one-to-one at no additional cost until it
+does."* Both are **Arfeen's calls about posture**, not bugs.
+
+### 🔴 WHY THE ORDER MATTERS — widening coverage FIRST changes nothing
+
+Under the persistence gate's **degrade-never-kill floor**, a false positive **does not block**. It
+**burns all three retry attempts and then persists the row anyway**. So widening the gate's field
+list before fixing precision buys **zero** additional safety and spends generation time on retries
+that cannot succeed. **Precision first is not a preference; it is the only ordering that does
+anything.**
+
+### THE PLAN — in this order, and not another
+
+1. **Fix classifier precision** — the three defects above. Read-only scoping first.
+2. **Arfeen settles the two posture calls** — (a) should truthful structural scarcity trip the gate
+   at all? (b) is a conditional service guarantee acceptable copy?
+3. **Then widen coverage** by **single-sourcing the gate's field list from the persistence
+   extractor**, so the two lists cannot drift. ⚠️ The hardcoded list is why every field added to the
+   LP schema since it was written is unscreened by default — a silent gap that grows with the schema.
+
+📌 **Third instance of one shape in this subsystem:** two representations of the same thing kept in
+parallel and allowed to drift — the gate's field list vs the extractor, the `bookingUrl` JS key vs
+the `booking_url` column, and the per-angle answering pass vs the all-angles assertion. Worth
+watching for a fourth.
+
+### NEXT ACTION ON RESUME
+
+**A READ-ONLY SCOPE of the three precision defects.** No code change, no run. **The scoping prompt
+is in the strategy thread** — take it from there rather than re-deriving it.
+
+### ⚠️ TWO THINGS STILL OUTSTANDING, NEITHER BLOCKING
+
+- 🔴 **The `ANTHROPIC_API_KEY` still needs ROTATING.** It was exposed in a session transcript on
+  2026-08-12 by a `pgrep -fl` against a `railway run` child, which prints the injected environment
+  into the process listing. `AWS_ACCESS_KEY_ID` was exposed too (an identifier, not a secret). The
+  dump truncated one entry short of `AWS_SECRET_ACCESS_KEY`; `META_APP_SECRET` and `DATABASE_URL`
+  were NOT exposed. **Never run `pgrep -fl` / `ps` against a `railway run` child on this project** —
+  `pgrep -f` without `-l` gives liveness with no argv dump.
+- 📌 **The blank-hook-band composite still needs a PIXEL VERDICT from Arfeen.** Creative **497**
+  (`hookAdCopyId` NULL) rendered with **no hook band at all** — the branch firing live for the first
+  time, retiring the "never fired" half of §0a item 2. Saved at
+  `docs/screenshots/run-2026-08-12-step4c-prepare/497-composite-BLANK-HOOK-BAND.png`. ⚠️ **Those 12
+  files are the ONLY copies** — the Cloudinary originals were swept at teardown and the rows that
+  held their URLs are deleted. Per §6, CC never self-certifies a visual result.
 
 ### 🔴 THE 2026-08-10 ATTEMPT — IT FAILED, AND IT NEVER REACHED META
 
