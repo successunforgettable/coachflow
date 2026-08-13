@@ -7,21 +7,40 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 THE BLOCKER IS THE COMPLIANCE LAYER, NOT 4c AND NOT THE COPY ENGINE.
+# 👉 ONE LINE OF FAQ COPY IS THE ONLY THING BLOCKING A 4c RE-RUN.
 
-### STATE AT SHUTDOWN — 2026-08-13
+### STATE AT SHUTDOWN — 2026-08-14
 
 | | |
 |---|---|
-| HEAD | **`f1a129d`** on `railway-build`, working tree clean |
-| Since then | **NOTHING HAS BEEN DONE.** No run, no write, no deploy |
-| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is 25 ahead / 0 behind |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` at **`f1a129d`**, SHA-for-SHA. **It does NOT deploy** |
+| HEAD | **`11a920a`** on `railway-build`, working tree clean |
+| Since then | **NOTHING HAS BEEN BUILT.** No run, no write, no deploy, no migration |
+| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is 27 ahead / 0 behind |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` at **`11a920a`**, SHA-for-SHA. **It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
 
 **The 4c harness is DONE.** Both failed attempts were diagnosed, fixed and banked — the 08-10 token
 gap (three-phase rework, `f528800`) and the 08-12 false-positive assertion plus the `booking_url`
 crash (`087873a`). Teardown reconciled exactly to baseline both times. **No harness work is pending.**
+
+**BOTH COMPLIANCE CODE DEFECTS ARE FIXED AND BANKED** (`11a920a`) — the `"scale"` vocabulary
+collision and the guarantee handling. Re-measuring the classifier over the preserved page-238
+content took the blocking hits from **6 to 2**. Full account below.
+
+### 🔴 THE SOLE REMAINING BLOCKER TO A 4c RE-RUN — ONE HIT, ON THE ACTIVE ANGLE
+
+`promised_result` at **`original.faq[6].answer`** — the active angle. The line:
+
+> *"…if the structure has not produced a retainer conversation within twelve weeks, **I will work
+> with you one-to-one at no additional cost until it does**."*
+
+**It matters to 4c because `checkAdToPageMatch` reads the ACTIVE ANGLE at `--publish`.** A re-run
+clears the token gate and then points ads at a page carrying this claim. Nothing else on the page
+blocks: `godfather` and `dollar` are clean, and `free`'s one hit is on a non-active angle.
+
+⚠️ **This is not a code defect and must not be fixed as one.** The classifier is right that an
+unconditional "until it does" reads as a promised outcome. What has to change is how the copy is
+GENERATED — see the decision below.
 
 ### 🔑 THE REFRAME — this is a CLASSIFIER PRECISION problem sitting under a COVERAGE gap
 
@@ -116,9 +135,8 @@ anything.**
 ### THE PLAN — in this order, and not another
 
 1. ✅ **DONE — fix classifier precision.** Both defects fixed and committed local-only. Not deployed.
-2. 🔵 **ONE posture call left, and it is Arfeen's** — is a **conditional service guarantee**
-   acceptable copy? *"if the structure has not produced a retainer conversation within twelve weeks,
-   I will work with you one-to-one at no additional cost until it does."*
+2. ✅ **SETTLED 2026-08-14 — the posture call is DECIDED, and the answer is CONSTRAINED GENERATION.**
+   See the decision below. The copy changes; the gate does not.
    ⚠️ **The OTHER posture call recorded here is WITHDRAWN, not decided.** It read *"should truthful
    structural scarcity trip the gate at all?"* — that question was an artefact of defect 2(b). Those
    two hits were never about the cohort-cap headings; they fired on the word `guaranteed` inside
@@ -139,26 +157,78 @@ its `flaggedTerms` were two representations of the same finding, and the second 
 REWRITTEN text — so it went empty exactly when the first said "blocked". Closed by `triggers`,
 recorded against the original text at the moment each rule fires. **Watch for a fifth.**
 
+---
+
+## 0-DEC. DECISIONS FINALISED 2026-08-14 — both are LOCKED, neither is built
+
+### ✅ DECISION 1 — the FAQ fix is CONSTRAINED GENERATION. Not a template, not free generation.
+
+**The rejected option was a fixed FAQ**, and the reason it is rejected is the audience. 🔑 **ZAP's
+users are broad and diverse — coaches, consultants and agencies, but also tarot readers,
+astrologers, yoga instructors and other service niches.** A single hardcoded FAQ cannot fit that
+range: copy written for a retainer consultant is wrong for a tarot reader, and copy general enough
+for both says nothing. **So the FAQ stays GENERATED.** What changes is that the generator is made
+structurally unable to produce the risky phrasing in the first place, through **three layers**:
+
+1. **A fixed, vetted set of the universal objection QUESTIONS.** The questions are the part that
+   genuinely is common across every niche — price, time, "will this work for me", what happens if it
+   does not. Those are stable; the answers are not.
+2. **Hard niche-agnostic guardrails in the generation prompt.** Forbidden: `guaranteed`,
+   `"you will [outcome]"`, `"until it does"`, and cure or health claims. Required: conditional or
+   process framing — what the method DOES and what the coach WILL DO, never what the buyer WILL GET.
+3. **The compliance gate as the BACKSTOP.** Third layer, not first. It catches what leaks; it is not
+   the mechanism that makes the copy safe.
+
+⚠️ **THEREFORE THE IMMEDIATE `"until it does"` FIX IS A GENERATION-PROMPT GUARDRAIL, WRITTEN
+NICHE-AGNOSTICALLY — NOT A ONE-STRING TEMPLATE EDIT.** Editing that single sentence would fix one
+page and leave every future generation free to write it again, in whatever niche's vocabulary. The
+guardrail must be phrased so it constrains a tarot reader's FAQ as tightly as a consultant's.
+
+📌 Note the layering deliberately mirrors the compliance work just banked: the gate is the last
+line, never the design.
+
+### ✅ DECISION 2 — NO AD IMAGE MAY SHIP WITHOUT TEXT. The blank hook band is a DEFECT.
+
+**Creative 497 rendered with no hook band at all** — `hookAdCopyId` NULL, the short-deck branch
+firing live for the first time on the 2026-08-12 run. **That branch is a defect, not a style.**
+
+**The fix is to GUARANTEE A HOOK FOR EVERY IMAGE**, not to render a clean band and move on. An ad
+image with no text is not a quieter ad; it is an ad missing the surface Meta's OCR reads, on the
+one surface `dealHooksByConcept` was built to keep distinct.
+
+🔑 **This ties directly into the 4 → 8 cardinality work** (§0a items 1 and 2): the hook surface is
+already the binding constraint at four slots — it landed at **3 hooks against 4 slots on three
+independent runs** — so growing the deck to eight makes the shortfall worse unless hook supply
+grows with it. "Ship with no line rather than a repeated one" was the right call **only while a
+blank band was considered acceptable. It no longer is**, so the shortfall must be solved at supply.
+
+⚠️ **THE BLANK-BAND ACCEPTABILITY QUESTION IS CLOSED.** §0a item 2's open half is settled, and the
+pixel verdict on 497 is **MOOT** — the decision was taken without needing it.
+
 ### NEXT ACTION ON RESUME
 
-**Arfeen's ruling on the ONE posture call in step 2** — the conditional service guarantee at
-`faq[6].answer`. It is the only thing standing between the active angle and a clean compliance
-screen, and it is a product decision, not a code change.
+**A READ-ONLY PASS to (a) locate where the FAQ copy is BORN — which generator, which prompt, which
+node — and (b) audit whether any UPSTREAM NODE PROMPTS were quietly upgraded** since the FAQ
+generator was written, so the guardrail lands in the right place and does not contradict a prompt
+that already moved. **No code change, no run. That prompt is in the strategy thread** — take it from
+there rather than re-deriving it.
 
-### ⚠️ TWO THINGS STILL OUTSTANDING, NEITHER BLOCKING
+### ⚠️ HOUSEKEEPING — ONE ITEM OUTSTANDING, ONE NOW MOOT
 
-- 🔴 **The `ANTHROPIC_API_KEY` still needs ROTATING.** It was exposed in a session transcript on
-  2026-08-12 by a `pgrep -fl` against a `railway run` child, which prints the injected environment
-  into the process listing. `AWS_ACCESS_KEY_ID` was exposed too (an identifier, not a secret). The
-  dump truncated one entry short of `AWS_SECRET_ACCESS_KEY`; `META_APP_SECRET` and `DATABASE_URL`
-  were NOT exposed. **Never run `pgrep -fl` / `ps` against a `railway run` child on this project** —
-  `pgrep -f` without `-l` gives liveness with no argv dump.
-- 📌 **The blank-hook-band composite still needs a PIXEL VERDICT from Arfeen.** Creative **497**
-  (`hookAdCopyId` NULL) rendered with **no hook band at all** — the branch firing live for the first
-  time, retiring the "never fired" half of §0a item 2. Saved at
-  `docs/screenshots/run-2026-08-12-step4c-prepare/497-composite-BLANK-HOOK-BAND.png`. ⚠️ **Those 12
-  files are the ONLY copies** — the Cloudinary originals were swept at teardown and the rows that
-  held their URLs are deleted. Per §6, CC never self-certifies a visual result.
+- 🔴 **STILL OUTSTANDING — the `ANTHROPIC_API_KEY` needs ROTATING.** It was exposed in a session
+  transcript on 2026-08-12 by a `pgrep -fl` against a `railway run` child, which prints the injected
+  environment into the process listing. `AWS_ACCESS_KEY_ID` was exposed too (an identifier, not a
+  secret). The dump truncated one entry short of `AWS_SECRET_ACCESS_KEY`; `META_APP_SECRET` and
+  `DATABASE_URL` were NOT exposed. **Never run `pgrep -fl` / `ps` against a `railway run` child on
+  this project** — `pgrep -f` without `-l` gives liveness with no argv dump.
+- ✅ **MOOT — the pixel verdict on creative 497 is no longer needed.** It was held open as
+  *"the blank-hook-band composite still needs a PIXEL VERDICT from Arfeen"*. **Decision 2 (§0-DEC)
+  settled the question without it:** a blank band is a defect whatever it looks like, so there is
+  nothing for the pixels to decide. The file stays at
+  `docs/screenshots/run-2026-08-12-step4c-prepare/497-composite-BLANK-HOOK-BAND.png` as the record
+  of the branch firing live. ⚠️ **Those 12 files are still the ONLY copies** — the Cloudinary
+  originals were swept at teardown and the rows that held their URLs are deleted. §6 is unchanged
+  and still stands for every other visual result: CC never self-certifies one.
 
 ### 🔴 THE 2026-08-10 ATTEMPT — IT FAILED, AND IT NEVER REACHED META
 
@@ -466,11 +536,16 @@ skipped and never defaulted. Full design and the live ledger: `docs/handovers/ST
    deck grows. ⚠️ **This is a second, independent reason the hook surface is the binding constraint
    on 4 → 8**, alongside the already-measured "natural distinct capacity is exactly 4". Not a defect
    in the deal — the deal did what it is specified to do.
-2. **THE BLANK-HOOK-BAND BRANCH HAS NEVER FIRED LIVE.** When the hook rows run out a slot bakes NO
-   line rather than repeating one already in the deck — an empty band is a visible symptom, a
-   repeated line is an invisible collapse. Built and unit-tested; the 4b run had 4 hooks for 4 slots
-   so it was never exercised, and **no composite with a blank band has ever been judged on pixels.**
-   The 4b harness names such files `…-BLANK-HOOK-BAND.png` so they are impossible to miss.
+2. ✅ **CLOSED 2026-08-14 — THE BLANK HOOK BAND IS A DEFECT. NO AD IMAGE SHIPS WITHOUT TEXT.**
+   Both halves of this item are now settled. It FIRED live on the 2026-08-12 run (creative **497**,
+   `hookAdCopyId` NULL), and Decision 2 in §0-DEC rules that an empty band is not an acceptable
+   outcome at all. **The fix is to guarantee a hook for every image**, which makes hook SUPPLY the
+   thing to solve and ties this straight into 4 → 8 (item 1). ⚠️ **The "ship with no line rather
+   than a repeated one" rule that produced this branch was correct only while a blank band was
+   acceptable — it no longer is.** Neither option is acceptable now; the deck must not run short.
+   Historical record: built and unit-tested, unexercised on the 4b run because it had 4 hooks for
+   4 slots. The harness still names such files `…-BLANK-HOOK-BAND.png` so they are impossible to
+   miss — keep that, it is how the branch was caught.
 3. **SHIP-VERSUS-DROP STRICTNESS — an open product decision.** Today a **mismatched but unique**
    hook SHIPS and is recorded (`hook.agreement: "mismatch"`); only a **duplicate hook string** drops
    the later ad. The reasoning is that the hook is already baked by assembly time, so discarding a
