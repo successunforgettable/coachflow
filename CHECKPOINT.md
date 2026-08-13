@@ -13,10 +13,10 @@
 
 | | |
 |---|---|
-| HEAD | **`087873a`** on `railway-build`, working tree clean |
+| HEAD | **`f1a129d`** on `railway-build`, working tree clean |
 | Since then | **NOTHING HAS BEEN DONE.** No run, no write, no deploy |
 | `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is 25 ahead / 0 behind |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` at **`087873a`**, SHA-for-SHA. **It does NOT deploy** |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` at **`f1a129d`**, SHA-for-SHA. **It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
 
 **The 4c harness is DONE.** Both failed attempts were diagnosed, fixed and banked — the 08-10 token
@@ -37,21 +37,73 @@ scaffolding. **The real exposure is ~28 unscreened PROSE fields** (median 57 wor
 `scarcityUrgency` 1. **All 6 of the page's blocking hits landed in fields the generation gate never
 reads.**
 
-**The precision finding — 3 of the 6 hits are CLASSIFIER DEFECTS**, graded against Meta's own policy:
+### ✅ THE PRECISION WORK IS DONE — SIX BLOCKING HITS WERE **TWO CODE DEFECTS**, BOTH NOW FIXED
 
-| # | field | flagged as | why it is a defect |
-|---|---|---|---|
-| 1 | `godfather.scarcityUrgency` | `second_person_protected_attribute` | fires on **business** attributes. Meta's Personal Attributes policy covers **protected personal traits** — race, health, finances, religion, orientation. *"your client relationships"* is a business fact, not a protected trait |
-| 2 | `dollar.scarcityUrgency` | `second_person_protected_attribute` | same class of error, same business-attribute confusion |
-| 3 | `godfather.scarcityUrgency` | (the anchor half) | **`resolveAnchors` carries second person ACROSS a sentence boundary** onto *"That work cannot be done at scale."* — a sentence with no second person and no attribute in it at all |
-| 4 | `free.guarantee` | `deceptive_urgency` | *"The Session Produces A Written Output Or We Run It Again"* — **a guarantee with NO DEADLINE anywhere in it.** Deceptive urgency requires a time claim; there is none |
+⚠️ **THE TABLE THAT STOOD HERE WAS WRONG ON ALL THREE OF ITS DIAGNOSES, AND IS DELETED.** It was
+written by reading flagged spans and reasoning about policy. Every line of it was overturned by
+running the classifier over the preserved page-238 content as a pure in-memory probe. **The lesson
+generalises: a flagged span is not evidence of which rule fired**, and on this delegation path the
+span was not even a match. Read the code and run it; do not grade a hit from its message.
 
-**The other 2 are POSTURE CALLS, not defects.** Two `deceptive_urgency` hits fire on honest
-**structural-scarcity cohort-cap headings** (*"This Cohort Is Limited To Eight Consultants"*, whose
-own body says *"Not as a marketing device — as a structural requirement"*). And one `promised_result`
-fires on a **conditional service guarantee** — *"if the structure has not produced a retainer
-conversation within twelve weeks, I will work with you one-to-one at no additional cost until it
-does."* Both are **Arfeen's calls about posture**, not bugs.
+What it got wrong, kept as the record: it blamed the two `second_person_protected_attribute` hits
+on a **business-attribute** gap in the protected-attribute vocabulary (that vocabulary contains no
+business or relationship noun and was never consulted); it blamed a third on **`resolveAnchors`
+carrying second person across a sentence boundary** (`resolveAnchors` carries a *label*, never text,
+and the firing rule sits BEFORE the anchor gate and needs no second person at all — the carry only
+ever SUPPRESSES); and it graded the `free.guarantee` hit against
+*"The Session Produces A Written Output Or We Run It Again"*, a sentence the classifier **never
+objected to** — it was the field's first 80 characters, printed because nothing could be attributed.
+
+#### THE TWO REAL DEFECTS
+
+| # | defect | mechanism |
+|---|---|---|
+| 1 | **the `"scale"` vocabulary collision** | `"scale"`/`"scales"` sat in `BODY_PROXY_NOUNS` as the bathroom scales. The §1.3 body-proxy rule is a two-term conjunction — a proxy noun plus ANY `DEFICIT_PREDICATE`, and `"cannot"` is one — so ordinary consulting copy blocked at tier 1 as an assertion about the reader's BODY |
+| 2 | **the guarantee handling**, in two halves | (a) bare `\bguaranteed\b` in `complianceFilter` pivot rule 2 had **no negation handling**, so copy DENYING a guarantee blocked exactly as hard as copy making one; (b) the delegation reported **every** `complianceFilter` verdict as `deceptive_urgency` and, when the pivot had emptied `flaggedTerms`, attached **the field's first 80 characters** as the span |
+
+🔑 **Defect 2(b) is why the old table existed.** The class and the evidence were both wrong, so the
+hits could only be graded against innocent text. `flaggedTerms` is collected by scanning the
+**cleaned** text — after the pivot has already deleted the offending phrase — so an empty array is
+the NORMAL outcome on that path, not an edge case.
+
+#### MEASURED BEFORE AND AFTER — the same probe, over the same preserved content
+
+**Blocking hits across all four angles: 6 → 2.** Four were outright false positives and are gone; a
+fifth was a real catch reported under the wrong class with a span no rule had matched.
+
+| angle | before | after |
+|---|---|---|
+| **`original`** ◀ ACTIVE | 2 | **1** — `promised_result` @ `faq[6].answer` |
+| `godfather` | 1 | **0** |
+| `free` | 2 | **1** — `promised_result` @ `guarantee` |
+| `dollar` | 1 | **0** |
+
+📌 **The arithmetic, stated exactly, because "five false positives" does not add up against two
+survivors:** **four** of the six were outright false positives (both `scale` hits, both
+guarantee-denial hits) and no longer block at all. A **fifth** — `free.guarantee` — carried a
+classifier defect but not a false positive: the catch is real (*"the output is guaranteed"*), and
+what was broken was the reporting. It now reports as **`promised_result`** with the span
+**`"guaranteed"`** instead of `deceptive_urgency` against an innocent opening sentence. So **five of
+six carried a defect; four of those were false positives.**
+
+**The two survivors:**
+
+1. `free.guarantee` — the one **real guarantee claim** on the page, now correctly classed and
+   honestly spanned. `free` is **not the active angle**.
+2. `original.faq[6].answer` — `promised_result` on *"within twelve weeks of completing the
+   programme, I will work with you"*. **THE SINGLE OPEN POSTURE CALL, and it is Arfeen's.**
+   Deliberately untouched by this work.
+
+🔴 **THE ACTIVE ANGLE IS NOT CLEAN — IT CARRIES EXACTLY THAT ONE HIT.** Measured by walking all
+**89 string fields** of each stored angle, not by re-reading a summary: `original` BLOCKING=1.
+⚠️ An earlier report in this session said the active angle had dropped to **zero**; that was wrong
+and is corrected here. The scarcity hit cleared; the faq hit did not, and it was always on
+`original`. **So the compliance blocker on 4c reduces to one product decision, not a code fix.**
+
+⚠️ **All of the above is measured on content captured before the 2026-08-12 teardown, not on a
+fresh generation.** It proves the classifier's behaviour on that text exactly. It does NOT prove
+what the copy engine will produce next run. Re-screen a freshly generated page before treating the
+active angle as a solved problem.
 
 ### 🔴 WHY THE ORDER MATTERS — widening coverage FIRST changes nothing
 
@@ -63,22 +115,35 @@ anything.**
 
 ### THE PLAN — in this order, and not another
 
-1. **Fix classifier precision** — the three defects above. Read-only scoping first.
-2. **Arfeen settles the two posture calls** — (a) should truthful structural scarcity trip the gate
-   at all? (b) is a conditional service guarantee acceptable copy?
+1. ✅ **DONE — fix classifier precision.** Both defects fixed and committed local-only. Not deployed.
+2. 🔵 **ONE posture call left, and it is Arfeen's** — is a **conditional service guarantee**
+   acceptable copy? *"if the structure has not produced a retainer conversation within twelve weeks,
+   I will work with you one-to-one at no additional cost until it does."*
+   ⚠️ **The OTHER posture call recorded here is WITHDRAWN, not decided.** It read *"should truthful
+   structural scarcity trip the gate at all?"* — that question was an artefact of defect 2(b). Those
+   two hits were never about the cohort-cap headings; they fired on the word `guaranteed` inside
+   sentences that DENY a guarantee, and the headings were only ever the printed span. **The honest
+   cohort-cap copy never tripped the gate and does not need a ruling.**
 3. **Then widen coverage** by **single-sourcing the gate's field list from the persistence
    extractor**, so the two lists cannot drift. ⚠️ The hardcoded list is why every field added to the
    LP schema since it was written is unscreened by default — a silent gap that grows with the schema.
+   📌 The ordering argument above still holds and is now also EVIDENCE: the generation-time gate
+   screens 11 fields and every one of the six blocking hits landed outside them, so widening first
+   would have added retry cost against four hits that were not real.
 
 📌 **Third instance of one shape in this subsystem:** two representations of the same thing kept in
 parallel and allowed to drift — the gate's field list vs the extractor, the `bookingUrl` JS key vs
-the `booking_url` column, and the per-angle answering pass vs the all-angles assertion. Worth
-watching for a fourth.
+the `booking_url` column, and the per-angle answering pass vs the all-angles assertion.
+📌 **FOURTH INSTANCE FOUND, and it is the one that cost the most:** `complianceFilter`'s verdict and
+its `flaggedTerms` were two representations of the same finding, and the second was collected over
+REWRITTEN text — so it went empty exactly when the first said "blocked". Closed by `triggers`,
+recorded against the original text at the moment each rule fires. **Watch for a fifth.**
 
 ### NEXT ACTION ON RESUME
 
-**A READ-ONLY SCOPE of the three precision defects.** No code change, no run. **The scoping prompt
-is in the strategy thread** — take it from there rather than re-deriving it.
+**Arfeen's ruling on the ONE posture call in step 2** — the conditional service guarantee at
+`faq[6].answer`. It is the only thing standing between the active angle and a clean compliance
+screen, and it is a product decision, not a code change.
 
 ### ⚠️ TWO THINGS STILL OUTSTANDING, NEITHER BLOCKING
 
@@ -245,10 +310,10 @@ boundary: an unmapped path now throws a named error instead of a bare 1054 far f
 
 Gates: tsc **34**, 4c safety set **241 passed across 9 suites** (up from 217, +17 new cases).
 
-#### 🔴 THE NEW BLOCKER BEFORE ANY 4c RE-RUN — the page does not pass compliance
+#### ✅ SUPERSEDED — "the page does not pass compliance" was mostly the CLASSIFIER, not the copy
 
-Screened read-only through the same `checkOutput` the persistence gate uses, on the content captured
-before teardown. **THE ACTIVE ANGLE CARRIES 2 BLOCKING HITS:**
+**This block is kept for the record. Its numbers are the BEFORE column of §0's table and are no
+longer current.** It read, screened through the same `checkOutput` the persistence gate uses:
 
 | angle | blocking | what |
 |---|---|---|
@@ -257,10 +322,14 @@ before teardown. **THE ACTIVE ANGLE CARRIES 2 BLOCKING HITS:**
 | `free` | 2 | `deceptive_urgency` @ `guarantee` and @ `scarcityUrgency` |
 | `dollar` | 1 | `second_person_protected_attribute` @ `scarcityUrgency` |
 
-**All four angles carry at least one blocking claim.** This is a COPY-ENGINE problem upstream of the
-harness — neither fix above touches it. It matters to 4c because **`checkAdToPageMatch` reads that
-page at `--publish`**, so a re-run gets past the token gate and points ads at a non-compliant page.
-**Resolve this before spending another prepare cycle.**
+🔴 **ITS CONCLUSION — *"This is a COPY-ENGINE problem upstream of the harness"* — WAS WRONG.** Four
+of those six hits were classifier false positives; the copy was fine. **6 → 2 after the precision
+fixes, with the active angle at 1.** See §0. The claim that all four angles carry a blocking claim
+is now false: `godfather` and `dollar` are clean.
+
+**What survives from this block:** `checkAdToPageMatch` does read the active angle at `--publish`,
+so the active angle's one remaining hit still matters to a 4c re-run — but it is now a posture
+call awaiting Arfeen, not a defect to fix.
 
 📌 Probe hygiene: the first pass read `res.hits` and reported 0 blocking. `checkOutput` returns
 **`blocking` / `advisories`**, not `hits`. `ok: false` beside a zero count is what exposed it. Any
@@ -934,10 +1003,22 @@ in-image text, an anatomical failure, or a subject buried under the headline.
 - **All campaigns currently on ZAP are dummy/test data.** Nothing to preserve, migrate, or keep
   backward-compatible. This drops the urgency of the sites-4/6 stage-column migration — no real old
   campaign needs regeneration coherence.
-- **The "never touch services 272–277 and 285" protection is RETIRED.** Those 29 creatives are
-  confirmed pre-rebuild dummy/old-engine — 25 belong to the E2E smoke account (`117174`, created
-  Jul 23–24), 4 are Arfeen's own Aug-3 old-engine set. **None is behind a live ad.** Deletable for a
-  clean slate, but **only on Arfeen's explicit instruction, and any delete is id-scoped** (§10).
+- 🔴 **CORRECTED 2026-08-14 — THE PROTECTION ON SERVICES 272–277 AND 285 IS NOT RETIRED. THE
+  RATIONALE IS.** This line used to open *"The 'never touch services 272–277 and 285' protection is
+  RETIRED"*, which read as permission and contradicted three other places in this repo. What was
+  actually retired is the *reason to treat them as precious*: those 29 creatives are confirmed
+  pre-rebuild dummy/old-engine — 25 belong to the E2E smoke account (`117174`, created Jul 23–24),
+  4 are Arfeen's own Aug-3 old-engine set, and **none is behind a live ad**. They are therefore
+  deletable for a clean slate, but **only on Arfeen's explicit instruction, and any delete is
+  id-scoped** (§10) — which is what the original line's own final clause already said.
+  **The RULE stands, and is enforced in three independent places:**
+  · §10 — *"Do NOT write to protected services 272–277, or to service 285"*;
+  · **the code** — `PROTECTED_SERVICE_IDS` in `server/lib/adCreativeTeardown.ts` is checked against
+    the RESOLVED ROWS and throws `ProtectedServiceError` before touching Cloudinary or the database
+    (§12.11 step 1), and it cannot be folded into the userId guard because user 117174 legitimately
+    OWNS 272–277;
+  · **the reconciliation baseline** — `272:5 273:5 275:5 276:5 277:5 285:4` = **29** is the figure
+    every teardown in this chapter reconciles against. Deleting them destroys the baseline itself.
 - **The two `meta_published_ads` rows are app-review dummies** — both `userId=1`, both **PAUSED**,
   both created **2026-05-12**, objective `OUTCOME_LEADS`, campaign name "Auto Campaign Kit". Not real
   campaigns. **No real Meta ad work has been done.**

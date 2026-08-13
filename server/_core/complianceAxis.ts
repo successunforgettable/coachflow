@@ -39,7 +39,8 @@ export type ComplianceClass =
   | "audience_attribute_descriptor"       // §1.1  check 1 (short-field form)
   | "negative_self_perception"            // §1.3  check 2
   | "crypto_trade_endorsement"            // §1.8  check 4
-  | "deceptive_urgency"                   // §1.6  check 6 (delegated to complianceFilter)
+  | "deceptive_urgency"                   // §1.6  check 6 — URGENCY DEVICES ONLY, see check 6
+  | "prohibited_content"                  // hard-ban: adult, hate speech (delegated, check 6)
   | "ad_to_page_mismatch"                 // §1.4  check 3 (publish only)
   | "special_ad_category_employment"      // Tier-2 evidence — ADVISORY ONLY, check 5
   | "promised_result"                     // check 7 — ZAP HOUSE STANDARD, see below
@@ -164,13 +165,50 @@ const NEUTRAL_ATTRIBUTE_TERMS = ["body", "weight", "skin", "hair", "face", "ener
 
 const BODY_PROXY_NOUNS = [
   "clothes", "jeans", "dress", "shirt", "trousers", "wardrobe",
-  "mirror", "camera", "photo", "photos", "photograph", "photographs", "scale", "scales",
+  "mirror", "camera", "photo", "photos", "photograph", "photographs",
   "reflection", "body", "stomach", "arms", "legs", "face", "skin", "hair",
   // Anatomy the exhaustive triage of released texts revealed as missing. "midsection" was
   // the leaf ("still see your midsection expanding?"); this is the family.
   "midsection", "waistline", "waist", "belly", "thighs", "hips", "torso", "jawline",
   "silhouette", "double chin", "love handles", "muffin top", "bingo wings",
 ];
+
+/**
+ * THE BATHROOM SCALES — kept as a body proxy, but only in its BODY sense.
+ *
+ * 🔴 THE DEFECT THIS FIXES. "scale" and "scales" used to sit in BODY_PROXY_NOUNS as plain list
+ * terms. In coaching and consulting copy "scale" is overwhelmingly the BUSINESS word, and the
+ * §1.3 body-proxy rule is a two-term conjunction — a proxy noun plus any DEFICIT_PREDICATE —
+ * so ordinary sentences blocked at tier 1 as assertions about the reader's body. Measured on
+ * landing page 238: "That work cannot be done at scale." and "The value audit in phase one
+ * requires detailed work on your specific client relationships, and that work cannot be done
+ * well at scale." were BOTH blocking hits, and `cannot` was the whole of the second term.
+ *
+ * THE DISCRIMINATOR IS GRAMMATICAL, NOT A VOCABULARY LIST, because the two senses differ
+ * reliably in form rather than in topic:
+ *   body     — a countable noun with a determiner: "the scale won't budge", "your scales said no"
+ *   business — a bare mass noun in a prepositional idiom: "at scale", "to scale", "of scale"
+ *
+ * So: require a determiner immediately before, and refuse a following "of" ("the scale of the
+ * problem" is the business sense wearing a determiner). This keeps every real §1.3 case the
+ * triage added — "the scale won't budge" and "the scales said no" both still block, and neither
+ * needs another body word in the sentence to do it — while the business idiom is invisible to
+ * the rule. `scaling` and bare `scale` as a verb never match, because neither takes a determiner.
+ *
+ * Deliberately NOT solved by deleting the term: that would have silently retired a detection
+ * class the exhaustive triage of released texts put there on purpose.
+ */
+const BODY_SCALE_RE = /\b(?:the|a|my|your|their|his|her|its|that|this|those|these)\s+scales?\b(?!\s+of\b)/i;
+
+/**
+ * The §1.3 body-proxy matcher. One function, so the strong list and the guarded ambiguous term
+ * cannot drift apart across the call sites that consult them.
+ */
+function bodyProxyMatch(loweredSentence: string): string | undefined {
+  const strong = containsAny(loweredSentence, BODY_PROXY_NOUNS);
+  if (strong) return strong;
+  return BODY_SCALE_RE.exec(loweredSentence)?.[0];
+}
 
 // Employment and history nouns. NOT on Meta's enumerated list — a CV gap, a work history
 // or a career record is not a protected attribute. Diagnostic address about these is
@@ -615,6 +653,28 @@ const SUPERNATURAL_OUTCOME_RE =
 const SUPERNATURAL_CERTAINTY_RE =
   /\b(?:will|guarantee[sd]?|remove[sd]?|clear(?:s|ed)?|unlock(?:s|ed)?|attract(?:s|ed)?|within\s+\w+|release[sd]?)\b/i;
 
+/**
+ * Coach-facing wording for a verdict delegated to `complianceFilter`. Keyed on the class the
+ * rule declares, so the message describes the actual finding rather than the one class this
+ * delegation used to report for everything.
+ *
+ * Positive-framed per CLAUDE.md §14 — each line says what the copy that PASSES looks like.
+ */
+function describeDelegatedClass(classId: string): string {
+  switch (classId) {
+    case "promised_result":
+      return "This reads as a promise about what someone will get. Describing what the method does, and what one person's experience was, carries the same weight without promising the outcome.";
+    case "clinical_outcome_claim":
+      return "This reads as a promise to resolve a named health condition. Describing what the protocol does, and what it supports, carries the same weight without claiming a clinical outcome.";
+    case "second_person_protected_attribute":
+      return "This states a personal attribute as a fact about the person reading it. Naming what the offer is for carries the same targeting without stating anything about them.";
+    case "prohibited_content":
+      return "This carries content Meta does not permit in ads at all. The offer itself can be described directly and passes cleanly.";
+    default:
+      return "This carries an urgency device Meta's policy filters reject. A real date the coach has set carries the same urgency and passes cleanly.";
+  }
+}
+
 export function checkComplianceAxis(
   fields: Array<{ location: string; text: string | null | undefined; role?: FieldRole }>,
 ): ComplianceAxisResult {
@@ -700,7 +760,7 @@ export function checkComplianceAxis(
       // account ("The clothes still hang there. I kept them too.").
       if (anchors[i] !== "first" && !offerIsSubject(sentence)) {
         const ls = lower(sentence);
-        const bp = containsAny(ls, BODY_PROXY_NOUNS);
+        const bp = bodyProxyMatch(ls);
         const df = containsAny(ls, DEFICIT_PREDICATES);
         if (bp && df) {
           push("second_person_protected_attribute", 1,
@@ -769,21 +829,25 @@ export function checkComplianceAxis(
 
       // Implied address: no attribute noun, but an intimate-possession noun plus a
       // deficit predicate, in a sentence the reader is the subject of.
+      //
+      // ⚠️ THE BODY-PROXY HALF OF THIS BRANCH WAS REMOVED — it was UNREACHABLE, not merely
+      // redundant. Control only arrives here past the `anchors[i] !== "second"` return above,
+      // and "second" satisfies the `!== "first"` guard on the §1.3 body-proxy check earlier in
+      // this same callback; that check computes the identical conjunction (bodyProxyMatch +
+      // DEFICIT_PREDICATES, same lowercased sentence, same `!offerIsSubject` condition) and
+      // RETURNS when it fires. So every sentence this branch could have caught was already
+      // caught, and its push could never execute. Removed rather than left in place: dead code
+      // that duplicates a live rule is what lets the two drift and then disagree.
+      //
+      // The NON_ENUMERATED half below is live and is the reason the branch survives at all —
+      // it is reached exactly when there is no body proxy.
       const deficit = containsAny(s, DEFICIT_PREDICATES);
-      const bodyProxy = containsAny(s, BODY_PROXY_NOUNS);
       const otherNoun = containsAny(s, NON_ENUMERATED_POSSESSION_NOUNS);
-      if (deficit && !offerIsSubject(sentence)) {
-        if (bodyProxy) {
-          // §1.3 — negative self-perception about the body, stated via a proxy.
-          push("second_person_protected_attribute", 1,
-            "This describes the reader's body, or something standing in for it, as lacking or failing. Told as a moment the coach lived, the same detail carries its full weight without asserting anything about the reader.",
-            sentence, f.location);
-        } else if (otherNoun) {
-          // A CV gap or work history is not an enumerated attribute.
-          push("register_diagnostic_address", 2,
-            "This describes something of the reader's as lacking. Not an attribute Meta enumerates — recorded as register, not blocked.",
-            sentence, f.location);
-        }
+      if (deficit && otherNoun && !offerIsSubject(sentence)) {
+        // A CV gap or work history is not an enumerated attribute.
+        push("register_diagnostic_address", 2,
+          "This describes something of the reader's as lacking. Not an attribute Meta enumerates — recorded as register, not blocked.",
+          sentence, f.location);
       }
     });
 
@@ -921,20 +985,41 @@ export function checkComplianceAxis(
     // deceptive-urgency (0/2) and promised-result (1/4) misses.
     //
     // The classification is now the trigger. Flagged terms only enrich the message.
+    //
+    // 🔴 TWO FURTHER DEFECTS FIXED HERE (measured on landing page 238, all four angles):
+    //
+    // 1. THE CLASS WAS A BLANKET `deceptive_urgency`. complianceFilter covers adult content,
+    //    hate speech, discriminatory targeting, medical misinformation, guaranteed-income
+    //    claims and sixteen pivot rules — of which exactly four are about urgency. Every other
+    //    verdict was reported to the coach as an urgency violation, so a guarantee with no
+    //    deadline anywhere in it came back as a deadline problem, and the retry that followed
+    //    was told to fix the wrong thing. The class now comes from the rule that fired.
+    //
+    // 2. THE SPAN WAS THE FIELD'S FIRST 80 CHARACTERS whenever `flaggedTerms` was empty — which
+    //    is the NORMAL case on the pivot path, because those terms are scanned over the CLEANED
+    //    text after the pivot has already removed the offending phrase. Three of the page's
+    //    blocking hits pointed at opening sentences that no rule had objected to; one of them,
+    //    "The Session Produces A Written Output Or We Run It Again", is clean on its own and was
+    //    graded as a classifier defect on that basis. The span now comes from `triggers`, which
+    //    is recorded against the ORIGINAL text at the moment each rule fires.
+    //
+    // `flaggedTerms` is still used for the human-readable label where one exists; it enriches
+    // the message and no longer decides whether there is anything to report.
     const verdict = complianceFilter(text);
     if (verdict.classification === "REJECTED" || verdict.classification === "PIVOT_REQUIRED") {
-      const terms = (verdict.flaggedTerms ?? []).slice(0, 3);
-      if (terms.length > 0) {
-        for (const term of terms) {
-          push("deceptive_urgency", 1,
-            "This carries a claim or an urgency device Meta's policy filters reject. Real deadlines the coach has set, and what the offer actually does, both pass cleanly.",
-            term, f.location);
+      const triggers = (verdict.triggers ?? []).slice(0, 3);
+      if (triggers.length > 0) {
+        for (const t of triggers) {
+          push(t.classId as ComplianceClass, 1, describeDelegatedClass(t.classId), t.span, f.location);
         }
       } else {
-        // Verdict with no attributable span — still a verdict. Report it against the field.
+        // A verdict with NO attributable trigger should now be unreachable — every rule records
+        // one as it fires. Kept as a fail-loud floor rather than dropping the verdict, because
+        // 2026-08-04 already lost real hits by discarding a verdict it could not attribute. The
+        // span is named as unattributable instead of impersonating a matched phrase.
         push("deceptive_urgency", 1,
           "This carries a claim or an urgency device Meta's policy filters reject. Real deadlines the coach has set, and what the offer actually does, both pass cleanly.",
-          text.slice(0, 80), f.location);
+          "(no attributable span)", f.location);
       }
     }
   }
