@@ -9,15 +9,20 @@
 
 # 👉 ONE LINE OF FAQ COPY IS THE ONLY THING BLOCKING A 4c RE-RUN.
 
-### STATE AT SHUTDOWN — 2026-08-14
+### STATE AT SHUTDOWN — 2026-08-15
 
 | | |
 |---|---|
-| HEAD | **`11a920a`** on `railway-build`, working tree clean |
-| Since then | **NOTHING HAS BEEN BUILT.** No run, no write, no deploy, no migration |
-| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is 27 ahead / 0 behind |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` at **`11a920a`**, SHA-for-SHA. **It does NOT deploy** |
+| Last CODE commit | **`11a920a`** — the compliance-precision fixes. **NOTHING HAS BEEN BUILT SINCE.** |
+| HEAD | this session's docs commit, on top of `d79f048`, which is on top of `11a920a`. Working tree clean of tracked changes. **Both commits above `11a920a` are CHECKPOINT.md only** |
+| Since `11a920a` | **No code change, no run, no write, no deploy, no migration.** Two docs commits, nothing else |
+| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is **29 ahead / 0 behind** |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08`, fast-forwarded to HEAD and SHA-verified. **It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
+| tsc | **34**, re-measured 2026-08-15. Baseline holds |
+
+⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
+`git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
 
 **The 4c harness is DONE.** Both failed attempts were diagnosed, fixed and banked — the 08-10 token
 gap (three-phase rework, `f528800`) and the 08-12 false-positive assertion plus the `booking_url`
@@ -159,7 +164,7 @@ recorded against the original text at the moment each rule fires. **Watch for a 
 
 ---
 
-## 0-DEC. DECISIONS FINALISED 2026-08-14 — both are LOCKED, neither is built
+## 0-DEC. DECISIONS FINALISED 2026-08-14, Decision 1 REFINED 2026-08-15 — LOCKED, neither is built
 
 ### ✅ DECISION 1 — the FAQ fix is CONSTRAINED GENERATION. Not a template, not free generation.
 
@@ -173,11 +178,32 @@ structurally unable to produce the risky phrasing in the first place, through **
 1. **A fixed, vetted set of the universal objection QUESTIONS.** The questions are the part that
    genuinely is common across every niche — price, time, "will this work for me", what happens if it
    does not. Those are stable; the answers are not.
-2. **Hard niche-agnostic guardrails in the generation prompt.** Forbidden: `guaranteed`,
-   `"you will [outcome]"`, `"until it does"`, and cure or health claims. Required: conditional or
-   process framing — what the method DOES and what the coach WILL DO, never what the buyer WILL GET.
+2. **Hard niche-agnostic guardrails in the generation prompt.** ⚠️ **REFINED 2026-08-15 — see the
+   allowed/forbidden split below. The blanket ban on the word `guaranteed` recorded here is
+   WITHDRAWN**, because a refund guarantee is both compliant and commercially load-bearing. What is
+   forbidden is the OUTCOME guarantee, not the word.
 3. **The compliance gate as the BACKSTOP.** Third layer, not first. It catches what leaks; it is not
    the mechanism that makes the copy safe.
+
+#### ✅ THE GUARANTEE SPLIT — SETTLED 2026-08-15. Keep the guarantee; make it compliant.
+
+**The guarantee stays auto-generated. It is not deleted and not made optional.** What changes is
+WHICH KIND of guarantee the prompt is allowed to produce. The line is between a promise about the
+TRANSACTION (safe) and a promise about the RESULT (not safe).
+
+| | |
+|---|---|
+| ✅ **ALLOWED** | refund · money-back · satisfaction · service guarantees — **including "or you don't pay"** — framed as **what the customer GETS or GETS BACK** |
+| 🔴 **FORBIDDEN** | **outcome or results guarantees** — `"results-oriented"`, `"specific results and timeframe"`, `"you will [outcome]"`, `"until it does"` — and **cure or health claims** |
+
+🔑 **Written NICHE-AGNOSTICALLY.** The audience spans tarot readers, astrologers and yoga
+instructors as well as coaches and consultants, so the rule must constrain a tarot reader's FAQ as
+tightly as a retainer consultant's. A guardrail phrased in consulting vocabulary fails silently on
+half the user base.
+
+📌 **DEFERRED TO TRACK B, Offer node.** The deeper fix is to SOURCE the guarantee from the coach's
+actual offer rather than have the model invent one. That is an upstream change to the Offer node and
+does not belong in this pass — the landing page cannot ground a guarantee the offer never captured.
 
 ⚠️ **THEREFORE THE IMMEDIATE `"until it does"` FIX IS A GENERATION-PROMPT GUARDRAIL, WRITTEN
 NICHE-AGNOSTICALLY — NOT A ONE-STRING TEMPLATE EDIT.** Editing that single sentence would fix one
@@ -205,13 +231,100 @@ blank band was considered acceptable. It no longer is**, so the shortfall must b
 ⚠️ **THE BLANK-BAND ACCEPTABILITY QUESTION IS CLOSED.** §0a item 2's open half is settled, and the
 pixel verdict on 497 is **MOOT** — the decision was taken without needing it.
 
+---
+
+## 0-READ. ✅ THE READ-ONLY PASS IS DONE — 2026-08-15. Both questions answered, nothing changed.
+
+### ✅ FINDING 1 — THE FAQ IS LLM-GENERATED. THERE IS NO TEMPLATE TO EDIT.
+
+**The fix is a generation-prompt change, confirmed at the source.** The FAQ is free-form model
+output from the single large prompt built by **`generateLandingPageAngle()`** in
+**`server/landingPageGenerator.ts`** (function at `:395`, prompt template `:445-533`), landing in the
+schema at `:622`.
+
+🔑 **PROVEN NOT A TEMPLATE, not assumed.** A repo-wide grep for `at no additional cost`,
+`until it does` and `work with you` returns **zero hits in any generator, template or constant**.
+The only hits are `tools/redteam-baseline/**/results.json` — recorded model OUTPUT from the May
+red-team runs — and two test fixtures. **The sentence exists nowhere in source.**
+
+#### THREE LAYERS OF THAT PROMPT DRIVE THE OUTCOME-GUARANTEE PHRASING — all three must be reshaped
+
+| # | location | what it does |
+|---|---|---|
+| 1 | **`:520-521`** — the FAQ instruction | directs the model at **"guarantee details"** and asks for answers that are **"reassuring"**. Proximate cause: points at remedy language, then asks for comfort |
+| 2 | **`:523-524`** — the dedicated Guarantee section | *"Write a dedicated **risk-reversal** guarantee section… write a **results-oriented satisfaction guarantee**… **Frame positively — what the customer gets, not what they lose**"*. "Results-oriented" is close to a direct instruction to promise an outcome |
+| 3 | **`:31-79`** — `ANGLE_PROMPTS` | the ACTIVE angle `original` lists **`- Specific results and timeframe`** and **`- Guarantee included`** (`:36-39`). `godfather` is stronger: **`- Money-back guarantee`**, **`- "Or you don't pay"`**, and `Key phrase: Emphasize "Or you don't pay" throughout the copy` (`:47-53`) |
+
+⚠️ **A rule added to layer 1 alone would still be fighting layer 2's "results-oriented" and layer
+3's "Specific results and timeframe" upstream of it.** That is why the build touches all three.
+
+#### 🔑 WHY IT SURVIVES TO THE PAGE — the coverage gap, now confirmed at the source
+
+The generation-time compliance gate at **`:769-774`** screens **exactly 11 fields**:
+`eyebrowHeadline` · `mainHeadline` · `subheadline` · `problemAgitation` · `solutionIntro` ·
+`whyOldFail` · `uniqueMechanism` · `insiderAdvantages` · `shockingStat` · `timeSavingBenefit` ·
+`primaryCta`. **Neither `faq` NOR `guarantee` is among them.** So the FAQ answer is never screened at
+generation and only surfaces at the persistence screen. This confirms §0's coverage-gap finding by
+reading the code rather than inferring it from hit locations.
+
+### ✅ FINDING 2 — THE UPSTREAM NODE AUDIT IS CLEAN. THE AUGUST TRACK B PLAN HOLDS EXACTLY.
+
+**All seven upstream nodes are UNTOUCHED since early August.** Nothing moved under the plan; a
+guardrail written against Node 8 today cannot contradict a prompt that already changed.
+
+| node | prompt file | verdict |
+|---|---|---|
+| 2 — ICP | `_core/icpPrompts.ts` (+ `icpGenerate` · `icpEnrichment` · `icpGrounding` · `routers/icps.ts`) | **untouched** — last 2026-07-26 / 07-27 |
+| 3 — Offer | `offersGenerator.ts` | **untouched** — last `048d67b`, 07-29 |
+| 4 — Unique Method | `heroMechanismsGenerator.ts` | **untouched** — last `66a5682`, 07-29 |
+| 5 — Lead Magnet | `hvcoGenerator.ts` · `leadMagnetContentGenerator.ts` (+ `bonusGenerator.ts`) | **untouched** — last 07-29 / 07-24 / 07-29 |
+| 8 — Landing Page | `landingPageGenerator.ts` | **untouched** — last `489b77b`, 07-29 |
+| 9 — Email | `emailSequenceGenerator.ts` | **untouched** — last `e800331`, 07-29 |
+| 10 — WhatsApp | `whatsappSequenceGenerator.ts` | **untouched** — last `048d67b`, 07-29 |
+
+**Three independent lines of evidence, including a control:**
+
+1. **Git, checked the strong way.** Not file-by-file — the COMPLETE list of every `server/` file
+   touched by any commit since 2026-08-01 runs to 60 files, and **not one of the eight upstream
+   generators appears in it.** August work is entirely inside the ad-copy / creative / concept /
+   publish cluster.
+2. **File contents.** Scanning each for the spine's own vocabulary (`andromeda`, `pdaf`,
+   `distinctness`, `awarenessPlan`, `awarenessDeck`, `campaignConcepts`, `conceptId`,
+   `personaLabel`) → **0 hits in all eight.** None reads a concept row, carries an awareness stamp,
+   or touches the gate.
+3. 🔑 **THE CONTROL — the method is shown to DETECT the change it looks for.** Same two tests against
+   the nodes that WERE upgraded: `adCopyGenerator.ts` **8 commits / 52 markers** ·
+   `_core/pdafGate.ts` 2 / 35 · `conceptGenerator.ts` 5 / 19 · `adCreativesGenerator.ts` 8 / 15 ·
+   `headlinesGenerator.ts` 3 / 25. **A null result from a test that never fires proves nothing** —
+   this one fires loudly one directory over.
+
+⚠️ **ONE FALSE LEAD, PRE-EMPTED.** `_core/icpPrompts.ts:20` is the ONLY place the word "Andromeda"
+appears anywhere upstream, in a comment: *"They are fossils of interest-based Meta targeting.
+Andromeda made the…"*. That is the RATIONALE for **removing** demographics / mediaConsumption /
+influencers on 2026-07-26 (`6b51372`, Class A retired) — Andromeda cited as a reason to DELETE
+fabricated fields, **not the spine being adopted**. Node 2 is untouched. Recorded here so nobody
+later greps for "Andromeda", hits that line, and concludes the ICP node was upgraded.
+
+### 📌 THE SAME UNGUARDED GUARANTEE SHAPE EXISTS IN FOUR OTHER GENERATORS
+
+**This guardrail is a REUSABLE PATTERN FOR TRACK B, not a one-node fix.** The Offer, Lead Magnet,
+Email and WhatsApp generators write remedy and guarantee language on the same free-form basis, with
+no allowed/forbidden split and no screening of those fields. Fixing Node 8 alone leaves four more
+surfaces free to write the identical claim. **Do not re-derive the rule when Track B reaches them —
+port it.**
+
 ### NEXT ACTION ON RESUME
 
-**A READ-ONLY PASS to (a) locate where the FAQ copy is BORN — which generator, which prompt, which
-node — and (b) audit whether any UPSTREAM NODE PROMPTS were quietly upgraded** since the FAQ
-generator was written, so the guardrail lands in the right place and does not contradict a prompt
-that already moved. **No code change, no run. That prompt is in the strategy thread** — take it from
-there rather than re-deriving it.
+**A PROPOSE-FIRST BUILD that reshapes `server/landingPageGenerator.ts` across the three layers named
+in Finding 1** — the FAQ instruction (`:520-521`), the dedicated guarantee section (`:523-524`) and
+`ANGLE_PROMPTS` (`:31-79`) — **plus ONE niche-agnostic guardrail near the TOP of the prompt** so the
+rule is stated once and governs every section rather than being scattered.
+
+⚠️ **IT TOUCHES NO OTHER NODE GENERATOR.** Offer, Lead Magnet, Email and WhatsApp are Track B and
+stay untouched by this pass, even though they carry the same shape.
+
+**Propose first, build second — no code until the proposal is approved. The full build prompt is in
+the strategy thread**; take it from there rather than re-deriving it.
 
 ### ⚠️ HOUSEKEEPING — ONE ITEM OUTSTANDING, ONE NOW MOOT
 
