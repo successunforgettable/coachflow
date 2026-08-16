@@ -9,17 +9,18 @@
 
 # 👉 ONE LINE OF FAQ COPY IS THE ONLY THING BLOCKING A 4c RE-RUN.
 
-### STATE AT SHUTDOWN — 2026-08-15
+### STATE AT SHUTDOWN — 2026-08-17
 
 | | |
 |---|---|
-| Last CODE commit | **`11a920a`** — the compliance-precision fixes. **NOTHING HAS BEEN BUILT SINCE.** |
-| HEAD | this session's docs commit, on top of `d79f048`, which is on top of `11a920a`. Working tree clean of tracked changes. **Both commits above `11a920a` are CHECKPOINT.md only** |
-| Since `11a920a` | **No code change, no run, no write, no deploy, no migration.** Two docs commits, nothing else |
-| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is **29 ahead / 0 behind** |
+| Last CODE commit | **`52f440c`** — the ad-to-page DESTINATION-MATCH fix in the product publish path (§0-FIX). **NOTHING HAS BEEN BUILT SINCE.** |
+| HEAD | this session's docs commit, sitting directly on `52f440c`. Working tree clean of tracked changes |
+| Since `52f440c` | **No code change, no run, no write, no deploy, no migration.** One docs commit, nothing else |
+| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is **31 ahead / 0 behind** |
 | Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08`, fast-forwarded to HEAD and SHA-verified. **It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
-| tsc | **34**, re-measured 2026-08-15. Baseline holds |
+| tsc | **34**, re-measured 2026-08-17 with the per-file distribution checked against the 08-12 capture — the same 34, not a swap |
+| The FAQ guardrail | **PROPOSED, NOT BANKED.** See §0-FAQ — the proposal was correct about the copy and wrong about the mechanism, and the ordering changed as a result |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -388,18 +389,90 @@ are the follow-up. §0 predicted a fifth instance; this is it.
 is the same 34 rather than a swap. Canonical 13-suite gate **573 passed**. 4c safety set **241 passed
 across 9 suites**. New tests **15 passed**.
 
+---
+
+## 0-FAQ. 🔴 THE FAQ GUARDRAIL WAS PROPOSED AND **NOT BANKED** — 2026-08-17. The order changed.
+
+**Nothing was written to `landingPageGenerator.ts`. The file is untouched.** The proposal was right
+about what the copy should say and **wrong about why the copy was blocking**, and running the
+classifier rather than reading its message is what exposed it.
+
+### 🔑 THE MECHANISM IS NOT THE WORD — IT IS A DURATION NEXT TO A BARE "you"
+
+The blocker is `promised_result` at `original.faq[6].answer`. The rule is **`PROMISED_RESULT_RE`,
+`_core/complianceAxis.ts:542`**. Its first alternation fires on a **duration phrase within 60
+characters of `you` / `results` / `clients` / `revenue` / `leads` / `guarantee` / `promise`** — and
+because the suffix in `you(?:'ll| will)?` is OPTIONAL, **bare "you" matches. No outcome verb is
+required anywhere in the rule.**
+
+Probed directly against the live sentence, in memory, no database:
+
+```
+BLOCK  the live blocker      promised_result :: "within twelve weeks, I will work with you"
+```
+
+⚠️ **The word `guaranteed` never enters into it.** The whole premise that the fix is a
+no-`guaranteed` rule was mistaken; that rule is good hygiene and would not have stopped this line.
+
+### 🔴 A FIFTH FALSE-POSITIVE FAMILY — it blocks legitimate delivery and refund windows
+
+Same probe, same rule. Both of these are ordinary, compliant copy and **both block**:
+
+| probe text | result |
+|---|---|
+| *"Our 90-day money-back guarantee: if you are not satisfied within 90 days, you get a full refund."* | 🔴 **BLOCK** — `"within 90 days, you"` |
+| *"You get the full workbook within thirty days, and we review it with you on a call."* | 🔴 **BLOCK** — `"within thirty days, and we review it with you"` |
+| *"In eight weeks you receive the scope map, the pricing model and the outreach sequence."* | 🔴 **BLOCK** — `"In eight weeks you"` |
+
+**A refund window is not a promised result. A delivery window is not a promised result.** This is a
+fifth false-positive family, alongside the four already recorded in §0.
+
+🔴 **AND IT INVERTS THE PROPOSAL.** The brief asked to replace *"Specific results and timeframe"*
+with *deliverables plus a timeframe*, and to have the guarantee *name its refund window*. Both of
+those instructions **generate copy this rule blocks** — row 2 is a pure deliverable list and row 1
+is exactly the compliant guarantee the decision asks for. Written as briefed, the guardrail would
+have manufactured new false positives.
+
+### ✅ THE DECISION — FIX THE CLASSIFIER FIRST. DO NOT CONTORT THE GENERATOR.
+
+The proposal carried a **SENTENCE SHAPE** rule telling the model to keep durations and the word
+"you" in separate sentences. It works — probe-verified — and it is **rejected**, because it bends
+the copy engine around a defect instead of fixing the defect. *"In eight weeks you receive the scope
+map"* is good marketing copy and must stay writable.
+
+**In this order, and not another:**
+
+1. 🔴 **FIX `PROMISED_RESULT_RE` precision** — require an actual OUTCOME VERB rather than a bare
+   `you`. Probe-verified both ways before landing: legitimate **delivery windows and refund windows
+   PASS**, and real promised-results — a specific result reached in a stated time, a typicality
+   claim, an offer to keep working at no charge until an outcome arrives — **STILL BLOCK.**
+   ⚠️ Capture the before/after over the preserved page-238 content as well, the way `11a920a` did;
+   a precision fix that moves the blocking baseline unnoticed is how the last one nearly went wrong.
+2. **THEN land the clean FAQ guardrail** in `landingPageGenerator.ts` — the **CLAIMS RULE** and the
+   **refund-as-a-noun** reshaping across all four layers (the top-of-prompt rule, the FAQ
+   instruction `:520-521`, the guarantee section `:523-524`, and `ANGLE_PROMPTS` `:31-79`),
+   **WITHOUT the duration-and-"you" separation workaround** — the classifier fix removes the need
+   for it, and shipping it anyway would leave a permanent scar from a bug that no longer exists.
+
+📌 **The FAQ line's own `"until it does"` is a GENUINE outcome promise and stays out of scope of the
+classifier fix.** It is handled by the generator's **CLAIMS RULE** in step 2 — *never offer to keep
+working at no charge until an outcome arrives*. Step 1 must not "fix" it away: after step 1 that
+sentence should still block, and step 2 is what stops it being written.
+
+📌 **Everything else in the proposal survives unchanged** and can be lifted as-is when step 2 runs:
+the CLAIMS RULE, the allowed refund / money-back / satisfaction forms, `"or you don't pay"` kept,
+the noun-not-adjective rule, and the niche-agnostic framing covering tarot, astrology and yoga as
+well as consulting. It was checked to contain **zero instances of the `-ed` form**, and the file
+contains none today either — keep it that way.
+
 ### NEXT ACTION ON RESUME
 
-**A PROPOSE-FIRST BUILD that reshapes `server/landingPageGenerator.ts` across the three layers named
-in Finding 1** — the FAQ instruction (`:520-521`), the dedicated guarantee section (`:523-524`) and
-`ANGLE_PROMPTS` (`:31-79`) — **plus ONE niche-agnostic guardrail near the TOP of the prompt** so the
-rule is stated once and governs every section rather than being scattered.
+**THE `PROMISED_RESULT_RE` PRECISION FIX — `_core/complianceAxis.ts:542` — PROPOSE-FIRST.** Require
+an outcome verb instead of a bare `you`, with the two-way probe above as the acceptance evidence.
+**No code until the proposal is approved.** The FAQ generation guardrail is step 2 and waits for it.
 
-⚠️ **IT TOUCHES NO OTHER NODE GENERATOR.** Offer, Lead Magnet, Email and WhatsApp are Track B and
-stay untouched by this pass, even though they carry the same shape.
-
-**Propose first, build second — no code until the proposal is approved. The full build prompt is in
-the strategy thread**; take it from there rather than re-deriving it.
+⚠️ **IT TOUCHES NO NODE GENERATOR.** Offer, Lead Magnet, Email and WhatsApp are Track B and stay
+untouched, even though they carry the same unguarded guarantee shape.
 
 ### ⚠️ HOUSEKEEPING — ONE ITEM OUTSTANDING, ONE NOW MOOT
 
