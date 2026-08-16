@@ -6,6 +6,8 @@ import { metaAccessTokens } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { encryptToken, decryptToken } from "../_core/tokenCrypto";
 import { buildResolvedMap, resolveTokensInText } from "../lib/placeholderResolver";
+import { pageTextForAdMatch } from "../_core/landingPageActiveAngle";
+import { buildPublishBlockMessage } from "../_core/publishBlockMessage";
 
 /**
  * Meta Ads Manager Integration Router
@@ -335,12 +337,10 @@ export const metaRouter = router({
       try {
         const [lp] = await db.select().from(landingPages)
           .where(and(eq(landingPages.publicUrl, input.linkUrl), eq(landingPages.userId, ctx.user.id))).limit(1);
-        const content = (lp as any)?.content;
-        if (content && typeof content === "object") {
-          pageText = ["eyebrowHeadline", "mainHeadline", "subheadline", "problemAgitation",
-            "solutionIntro", "uniqueMechanism"].map((k) => content[k])
-            .filter((v) => typeof v === "string").join(" ");
-        }
+        // Reads the ACTIVE angle — the one the publisher renders. This previously read
+        // `lp.content`, a column `landingPages` does not have, so `pageText` was always ""
+        // and `checkAdToPageMatch` below never ran. See `_core/landingPageActiveAngle.ts`.
+        pageText = pageTextForAdMatch(lp);
       } catch { /* destination not resolvable — the other checks still apply */ }
 
       const callToAction = input.callToAction ? rt(input.callToAction) : undefined;
@@ -530,10 +530,11 @@ export const metaRouter = router({
           try {
             const [lp] = await gateDb.select().from(landingPages)
               .where(and(eq(landingPages.publicUrl, input.linkUrl), eq(landingPages.userId, ctx.user.id))).limit(1);
-            const content = (lp as any)?.content;
-            if (content && typeof content === "object") {
-              const pageText = ["eyebrowHeadline", "mainHeadline", "subheadline", "problemAgitation",
-                "solutionIntro", "uniqueMechanism"].map((k) => content[k]).filter((v) => typeof v === "string").join(" ");
+            // Reads the ACTIVE angle — the one the publisher renders. This previously read
+            // `lp.content`, a column `landingPages` does not have, so `pageText` was always ""
+            // and this check never ran. See `_core/landingPageActiveAngle.ts`.
+            const pageText = pageTextForAdMatch(lp);
+            if (pageText) {
               const match = checkAdToPageMatch(`${headline} ${body}`, pageText);
               if (!match.ok) pageBlocking.push(...match.blocking);
             }
@@ -541,16 +542,16 @@ export const metaRouter = router({
 
           const blocking = [...(gate?.blocking ?? []), ...pageBlocking];
           if (blocking.length > 0) {
-            const detail = blocking.slice(0, 4).map((h) => `${h.location}: "${h.matched}"`).join("; ");
             console.warn(
               `[publishToMeta] BLOCKED for user ${ctx.user.id} — ` +
               `classes=[${Array.from(new Set(blocking.map((h) => String(h.classId)))).join(",")}]`,
             );
+            // Per-class wording. `ad_to_page_mismatch` is a DESTINATION check, not a claim
+            // about the copy, so it gets its own sentence — the compliance wording would send
+            // the coach to rewrite copy that was never the problem. See `publishBlockMessage`.
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message:
-                `This ad wasn't published because it states things about the reader, or claims your own material doesn't back up: ${detail}. ` +
-                `Rewrite it to speak from your own experience and what the programme does, or add the real figures and client material to your profile first.`,
+              message: buildPublishBlockMessage(blocking),
             });
           }
         }

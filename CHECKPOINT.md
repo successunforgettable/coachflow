@@ -313,6 +313,81 @@ no allowed/forbidden split and no screening of those fields. Fixing Node 8 alone
 surfaces free to write the identical claim. **Do not re-derive the rule when Track B reaches them —
 port it.**
 
+---
+
+## 0-FIX. ✅ THE DEAD AD-TO-PAGE GATE IS FIXED IN THE PRODUCT PATH — 2026-08-17, local only
+
+### 🔑 FIRST, THE CORRECTION — WHAT `checkAdToPageMatch` ACTUALLY IS
+
+⚠️ **`checkAdToPageMatch` is a DESTINATION-MATCH check, NOT a page-compliance screen.** This
+corrects the wording in `docs/LAUNCH_READINESS_AUDIT.md`, which called it "the ad-to-page
+compliance gate" and let it read as though it screened the landing page for blocking claims.
+**It does not, and never did.**
+
+Read the implementation (`_core/complianceAxis.ts:1069`): it tokenises the ad text and the page
+text, counts shared content words, and raises **one** class — `ad_to_page_mismatch`, tier 1 — when
+overlap is **≤ 10%**. It stays silent below a signal floor (`ad.size < 5 || page.size < 15`). That
+is Meta's rule that the products and services promoted in an ad must match those on its landing
+page, and that Meta reviews the destination. **It says nothing about whether either artefact is
+compliant.**
+
+📌 **Page compliance is screened at GENERATION, not here** — `landingPageGenerator.ts:769-774`
+(11 fields at generation) plus the `gateBeforePersist` backstop over all four angles. The FAQ
+`promised_result` blocker in §0 is a *generation* problem and is untouched by this fix. **Do not
+expect this gate to catch it.**
+
+### WHAT WAS BROKEN
+
+Both call sites in `routers/meta.ts` built page text from `(lp as any)?.content` — **a column
+`landingPages` does not have** (confirmed against production INFORMATION_SCHEMA; the copy lives in
+`originalAngle` / `godfatherAngle` / `freeAngle` / `dollarAngle`, selected by `activeAngle`). The
+read was always `undefined`, so `pageText` was always `""` and **`checkAdToPageMatch` never ran on
+any publish, for any coach.**
+
+⚠️ **This is NOT the dead gate §0 records as fixed.** That fix landed only in
+`scripts/step4c-multiad-publish.ts`. The **product's** path carried the same defect at two sites,
+unfixed, on `origin/railway-build` **and** on local HEAD. Fixing the harness did not fix the product.
+
+### WHAT SHIPPED (local only — NOT deployed)
+
+| file | what |
+|---|---|
+| **NEW** `_core/landingPageActiveAngle.ts` | one derivation of the active angle's page text, mirroring `landingPagePublisher.ts:86-91`. Both `meta.ts` sites now share it instead of carrying copies |
+| **NEW** `_core/publishBlockMessage.ts` | per-class refusal wording. `ad_to_page_mismatch` gets its own sentence; **the compliance wording is unchanged and is now scoped to compliance hits only** |
+| `routers/meta.ts` | three edits — the import, site 1 (`publishAssembledAds`), site 2 (`publishToMeta`) — plus the throw now calling `buildPublishBlockMessage` |
+| **NEW** ×2 test files | **15 tests.** Includes a regression pinning the old `.content` shape to `""`, and a test proving the SAME mismatched pair passed silently before and blocks now |
+
+**Why the coach-facing message changed:** the refusal used ONE message for every class, worded for
+the compliance axis (*"it states things about the reader…"*). For a destination mismatch that is
+simply wrong and would send a coach to rewrite copy that was never the problem.
+
+### 🔴 WHAT NOW BLOCKS THAT DID NOT BEFORE — exactly one class
+
+**`ad_to_page_mismatch` only.** No new check, no altered threshold, nothing touched in `checkOutput`.
+It fires only when ALL hold: `serviceId` present (site 2's whole gate already sits inside that, so
+no-serviceId still means no gate at all, unchanged) · an LP row matches `publicUrl` + `userId` · the
+active angle has content · ad ≥5 content words and page ≥15 · overlap ≤10%.
+
+**Exposure is low but real.** On the deployed default the body IS the page's subheadline
+(`deriveDefaultBody`), so overlap is near-total. With step 1 the copy comes from the gated pool but
+is generated from the same ICP and offer. The plausible misfires are a different-language ad, a thin
+active angle, or a `linkUrl` pointing at another campaign's page — the last being the case the check
+exists to catch.
+
+### 📌 A FIFTH INSTANCE OF THE DRIFT SHAPE — found, named, NOT fixed
+
+"Which column holds which angle" now exists in **five** places: `routers/landingPages.ts:48`,
+`routers/complianceRewrites.ts:93`, `landingPagePublisher.ts:86-91` (inline ternary), the 4c harness,
+and — until this fix — two broken copies in `meta.ts`. **This is what produced the bug.** The fix
+collapses the two `meta.ts` copies onto one helper; **the other four are deliberately untouched** and
+are the follow-up. §0 predicted a fifth instance; this is it.
+
+### Gates at this commit
+
+`tsc --noEmit` → **34**, and the per-file distribution matches the 2026-08-12 capture exactly, so it
+is the same 34 rather than a swap. Canonical 13-suite gate **573 passed**. 4c safety set **241 passed
+across 9 suites**. New tests **15 passed**.
+
 ### NEXT ACTION ON RESUME
 
 **A PROPOSE-FIRST BUILD that reshapes `server/landingPageGenerator.ts` across the three layers named
