@@ -537,9 +537,48 @@ export type FieldRole = "short" | "body" | "cta";
  *
  * Sources: META_AD_COMPLIANCE_REFERENCE §1.6 (deceptive practices) + the ZAP house standard on
  * promised results. "Every client who…" is a typicality guarantee regardless of timeframe.
+ *
+ * ⚠️ PRECISION FIX (2026-08-18) — THE DURATION ALTERNATION REQUIRES AN OUTCOME, NOT A BARE "you".
+ * It used to read `…{0,60}\b(?:you(?:'ll| will)?|guarantee|…)\b`, where the suffix was OPTIONAL, so
+ * a bare pronoun anywhere within 60 characters of a duration was enough and NO outcome verb was
+ * required. That blocked ordinary delivery and refund windows at tier 1 — the FIFTH false-positive
+ * family, measured alongside the four that `11a920a` closed:
+ *
+ *   "…if you are not satisfied within 90 days, you get a full refund."  → blocked on "within 90 days, you"
+ *   "In eight weeks you receive the scope map, the pricing model…"      → blocked on "In eight weeks you"
+ *
+ * A refund window is not a promised result and a delivery window is not a promised result. The
+ * pronoun now has to be followed by an ACHIEVEMENT VERB; the explicit result nouns are unchanged,
+ * so this alternation strictly NARROWS and nothing it used to catch by noun escapes.
+ *
+ * 🔑 The distinguishing element is the VERB'S OBJECT, not the verb: "you get a full refund" and
+ * "you get ten new clients" share a verb. That is why "get" and "receive" are deliberately absent
+ * from the achievement list while the result nouns carry the load — do not add them.
+ *
+ * Regression suite: `promisedResultPrecision.test.ts`, both directions.
  */
 const PROMISED_RESULT_RE =
-  /\b(?:in|within|inside)\s+(?:just\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|thirty|sixty|ninety)\s*(?:day|week|month|quarter|term|year)s?\b[^.!?]{0,60}\b(?:you(?:'ll| will)?|guarantee|promise|results?|revenue|clients?|leads?|promotion|role|job)\b|\b(?:you(?:'ll| will)|guaranteed to)\s+(?:make|earn|add|hit|land|book|double|triple)\b|\b(?:every|all|each)\s+(?:single\s+)?(?:client|student|member|customer)s?\b[^.!?]{0,60}\b(?:lands?|gets?|earns?|makes?|doubles?|achieves?|leaves?|wins?)\b|\b(?:will|guaranteed to)\s+(?:absolutely|definitely|completely|permanently|finally)?\s*(?:fix|solve|end|cure|eliminate|transform)\b/gi;
+  /\b(?:in|within|inside)\s+(?:just\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|thirty|sixty|ninety)\s*(?:day|week|month|quarter|term|year)s?\b[^.!?]{0,60}(?:\byou(?:'ll| will| can expect to| are going to)?\s+(?:\w+\s+){0,2}?(?:achiev\w+|reach\w*|generat\w+|scal\w+|grow\w*|secur\w+|replac\w+|clos\w*|sign\w*|win\w*|make|earn|add|hit|land|book|double|triple)\b|\b(?:guarantee|promise|results?|revenue|clients?|leads?|promotion|role|job)\b)|\b(?:you(?:'ll| will)|guaranteed to)\s+(?:make|earn|add|hit|land|book|double|triple)\b|\b(?:every|all|each)\s+(?:single\s+)?(?:client|student|member|customer)s?\b[^.!?]{0,60}\b(?:lands?|gets?|earns?|makes?|doubles?|achieves?|leaves?|wins?)\b|\b(?:will|guaranteed to)\s+(?:absolutely|definitely|completely|permanently|finally)?\s*(?:fix|solve|end|cure|eliminate|transform)\b/gi;
+
+/**
+ * OPEN-ENDED REMEDY — an offer to keep working, at no charge, UNTIL an outcome arrives.
+ *
+ * Split out of PROMISED_RESULT_RE rather than bolted onto it, because it is a different shape: the
+ * promise is carried by the open-ended commitment, not by a duration. It used to be caught only as
+ * collateral of the bare-"you" defect above — the live landing-page-238 faq[6] line matched on the
+ * span `"within twelve weeks, I will work with you"`, which is not what is wrong with the sentence.
+ * Tightening the duration rule without this would have fixed the live blocker away by accident.
+ *
+ * CHECKPOINT §0-FAQ is explicit that this sentence must STILL BLOCK: an unconditional "until it
+ * does" is a genuine outcome promise. The generator's CLAIMS RULE (step 2) is what stops it being
+ * written; this rule is only the backstop.
+ *
+ * CONJUNCTIVE, like every other research-grounded rule here — a continuation-of-service commitment
+ * or a no-charge phrase, AND an "until" tail naming the outcome's ARRIVAL. "until you are ready"
+ * and "until the cohort closes" are ordinary support and scheduling language and stay clean.
+ */
+const OPEN_ENDED_REMEDY_RE =
+  /\b(?:at\s+no\s+(?:additional\s+|extra\s+|further\s+)?(?:cost|charge|fee)|free\s+of\s+charge|(?:I|we)\s+(?:will|'ll)\s+(?:keep\s+)?(?:work\w*|coach\w*|help\w*|support\w*)\s+(?:with\s+)?you)\b[^.!?]{0,60}?\b(?:until\s+(?:it|they)\s+(?:do(?:es)?|did|happen(?:s|ed)?|work(?:s|ed)?|land(?:s|ed)?)|until\s+you\s+(?:do|hit|reach|land|close|sign|get\s+(?:there|results?)))\b/gi;
 
 /**
  * FINALITY URGENCY — "closes forever", "never reopens". META_AD_COMPLIANCE_REFERENCE §1.6
@@ -902,6 +941,15 @@ export function checkComplianceAxis(
     for (const m of matches(text, PROMISED_RESULT_RE)) {
       push("promised_result", 1,
         "A specific result in a specific timeframe reads as a promise of what someone will get. Describing what the method does, and what one person's experience was, carries the same weight without promising an outcome.",
+        m[0], f.location);
+    }
+
+    // ── Check 7b — the OPEN-ENDED REMEDY. Same class, different shape: the promise is carried by
+    // an unconditional commitment to keep going until the outcome arrives, with no duration
+    // involved. See the sourcing note on OPEN_ENDED_REMEDY_RE.
+    for (const m of matches(text, OPEN_ENDED_REMEDY_RE)) {
+      push("promised_result", 1,
+        "Offering to keep working at no charge until a result arrives promises the result itself. Naming what the work covers, and what happens if someone is not satisfied, carries the same reassurance without promising an outcome.",
         m[0], f.location);
     }
 

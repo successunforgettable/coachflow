@@ -13,9 +13,9 @@
 
 | | |
 |---|---|
-| Last CODE commit | **`52f440c`** — the ad-to-page DESTINATION-MATCH fix in the product publish path (§0-FIX). **NOTHING HAS BEEN BUILT SINCE.** |
-| HEAD | this session's docs commit, sitting directly on `52f440c`. Working tree clean of tracked changes |
-| Since `52f440c` | **No code change, no run, no write, no deploy, no migration.** One docs commit, nothing else |
+| Last CODE commit | the **`PROMISED_RESULT_RE` precision fix** — §0-FAQ **step 1, now DONE**. Run the command below for its SHA; §1 records what hardcoding one here costs |
+| HEAD | that commit. Working tree clean of tracked changes |
+| Since `52f440c` | **one code commit — the classifier precision fix. No run, no DB or Meta write, no deploy, no migration.** |
 | `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is **31 ahead / 0 behind** |
 | Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08`, fast-forwarded to HEAD and SHA-verified. **It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
@@ -442,12 +442,30 @@ map"* is good marketing copy and must stay writable.
 
 **In this order, and not another:**
 
-1. 🔴 **FIX `PROMISED_RESULT_RE` precision** — require an actual OUTCOME VERB rather than a bare
-   `you`. Probe-verified both ways before landing: legitimate **delivery windows and refund windows
-   PASS**, and real promised-results — a specific result reached in a stated time, a typicality
-   claim, an offer to keep working at no charge until an outcome arrives — **STILL BLOCK.**
-   ⚠️ Capture the before/after over the preserved page-238 content as well, the way `11a920a` did;
-   a precision fix that moves the blocking baseline unnoticed is how the last one nearly went wrong.
+1. ✅ **DONE 2026-08-18 — `PROMISED_RESULT_RE` precision fixed.** The duration alternation now
+   requires an OUTCOME element — second person plus an achievement verb, or an explicit result
+   noun — rather than a bare `you`. Probe-verified both ways: **23/23 agree with intent, up from
+   18/23**; the page-238 corpus blocking baseline held at **1 of 8**, unmoved. Permanent regression
+   suite: **`server/_core/promisedResultPrecision.test.ts`, 27 tests**, written before the fix and
+   red on 6 of them first.
+   🔑 **The load-bearing design point: the distinguishing element is the verb's OBJECT, not the
+   verb.** *"you get a full refund"* and *"you get ten new clients"* share a verb, which is why
+   `get` and `receive` are deliberately ABSENT from the achievement list and the result nouns carry
+   that load. **Do not add them.**
+   📌 **A SECOND CONST WAS ADDED, `OPEN_ENDED_REMEDY_RE`, and it is why the live blocker survived.**
+   The faq[6] line is not a duration claim — it only ever matched as collateral of the bare-`you`
+   defect, on the span `"within twelve weeks, I will work with you"`. Tightening alternation 1 alone
+   would have **fixed the live blocker away by accident**, which this section forbids. Modelling it
+   as its own shape also made the span honest: it now reports
+   `"I will work with you one-to-one at no additional cost until it does"`.
+   ⚠️ **It closes a PRE-EXISTING HOLE and so slightly WIDENS blocking**, deliberately and with
+   Arfeen's word: *"We will keep coaching you free of charge until you get results"* did not block
+   before and does now. Conjunctive, so *"until you are ready"* and *"until the cohort closes"* stay
+   clean, both pinned by test.
+   ⚠️ **THE PAGE-238 BASELINE IS 8 SENTENCES, NOT 89 FIELDS.** The row was deleted at the 08-12
+   teardown, so the full content exists NOWHERE — not in the repo, not in the DB. What is preserved
+   is the sentence corpus `11a920a` banked. It pins against regression; it does **not** prove what
+   the copy engine writes next run. Re-screen a freshly generated page.
 2. **THEN land the clean FAQ guardrail** in `landingPageGenerator.ts` — the **CLAIMS RULE** and the
    **refund-as-a-noun** reshaping across all four layers (the top-of-prompt rule, the FAQ
    instruction `:520-521`, the guarantee section `:523-524`, and `ANGLE_PROMPTS` `:31-79`),
@@ -467,9 +485,18 @@ contains none today either — keep it that way.
 
 ### NEXT ACTION ON RESUME
 
-**THE `PROMISED_RESULT_RE` PRECISION FIX — `_core/complianceAxis.ts:542` — PROPOSE-FIRST.** Require
-an outcome verb instead of a bare `you`, with the two-way probe above as the acceptance evidence.
-**No code until the proposal is approved.** The FAQ generation guardrail is step 2 and waits for it.
+**STEP 1 IS BANKED. NEXT IS STEP 2 — THE CLEAN FAQ GENERATION GUARDRAIL** in
+`landingPageGenerator.ts`: the CLAIMS RULE and the refund-as-a-noun reshaping across all four
+layers (top-of-prompt rule, the FAQ instruction `:520-521`, the guarantee section `:523-524`, and
+`ANGLE_PROMPTS` `:31-79`).
+
+🔑 **WITHOUT the duration-and-"you" sentence-separation workaround.** The classifier fix removed the
+need for it, and shipping it anyway would leave a permanent scar in the copy engine from a bug that
+no longer exists. *"In eight weeks you receive the scope map"* is good marketing copy, it passes
+now, and it must stay writable.
+
+⚠️ **Step 2 does NOT touch the classifier.** The faq[6] line still blocks by design — that is the
+backstop working. Step 2's job is to stop the sentence being WRITTEN.
 
 ⚠️ **IT TOUCHES NO NODE GENERATOR.** Offer, Lead Magnet, Email and WhatsApp are Track B and stay
 untouched, even though they carry the same unguarded guarantee shape.
@@ -1400,9 +1427,30 @@ is the figure §12.6 quotes.
 
 **The 4c safety set** — `metaSafety` · `metaTeardown` · `publishLedger` · `multiAdPublish` ·
 `adAssembly` · `adCreativeTeardown` · `operatorFields` · **`step4cPageAnswers`** ·
-**`step4cRunState`** → **217 passed across 9 suites, 0 skipped** (2026-08-11). The last two are new
-with the three-phase rework and are **39 of that 217**. Scanned for `.skip` / `.todo` / `.only` /
-`xit` / `xdescribe`: none present in any of the nine, so nothing is silently excluded.
+**`step4cRunState`** → **241 passed across 9 suites, 0 skipped** (re-measured 2026-08-18; it read
+**217** at 2026-08-11 and the delta is the 08-12 min-2-floor and `booking_url` work, which §0
+already records as +17 and more). The last two are new with the three-phase rework. Scanned for
+`.skip` / `.todo` / `.only` / `xit` / `xdescribe`: none present in any of the nine, so nothing is
+silently excluded.
+
+⚠️ **RUN IT BY THESE PATHS — SEVEN OF THE NINE ARE IN `server/_core/` AND TWO ARE NOT.**
+`operatorFields` lives at **`server/lib/templates/operatorFields.test.ts`**, NOT `server/_core/`,
+and `adCreativeTeardown` at **`server/lib/`**. Guessing `server/_core/operatorFields.test.ts` does
+not error — **vitest silently runs 8 suites / 180 and reports them all green**, which reads exactly
+like a pass of the full set. Caught 2026-08-18 while gating the classifier precision fix.
+
+```
+npx vitest run \
+  server/_core/metaSafety.test.ts server/_core/metaTeardown.test.ts \
+  server/_core/publishLedger.test.ts server/_core/multiAdPublish.test.ts \
+  server/_core/adAssembly.test.ts server/lib/adCreativeTeardown.test.ts \
+  server/lib/templates/operatorFields.test.ts \
+  server/_core/step4cPageAnswers.test.ts server/_core/step4cRunState.test.ts
+```
+
+📌 **This is the "a number with no command behind it cannot be re-verified" lesson at the top of
+this section, recurring one paragraph later** — the count travelled without its paths, and the
+paths were where the error was.
 
 - `npx tsc --noEmit 2>&1 | grep -c "error TS"` → **34** (34 re-confirmed 2026-08-06 post-deploy after
   the §11 canvas fix, again 2026-08-08, and again 2026-08-12 either side of the min-2 floor)
