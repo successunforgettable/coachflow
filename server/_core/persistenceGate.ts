@@ -28,6 +28,13 @@ import type { OutputHit } from "./complianceAxis";
 
 /** Keys that are identifiers, enums, URLs or bookkeeping — never coach-facing copy. */
 const NON_COPY_KEYS = new Set([
+  // `derivedFromObstacle` is the ICP obstacle a bonus maps to — an internal provenance note,
+  // never reader-facing. Verified 2026-08-19: absent from client/, excluded by
+  // routers/bonuses.ts's explicit column list, unread by emailSequenceGenerator's bare select,
+  // and untouched by every publisher and renderer. It restates the READER'S PROBLEM, so
+  // screening it as coach-facing copy gates our own working notes and manufactures
+  // second-person findings about a string no buyer ever sees.
+  "derivedFromObstacle",
   "id", "userId", "serviceId", "campaignId", "icpId", "campaignKitId", "conceptId",
   "mechanismSetId", "hvcoSetId", "headlineSetId", "adSetId", "bonusSetId", "batchId",
   "tabType", "formulaType", "adType", "adStyle", "contentType", "bonusType", "format",
@@ -60,7 +67,14 @@ export function copyFieldsOf(row: Record<string, unknown>): Array<{ location: st
  */
 export function copyFieldsOfJson(value: unknown, prefix: string, depth = 0): Array<{ location: string; text: string }> {
   const out: Array<{ location: string; text: string }> = [];
-  if (depth > 4) return out;
+  // DEPTH 6, raised from 4 on 2026-08-19. The cap is a runaway guard, not a coverage decision,
+  // and at 4 it was silently making a coach-facing surface invisible: a quiz band's CTA sits at
+  // `assetBody.scoring.bands[i].cta.body` — depth 5 — so a promised-result claim planted there
+  // was extracted by nothing and screened by nobody, on the paths that WERE screened. Measured
+  // before the change: 8 fields extracted from a quiz body, 0 blocking hits, with a flagrant
+  // claim sitting in that CTA. 6 clears every shape in the repo with one level spare; the
+  // deep-nesting test pins that it still terminates.
+  if (depth > 6) return out;
   let v: unknown = value;
   if (typeof v === "string") {
     const t = v.trim();
@@ -81,6 +95,28 @@ export function copyFieldsOfJson(value: unknown, prefix: string, depth = 0): Arr
     }
   }
   return out;
+}
+
+/**
+ * THE ONE LEAD-MAGNET BODY SCREEN. `hvcoTitles.assetBody` and `bonuses.assetBody` have three
+ * writers — the cascade (`_core/orchestration.ts`), the quiz regenerate (`routers/hvco.ts`) and
+ * the bonus PDF path (`bonusPdfGenerator.ts`). Two screened and one did not, and the one that
+ * did not was the cascade: the path every coach actually hits.
+ *
+ * Each writer used to hand-roll `screenOnPersist(type, id, copyFieldsOfJson(body, "assetBody"))`,
+ * so a fourth writer would have had to REMEMBER to screen. Routing them through one function
+ * makes screening the default of the call rather than a step someone repeats correctly.
+ *
+ * ⚠️ ADVISORY BY DESIGN — screens, logs, returns. It never throws and never blanks a field.
+ * Blanking a coach's deliverable is worse than shipping copy they can edit; publish stays the
+ * hard stop. Do not convert this into a gate without Arfeen's word.
+ */
+export async function screenLeadMagnetBody(
+  assetType: string,
+  serviceId: number | null | undefined,
+  body: unknown,
+): Promise<OutputHit[]> {
+  return screenOnPersist(assetType, serviceId, copyFieldsOfJson(body, "assetBody"));
 }
 
 /** A hit from one of the legacy per-asset validators, normalised for folding. */

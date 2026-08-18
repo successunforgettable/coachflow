@@ -209,8 +209,8 @@ export const hvcoRouter = router({
       {
         // Backstop for the lead-magnet BODY — a coach-facing deliverable that had no guard.
         // Screen-not-drop: blanking a deliverable is worse than shipping copy they can edit.
-        const { screenOnPersist, copyFieldsOfJson } = await import("../_core/persistenceGate");
-        await screenOnPersist("leadMagnetContent", row.serviceId, copyFieldsOfJson(body, "assetBody"));
+        const { screenLeadMagnetBody } = await import("../_core/persistenceGate");
+        await screenLeadMagnetBody("leadMagnetContent", row.serviceId, body);
       }
       await db.update(hvcoTitles)
         .set({ assetBody: body as unknown as object, magnetHtmlUrl: null, magnetPdfUrl: null })

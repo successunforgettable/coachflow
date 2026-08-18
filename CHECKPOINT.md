@@ -9,18 +9,19 @@
 
 # 👉 THE FAQ BLOCKER IS FIXED AT THE SOURCE AND BANKED. NOTHING IS DEPLOYED.
 
-### STATE AT SHUTDOWN — 2026-08-17
+### STATE AT SHUTDOWN — 2026-08-19
 
 | | |
 |---|---|
-| Last CODE commit | the **FAQ generation guardrail** — §0-FAQ **step 2, now DONE** — sitting on the **`"condition"` sense split**. Run the command below for the SHAs; §1 records what hardcoding one here costs |
+| Last CODE commit | the **Node 5 screening coverage** pass — see §0-N5. Run the command below for the SHAs; §1 records what hardcoding one here costs |
 | HEAD | that commit. Working tree clean of tracked changes |
-| Since `52f440c` | **three code commits — the promised-result precision fix, the `"condition"` sense split, and the FAQ guardrail. No run, no DB or Meta write, no deploy, no migration.** |
+| Since `52f440c` | **four code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, and Node 5 screening coverage. No run, no DB or Meta write, no deploy, no migration.** |
 | `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Re-read the ahead-count from git; never quote one from here |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ⚠️ **now BEHIND HEAD**, last fast-forwarded at the `0c85f8c` docs commit. **It does NOT deploy** |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **fast-forwarded to `bc21651` on 2026-08-19 and SHA-verified against `git ls-remote`.** Caught up through the FAQ guardrail; it does NOT include this commit. **It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
-| tsc | **34**, re-confirmed 2026-08-18 either side of both commits |
+| tsc | **34**, re-confirmed 2026-08-19 either side of this commit |
 | The FAQ guardrail | ✅ **BANKED, NOT DEPLOYED.** Phase 1 step 2 complete. See §0-FAQ |
+| Node 5 body / bonuses | ✅ **BANKED, NOT DEPLOYED.** See §0-N5 |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -162,6 +163,83 @@ the `booking_url` column, and the per-angle answering pass vs the all-angles ass
 its `flaggedTerms` were two representations of the same finding, and the second was collected over
 REWRITTEN text — so it went empty exactly when the first said "blocked". Closed by `triggers`,
 recorded against the original text at the moment each rule fires. **Watch for a fifth.**
+
+---
+
+## 0-N5. ✅ NODE 5 BODY + BONUSES SCREENING — DONE 2026-08-19, local only
+
+**The premise going in was wrong, and the investigation is what corrected it.** Node 5 was recorded
+as sitting OUTSIDE the gate. It mostly was not: bonuses screen at `bonusGenerator.ts`, the quiz
+regenerate screens at `routers/hvco.ts`, and the bonus PDF screens at `bonusPdfGenerator.ts`.
+
+🔴 **THE ACTUAL GAP WAS ONE WRITE PATH — AND IT WAS THE CASCADE.** `hvcoTitles.assetBody` has three
+writers; two screened and `_core/orchestration.ts` did not. That is the path every coach hits in a
+normal run, so the unguarded one was the only one that mattered. **One field, three writers, one
+unguarded — the drift shape this repo keeps producing.** Now closed.
+
+### 🔑 THE SECOND GAP WAS INVISIBLE, AND IT IS THE MORE IMPORTANT ONE
+
+`copyFieldsOfJson` stopped at **depth 4**. A quiz band's CTA lives at
+`assetBody.scoring.bands[i].cta.body` — **depth 5** — so it was extracted by nothing and screened by
+nobody **even on the paths that were already screened**. Measured by planting a flagrant claim
+there: **8 fields extracted, 0 blocking hits.** Cap raised to 6 (a runaway guard, never a coverage
+decision — the deep-nesting test pins that it still terminates).
+
+**Depth-cap delta, measured both sides on shapes built to the real interfaces:**
+
+| shape | before (cap 4) | after (cap 6) |
+|---|---|---|
+| **quiz** | 8 fields · **0 blocking** | **13 fields · 2 blocking** |
+| toolkit | 7 · 0 | 7 · 0 — unchanged |
+| guide | 5 · 0 | 5 · 0 — unchanged |
+| emails | 3 · 0 | 3 · 0 — unchanged |
+
+**The cap only ever bit the quiz shape.** Both new hits land on the SAME planted field — zero new
+false positives. ⚠️ **These are real-interface shapes, NOT stored production rows.** It proves which
+fields the cap hid and that the hidden one is screened now; it does not say how often a real quiz
+puts a claim there.
+
+### ✅ DECISION 2 RESOLVED — **NO NEW ROLE.** The existing enforcement narrowing already covers it
+
+The plan called for a dedicated `FieldRole` letting a quiz band address the reader diagnostically.
+**Measured first, and it is not needed.** Under the ordinary `"body"` role, 8 of 9 realistic band
+diagnostics already pass — blunt ones and tarot/yoga phrasings included — because the tier-1 rule
+requires an **ENUMERATED** attribute and *"you are still pricing by the hour"* names none.
+Diagnostic address about a non-enumerated topic is tier 2 and never blocks. That is the 2026-07-27
+enforcement narrowing doing this job already.
+
+🔴 **A ROLE WOULD HAVE COST SAFETY.** Suppressing attribute checks there would suppress exactly the
+vulnerable-financial-status and burnout cases that must keep blocking — on the surface most tempted
+to over-claim. All of it is pinned by test, so if a future change makes a band block, **fix the
+change, not the role.**
+
+📌 The one case that did block — *"you are exhausted by the end of every week"* — is **not** a
+`condition`-style sense collision. That is the fatigue sense, the sense the rule targets, sitting
+beside `burnout` in the vocabulary. Copy fix, not mechanism fix.
+
+### ⚠️ SCREENING HERE IS ADVISORY, DELIBERATELY — DO NOT CONVERT IT TO A GATE
+
+`screenLeadMagnetBody` screens, logs and returns. **It never throws and never blanks a field.**
+Blanking a coach's deliverable is worse than shipping copy they can edit, and publish remains the
+hard stop. Converting this to a blocking gate needs Arfeen's word.
+
+### What shipped
+
+| file | what |
+|---|---|
+| **NEW** `_core/persistenceGate.ts` → `screenLeadMagnetBody` | ONE screen for the body. All three writers route through it, so a FOURTH writer cannot silently go unguarded — pinned by a test asserting none of them hand-rolls the extraction |
+| `_core/persistenceGate.ts` | depth cap 4 → 6 · `derivedFromObstacle` added to `NON_COPY_KEYS` |
+| `_core/orchestration.ts` | **the gap** — the cascade now screens before the `assetBody` write |
+| `leadMagnetContentGenerator.ts` | **`GUARANTEE_CLAIMS_RULE` PORTED AS-IS** into both prompt modes — Track B reuse, not re-derived. Every format closes on a `nextStep` bridge and a quiz adds per-band CTAs: the same "what you will get" position that produced the landing page's outcome promise |
+| `routers/hvco.ts` · `bonusPdfGenerator.ts` | existing screens moved onto the shared helper |
+| **NEW** `_core/node5Screening.test.ts` | **16 tests**, written first, red on 5 |
+
+📌 **`derivedFromObstacle` is EXEMPT, and it was verified before exempting, not assumed.** Zero
+references in `client/`; `routers/bonuses.ts` uses an explicit column list that omits it;
+`emailSequenceGenerator`'s bare `select()` reads only `title` and `shortLine`; no publisher or
+renderer touches it. It restates the READER'S PROBLEM, so screening it as coach-facing copy gated
+our own working notes. Its one live use is an LLM prompt input, and everything generated from it is
+screened downstream.
 
 ---
 
@@ -524,16 +602,27 @@ contains none today either — keep it that way.
 
 ### NEXT ACTION ON RESUME
 
-**PHASE 1 MOVES TO THE NODE 5 BODY / BONUSES GATE.** Steps 1, 2 and 3 above are banked and the FAQ
-chapter is closed at the source.
+**PHASE 1 MOVES TO THE SAFE-TO-RUN CHECKLIST.** The copy-correctness chapter is closed at the
+source: promised-result precision, the `"condition"` sense split, the FAQ guardrail and Node 5
+screening coverage are all banked. Five items, none of them copy:
 
-⚠️ **NOTHING FROM THIS CHAPTER IS DEPLOYED.** `origin/railway-build` is still `51eda78`. The
+1. **The clean-slate wipe** — a repeatable way to reset to a known state before a proving run.
+2. **The currency-aware budget validator** — `z.number().min(1)` assumes USD; the ad account is
+   **AED** and Meta rejects a budget of 1. §0a item 4 and the pre-launch defect list both carry it.
+3. 🔴 **The `ANTHROPIC_API_KEY` ROTATION** — still outstanding, see HOUSEKEEPING directly below.
+4. **The crashed-job reaper** — the zombie-job defect: a dead job stays `status='running'` forever
+   and the reaper sweeps `'pending'` only. The tell is the last write timestamp, not the status.
+5. **Monitoring** — no low-balance guard on the Anthropic key; credit exhaustion has taken a run
+   down twice and the only signal was a 400 deep in the log.
+
+⚠️ **NOTHING FROM THIS WHOLE CHAPTER IS DEPLOYED.** `origin/railway-build` is still `51eda78`. The
 guardrail changes what the copy engine WRITES, so it buys nothing until it ships — and a push is an
 instant production deploy needing a fresh explicit word.
 
-⚠️ **THE GUARDRAIL IS PROVEN ON 4 GENERATIONS, NOT ON A PROD CASCADE.** Two niches, two samples
-each. It is strong evidence about the prompt and it is not a live-run proof. Re-screen a freshly
-generated page on the first real cascade rather than treating the active angle as solved.
+⚠️ **THE COPY WORK IS PROVEN ON PROBES, NOT ON A PROD CASCADE.** The FAQ guardrail rests on 4
+generations across two niches; the Node 5 depth delta rests on real-interface shapes, not stored
+rows. Strong evidence about the prompt and the extractor; not a live-run proof. Re-screen a freshly
+generated page on the first real cascade rather than treating any of it as settled.
 
 📌 **One observation carried forward, not chased:** a cure claim naming a protected attribute
 reports `clinical_outcome_claim` TWICE — once from check 10, once from the delegated

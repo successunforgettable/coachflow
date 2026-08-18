@@ -450,6 +450,15 @@ export async function runOrchestrationStep(
               title: sel.title,
             });
             if (body) {
+              {
+                // THE CASCADE PATH HAD NO SCREEN. routers/hvco.ts and bonusPdfGenerator.ts both
+                // screened their assetBody write and this one — the path every coach actually
+                // hits — did not. Same helper, same hardened checkOutput, no second code path.
+                // Advisory: it logs and persists regardless, because blanking a coach's
+                // deliverable is worse than shipping copy they can edit.
+                const { screenLeadMagnetBody } = await import("./persistenceGate");
+                await screenLeadMagnetBody("leadMagnetContent", input.serviceId, body);
+              }
               await db.update(hvcoTitles).set({ assetBody: body as unknown as object })
                 .where(eq(hvcoTitles.id, generatedId));
               // Delivery layer: render + host the deliverable. Non-fatal — content is

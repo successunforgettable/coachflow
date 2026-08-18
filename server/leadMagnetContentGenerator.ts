@@ -15,6 +15,7 @@
 import { getDb } from "./db";
 import { services, idealCustomerProfiles, campaignKits, heroMechanisms, sourceOfTruth, campaigns } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { GUARANTEE_CLAIMS_RULE } from "./_core/copywritingRules";
 
 export type LeadMagnetFormat = "guide" | "checklist" | "toolkit" | "quiz";
 export type ToolType = "swipe" | "template" | "sop" | "worksheet" | "script" | "checklist";
@@ -208,7 +209,17 @@ const SYSTEM_PROMPT_BONUS =
   "You produce done-for-you BONUS deliverables for coaches, consultants and experts at agency quality. The reader has ALREADY enrolled in / purchased the paid programme — this is a post-purchase asset that helps them get more from what they've already committed to, so you write to a buyer on the inside who is ready to execute, never to a prospect you are trying to convince to buy. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content the reader can use, never generic filler. Open by telling the reader plainly what this is, how to use it, and what it achieves. Close with a nextStep that helps them put this to work and get the most from the programme they've joined — a concrete action, no dead end. Respond with valid JSON.";
 
 export function systemPromptFor(mode: DeliverableMode = "lead_magnet"): string {
-  return mode === "bonus" ? SYSTEM_PROMPT_BONUS : SYSTEM_PROMPT_LEAD_MAGNET;
+  // GUARANTEE_CLAIMS_RULE is PORTED, not re-derived — Track B reuse, exactly as CHECKPOINT
+  // section 0-READ instructs. Node 5 writes remedy and outcome language on the same free-form
+  // basis Node 8 did: every format closes on a `nextStep` bridge to the paid programme, and a
+  // quiz adds a per-band CTA on top of that. Those are the same "what you will get" position
+  // that produced the landing page's outcome promise, so they need the same rule.
+  //
+  // It already reads to the SHAPE of the promise rather than to any trade's vocabulary — it
+  // names tarot, astrology and yoga alongside consulting — so it ports unchanged. Re-deriving
+  // it here is what would let the two copies drift.
+  const base = mode === "bonus" ? SYSTEM_PROMPT_BONUS : SYSTEM_PROMPT_LEAD_MAGNET;
+  return `${base}\n\n${GUARANTEE_CLAIMS_RULE}`;
 }
 
 // ── Per-format response schemas (json_schema, strict) ──
