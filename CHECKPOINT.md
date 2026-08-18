@@ -13,15 +13,16 @@
 
 | | |
 |---|---|
-| Last CODE commit | the **Node 5 screening coverage** pass — see §0-N5. Run the command below for the SHAs; §1 records what hardcoding one here costs |
+| Last CODE commit | the **bonus-teardown protected-service fence** — safe-to-run item 1, see §0-SAFE. Run the command below for the SHAs; §1 records what hardcoding one here costs |
 | HEAD | that commit. Working tree clean of tracked changes |
-| Since `52f440c` | **four code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, and Node 5 screening coverage. No run, no DB or Meta write, no deploy, no migration.** |
+| Since `52f440c` | **five code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, Node 5 screening coverage, and the teardown fence. No deploy, no migration, no DB write. One READ-ONLY prod query was run (§0-SAFE).** |
 | `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Re-read the ahead-count from git; never quote one from here |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **fast-forwarded to `bc21651` on 2026-08-19 and SHA-verified against `git ls-remote`.** Caught up through the FAQ guardrail; it does NOT include this commit. **It does NOT deploy** |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **current through `542a1b4`** (the Node 5 screening commit), fast-forwarded 2026-08-19 and SHA-verified against `git ls-remote`. ⚠️ It does NOT include the commit you are reading, and it goes stale again with every commit after — **re-read it, never assume it. It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
 | tsc | **34**, re-confirmed 2026-08-19 either side of this commit |
 | The FAQ guardrail | ✅ **BANKED, NOT DEPLOYED.** Phase 1 step 2 complete. See §0-FAQ |
 | Node 5 body / bonuses | ✅ **BANKED, NOT DEPLOYED.** See §0-N5 |
+| Safe-to-run checklist | item 1 (teardown fence) ✅ **BANKED**; items 2–5 open. See §0-SAFE |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -163,6 +164,67 @@ the `booking_url` column, and the per-angle answering pass vs the all-angles ass
 its `flaggedTerms` were two representations of the same finding, and the second was collected over
 REWRITTEN text — so it went empty exactly when the first said "blocked". Closed by `triggers`,
 recorded against the original text at the moment each rule fires. **Watch for a fifth.**
+
+---
+
+## 0-SAFE. SAFE-TO-RUN CHECKLIST — item 1 DONE 2026-08-19, items 2–5 open
+
+### ✅ ITEM 1 — the bonus teardown is fenced at the predicate
+
+`server/scripts/e2e-bonus-teardown.ts` deleted **`WHERE userId = <smoke user>` with no service
+condition**. Its four identity guards prove WHICH USER and say nothing about WHICH SERVICE — and
+that user is **117174, which legitimately OWNS protected services 272–277**. The script's own
+docblock claimed it was *"STRUCTURALLY INCAPABLE of touching a real coach's content"*, which is true
+and is **the wrong invariant**: it was fully capable of reaching the protected FIXTURES, because the
+fixtures belong to the account it targets. Exactly the shape §10 forbids.
+
+📌 **MEASURED READ-ONLY BEFORE FIXING, and the diagnostic changed the severity, not the fix.**
+Controls first, so an empty result could not be mistaken for a broken query:
+
+| query | result |
+|---|---|
+| total `bonuses` rows (control) | **6** — pipeline proven to fire |
+| owner of all bonuses (control) | **user 1**, all 6 |
+| **`serviceId, COUNT(*) WHERE userId=117174`** | **ZERO ROWS** |
+| owners of protected services (control) | 272–277 → **117174** · **285 → user 1** |
+| bonuses on any protected service, any owner | **285 → user 1 → 3 rows** |
+
+🔑 **So this closed a LATENT hole, not active damage** — the unfenced delete had never actually
+removed a protected row, because 117174 holds none today. It is one smoke run away from mattering:
+the moment a run generates a bonus on 272–277, the NEXT teardown would have taken it.
+⚠️ **Service 285 is owned by user 1, NOT 117174** — a correction to earlier prose that lumped all
+seven together. Its 3 bonus rows are outside this script's reach entirely, and they are the proof
+that protected services do carry sweepable child rows in the ordinary course.
+
+**The fix is in the PREDICATE, not a guard around it** — `WHERE userId = ? AND (serviceId IS NULL OR
+serviceId NOT IN (...))`, built once and used by BOTH the SELECT and the DELETE. Fencing only the
+DELETE would destroy a protected row's KV page and PDF and then leave its DB row pointing at them.
+
+⚠️ **THE `isNull` ARM IS LOAD-BEARING, NOT DEFENSIVE PADDING.** `bonuses.serviceId` is NULLABLE and
+`NULL NOT IN (...)` evaluates to **NULL, not TRUE** — so a bare `notInArray` would have silently
+STOPPED deleting every NULL-service row, orphaning its hosted assets while still reporting success.
+CLAUDE.md §9 in the wild.
+
+### 🔴 ITEMS 2–5 STILL OPEN — scoped 2026-08-19, none started
+
+2. **Currency-aware budget validator.** `z.number().min(1)` at `routers/meta.ts:281, 459, 732`
+   assumes USD; the account bills **AED** and `createAdSet` sends `Math.round(budget * 100)` minor
+   units (`lib/metaAPI.ts:509, 606, 922`). 🔑 **The logic already exists and is proven** —
+   `assertDailyBudgetFloor` / `MIN_DAILY_BUDGET_AED` / `PINNED_DAILY_BUDGET_AED` in `metaSafety.ts`
+   — **it is simply not wired to the coach-facing router.** Mostly wiring. No migration. **NEXT.**
+3. 🔴 **`ANTHROPIC_API_KEY` rotation — PURE OPS, zero repo changes.** Full surface mapped: the only
+   production read is `_core/env.ts:15`; `_core/llm.ts` consumes it; five standalone scripts read
+   `process.env` directly. **No hardcoded key anywhere, `.env` gitignored and untracked, nothing
+   logs it.** ⚠️ **TRAP: `llm.ts` falls back to `BUILT_IN_FORGE_API_KEY`.** If that is set on prod,
+   a dead Anthropic key will NOT announce itself — generation keeps working on the other provider
+   and the rotation looks fine while nothing uses the new key.
+4. **Crashed-job reaper.** `reapStuckJobs` (`_core/index.ts:61`) filters `status='pending'` ONLY, so
+   a `running` job whose process dies stays `running` forever. ⚠️ **Worse than recorded: there is NO
+   `updatedAt` column on `jobs`** — only `created_at` — so "stuck" cannot be measured from last
+   progress, which is what the tell actually requires. **Needs a MIGRATION, so it travels alone.**
+5. **Monitoring.** No Sentry / Datadog / structured-logging dependency at all; observability is
+   `console.*` into block-buffered Railway logs. No low-balance pre-flight on Anthropic, which has
+   taken a run down twice. **Needs a buy-vs-build decision before scoping.**
 
 ---
 
@@ -628,6 +690,29 @@ generated page on the first real cascade rather than treating any of it as settl
 reports `clinical_outcome_claim` TWICE — once from check 10, once from the delegated
 `complianceFilter`. Pre-existing and unrelated to this chapter; the untouched *"cure your
 migraines"* control duplicates identically.
+
+### 📅 SCHEDULED — NOT STARTED — relocate the protected fixtures off smoke account 117174
+
+**The hazard is that ONE ACCOUNT IS BOTH the disposable smoke identity AND the owner of the
+protected fixture set.** Measured read-only 2026-08-19: services **272–277 are owned by user
+117174**, the account every smoke teardown targets by design. Service **285 is owned by user 1** —
+a correction to earlier prose that lumped all seven together — and it already carries **3 `bonuses`
+rows**, which is the proof that protected services do hold sweepable child rows in the ordinary
+course.
+
+**Every per-script fence is defense in depth against this one fact.** `e2e-bonus-teardown.ts` is now
+fenced in its predicate; `adCreativeTeardown.ts` has its own `PROTECTED_SERVICE_IDS` refusal. Both
+exist because a delete scoped to *that user* is a delete that can reach *those fixtures*. **The root
+fix is to stop the smoke account owning them.**
+
+⚠️ **DESIGN IT CAREFULLY, NOT UNDER LAUNCH PRESSURE, AND NOT AS PART OF A WIPE SPRINT.** Moving
+fixtures means re-owning rows across `services` and every table that references them, and the
+fixtures' whole value is that they are the untouched baseline every teardown reconciles against —
+**a botched move destroys the very evidence used to prove nothing was destroyed.** Sequencing that
+is the work; the SQL is the easy part.
+
+📌 **Until it is done, the standing rule stands unchanged: teardown is ID-SCOPED, never
+USER-SCOPED, and any new sweep must carry the protected-service fence in its PREDICATE.**
 
 ### ⚠️ HOUSEKEEPING — ONE ITEM OUTSTANDING, ONE NOW MOOT
 
