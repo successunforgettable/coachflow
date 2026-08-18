@@ -73,7 +73,8 @@ export type ComplianceAxisResult = {
 const PROTECTED_ATTRIBUTE_TERMS = [
   // physical / mental health, incl. medical conditions
   "body", "weight", "fat", "obese", "overweight", "belly", "waistline", "physique",
-  "health", "illness", "condition", "diagnosis", "diagnosed", "symptoms", "pain",
+  // "condition" is NOT a bare list term — it is two words. See HEALTH_CONDITION_RE below.
+  "health", "illness", "diagnosis", "diagnosed", "symptoms", "pain",
   "anxiety", "anxious", "depression", "depressed", "burnout", "burnt out", "exhausted",
   "exhaustion", "insomnia", "sleepless", "menopause", "postpartum", "post-natal",
   "pregnancy", "pre-pregnancy", "fertility", "disability", "disabled", "chronic",
@@ -208,6 +209,42 @@ function bodyProxyMatch(loweredSentence: string): string | undefined {
   const strong = containsAny(loweredSentence, BODY_PROXY_NOUNS);
   if (strong) return strong;
   return BODY_SCALE_RE.exec(loweredSentence)?.[0];
+}
+
+/**
+ * "condition" is TWO WORDS, and only one of them is an enumerated attribute:
+ *
+ *   health      — a thing a person HAS: "your condition", "a chronic condition"
+ *   contractual — a clause of terms:    "the condition is that the coursework is complete"
+ *
+ * As a bare list term it blocked the second at tier 1 as an assertion about the reader's HEALTH.
+ * Surfaced 2026-08-18 by the FAQ-guardrail generation probe: asking the generator to state a
+ * remedy's terms made it write conditions, in both a consulting and a tarot practice.
+ *
+ * ⚠️ THE DISCRIMINATOR IS NOT THE DETERMINER. That is what split the two senses of "scale"
+ * (BODY_SCALE_RE above), and copying it here would fail — the contractual sense takes a determiner
+ * too ("THE condition is that…"). What marks the health sense is a POSSESSIVE or a MEDICAL
+ * MODIFIER; what marks the contractual sense is a complementiser clause following the noun.
+ *
+ * Deliberately NOT solved by deleting the term — the same reasoning as the scale fix. §1.1
+ * enumerates physical and mental health, and "your condition" is the plainest possible assertion
+ * of it. Deleting would retire a real detection class to silence a false positive.
+ *
+ * Sixth member of this family. Recorded ones: scale, guarantee-denial ×2, and the three
+ * bare-"you" duration shapes closed by the promised_result precision fix.
+ */
+const HEALTH_CONDITION_RE =
+  /\b(?:my|your|his|her|their|our|its)\s+(?:\w+\s+){0,2}?conditions?\b|\b(?:medical|health|chronic|underlying|pre-?existing|skin|heart|lung|mental|physical|autoimmune|neurological|genetic|inherited|long-term)\s+conditions?\b|\bdiagnosed\s+with\s+[^.!?]{0,40}?\bconditions?\b|\bconditions?\s+(?:like|such\s+as)\b/i;
+
+/**
+ * The protected-attribute matcher. One function, so the enumerated list and the guarded ambiguous
+ * term cannot drift apart across the call sites that consult them — the same shape, and for the
+ * same reason, as bodyProxyMatch above.
+ */
+function protectedAttributeMatch(text: string): string | undefined {
+  const strong = containsAny(text, PROTECTED_ATTRIBUTE_TERMS);
+  if (strong) return strong;
+  return HEALTH_CONDITION_RE.exec(text)?.[0];
 }
 
 // Employment and history nouns. NOT on Meta's enumerated list — a CV gap, a work history
@@ -736,7 +773,7 @@ export function checkComplianceAxis(
         ?? /\b(women|men|mums|moms|mothers|fathers|dads|parents|people|professionals|coaches|founders)\s+who\s+([^.!?]{0,120})/i.exec(text);
       if (descriptor) {
         const clause = lower(descriptor[descriptor.length - 1] || "");
-        const attr = containsAny(clause, PROTECTED_ATTRIBUTE_TERMS);
+        const attr = protectedAttributeMatch(clause);
         const deficit = containsAny(clause, DEFICIT_PREDICATES);
         if (attr) {
           // Enumerated attribute used as an audience identifier — Meta policy.
@@ -768,7 +805,7 @@ export function checkComplianceAxis(
       if (burdenFrameAddress(sentence)) {
         // "Struggling with debt?" names an ENUMERATED attribute (vulnerable financial
         // status) → policy. "Struggling with your pipeline?" does not → house style.
-        if (containsAny(lower(sentence), PROTECTED_ATTRIBUTE_TERMS)) {
+        if (protectedAttributeMatch(lower(sentence))) {
           push("second_person_protected_attribute", 1,
             "This opens by naming a personal attribute as the reader's own. Naming what the offer is for carries the same targeting without stating anything about them.",
             sentence, f.location);
@@ -783,7 +820,7 @@ export function checkComplianceAxis(
       // A question naming a protected attribute, not anchored to the coach's own
       // account, addresses the reader by implication even with no pronoun present.
       if (sentence.includes("?") && anchors[i] !== "first" && !offerIsSubject(sentence)) {
-        const qAttr = containsAny(lower(sentence), PROTECTED_ATTRIBUTE_TERMS);
+        const qAttr = protectedAttributeMatch(lower(sentence));
         if (qAttr) {
           push("second_person_protected_attribute", 1,
             "This asks the reader about a personal attribute, which reads as knowing it applies to them. Naming what the offer helps with states the same thing about the offer instead.",
@@ -833,8 +870,17 @@ export function checkComplianceAxis(
       // Adjacency in BOTH directions, through the SAME matcher as everything else. These
       // were hand-rolled and lacked termRe's inflection tolerance, so the forward and
       // reverse checks silently disagreed with containsAny about what a term matches.
+      // The guarded "condition" term joins here through the same adjacency question the list
+      // terms answer. Its health sense usually carries the reader inside the match itself
+      // ("your condition"); where a medical modifier carries it instead ("a chronic condition"),
+      // proximity is asked in the ordinary way.
+      const healthCondition = (): string | undefined => {
+        const m = HEALTH_CONDITION_RE.exec(sentence);
+        if (!m) return undefined;
+        return /\byou(?:r)?\b/i.test(m[0]) || adjacentToReader(sentence, "condition") ? m[0] : undefined;
+      };
       const attr = SECOND_RE.test(sentence) && !offerIsSubject(sentence)
-        ? PROTECTED_ATTRIBUTE_TERMS.find((t) => adjacentToReader(sentence, t))
+        ? (PROTECTED_ATTRIBUTE_TERMS.find((t) => adjacentToReader(sentence, t)) ?? healthCondition())
         : undefined;
       // Order matters: containsAny returns the FIRST list match, so a neutral term can mask
       // a non-neutral one ("the weight of a life" masked "exhaustion"). Decide on whether
@@ -842,7 +888,8 @@ export function checkComplianceAxis(
       // Uses the SAME matcher as containsAny — a second hand-rolled regex here is how the
       // two drift apart.
       const attrIsNonNeutral = attr !== undefined &&
-        PROTECTED_ATTRIBUTE_TERMS.some((t) => !neutralOnly(t) && termRe(t).test(sentence));
+        (PROTECTED_ATTRIBUTE_TERMS.some((t) => !neutralOnly(t) && termRe(t).test(sentence))
+          || HEALTH_CONDITION_RE.test(sentence));
       if (attr && (attrIsNonNeutral || negativeContext)) {
         push("second_person_protected_attribute", 1,
           "This states a personal attribute — health, body, financial standing, background or circumstances — as a fact about the person reading it. The same point lands as the coach's own experience, or as what the offer does.",
@@ -988,7 +1035,7 @@ export function checkComplianceAxis(
     // ── Check 10 — CLINICAL OUTCOME CLAIMS. Physical Health Signalling §2.2: compliance means
     // mechanism framing, not a promise to reverse or cure a named condition.
     if (CLINICAL_OUTCOME_VERB.test(text)) {
-      const cond = containsAny(hay, PROTECTED_ATTRIBUTE_TERMS);
+      const cond = protectedAttributeMatch(hay);
       if (cond) {
         const v = text.match(CLINICAL_OUTCOME_VERB);
         push("clinical_outcome_claim", 1,
