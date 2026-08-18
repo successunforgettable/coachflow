@@ -338,6 +338,51 @@ This rule overrides any in-prompt example or template that asks you to "make the
  * biographical scaffolding; rewrite the composite at role + situation
  * level only").
  */
+/**
+ * GUARANTEE + REMEDY CLAIMS — the CLAIMS RULE (2026-08-18).
+ *
+ * WHY THIS EXISTS. Landing page 238's `original.faq[6].answer` offered to keep working with the
+ * reader at no additional cost "until it does" — an unbounded remedy, which promises the OUTCOME
+ * rather than the transaction. It is the single hit still blocking the 4c re-run. The generation
+ * probe reproduced the same shape unprompted in a TAROT reading practice ("at no extra cost until
+ * it does"), which is why every line below is written to the shape of the promise and never to the
+ * vocabulary of one trade.
+ *
+ * THE SPLIT (Arfeen, 2026-08-15): a promise about the TRANSACTION is safe — refund, money-back,
+ * satisfaction, a repeat session, "or you don't pay". A promise about the RESULT is not. The
+ * boundary is what separates them: a remedy that runs for a stated period, a stated number of
+ * sessions, or until a stated deliverable is handed over, is a transaction promise. The same remedy
+ * with no end point is an outcome promise wearing a remedy's clothes.
+ *
+ * ⚠️ POSITIVE-ONLY FRAMING, per CLAUDE.md §14 and the b4f2fb4 lesson that the sibling rule above
+ * records. This rule names the SHAPE the copy takes and the CATEGORY that sits outside it; it never
+ * quotes the offending sentence. Showing a failure verbatim primes the model to emit it, which is
+ * what produced the Sprint B email regression.
+ *
+ * ⚠️ CONTAINS NO `-ed` FORM OF "guarantee", deliberately — the adjective is the form that reads as
+ * a bare outcome promise, and the compliance axis blocks it on sight. Keep it that way.
+ *
+ * 📌 TRACK B PORTABLE. The Offer, Lead Magnet, Email and WhatsApp generators write remedy language
+ * on the same free-form basis with no split and no screening. When Track B reaches them, IMPORT
+ * THIS — do not re-derive it.
+ */
+export const GUARANTEE_CLAIMS_RULE = `GUARANTEE AND REMEDY CLAIMS — what a promise on this page is about.
+
+A guarantee here is a promise about the TRANSACTION: what the reader gets, gets back, or gets again. Write it as a remedy plus the boundary that closes it.
+
+Remedies that carry a page well, in any field of work:
+- a refund, full or partial, inside a named window — "a full refund within 30 days"
+- money back where the reader completes the work and it turns out not to be right for them
+- a repeat, redo or further session at no charge, offered a NAMED number of times
+- a credit toward other work, or the reader keeping the materials either way
+- "or you don't pay" — this is a refund promise, and it reads as one
+
+EVERY REMEDY CARRIES ITS BOUNDARY. The period it runs for, the number of times it can be used, or the deliverable whose handover ends it. A remedy stated with no end point is a promise about the reader's OUTCOME rather than about the transaction, and that is a promise the coach has no way to keep.
+
+THE READER'S RESULT IS DESCRIBED, NEVER PROMISED. Name what the work covers, what is handed over, and the order it happens in. Where a timeframe appears, attach it to what gets DELIVERED in that time — the sessions, the documents, the review, the materials — rather than to the change the reader is hoping for. Two sentences that look alike and are not: a thirty-day refund window is a promise about money and belongs on the page; what the reader will have become by day thirty is a promise about them.
+
+THIS APPLIES IDENTICALLY WHATEVER THE PRACTICE IS — consulting, coaching, tarot, astrology, yoga, therapy, teaching, design, fitness, music. The shape of a sound remedy does not change with the trade, and neither does this rule.`;
+
 export const PROOF_COMPOSITIONAL_CEILING_RULE = `COMPOSITIONAL CEILING (Sprint B+1 — extends PROOF SPECIFICITY beyond the role-first floor): the role-based composite is the WHOLE composite, not a foundation to layer biographical scaffolding on. Permitted: 1 niche-specific situational anchor (the role itself or its proximate context — e.g. "a primary school teacher", "a senior manager in healthcare", "a freelance designer between contracts") + the problem → mechanism/change → outcome structure. Forbidden in addition to the existing rule: invented family composition ("with a 10-month-old", "with three kids under 5", "newly single"), invented partner specifics ("a partner on shift work", "a stay-at-home spouse"), invented employer detail ("at a Big-4 firm", "at a Y Combinator startup"), invented dependent ages or relationship status, invented direct quoted speech ("she told me X", "he said Y"), invented dialogue or paraphrase attributed to the composite individual. The composite is a structural placeholder for the reader to project themselves into — not a third-party narrative to flesh out. If the proof needs more weight than role + situation supports, prefer mechanism-only framing (the structural shift the method produces) over biographical scaffolding.`;
 
 /**

@@ -7,20 +7,20 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 ONE LINE OF FAQ COPY IS THE ONLY THING BLOCKING A 4c RE-RUN.
+# 👉 THE FAQ BLOCKER IS FIXED AT THE SOURCE AND BANKED. NOTHING IS DEPLOYED.
 
 ### STATE AT SHUTDOWN — 2026-08-17
 
 | | |
 |---|---|
-| Last CODE commit | the **`PROMISED_RESULT_RE` precision fix** — §0-FAQ **step 1, now DONE**. Run the command below for its SHA; §1 records what hardcoding one here costs |
+| Last CODE commit | the **FAQ generation guardrail** — §0-FAQ **step 2, now DONE** — sitting on the **`"condition"` sense split**. Run the command below for the SHAs; §1 records what hardcoding one here costs |
 | HEAD | that commit. Working tree clean of tracked changes |
-| Since `52f440c` | **one code commit — the classifier precision fix. No run, no DB or Meta write, no deploy, no migration.** |
-| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Local is **31 ahead / 0 behind** |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08`, fast-forwarded to HEAD and SHA-verified. **It does NOT deploy** |
+| Since `52f440c` | **three code commits — the promised-result precision fix, the `"condition"` sense split, and the FAQ guardrail. No run, no DB or Meta write, no deploy, no migration.** |
+| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Re-read the ahead-count from git; never quote one from here |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ⚠️ **now BEHIND HEAD**, last fast-forwarded at the `0c85f8c` docs commit. **It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
-| tsc | **34**, re-measured 2026-08-17 with the per-file distribution checked against the 08-12 capture — the same 34, not a swap |
-| The FAQ guardrail | **PROPOSED, NOT BANKED.** See §0-FAQ — the proposal was correct about the copy and wrong about the mechanism, and the ordering changed as a result |
+| tsc | **34**, re-confirmed 2026-08-18 either side of both commits |
+| The FAQ guardrail | ✅ **BANKED, NOT DEPLOYED.** Phase 1 step 2 complete. See §0-FAQ |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -466,11 +466,50 @@ map"* is good marketing copy and must stay writable.
    teardown, so the full content exists NOWHERE — not in the repo, not in the DB. What is preserved
    is the sentence corpus `11a920a` banked. It pins against regression; it does **not** prove what
    the copy engine writes next run. Re-screen a freshly generated page.
-2. **THEN land the clean FAQ guardrail** in `landingPageGenerator.ts` — the **CLAIMS RULE** and the
-   **refund-as-a-noun** reshaping across all four layers (the top-of-prompt rule, the FAQ
-   instruction `:520-521`, the guarantee section `:523-524`, and `ANGLE_PROMPTS` `:31-79`),
-   **WITHOUT the duration-and-"you" separation workaround** — the classifier fix removes the need
-   for it, and shipping it anyway would leave a permanent scar from a bug that no longer exists.
+2. ✅ **DONE 2026-08-18 — THE CLEAN FAQ GUARDRAIL IS BANKED.** The **CLAIMS RULE** lives in
+   `_core/copywritingRules.ts` as **`GUARANTEE_CLAIMS_RULE`**, wired across all four layers: the
+   system prompt beside its sibling rules, the FAQ instruction, the guarantee section, and both
+   `ANGLE_PROMPTS` entries (`original` and `godfather`). **The duration-and-`you` separation
+   workaround is NOT in it**, deliberately — step 1 removed the need, and shipping it anyway would
+   have left a permanent scar from a bug that no longer exists.
+   🔑 **THE LOAD-BEARING SENTENCE IS THE BOUNDARY REQUIREMENT** — *every remedy carries the period,
+   count or deliverable that closes it; a remedy with no end point is a promise about the reader's
+   outcome rather than about the transaction*. That is what kills the open-ended family at the
+   source **without naming it**, which matters: CLAUDE.md §14 is explicit that quoting a failure
+   shape primes the model to emit it. The rule names the shape the copy TAKES and the category
+   outside it, and never quotes the offending sentence.
+   📌 **It went in `copywritingRules.ts`, not inline**, because §0-READ records the same unguarded
+   shape in the Offer, Lead Magnet, Email and WhatsApp generators. **When Track B reaches them,
+   IMPORT IT — do not re-derive it.** Zero instances of the `-ed` form in either file, as required.
+   **Generation probe — 4 live landing pages before, 4 after, identical inputs, two niches
+   (retainer consultant and TAROT reader), no DB write and nothing persisted:**
+   · open-ended outcome-remedy phrasing **1 → 0** · `promised_result` blocking **1 → 0**
+   · refund / money-back language **6 → 8 fields**, so the legitimate remedy survived and got MORE
+   precise, which is the rule working rather than a gap in it.
+   ⚠️ **THE DEFECT REPRODUCED LIVE BEFORE THE FIX, IN THE TAROT NICHE** — the generator wrote
+   *"at no extra cost until it does"* unprompted, with no consulting vocabulary anywhere near it.
+   That is the empirical case for the niche-agnostic framing, not an argument for it.
+
+3. ✅ **DONE 2026-08-18 — THE `"condition"` SENSE SPLIT, sixth of the scale family.** The guardrail
+   surfaced it: asking the generator to state a remedy's TERMS made it write conditions, and
+   `"condition"` sat in `PROTECTED_ATTRIBUTE_TERMS` as the medical sense, so
+   *"The condition is that you have done the work through week four"* blocked at tier 1 as an
+   assertion about the reader's HEALTH. **A pre-existing defect the guardrail walked into, not one
+   it caused.**
+   🔑 **THE DISCRIMINATOR IS NOT THE DETERMINER.** That is what split the two senses of `"scale"`,
+   and copying it here would have failed — the contractual sense takes one too (*"THE condition is
+   that"*). The health sense is marked by a **possessive or a medical modifier**; the contractual
+   sense by a **complementiser clause** following the noun.
+   Not solved by deleting the term, for the same reason the scale fix was not — §1.1 enumerates
+   physical and mental health and *"your condition"* is the plainest assertion of it. Removed from
+   the bare list, health sense matched positively by `HEALTH_CONDITION_RE`, both reached through
+   **one shared matcher, `protectedAttributeMatch`** — the same shape as `bodyProxyMatch`, so the
+   list and the guarded term cannot drift. Suite: **`conditionSensePrecision.test.ts`, 14 tests**,
+   written before the fix and red on 7 of them first.
+   📌 **THE COMBINED RE-SCREEN IS THE RESULT THAT MATTERS.** Re-screening the 32 stored fields from
+   the post-guardrail generation run through the fixed classifier — free, no LLM call — returns
+   **zero blocking classes**, against `{"promised_result": 1}` on the pre-guardrail run. Guardrail
+   plus classifier together take a freshly generated page, in both niches, to clean.
 
 📌 **The FAQ line's own `"until it does"` is a GENUINE outcome promise and stays out of scope of the
 classifier fix.** It is handled by the generator's **CLAIMS RULE** in step 2 — *never offer to keep
@@ -485,21 +524,21 @@ contains none today either — keep it that way.
 
 ### NEXT ACTION ON RESUME
 
-**STEP 1 IS BANKED. NEXT IS STEP 2 — THE CLEAN FAQ GENERATION GUARDRAIL** in
-`landingPageGenerator.ts`: the CLAIMS RULE and the refund-as-a-noun reshaping across all four
-layers (top-of-prompt rule, the FAQ instruction `:520-521`, the guarantee section `:523-524`, and
-`ANGLE_PROMPTS` `:31-79`).
+**PHASE 1 MOVES TO THE NODE 5 BODY / BONUSES GATE.** Steps 1, 2 and 3 above are banked and the FAQ
+chapter is closed at the source.
 
-🔑 **WITHOUT the duration-and-"you" sentence-separation workaround.** The classifier fix removed the
-need for it, and shipping it anyway would leave a permanent scar in the copy engine from a bug that
-no longer exists. *"In eight weeks you receive the scope map"* is good marketing copy, it passes
-now, and it must stay writable.
+⚠️ **NOTHING FROM THIS CHAPTER IS DEPLOYED.** `origin/railway-build` is still `51eda78`. The
+guardrail changes what the copy engine WRITES, so it buys nothing until it ships — and a push is an
+instant production deploy needing a fresh explicit word.
 
-⚠️ **Step 2 does NOT touch the classifier.** The faq[6] line still blocks by design — that is the
-backstop working. Step 2's job is to stop the sentence being WRITTEN.
+⚠️ **THE GUARDRAIL IS PROVEN ON 4 GENERATIONS, NOT ON A PROD CASCADE.** Two niches, two samples
+each. It is strong evidence about the prompt and it is not a live-run proof. Re-screen a freshly
+generated page on the first real cascade rather than treating the active angle as solved.
 
-⚠️ **IT TOUCHES NO NODE GENERATOR.** Offer, Lead Magnet, Email and WhatsApp are Track B and stay
-untouched, even though they carry the same unguarded guarantee shape.
+📌 **One observation carried forward, not chased:** a cure claim naming a protected attribute
+reports `clinical_outcome_claim` TWICE — once from check 10, once from the delegated
+`complianceFilter`. Pre-existing and unrelated to this chapter; the untouched *"cure your
+migraines"* control duplicates identically.
 
 ### ⚠️ HOUSEKEEPING — ONE ITEM OUTSTANDING, ONE NOW MOOT
 

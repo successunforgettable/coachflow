@@ -1,6 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
-import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, GUARANTEE_CLAIMS_RULE, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
 import { checkOutput } from "./_core/complianceAxis";
 import { validateLandingPageTestimonialsFabrication } from "./_core/validator";
 
@@ -33,10 +33,10 @@ const ANGLE_PROMPTS = {
 Generate a benefit-driven landing page emphasizing the unique mechanism and transformation.
 
 Focus on:
-- Specific results and timeframe
+- Specific deliverables and the timeframe they are handed over in
 - Proprietary system name
 - Step-by-step process
-- Guarantee included
+- A guarantee that names its remedy and the window that remedy runs for
 
 CTA: "Claim Your FREE Consultation!"
   `,
@@ -44,10 +44,10 @@ CTA: "Claim Your FREE Consultation!"
 Generate a landing page with an IRRESISTIBLE OFFER using risk reversal.
 
 Focus on:
-- Money-back guarantee
-- "Or you don't pay" - removes all risk
+- Money-back guarantee, stated together with the window it runs for
+- "Or you don't pay" - a refund promise, written so it reads as one
 - Making it impossible to say no
-- Risk reversal throughout copy
+- Risk reversal throughout copy, always about the transaction rather than about how the reader turns out
 
 CTA: "Book My Free [Service] Call"
 Key phrase: Emphasize "Or you don't pay" throughout the copy
@@ -518,10 +518,10 @@ ${shockingStatSection}
     The consultation outline must feel like a genuine agenda, not a marketing list. Each item must name the specific deliverable the client will have at the end of that segment — what they have after that step that they did not have before it. BANNED consultation outline patterns (do not use as titles or descriptions): "Introduction and welcome", "Q&A", "Next steps", "Strategy overview", "Getting to know you" — these are placeholders, not deliverables. Every item must name a specific analysis, assessment, calculation, or output. Example: "Revenue Gap Analysis — At the end of this segment you will have a precise number: the exact monthly gap between your current income and your target, and the three specific levers available to close it."
 
 17. **FAQ** (5-7 frequently asked questions with answers)
-    Generate 5-7 FAQ items that address: common objections to buying, logistics questions (how it works, what is included, how long it takes), guarantee details, and one question about who this is NOT for. Each item has a "question" and "answer". Answers should be 2-3 sentences, conversational, and reassuring.
+    Generate 5-7 FAQ items that address: common objections to buying, logistics questions (how it works, what is included, how long it takes), what the guarantee covers and the window it runs for, and one question about who this is NOT for. Each item has a "question" and "answer". Answers are 2-3 sentences and conversational. An answer that reaches for the guarantee names the remedy and the period or number of uses it applies within, per the GUARANTEE AND REMEDY CLAIMS rule above. An answer that addresses doubt settles it with what the programme DOES and what the reader is handed — the concrete thing that meets the objection — rather than with an assurance about how the reader ends up.
 
 18. **Guarantee** (dedicated guarantee statement, 100-200 words)
-    Write a dedicated risk-reversal guarantee section. Format as: first line is the guarantee headline (e.g., "Our 90-Day Money-Back Guarantee"), remaining lines are the guarantee body explaining terms and building confidence. If the operator provided a specific guarantee type or duration in the cascade context above, use it exactly. If not, write a results-oriented satisfaction guarantee appropriate to the offer type. Frame positively — what the customer gets, not what they lose.
+    Write a dedicated risk-reversal guarantee section. Format as: first line is the guarantee headline (e.g., "Our 90-Day Money-Back Guarantee"), remaining lines are the guarantee body explaining terms and building confidence. If the operator provided a specific guarantee type or duration in the cascade context above, use it exactly. If not, write a satisfaction guarantee built on a refund window suited to the offer type — the remedy named, and the period it runs for named with it, per the GUARANTEE AND REMEDY CLAIMS rule above. The terms state what the reader has to have done to use it and by when. Frame positively — what the customer gets or gets back, not what they lose, and not what the programme will have made of them.
 
 SPECIFICITY CHECK — apply this before returning the JSON:
 For every section, ask: does this section contain at least one phrase that could only appear on a landing page for THIS specific service in THIS specific niche? If any section contains only generic direct response language that could apply to any coaching programme, rewrite that section before returning. The test: mentally swap the product name for a different coaching product in a different niche. If the section still makes sense without any changes, it is not specific enough. Rewrite until it only makes sense for this product, this avatar, and this outcome.
@@ -553,7 +553,7 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
     : `${cascadeContext}${prompt}`;
   const response = await invokeLLM({
     messages: [
-      { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving through 'recognition', 'put into words', 'what it costs', 'hope', 'different from the usual approach', 'safe to believe', and finally 'obvious next step'. Each of those is produced by describing something from the coach's own side of the table, precisely — never by telling the reader what is true of them. You write in the customer's own vocabulary — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${NO_RESEARCH_STATISTIC_FABRICATION_RULE}\n\n${REGISTER_STANDARD}` },
+      { role: "system", content: `You are a world-class direct response copywriter specializing in high-converting landing pages. You engineer an emotional arc through each page — every section serves a specific emotional purpose, moving through 'recognition', 'put into words', 'what it costs', 'hope', 'different from the usual approach', 'safe to believe', and finally 'obvious next step'. Each of those is produced by describing something from the coach's own side of the table, precisely — never by telling the reader what is true of them. You write in the customer's own vocabulary — the words they use with a close friend, not marketing language. FORMATTING RULE: Return plain text only inside all JSON string values. No markdown. No asterisks (*). No hash symbols (#). No bold or italic formatting of any kind. No bullet markers. Just clean readable sentences and paragraphs.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${NO_RESEARCH_STATISTIC_FABRICATION_RULE}\n\n${GUARANTEE_CLAIMS_RULE}\n\n${REGISTER_STANDARD}` },
       { role: "user", content: effectiveUserContent }
     ],
     response_format: {
