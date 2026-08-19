@@ -1,6 +1,45 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
+
+/**
+ * CURRENCY-AWARE DAILY-BUDGET FLOOR — the coach-facing half of what the 4c harness already does.
+ *
+ * ⚠️ WHY THIS IS NOT IN THE ZOD SCHEMA. `z.number().min(1)` is SYNCHRONOUS and runs before the
+ * handler; the account's currency needs an async per-user Graph read. So the floor cannot live in
+ * the schema at all — `min(1)` stays as a cheap sanity bound and the real check happens here,
+ * before any Meta write. That is a structural constraint, not a preference.
+ *
+ * ⚠️ FAIL-OPEN ON AN UNRESOLVED CURRENCY, DELIBERATELY. `getAdAccount` is a live Graph call. If it
+ * throws, or the account has no currency, we let the publish proceed exactly as it does today —
+ * today there is NO floor on this path at all, so refusing on a transient hiccup would be a
+ * regression dressed as a safety feature. Meta still rejects a genuinely bad budget; the coach
+ * just gets Meta's message instead of ours.
+ *
+ * The thresholds and every message live in `_core/metaSafety`. This function only adapts the
+ * verdict to a TRPCError — it must never carry a number of its own.
+ */
+async function assertDailyBudgetForAccount(userId: number, dailyBudget: number | undefined): Promise<void> {
+  if (dailyBudget == null) return;
+  let currency: string | null = null;
+  try {
+    const { getAdAccount } = await import("../lib/metaAPI");
+    currency = (await getAdAccount(userId))?.currency ?? null;
+  } catch (err) {
+    console.warn(`[meta] budget floor: currency lookup failed for user ${userId}, allowing publish —`,
+      err instanceof Error ? err.message : err);
+    return;
+  }
+  const { checkDailyBudgetFloor, MEASURED_DAILY_BUDGET_FLOORS } = await import("../_core/metaSafety");
+  const code = (currency ?? "").trim().toUpperCase();
+  if (code && MEASURED_DAILY_BUDGET_FLOORS[code] === undefined) {
+    console.warn(`[meta] budget floor: UNMEASURED CURRENCY ${code} (user ${userId}) — applying the ` +
+      `cautious default. Measure this currency's real floor and add one line to ` +
+      `MEASURED_DAILY_BUDGET_FLOORS.`);
+  }
+  const verdict = checkDailyBudgetFloor(dailyBudget, currency);
+  if (!verdict.ok) throw new TRPCError({ code: "BAD_REQUEST", message: verdict.message });
+}
 import { getDb } from "../db";
 import { metaAccessTokens } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -294,6 +333,9 @@ export const metaRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      // Currency-aware budget floor, BEFORE anything is created on the ad account.
+      await assertDailyBudgetForAccount(ctx.user.id, input.dailyBudget);
+
       const { assembleConceptAds } = await import("../_core/adAssembly");
       const { publishAssembledAds: runPublish, MIN_ADS } = await import("../_core/multiAdPublish");
       const { createCampaign, createAdSet, createAdCreative, createAd } = await import("../lib/metaAPI");
@@ -471,6 +513,9 @@ export const metaRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Currency-aware budget floor, BEFORE the first of the four Graph creates.
+      await assertDailyBudgetForAccount(ctx.user.id, input.dailyBudget);
+
       const { createCampaign, createAdSet, createAdCreative, createAd } = await import("../lib/metaAPI");
 
       // Resolve [INSERT_*] tokens in the ad copy to their filled registry
@@ -733,6 +778,10 @@ export const metaRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Same floor on the EDIT path — `updateCampaign` sends daily_budget * 100 just as
+      // `createAdSet` does, so a below-floor edit is rejected by Meta identically.
+      await assertDailyBudgetForAccount(ctx.user.id, input.dailyBudget);
+
       const { updateCampaign } = await import("../lib/metaAPI");
       const success = await updateCampaign(ctx.user.id, input.campaignId, {
         name: input.name,

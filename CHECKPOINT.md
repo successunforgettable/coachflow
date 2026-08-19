@@ -13,16 +13,16 @@
 
 | | |
 |---|---|
-| Last CODE commit | the **bonus-teardown protected-service fence** — safe-to-run item 1, see §0-SAFE. Run the command below for the SHAs; §1 records what hardcoding one here costs |
+| Last CODE commit | the **currency-aware daily-budget floor** — safe-to-run item 2, see §0-SAFE. Run the command below for the SHAs; §1 records what hardcoding one here costs |
 | HEAD | that commit. Working tree clean of tracked changes |
-| Since `52f440c` | **five code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, Node 5 screening coverage, and the teardown fence. No deploy, no migration, no DB write. One READ-ONLY prod query was run (§0-SAFE).** |
+| Since `52f440c` | **six code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, Node 5 screening coverage, the teardown fence, and the currency-aware budget floor. No deploy, no migration, no DB write. One READ-ONLY prod query was run (§0-SAFE).** |
 | `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Re-read the ahead-count from git; never quote one from here |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **current through `542a1b4`** (the Node 5 screening commit), fast-forwarded 2026-08-19 and SHA-verified against `git ls-remote`. ⚠️ It does NOT include the commit you are reading, and it goes stale again with every commit after — **re-read it, never assume it. It does NOT deploy** |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **fast-forwarded to the commit you are reading**, 2026-08-19, and SHA-verified against `git ls-remote`. It carries the teardown fence and the budget floor. ⚠️ It goes stale again with every commit after — **re-read it, never assume it. It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
 | tsc | **34**, re-confirmed 2026-08-19 either side of this commit |
 | The FAQ guardrail | ✅ **BANKED, NOT DEPLOYED.** Phase 1 step 2 complete. See §0-FAQ |
 | Node 5 body / bonuses | ✅ **BANKED, NOT DEPLOYED.** See §0-N5 |
-| Safe-to-run checklist | item 1 (teardown fence) ✅ **BANKED**; items 2–5 open. See §0-SAFE |
+| Safe-to-run checklist | items 1 (teardown fence) and 2 (currency-aware budget floor) ✅ **BANKED**; items 3–5 open. See §0-SAFE |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -167,7 +167,7 @@ recorded against the original text at the moment each rule fires. **Watch for a 
 
 ---
 
-## 0-SAFE. SAFE-TO-RUN CHECKLIST — item 1 DONE 2026-08-19, items 2–5 open
+## 0-SAFE. SAFE-TO-RUN CHECKLIST — items 1–2 DONE 2026-08-19, items 3–5 open
 
 ### ✅ ITEM 1 — the bonus teardown is fenced at the predicate
 
@@ -205,13 +205,40 @@ DELETE would destroy a protected row's KV page and PDF and then leave its DB row
 STOPPED deleting every NULL-service row, orphaning its hosted assets while still reporting success.
 CLAUDE.md §9 in the wild.
 
-### 🔴 ITEMS 2–5 STILL OPEN — scoped 2026-08-19, none started
+### ✅ ITEM 2 — the daily-budget floor is currency-aware, and it runs before any Meta write
 
-2. **Currency-aware budget validator.** `z.number().min(1)` at `routers/meta.ts:281, 459, 732`
-   assumes USD; the account bills **AED** and `createAdSet` sends `Math.round(budget * 100)` minor
-   units (`lib/metaAPI.ts:509, 606, 922`). 🔑 **The logic already exists and is proven** —
-   `assertDailyBudgetFloor` / `MIN_DAILY_BUDGET_AED` / `PINNED_DAILY_BUDGET_AED` in `metaSafety.ts`
-   — **it is simply not wired to the coach-facing router.** Mostly wiring. No migration. **NEXT.**
+**The gap.** `z.number().min(1)` on the coach-facing router assumed USD. The account bills **AED**
+and `createAdSet` sends `Math.round(budget * 100)` minor units (`lib/metaAPI.ts:509, 606, 922`), so
+a coach could pass a number the router accepted and Meta refused. The floor logic already existed
+and was proven — `assertDailyBudgetFloor` / `MIN_DAILY_BUDGET_AED` / `PINNED_DAILY_BUDGET_AED` in
+`metaSafety.ts` — **it was simply never wired to the router.** This was wiring plus a currency
+lookup. No migration, no DB write.
+
+**What shipped.**
+
+- `metaSafety.ts` gains **`MEASURED_DAILY_BUDGET_FLOORS`** (AED → `MIN_DAILY_BUDGET_AED` = 4) and
+  **`UNMEASURED_CURRENCY_FLOOR` = 1**, behind a new `checkDailyBudgetFloor(budget, currency)`.
+- `assertDailyBudgetFloor` — the **harness** entry — now delegates to it with a literal `"AED"`, so
+  its behaviour is unchanged. `metaSafety.test.ts` stays at **19 passed**, byte-identical AED path.
+- `routers/meta.ts` gains `assertDailyBudgetForAccount`, wired at **all three** publish/update
+  sites — `publishAssembledAds`, `publishToMeta`, and **`updateCampaign`**. It runs **in the
+  handler, before any Meta write**, not as a Zod refinement.
+- `budgetFloorCurrency.test.ts` — **21 tests**, new.
+
+🔑 **THE FLOOR OF 1 FOR AN UNMEASURED CURRENCY IS DELIBERATE, NOT A PLACEHOLDER.** We have measured
+Meta's real minimum for exactly one currency. Inventing thresholds for the rest would block coaches
+on numbers we made up, and the failure would look like our bug rather than Meta's rule. **Meta stays
+the real gate**; our floor only catches what we have actually measured. Adding a currency is one
+line in `MEASURED_DAILY_BUDGET_FLOORS`.
+
+⚠️ **FAIL-OPEN ON CURRENCY-LOOKUP FAILURE IS ALSO DELIBERATE.** If the account currency cannot be
+read, the publish proceeds. A safety check that cannot determine its own input must not become a new
+outage path — an unknown currency and a failed lookup are the same state, and Meta will still refuse
+a genuinely bad budget. 📌 The lookup costs one live Graph read per publish; caching it on
+`meta_access_tokens` is scheduled below and needs a migration, so it travels alone.
+
+### 🔴 ITEMS 3–5 STILL OPEN — scoped 2026-08-19, none started
+
 3. 🔴 **`ANTHROPIC_API_KEY` rotation — PURE OPS, zero repo changes.** Full surface mapped: the only
    production read is `_core/env.ts:15`; `_core/llm.ts` consumes it; five standalone scripts read
    `process.env` directly. **No hardcoded key anywhere, `.env` gitignored and untracked, nothing
@@ -690,6 +717,21 @@ generated page on the first real cascade rather than treating any of it as settl
 reports `clinical_outcome_claim` TWICE — once from check 10, once from the delegated
 `complianceFilter`. Pre-existing and unrelated to this chapter; the untouched *"cure your
 migraines"* control duplicates identically.
+
+### 📅 SCHEDULED — NOT STARTED — cache the account currency on `meta_access_tokens`
+
+**The currency-aware budget floor costs one live Graph read per publish.** `getAdAccount()` is the
+only place the account currency exists (`lib/metaAPI.ts:90`, Graph field `currency`), and
+`meta_access_tokens` carries `adAccountId` / `adAccountName` / `businessId` / `pageId` but **no
+currency column** — so the coach-facing floor has to fetch it every time.
+
+**The fix is to store it at OAuth and refresh time** and read it from the row, removing the
+per-publish round-trip and the failure mode that comes with it.
+
+⚠️ **NEEDS A MIGRATION, SO IT TRAVELS ALONE** (CLAUDE.md §6). Additive nullable column; the code
+must keep working when it is NULL, because every existing row will be.
+📌 **The fail-open behaviour stays either way.** A cached NULL and a failed lookup are the same
+state — unknown currency — and both must let the publish proceed, exactly as they do now.
 
 ### 📅 SCHEDULED — NOT STARTED — relocate the protected fixtures off smoke account 117174
 

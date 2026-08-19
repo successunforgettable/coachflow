@@ -82,18 +82,95 @@ export const PINNED_DAILY_BUDGET_AED = 20;
 /** Below this the harness refuses rather than letting Meta reject it mid-run. */
 export const MIN_DAILY_BUDGET_AED = 4;
 
-export function assertDailyBudgetFloor(dailyBudget: number): void {
+/**
+ * ── PER-CURRENCY FLOORS ─────────────────────────────────────────────────────────────────────
+ *
+ * ONE ENTRY PER CURRENCY WE HAVE ACTUALLY MEASURED. Meta does not expose a queryable floor
+ * (`min_daily_budget_low_freq` answers `(#100) Tried accessing nonexisting field` on v21), so
+ * every number here is a MEASURED rejection on a real account, never a documented one.
+ *
+ * 🔑 ADDING A CURRENCY IS ONE LINE. Measure the rejection, add the entry, cite where it came
+ * from. Do NOT populate this speculatively from Meta's help-centre tables — an unverified floor
+ * that is too high silently refuses budgets Meta would have accepted, and this map is consulted
+ * on a COACH-FACING path where that reads as the product being broken.
+ */
+export const MEASURED_DAILY_BUDGET_FLOORS: Readonly<Record<string, number>> = {
+  // MEASURED on act_1254349025145319: `createAdSet` rejected 1 with "must be more than AED3.00".
+  AED: MIN_DAILY_BUDGET_AED,
+};
+
+/**
+ * The floor applied when the account's currency is KNOWN but we have never measured it.
+ *
+ * ⚠️ DELIBERATELY PERMISSIVE, AND THAT IS THE WHOLE POINT. We have no measurement for this
+ * currency, so any number we pick above 1 would be INVENTED — and an invented floor that sits
+ * above Meta's real one silently refuses budgets Meta would have happily accepted. On a
+ * coach-facing path that does not read as a safety feature; it reads as the product being broken,
+ * and the coach has no way to tell which of the two it is.
+ *
+ * So for an unmeasured currency **META REMAINS THE REAL GATE**. This catches only obviously-broken
+ * sub-1 values — a zero, a negative, a stray decimal — where no currency on earth accepts the
+ * number and we can say so without guessing. Everything above that goes to Meta, which knows its
+ * own floor and will say so.
+ *
+ * 🔑 The way to make this stricter is NOT to raise this number. It is to MEASURE the currency and
+ * add one line to MEASURED_DAILY_BUDGET_FLOORS, at which point the coach gets a real threshold
+ * backed by a real rejection. Raising this constant instead would spread a guess across every
+ * currency at once.
+ */
+export const UNMEASURED_CURRENCY_FLOOR = 1;
+
+export type BudgetFloorVerdict = { ok: true } | { ok: false; message: string };
+
+/**
+ * THE ONE PLACE A DAILY-BUDGET FLOOR IS DECIDED. `assertDailyBudgetFloor` (the harness entry
+ * point) delegates here, so the AED threshold exists exactly once.
+ *
+ * `currency` null/unknown means the lookup did not resolve — see the caller. That case is
+ * DELIBERATELY PERMISSIVE: it returns ok and logs nothing here, because refusing a publish on a
+ * transient Graph hiccup would be a regression against today's behaviour, where no floor is
+ * enforced at all. A floor we cannot justify is worse than the floor we do not yet have.
+ */
+export function checkDailyBudgetFloor(
+  dailyBudget: number,
+  currency: string | null | undefined,
+): BudgetFloorVerdict {
   if (!Number.isFinite(dailyBudget)) {
-    throw new Error(`daily budget must be a finite number, got ${dailyBudget}`);
+    return { ok: false, message: `daily budget must be a finite number, got ${dailyBudget}` };
   }
-  if (dailyBudget < MIN_DAILY_BUDGET_AED) {
-    throw new Error(
+  const code = (currency ?? "").trim().toUpperCase();
+  if (!code) return { ok: true };                       // unknown currency → do not invent a floor
+
+  const measured = MEASURED_DAILY_BUDGET_FLOORS[code];
+  const floor = measured ?? UNMEASURED_CURRENCY_FLOOR;
+  if (dailyBudget >= floor) return { ok: true };
+
+  if (code === "AED") {
+    // Wording preserved verbatim — the harness tests pin this string.
+    return { ok: false, message:
       `REFUSING a daily budget of ${dailyBudget}: this ad account bills in AED and Meta rejects ` +
       `anything at or below AED 3.00 ("must be more than AED3.00", measured on this account). ` +
       `The harness pins ${PINNED_DAILY_BUDGET_AED}. Our own z.number().min(1) is currency-unaware ` +
-      `and must not be relied on here.`,
-    );
+      `and must not be relied on here.` };
   }
+  if (measured !== undefined) {
+    return { ok: false, message:
+      `A daily budget of ${dailyBudget} is below the measured minimum for this account. ` +
+      `This ad account bills in ${code}, where the minimum daily budget is ${floor} ${code}. ` +
+      `Enter ${floor} ${code} or more.` };
+  }
+  return { ok: false, message:
+    `A daily budget of ${dailyBudget} is not a usable amount. This ad account bills in ${code}, ` +
+    `and every currency requires at least ${floor} ${code} per day. Enter ${floor} ${code} or more. ` +
+    `(Meta also enforces its own per-currency minimum, which it does not publish through the API ` +
+    `and which we have not measured for ${code} — so a low-but-valid number may still be rejected ` +
+    `by Meta with its own message.)` };
+}
+
+export function assertDailyBudgetFloor(dailyBudget: number): void {
+  // The 4c harness runs against the AED account. Delegates so the threshold lives in ONE place.
+  const v = checkDailyBudgetFloor(dailyBudget, "AED");
+  if (!v.ok) throw new Error(v.message);
 }
 
 /**
