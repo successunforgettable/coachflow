@@ -24,6 +24,7 @@
 | Node 5 body / bonuses | ✅ **BANKED, NOT DEPLOYED.** See §0-N5 |
 | Safe-to-run checklist | items 1 (teardown fence) and 2 (currency-aware budget floor) ✅ **BANKED**; items 3–5 open. See §0-SAFE |
 | Node 2 ICP — Phase A | ✅ **BANKED, NOT DEPLOYED.** Inputs widened + prompt raised to the research standard, output shape byte-unchanged. Phase B (multi-persona) is scoped and NOT started. See §0-ICP |
+| Phase 2 — node research pass | 🔵 **IN PROGRESS.** ZAP is **B2C ONLY**. Node 3 Offer research banked to `docs/offer-research/`; rebuild NOT started. ⚠️ Arfeen's research lives OFF-REPO (`~/Downloads`, Drive) — repo-only audits mislead. See §0-P2 |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -165,6 +166,137 @@ the `booking_url` column, and the per-angle answering pass vs the all-angles ass
 its `flaggedTerms` were two representations of the same finding, and the second was collected over
 REWRITTEN text — so it went empty exactly when the first said "blocked". Closed by `triggers`,
 recorded against the original text at the moment each rule fires. **Watch for a fifth.**
+
+---
+
+## 0-P2. PHASE 2 — NODE RESEARCH PASS. State saved 2026-08-20
+
+**This section is a SAVE, not a resume.** It records what is settled so a dead terminal costs nothing.
+
+### 🔴 FOUNDATIONAL — ZAP IS B2C ONLY. NEVER B2B.
+
+Every research report, standard, prompt, example and test fixture is **B2C**. The audience is
+coaches, consultants, tarot readers, astrologers, yoga instructors and the like — individuals
+selling to individuals. **There is no buying committee, no procurement, no board, no SME account.**
+A framework that arrives in B2B clothing is translated or it is not used. This is not a preference
+about tone; a B2B-framed prompt fails silently on most of the user base, which is the same failure
+mode CLAUDE.md §15a records for corrupt reference specs.
+
+### Where Phase 1 ended
+
+Compliance layer + safe-to-run **item 1** (bonus-teardown predicate fence) + **item 2**
+(currency-aware daily-budget validator) are **banked**. Remaining safe-to-run:
+
+- **item 3 — `ANTHROPIC_API_KEY` rotation.** Pure ops, Arfeen's to run. Zero repo changes.
+- **item 4 — crashed-job reaper.** Needs a migration, so it travels alone.
+- **item 5 — monitoring.** Needs a buy-vs-build decision before scoping.
+
+### What Phase 2 is
+
+**Research → rebuild, one thin node at a time, the way Node 2 was done.**
+
+🔑 **THE FINDING THAT CHANGES THE MAP: ARFEEN'S RESEARCH LIVES IN `~/Downloads` AND GOOGLE DRIVE,
+NOT IN THE REPO.** Repo-only audits are therefore *misleading by construction* — they measure what
+was banked, not what exists. An audit run against the repo alone called the Offer node
+"unresearched" on 2026-08-19; the research existed off-repo the whole time. **Never conclude a node
+is unresearched without checking off-repo first.**
+
+| | |
+|---|---|
+| **Genuinely missing — must be commissioned** | **Unique Method · Email · WhatsApp** |
+| **Research exists OFF-REPO** | **Offer · Lead Magnet · Landing Page** |
+
+⚠️ The WhatsApp case is worse than missing: `whatsappSequenceGenerator.ts:206` cites a *"WhatsApp
+wire research report"* that exists **nowhere** — not in the repo, not in Downloads.
+
+### Node 2 — ICP: ✅ DONE and banked
+
+Phase A shipped (see §0-ICP). Phase B (multi-persona) scoped, not started.
+
+### Node 3 — Offer: research DONE, rebuild NOT started
+
+**Six B2C NotebookLM reports are now IN THE REPO at `docs/offer-research/`** (copied from
+`~/Downloads` 2026-08-20; originals left in place):
+
+1. Engineering Irresistible B2C Offers for Cold Meta Traffic
+2. B2C Offer Engineering — A Step-by-Step Workbook for Wellness, Coaching, and Spiritual Practitioners
+3. Ethical Value Stacking & Deception-Free Pricing
+4. Compliant Risk Reversal & Guarantees for B2C Offers
+5. Psychological Economics — Desire, Status, Identity, and Ethical Urgency
+6. The Anatomy of Offer Naming Failures
+
+📌 The **distilled standard** lives in the Claude project as `claude/ZAP_Offer_Standard.md` and is
+**not in the repo**. Banking it is a pending action below.
+
+#### 🔑 PRODUCT TRUTH — THE OFFER CONVERTS TO A FREE NEXT STEP
+
+**In almost every case the offer's next step is FREE** — a free webinar, training, book, report or
+lead magnet. **High-ticket is sold LATER, off-page**, after that free step. The offer is therefore
+*"come to this free event and you get X, Y, Z"* — not a priced package with a stack slide.
+
+An optional **operator tripwire ($10–100) is DEFERRED**: the landing page is not geared for it.
+
+⚠️ **This reframes the whole node.** The offer schema carries `pricing`, `guarantee`, `bonuses` and
+`urgency` — fields shaped for a paid sale. Whether they are even *used* on the free path is the
+first thing the pending trace has to answer. Do not rebuild against a paid-offer standard.
+
+#### ⚠️ TWO OF THE SIX REPORTS DRIFTED INTO B2B — STRIP THE EXAMPLES, KEEP THE FRAMEWORKS
+
+**Psychological Economics** and **Ethical Value Stacking** carry B2B examples — **Avian, Nexius,
+POLRI, SME**. The frameworks transfer; those examples do not and must be stripped rather than
+translated. Same discipline the `docs/icp-research/` README applies to its own B2B/RevOps framing.
+
+#### HELD, unbanked — the Offer value-equation input widening
+
+Proposed and NOT built: feed the ICP's `hopesDreams` (Dream Outcome) plus `pains` and `fears` (the
+cost of inaction) into the offer prompt, which today reads only `objections`, `buyingTriggers`,
+`implementationBarriers` and `successMetrics` — four fields, none of them the equation's own inputs.
+**This folds into the rebuild rather than shipping separately.**
+
+📌 If it is ever revived standalone, it carries a mandatory companion rule: the customer profile is
+evidence about the BUYER and never a source of offer facts. Phase A means ICP `pains` now legitimately
+contains the coach's own currency figures, and `detectInventedCurrencyAmounts`
+(`_core/validator.ts:1326`) flags **every** `£\d+` when no price is supplied.
+
+#### Guarantee-from-intake — DECIDED, option 3, LOW priority
+
+**Capture the guarantee at intake** (with safe templates the coach affirmatively opts into) **and
+stop the landing page inventing one when they decline.** Both halves, or it delivers nothing: the
+decline branch must show no guarantee, or an intake step has been added and the page still promises
+a refund the coach never agreed to.
+
+🔵 **LOW priority — because offers are mostly FREE**, so a guarantee rarely applies.
+
+- 🔴 **`services.riskReversal` is NOT a valid source.** It is AI-generated at the service node
+  (`routers/services.ts:196, 319`), stored under a column commented *"Guarantee suggestion."*
+  Grounding a real refund obligation in the model's own invention is the same problem wearing a
+  field name. It may become a *suggested default the coach opts into* — never a silent fallback.
+- 🔴 **Resolve the `groundingCorpus.ts:158` drift in that pass** — it reads
+  `guaranteeType ?? riskReversal ?? null`, so the validator already believes a guarantee was
+  supplied when only the AI suggestion exists, while the generator does not. Two definitions of
+  "supplied" in two files.
+
+### Research method — STANDING, use this for every node
+
+1. The assistant gives a **~2,000-character seed prompt** for an **empty NotebookLM notebook** —
+   the seed contains **no questions**.
+2. Then the necessary questions, **each annotated with its report length**, and each marked
+   **"generate in Studio."**
+
+### Strategy docs live in the Claude project, NOT the repo
+
+`ZAP_Node_Research_Coverage_Map` · `ZAP_Research_Workflow` · `ZAP_Offer_Standard`.
+⚠️ `ZAP_Offer_Standard_Translated` is **OBSOLETE** — do not read it.
+
+### 📌 PENDING NEXT ACTIONS — in this order
+
+1. **Read-only trace: the free-webinar / tripwire funnel vs the Offer node architecture.** Where the
+   free-vs-paid and event-type choice actually lives (Campaign Type "Node 0" / landing-page CTA);
+   how Offer (3) relates to Lead Magnet (5) and the landing CTA; and **whether the offer's
+   `pricing` / `guarantee` / `bonuses` schema is used at all on the free path.**
+2. **Bank the Offer README + distilled standard** into `docs/offer-research/`.
+3. **Rebuild the Offer node for the FREE-event offer** — propose-first → A/B on a real service row →
+   bank + backup.
 
 ---
 
