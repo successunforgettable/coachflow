@@ -13,16 +13,17 @@
 
 | | |
 |---|---|
-| Last CODE commit | the **currency-aware daily-budget floor** — safe-to-run item 2, see §0-SAFE. Run the command below for the SHAs; §1 records what hardcoding one here costs |
+| Last CODE commit | **ICP node (Node 2) Phase A** — the early-node rebuild starts here, see §0-ICP. Run the command below for the SHAs; §1 records what hardcoding one here costs |
 | HEAD | that commit. Working tree clean of tracked changes |
-| Since `52f440c` | **six code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, Node 5 screening coverage, the teardown fence, and the currency-aware budget floor. No deploy, no migration, no DB write. One READ-ONLY prod query was run (§0-SAFE).** |
+| Since `52f440c` | **seven code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, Node 5 screening coverage, the teardown fence, the currency-aware budget floor, and ICP Phase A. No deploy, no migration, no DB write. TWO READ-ONLY prod queries were run (§0-SAFE, §0-ICP).** |
 | `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Re-read the ahead-count from git; never quote one from here |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **fast-forwarded to the commit you are reading**, 2026-08-19, and SHA-verified against `git ls-remote`. It carries the teardown fence and the budget floor. ⚠️ It goes stale again with every commit after — **re-read it, never assume it. It does NOT deploy** |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **fast-forwarded to the commit you are reading**, 2026-08-19, and SHA-verified against `git ls-remote`. It carries the teardown fence, the budget floor and ICP Phase A. ⚠️ It goes stale again with every commit after — **re-read it, never assume it. It does NOT deploy** |
 | The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
 | tsc | **34**, re-confirmed 2026-08-19 either side of this commit |
 | The FAQ guardrail | ✅ **BANKED, NOT DEPLOYED.** Phase 1 step 2 complete. See §0-FAQ |
 | Node 5 body / bonuses | ✅ **BANKED, NOT DEPLOYED.** See §0-N5 |
 | Safe-to-run checklist | items 1 (teardown fence) and 2 (currency-aware budget floor) ✅ **BANKED**; items 3–5 open. See §0-SAFE |
+| Node 2 ICP — Phase A | ✅ **BANKED, NOT DEPLOYED.** Inputs widened + prompt raised to the research standard, output shape byte-unchanged. Phase B (multi-persona) is scoped and NOT started. See §0-ICP |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -164,6 +165,93 @@ the `booking_url` column, and the per-angle answering pass vs the all-angles ass
 its `flaggedTerms` were two representations of the same finding, and the second was collected over
 REWRITTEN text — so it went empty exactly when the first said "blocked". Closed by `triggers`,
 recorded against the original text at the moment each rule fires. **Watch for a fifth.**
+
+---
+
+## 0-ICP. ✅ NODE 2 ICP — PHASE A DONE 2026-08-19, local only. Phase B scoped, NOT started
+
+**The node was not merely thin — it was starving on inputs it already held.** The coach types ~25
+fields about their buyer at Node 1; `ICP_USER_PROMPT` interpolated **five** of them. Both live
+routers already `.select()` the whole `services` row and pass it whole, so `painPoints`,
+`failedSolutions`, `hiddenReasons`, `falseBeliefsVsRealReasons` and `whyProblemExists` were sitting
+in the object at the call site and being ignored. The model was inventing buyer psychology the coach
+had already written down.
+
+### What shipped — output shape BYTE-UNCHANGED, so nothing downstream moved
+
+`ICP_TEXT_SECTION_KEYS` and `ICP_JSON_SCHEMA` are untouched: 14 string fields, `strict: true`, one
+persona. **No migration, no DB change, and not one of the 13 downstream generators was edited** —
+they read the same fields with the same types and simply receive better material.
+
+1. **Input widening.** Seven optional buyer-intel fields on `ICPServiceInput`, rendered by
+   `buildBuyerIntelBlock`. `uniqueMechanismSuggestion` is deliberately EXCLUDED — it describes the
+   solution, Node 4 generates the method, and feeding it here produces an ICP that assumes the buyer
+   already knows the mechanism (R3's "Aspirational Fantasy").
+2. **Prompt raised to `docs/icp-research/`** — awareness stage, market sophistication, prior
+   attempts, identity/JTBD, and an explicit anti-breadth exclusion instruction, as a CALIBRATE block
+   that adds NO sections. Only the transferable psychological + anti-fabrication halves were ported;
+   the B2B/RevOps machinery (firmographics, buying committees, territory ops) was left out, per that
+   folder's own README.
+3. **PAINS in the first person**, matching fears / objections / buying triggers — one profile, one
+   voice. Measured on the same row: **0/9 first-person bullets before the fix, 9/9 after**, against
+   the old path's 9/9.
+
+🔑 **THE ONE LIST IS THE LOAD-BEARING PART.** `ICP_BUYER_INTEL_FIELDS` is read by BOTH
+`buildBuyerIntelBlock` (the prompt) and `buildIcpInputCorpus` (the grounding corpus). Widening the
+prompt alone would have been actively harmful: the model repeats the coach's own words, and the
+validator — still reading a 5-field corpus — reports them as content the coach never supplied.
+**This is the FIFTH instance of the drift shape §0 tells you to watch for** (two representations of
+the same thing kept in parallel), and it is closed by construction rather than by discipline.
+
+⚠️ **A CORRECTION MADE IN-FLIGHT, KEPT BECAUSE THE REASONING WAS WRONG BEFORE IT WAS RIGHT.** The
+proposal claimed the corpus widening prevents BURNED RETRIES via `icp_named_third_party`. It does
+not. That check scans **`influencers` and `mediaConsumption` only** — both retired 2026-07-26 — so
+it cannot fire on a generated profile at all. The class that actually reads generated fields is
+**`icp_assumed_prior_evaluation`** on `objections` / `buyingTriggers`, and it is `retryable: false`.
+So the widening prevents **mislabelled hits, not burned retries** — and it matters MORE than first
+argued, because the new PRIOR ATTEMPTS instruction makes the model likelier to write exactly the
+"already tried" phrasing that check matches. Both facts are now pinned by tests, one of which exists
+purely as executable documentation so the same wrong inference is not drawn twice.
+
+### Proven on a real row, read-only
+
+A/B on **service 209** (yoga-teacher coaching, all seven intel fields populated), old path run in a
+genuine detached worktree of the previous commit — real unmodified code, not a simulation. Grounding
+hits **0 both sides**, attempts **1 both sides**. The new output is built out of the coach's actual
+intel (the failed nine-member launch, the Kajabi subscription, the physio comparison, the January
+reset) where the old was well-written but generic. `server/scripts/ab-icp-phaseA.ts` is the harness —
+**no database access**, service row read from a JSON file captured read-only beforehand.
+
+📌 **The LLM is non-deterministic and the specifics MOVE BETWEEN SECTIONS run to run.** The £12 class
+price appeared in one run and not the next; the nine-member launch landed in PAINS once and in
+FEARS/OBJECTIONS the next time. Judge the voice and the grounding as stable — never treat an
+individual phrase as guaranteed, and do not diagnose a regression from one missing detail.
+
+### 📅 SCHEDULED — NOT STARTED — Phase B: multi-persona, and it is NEW BUILD not a connection
+
+**Single-persona is enforced by the schema, not by the prompt.** `campaignKits.icpId` is a single
+`notNull` int, and `ICP_JSON_SCHEMA` returns one object. Phase B carries a MIGRATION, so it travels
+alone (CLAUDE.md §6).
+
+- **Unpin persona.** `conceptGenerator.ts` sets `personaLabel` once from the ICP (`angleName || name`)
+  and stamps it on every concept; `pdafGate.ts` excludes persona from `MOVABLE_AXES` and says so
+  explicitly: widening it *"needs ICP-level work, not a gate change."*
+- **Make P and D addressable.** Today both are newline-joined bullet prose in one text column, so
+  nothing downstream can select a single desire. The spine cannot vary an axis it cannot address.
+- **Revive the segment machinery.** `routers/icpAngleSuggestions.ts` already generates **10 genuinely
+  distinct segments** with sharp anti-generic rules, runs through the same grounded runner, and is
+  mounted on the tRPC router — but its ONLY caller is V1 legacy onboarding
+  (`pages/OnboardingPage.tsx`, behind `isLegacyOpen`). It is built and unreachable.
+- 🔑 **Why Phase A had to come first:** the build spec §8a arithmetic — with P and D pinned, 127 of
+  300 headline pairs collapse (42.3%, matching the live measurement exactly) and *"the floor cannot
+  go below that."* Multiple personas only pay off once each persona is individually strong.
+
+### 📌 OPEN QUESTION — `values` and `decisionMaking` are generated and read by NOBODY
+
+Both are generated, compliance-filtered, stored, surfaced in the UI tabs and the campaign export, and
+read by **zero** downstream generators — measured across all 13. Either wire them in or retire them
+the way demographics / mediaConsumption / influencers were on 2026-07-26. Not urgent; recorded so the
+next person measures rather than assumes.
 
 ---
 
@@ -732,6 +820,33 @@ per-publish round-trip and the failure mode that comes with it.
 must keep working when it is NULL, because every existing row will be.
 📌 **The fail-open behaviour stays either way.** A cached NULL and a failed lookup are the same
 state — unknown currency — and both must let the publish proceed, exactly as they do now.
+
+### 📅 SCHEDULED — NOT STARTED — 🔵 LOW — recalibrate the provenance thresholds against the widened ICP corpus
+
+**ICP Phase A widened `buildIcpInputCorpus` from 5 fields to 12, and the provenance ratio is
+divided by corpus size.** Measured on service 209, the same row either side: **corpusWords 22 → 435**
+(~20×), and the section labels moved **stated 4 / partial 10 / inferred 0 → stated 0 / partial 10 /
+inferred 4**. `labelFor` computes `overlap(section, corpus) / corpusWords` against
+`PROVENANCE_STATED_RATIO = 0.35` / `PROVENANCE_PARTIAL_RATIO = 0.15`, so a fixed-length section can
+only overlap so many words and the ratio falls mechanically as the denominator grows.
+
+🔑 **THE GROUNDING IMPROVED WHILE THE LABEL GOT WORSE. The label is the thing that is wrong.**
+Same content, same coach, more of the coach's own words in the prompt — and the metric read it as
+less grounded, because the metric measures coverage OF THE CORPUS rather than provenance OF THE
+SECTION.
+
+🔵 **LOW PRIORITY, and the reason is specific: nothing reads the per-section labels.**
+`buildCoachCorpus` (`_core/groundingCorpus.ts:97`) reads only `groundingMeta.ladderAnswers`; no
+generator and no client file reads `perSection`. The labels are stored and unread, so a wrong label
+misleads a future reader and nothing else. ⚠️ That changes the moment anything starts consuming
+them — check this note first if a consumer is ever added.
+
+⚠️ **DO NOT SIMPLY MOVE 0.35 / 0.15 UNTIL IT LOOKS RIGHT.** That is the "reject above 0.40 cosine"
+folklore-threshold mistake the copy-engine build spec §7 already threw out once: tuning a number to
+produce a pleasing label, with no measurement behind it. **Measure first** — run the real path over
+a spread of service rows (thin-input and rich-input alike), record the ratio distribution, and only
+then decide whether the fix is new thresholds or a different denominator (section length rather
+than corpus length, which is the shape that stops the metric moving when the input widens).
 
 ### 📅 SCHEDULED — NOT STARTED — relocate the protected fixtures off smoke account 117174
 

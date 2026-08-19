@@ -42,6 +42,23 @@ export type ICPServiceInput = {
   description: string | null;
   targetCustomer: string | null;
   mainBenefit: string | null;
+  /**
+   * Buyer intel the coach already typed at Node 1 (the `services` row). Every
+   * field is optional and most coaches leave several blank — a blank field is
+   * OMITTED from the prompt entirely, never rendered as a placeholder.
+   *
+   * uniqueMechanismSuggestion is deliberately NOT here: it describes the
+   * SOLUTION, Node 4 generates the method downstream, and feeding it in would
+   * produce an ICP that assumes the buyer already knows the mechanism — R3's
+   * "Aspirational Fantasy" awareness mismatch.
+   */
+  painPoints?: string | null;
+  whyProblemExists?: string | null;
+  failedSolutions?: string | null;
+  falseBeliefsVsRealReasons?: string | null;
+  hiddenReasons?: string | null;
+  avatarName?: string | null;
+  avatarTitle?: string | null;
 };
 
 /** Angle focus for the icpAngleSuggestions path. */
@@ -106,13 +123,68 @@ export function buildLadderBlock(ladder?: ICPLadderAnswers | null): string {
   }
   return `
 
-WHAT THE COACH TOLD US ABOUT REAL CLIENTS — treat this as authoritative. It comes from people they have actually worked with, so it outranks anything you would otherwise assume. Build the sections below on these specifics, keep the coach's own wording where it is vivid, and stay consistent with this account of the customer.
+WHAT THE COACH TOLD US ABOUT REAL CLIENTS — treat this as authoritative. It comes from people they have actually worked with, so it outranks anything you would otherwise assume, including the coach's general description of this buyer above. Build the sections below on these specifics, keep the coach's own wording where it is vivid, and stay consistent with this account of the customer.
+
+${lines.join("\n")}`;
+}
+
+/**
+ * The coach's own buyer intel, in ONE ordered list.
+ *
+ * ⚠️ THE PROMPT AND THE GROUNDING CORPUS BOTH READ THIS LIST — buildBuyerIntelBlock
+ * here, and buildIcpInputCorpus in icpGrounding.ts. Never inline a second copy.
+ *
+ * A field the prompt shows but the corpus does not know about is worse than a
+ * field nobody reads: the model faithfully repeats the coach's own words, and
+ * `unsupportedProperNouns` then flags them as `icp_named_third_party` — a Class-A
+ * hit which is RETRYABLE, so the coach's own facts burn all three generation
+ * attempts. The two lists drifting apart is the failure mode, so there is one list.
+ */
+export const ICP_BUYER_INTEL_FIELDS: ReadonlyArray<{ key: keyof ICPServiceInput; label: string }> = [
+  { key: "painPoints", label: "Pain points the coach says this buyer feels daily" },
+  { key: "whyProblemExists", label: "Why the coach says this problem exists at all" },
+  { key: "failedSolutions", label: "What this buyer already tried, and why it did not work" },
+  { key: "falseBeliefsVsRealReasons", label: "What the buyer believes is stopping them, versus what actually is" },
+  { key: "hiddenReasons", label: "Reasons behind the problem this buyer would never admit out loud" },
+  { key: "avatarName", label: "What the coach calls this buyer" },
+  { key: "avatarTitle", label: "This buyer's role or situation" },
+];
+
+/** True when the coach filled at least one buyer-intel field. */
+export function hasBuyerIntel(service: ICPServiceInput): boolean {
+  return ICP_BUYER_INTEL_FIELDS.some(({ key }) => {
+    const v = service[key];
+    return typeof v === "string" && v.trim().length > 0;
+  });
+}
+
+/**
+ * The coach's own buyer intel, marked as ground truth about the person.
+ * Blank fields are omitted entirely — never printed as "Not specified", which
+ * is noise the model treats as content and which the prompt tests forbid.
+ */
+export function buildBuyerIntelBlock(service: ICPServiceInput): string {
+  if (!hasBuyerIntel(service)) return "";
+  const lines: string[] = [];
+  for (const { key, label } of ICP_BUYER_INTEL_FIELDS) {
+    const v = service[key];
+    if (typeof v === "string" && v.trim().length > 0) {
+      lines.push(`${label}: ${v.trim()}`);
+    }
+  }
+  return `
+
+WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER — treat this as ground truth about the person, not as background colour. These are the coach's own words about the buyer they actually serve. Build the sections below on these specifics and keep their phrasing wherever it is vivid. Where this conflicts with what you would otherwise assume, this wins.
 
 ${lines.join("\n")}`;
 }
 
 export function ICP_SYSTEM_PROMPT(): string {
-  return `You are an expert direct response copywriter who writes Ideal Customer Profiles from inside the customer's head — using their internal monologue, not a textbook description. You write in the specific language of this niche, not generic marketing language. Every answer must be so specific that the customer reads it and thinks "this is about me." Always respond with valid JSON. Never produce content containing: ${getGlobalNegativePrompts().join(", ")}.`;
+  return `You are an expert direct response copywriter who writes Ideal Customer Profiles from inside the customer's head — using their internal monologue, not a textbook description. You write in the specific language of this niche, not generic marketing language. Every answer must be so specific that the customer reads it and thinks "this is about me."
+
+You profile the DECISION, not the person: what makes this buyer act, what makes them hesitate, and what they have to believe before they can say yes. Everything the coach has told you is ground truth — build on their exact words wherever they gave you any. Where they told you nothing, you are writing a hypothesis about one specific person, so keep it inside that person's own voice and uncertainty; never state an outside fact you were not given. Never name a real person, brand, publication, product or competitor the coach did not name.
+
+Always respond with valid JSON. Never produce content containing: ${getGlobalNegativePrompts().join(", ")}.`;
 }
 
 export function ICP_USER_PROMPT(service: ICPServiceInput, opts?: ICPPromptOptions): string {
@@ -142,7 +214,7 @@ Service Name: ${service.name}
 Category: ${service.category}
 Description: ${service.description}
 Target Customer: ${service.targetCustomer}
-Main Benefit: ${service.mainBenefit}${angleBlock}${buildLadderBlock(opts?.ladder)}${opts?.seedBlock ?? ""}
+Main Benefit: ${service.mainBenefit}${angleBlock}${buildBuyerIntelBlock(service)}${buildLadderBlock(opts?.ladder)}${opts?.seedBlock ?? ""}
 
 VOICE RULES — apply to every section:
 - Write as if you are narrating the customer's internal experience, not describing them from the outside
@@ -150,18 +222,30 @@ VOICE RULES — apply to every section:
 - Every bullet point must be niche-specific — if it could appear in any coach's ICP, rewrite it
 - Use the language they use with a close friend, not the language they'd use in a job interview
 
+CALIBRATE BEFORE YOU WRITE — these four judgements shape every section below. Do not output them as sections; they decide the content of the 14.
+
+• AWARENESS. Decide where this buyer's head actually is today, and write every section from that point — not from where the coach wishes they were. Unaware: does not yet name this as a problem. Problem-aware: feels the pain, does not know help like this exists. Solution-aware: knows this kind of help exists, has not chosen who. Product-aware: comparing specific people and offers. Most-aware: ready, waiting on a reason to act now. A profile written a stage ahead of the buyer reads as fantasy to them.
+
+• SOPHISTICATION. Decide how many times this buyer has already been sold to in this niche. The more they have heard, the more a plain claim bounces off, and the more the specific mechanism and the specific situation carry the weight. Their scepticism is a fact about them — write it into their voice.
+
+• PRIOR ATTEMPTS. What has this person already tried, and what did it cost them in money, time and self-belief when it did not work? A buyer on their fourth attempt is a different person from one on their first, and everything below changes with it.
+
+• IDENTITY AND THE REAL JOB. Name who they are trying to become, not only what they want to get. People buy the version of themselves the purchase makes possible, and they hire an offer to do one specific job in their life. Say what that job is.
+
+WHO THIS IS NOT — write the profile narrowly enough that it excludes people. If it would fit most of this coach's possible customers, it is too broad to be useful; narrow it to the single most specific person the coach's information supports. Precision is disciplined exclusion, not a bigger net.
+
 Generate a comprehensive ICP with ALL 14 sections:
 
 1. INTRODUCTION: 2-3 paragraphs. Who is this person right now — their current situation, their daily life, their stuck state. Use their internal voice. Name their niche, their role, their specific problem.${angleIntroSuffix}
 
-2. FEARS: 5-7 fears. Each fear = the 3am version — the thought that wakes them at 3am, not the polite daytime version. Format: "I lie awake worrying that [specific fear]..." Not: "They fear failure."
+2. FEARS: 5-7 fears. Each fear = the 3am version — the thought that wakes them at 3am, not the polite daytime version. Format: "I lie awake worrying that [specific fear]..." Not: "They fear failure." Cover the four risks that actually stall a decision: the effort and capacity it will take, what the people close to them will think if it fails, what they lose by abandoning the way they do things now, and the money itself.
 
-3. HOPES & DREAMS: 5-7 hopes. Each must name a SPECIFIC desired situation — what their life looks like on the day everything has worked. Not feelings. Situations.
+3. HOPES & DREAMS: 5-7 hopes. Each must name a SPECIFIC desired situation — what their life looks like on the day everything has worked. Not feelings. Situations. At least two must name the person they become in that situation, not only what they get — the identity they are buying their way into.
 
 
 4. PSYCHOGRAPHICS: 3-4 paragraphs. Personality traits, lifestyle, attitudes, interests — all niche-specific${anglePsychoSuffix}. How do they spend the hours they are not working? What do they turn to when they want to switch off? What opinions do they hold strongly in this space?
 
-5. PAINS: 7-10 pains. Each pain = a specific daily situation, not an emotion. Format: "Every [day/week/month], [specific situation that happens to them]." Not: "They struggle with marketing."
+5. PAINS: 7-10 pains. Each pain = a specific daily situation, not an emotion. Write every one in the FIRST PERSON, in this buyer's own voice, the same way the fears and buying triggers are written — one profile, one voice throughout. Format: "Every [day/week/month], I [specific situation that happens to me]." Not: "They struggle with marketing." Write the lived situation that makes the problem urgent and expensive to ignore, not the category it belongs to — name what it is costing me this week, in a way I can picture.
 
 6. FRUSTRATIONS: 5-7 frustrations. The things that make them say "WHY does this always happen to me?" — niche-specific, situational, specific enough to recognise themselves in.
 

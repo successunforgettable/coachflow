@@ -37,6 +37,7 @@ import {
   type ICPAngleInput,
   type ICPLadderAnswers,
   ICP_LADDER_KEYS,
+  ICP_BUYER_INTEL_FIELDS,
 } from "./icpPrompts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -199,10 +200,20 @@ export function buildIcpStructuralFailContext(hits: IcpStructuralHit[]): string 
 
 // ── 2. R3 grounding validator ────────────────────────────────────────────────
 
-/** Everything the coach actually supplied, as one corpus. */
+/**
+ * Everything the coach actually supplied, as one corpus.
+ *
+ * ⚠️ THE BUYER-INTEL FIELDS ARE READ FROM `ICP_BUYER_INTEL_FIELDS`, THE SAME LIST
+ * THE PROMPT RENDERS. This is not tidiness. A field the prompt shows but this
+ * corpus does not know about gets the coach's own words — a solution they named
+ * in `failedSolutions`, a person in `hiddenReasons` — flagged as
+ * `icp_named_third_party`, which is RETRYABLE, so grounded content burns all
+ * three attempts. The two lists must widen together or not at all.
+ */
 export function buildIcpInputCorpus(ctx: IcpValidationContext): string {
   const s = ctx.service;
   const parts = [s.name, s.category, s.description, s.targetCustomer, s.mainBenefit];
+  for (const { key } of ICP_BUYER_INTEL_FIELDS) parts.push((s[key] as string | null | undefined) ?? null);
   if (ctx.angle) {
     parts.push(ctx.angle.angleName, ctx.angle.description, ctx.angle.primaryPain, ctx.angle.primaryBuyingTrigger);
   }

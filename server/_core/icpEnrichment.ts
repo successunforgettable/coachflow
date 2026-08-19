@@ -69,6 +69,17 @@ export async function enrichImportedIcp(icpId: number): Promise<void> {
       description: services.description,
       targetCustomer: services.targetCustomer,
       mainBenefit: services.mainBenefit,
+      // The coach's buyer intel — the import path fetches it too, or an
+      // existing-assets coach gets a prompt starved of what they already typed
+      // while the generate path gets the full picture. Same seven columns the
+      // prompt and the grounding corpus read (ICP_BUYER_INTEL_FIELDS).
+      painPoints: services.painPoints,
+      whyProblemExists: services.whyProblemExists,
+      failedSolutions: services.failedSolutions,
+      falseBeliefsVsRealReasons: services.falseBeliefsVsRealReasons,
+      hiddenReasons: services.hiddenReasons,
+      avatarName: services.avatarName,
+      avatarTitle: services.avatarTitle,
     }).from(services).where(eq(services.id, icp.serviceId)).limit(1);
     if (svc) service = svc;
   }

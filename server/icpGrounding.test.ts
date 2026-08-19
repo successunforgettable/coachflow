@@ -14,7 +14,9 @@ import {
 import {
   ICP_USER_PROMPT, buildLadderBlock, hasLadderContent,
   ICP_JSON_SCHEMA, ICP_RETIRED_SECTION_KEYS,
+  ICP_BUYER_INTEL_FIELDS, buildBuyerIntelBlock, hasBuyerIntel,
 } from "./_core/icpPrompts";
+import { buildIcpInputCorpus } from "./_core/icpGrounding";
 
 const TEXT_KEYS = [
   "introduction", "fears", "hopesDreams", "psychographics", "pains", "frustrations",
@@ -306,5 +308,134 @@ describe("ICP_USER_PROMPT — single source (sibling fix 1)", () => {
     expect(withLadder).toContain("treat this as authoritative");
     expect(withLadder).toContain("Their GP asked how they were coping.");
     expect(ICP_USER_PROMPT(SERVICE)).not.toContain("treat this as authoritative");
+  });
+});
+
+// ── Phase A: buyer-intel widening ────────────────────────────────────────────
+
+const INTEL = {
+  painPoints: "They rebook the same 3am feed six nights running and cancel plans they had looked forward to.",
+  whyProblemExists: "Nobody taught them that a baby's sleep cycle is not a character flaw in the parent.",
+  failedSolutions: "They tried a rigid cry-it-out plan from a paperback and gave up on night four.",
+  falseBeliefsVsRealReasons: "They think they lack discipline; the real reason is nobody sequenced the wind-down.",
+  hiddenReasons: "They quietly resent their partner sleeping through it and will not say so out loud.",
+  avatarName: "Priya",
+  avatarTitle: "First-time mother back at work three days a week",
+};
+
+describe("buyer intel — empty fields are OMITTED, never placeholdered", () => {
+  it("renders nothing at all when the coach filled none of the seven", () => {
+    expect(hasBuyerIntel(SERVICE)).toBe(false);
+    expect(buildBuyerIntelBlock(SERVICE)).toBe("");
+    expect(ICP_USER_PROMPT(SERVICE)).not.toContain("WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER");
+  });
+
+  it("never emits a placeholder for a blank field — the whole line is dropped", () => {
+    const partial = { ...SERVICE, painPoints: INTEL.painPoints, hiddenReasons: "   ", avatarName: "" };
+    const p = ICP_USER_PROMPT(partial);
+    expect(p).toContain(INTEL.painPoints);
+    // The blank ones contribute no label line at all.
+    expect(p).not.toContain("Reasons behind the problem this buyer would never admit out loud");
+    expect(p).not.toContain("What the coach calls this buyer");
+    // The standing prohibition that made this a bug the first time.
+    expect(p).not.toContain("Not specified");
+    expect(p).not.toContain("N/A");
+  });
+
+  it("treats whitespace-only as absent for every one of the seven fields", () => {
+    for (const { key } of ICP_BUYER_INTEL_FIELDS) {
+      expect(hasBuyerIntel({ ...SERVICE, [key]: "   " })).toBe(false);
+      expect(hasBuyerIntel({ ...SERVICE, [key]: "x" })).toBe(true);
+    }
+  });
+
+  it("puts every filled field into the prompt as ground truth, below the angle and above the ladder", () => {
+    const p = ICP_USER_PROMPT({ ...SERVICE, ...INTEL }, { ladder: { trigger: "Their health visitor asked how they were coping." } });
+    for (const v of Object.values(INTEL)) expect(p).toContain(v);
+    expect(p).toContain("WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER");
+    // The ladder is real clients and must remain the LAST, highest-authority block.
+    expect(p.indexOf("WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER"))
+      .toBeLessThan(p.indexOf("treat this as authoritative"));
+    expect(p).toContain("including the coach's general description of this buyer above");
+  });
+});
+
+describe("buyer intel — the prompt and the grounding corpus read ONE list", () => {
+  it("puts every field the prompt renders into the corpus, so coach words are never Class-A", () => {
+    const service = { ...SERVICE, ...INTEL };
+    const prompt = ICP_USER_PROMPT(service);
+    const corpus = buildIcpInputCorpus({ service });
+    for (const { key } of ICP_BUYER_INTEL_FIELDS) {
+      const v = (service as Record<string, string>)[key];
+      expect(prompt).toContain(v);
+      expect(corpus).toContain(v); // drift here = the coach's own words flagged as fabrication
+    }
+  });
+
+  it("widens the corpus beyond the five base fields once intel is present", () => {
+    const bare = buildIcpInputCorpus({ service: SERVICE });
+    const rich = buildIcpInputCorpus({ service: { ...SERVICE, ...INTEL } });
+    expect(rich.length).toBeGreaterThan(bare.length);
+    expect(bare).not.toContain(INTEL.failedSolutions);
+  });
+
+  /**
+   * ⚠️ THE CLASS THAT MATTERS HERE IS `icp_assumed_prior_evaluation`, NOT
+   * `icp_named_third_party`. The Class-A named-person check scans `influencers`
+   * and `mediaConsumption` only, and both were retired on 2026-07-26 — against a
+   * generated profile it finds nothing by construction. The prior-evaluation
+   * check is the one that reads `objections` / `buyingTriggers`, which ARE
+   * generated, and the new PRIOR ATTEMPTS calibration makes the model more
+   * likely to write exactly the phrases it matches.
+   */
+  it("stops a prior attempt the COACH supplied being read as an assumed evaluation", () => {
+    const icp = validIcp({
+      objections: "What they say: it is not the right time. What they mean: I already tried the Baby Sleep Academy and it took my money.",
+    });
+
+    // The coach never named it → the assumption is genuinely unsupported.
+    const bare = validateIcpGrounding(icp, { service: SERVICE });
+    expect(bare.filter((h) => h.classId === "icp_assumed_prior_evaluation").length).toBeGreaterThan(0);
+
+    // The coach named it in failedSolutions → the corpus now knows it, so the
+    // buyer's own history stops being reported as a fabricated assumption.
+    const service = { ...SERVICE, failedSolutions: "They tried the Baby Sleep Academy programme and gave up on night four." };
+    const hits = validateIcpGrounding(icp, { service });
+    expect(hits.filter((h) => h.classId === "icp_assumed_prior_evaluation")).toHaveLength(0);
+  });
+
+  it("records that the Class-A named-person check cannot fire on a generated profile", () => {
+    // Kept as executable documentation: the check is retained for the day a tool
+    // repopulates the dormant columns, but influencers/mediaConsumption are not
+    // generated, so a generated ICP never reaches it. Anyone reasoning about
+    // burned retries from this class is reasoning about a path that is not live.
+    const hits = validateIcpGrounding(validIcp(), { service: SERVICE });
+    expect(hits.filter((h) => h.classId === "icp_named_third_party")).toHaveLength(0);
+  });
+});
+
+describe("Phase A — the output contract is untouched", () => {
+  it("still asks for exactly 14 sections when the new blocks are present", () => {
+    const p = ICP_USER_PROMPT({ ...SERVICE, ...INTEL }, { ladder: { trigger: "t" } });
+    const nums = (p.match(/^(\d+)\. [A-Z]/gm) ?? []).map((m) => parseInt(m, 10));
+    expect(nums).toEqual(Array.from({ length: 14 }, (_, i) => i + 1));
+    expect(ICP_JSON_SCHEMA.schema.required).toHaveLength(14);
+  });
+
+  it("carries the calibration block without adding a numbered section", () => {
+    const p = ICP_USER_PROMPT(SERVICE);
+    expect(p).toContain("CALIBRATE BEFORE YOU WRITE");
+    expect(p).toContain("WHO THIS IS NOT");
+    expect(p).toContain("Most-aware: ready, waiting on a reason to act now");
+    expect(p).toContain("Precision is disciplined exclusion, not a bigger net");
+  });
+
+  it("keeps all five pinned craft phrases after the section upgrades", () => {
+    const p = ICP_USER_PROMPT(SERVICE);
+    expect(p).toContain("the 3am version");
+    expect(p).toContain("I lie awake worrying that");
+    expect(p).toContain("their internal monologue, not a textbook description");
+    expect(p).toContain("It's 2am and I'm refreshing my inbox again");
+    expect(p).toContain("Every [day/week/month]");
   });
 });
