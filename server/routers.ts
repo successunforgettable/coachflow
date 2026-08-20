@@ -21,6 +21,7 @@ import { sourceOfTruthRouter } from "./routers/sourceOfTruth";
 import { headlinesRouter } from "./routers/headlines";
 import { hvcoRouter } from "./routers/hvco";
 import { heroMechanismsRouter } from "./routers/heroMechanisms";
+import { methodsRouter } from "./routers/methods";
 import { adminRouter } from "./routers/admin";
 import { analyticsRouter } from "./routers/analytics";
 import { onboardingRouter } from "./routers/onboarding";
@@ -237,6 +238,7 @@ export const appRouter = router({
   headlines: headlinesRouter,
   hvco: hvcoRouter,
   heroMechanisms: heroMechanismsRouter,
+  methods: methodsRouter,
   admin: adminRouter,
   analytics: analyticsRouter,
   onboarding: onboardingRouter,

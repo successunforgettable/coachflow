@@ -24,6 +24,7 @@ import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import TrailBar, { type TrailStop, type StopState } from "./components/TrailBar";
 import ChatThread, { type ChatMessage } from "./components/ChatThread";
+import { useMethodWalkthrough, type WalkthroughEmit } from "./components/V2MethodWalkthrough";
 import ComplianceDial from "./components/ComplianceDial";
 import { trpc } from "@/lib/trpc";
 import { getNodePatience } from "./lib/patienceGuard";
@@ -83,6 +84,9 @@ type DealableConfig = {
   /** Which generators have a toggleFavorite surface — only show hearts on those */
   hasFavourite: boolean;
 };
+
+/** The post-reveal opt-in on the Unique Method node. Trail-level UI label, not part of the script. */
+const WALKTHROUGH_CHIP = "Tell Zappy how I work";
 
 const AUTO_STEPS: {
   step: AutoStepName;
@@ -470,8 +474,23 @@ export default function V2Trail() {
   // Phase 1 (Problem A): when set, the wizard is asking an upfront campaign-fact question — the text input
   // + chip taps route to the fact-answer resolver instead of the tweak/deal handlers.
   const [factsMode, setFactsMode] = useState<{ token: string; inputType: "text" | "date" | "time" | "venue" | "price"; naBranches: { sentinel: string; label: string }[] } | null>(null);
+  /**
+   * The third input mode, beside factsMode and tweakMode — the "tell me how you actually work"
+   * conversation on the Unique Method node. DELIBERATELY DISTINCT rather than folded into either:
+   * factsMode answers an operator token and tweakMode carries a rewrite instruction, and a method
+   * walkthrough answer is neither. Overloading one of them would make three unrelated meanings
+   * share a handler and a placeholder.
+   */
+  const [walkthroughMode, setWalkthroughMode] = useState(false);
   const tweakQueue = useRef<{ step: AutoStepName; instruction: string }[]>([]);
   const driverBusy = useRef(false);
+
+  // Whether this service already has a captured method — the offer is not made twice.
+  const coachMethodQuery = trpc.methods.getMethod.useQuery(
+    { serviceId: tokenServiceId! },
+    { enabled: tokenServiceId != null },
+  );
+  const hasCoachMethod = !!coachMethodQuery.data;
 
   const collapsePreviousChips = () => {
     if (activeChips.current) {
@@ -484,12 +503,76 @@ export default function V2Trail() {
     collapsePreviousChips();
     const chips = tweakable ? ["Love it ✓", "Tweak"] : ["Love it ✓"];
     if (step === "adCreatives") chips.push("Regenerate images");
+    // POST-REVEAL, OPT-IN — mirrors the ICP sharpenWithLadder placement exactly: offered only once
+    // the coach has SEEN a mechanism, so they are recognising rather than starting from nothing.
+    // A coach who ignores it gets today's flow unchanged.
+    if (step === "mechanism" && tokenServiceId != null && !hasCoachMethod) chips.push(WALKTHROUGH_CHIP);
     // Sprint 4 C3: path switch chip — only in auto mode (switch to manual)
     const kit = (trailState.data?.kit ?? {}) as Record<string, unknown>;
     if (kit.path === "auto") chips.push("Let me pick from here");
     const row = addLive({ type: "chip-row", nodeKey: step, chips });
     activeChips.current = { msgId: row.id, step };
   };
+
+  // ── The method walkthrough — the HOOK, not the standalone component ──────────────────────────
+  // V2MethodWalkthrough also ships a self-contained rendering with its own ChatThread (parity with
+  // V2OperatorIntake). The trail deliberately uses the state machine instead and emits into ITS
+  // thread, so the coach stays in one continuous conversation rather than being handed off to a
+  // second one mid-trail. One machine, two renderings, no drift.
+  const walkthroughEmit: WalkthroughEmit = {
+    zappy: (text, mood) => { const m = addLive({ type: "zappy-bubble", mood, text }); void persistMsgs([m]); },
+    user: (text) => { const m = addLive({ type: "user-bubble", text }); void persistMsgs([m]); },
+    chips: (chips) => {
+      collapsePreviousChips();
+      const row = addLive({ type: "chip-row", nodeKey: "mechanism", chips });
+      activeChips.current = { msgId: row.id, step: "mechanism" };
+    },
+    divider: (text) => { const m = addLive({ type: "system-divider", text }); void persistMsgs([m]); },
+  };
+
+  const walkthrough = useMethodWalkthrough({
+    serviceId: tokenServiceId ?? 0,
+    emit: walkthroughEmit,
+    onSaved: async () => {
+      setWalkthroughMode(false);
+      await coachMethodQuery.refetch();
+      // The method is now on file at tier coach_stated, so a plain re-run of the mechanism step
+      // picks it up — the generator resolves the stored row before it reaches any fallback.
+      //
+      // Deliberately a SINGLE attempt with a plain failure line, not the full retry ladder the
+      // autorun uses: the coach is sitting here watching, and if it fizzles the existing "Tweak"
+      // chip is one tap away. Duplicating the ladder to save that tap would be the third copy of
+      // it in this file.
+      const kit = (trailState.data?.kit ?? {}) as Record<string, unknown>;
+      const kitId = kit.id as number | undefined;
+      const icpId = kit.icpId as number | undefined;
+      if (!kitId || !icpId || tokenServiceId == null) return;
+      try {
+        await updateSelection.mutateAsync({ kitId, selectedMechanismId: null } as any);
+      } catch { /* non-fatal — the step would skip, which is safe */ }
+      setGeneratingKey("uniqueMethod");
+      try {
+        const { jobId } = await orchestrateStep.mutateAsync({
+          serviceId: tokenServiceId,
+          icpId,
+          step: "mechanism",
+          campaignType: (kit.campaignType ?? undefined) as never,
+        });
+        const job = await pollJob(jobId);
+        if (job.status === "failed") throw new Error(job.error || "Generation failed");
+        await trailState.refetch();
+        walkthroughEmit.zappy("Here's your method, rebuilt from what you told me.", "celebrating");
+      } catch (e) {
+        walkthroughEmit.zappy(
+          `Your method is saved, but the rebuild didn't take (${e instanceof Error ? e.message : "please try again"}). Tap Tweak whenever you want another run.`,
+          "idle",
+        );
+      } finally {
+        setGeneratingKey(null);
+      }
+    },
+    onEnded: () => setWalkthroughMode(false),
+  });
 
   const pickReaction = () => {
     let i = Math.floor(Math.random() * LOVE_REACTIONS.length);
@@ -526,7 +609,29 @@ export default function V2Trail() {
     }
   };
 
+  /** Distinct from handleFactText and handleTweakInstruction — a method answer is neither. */
+  const handleWalkthroughText = async (text: string) => {
+    await walkthrough.submitText(text);
+  };
+
   const handleChipTap = async (messageId: string, chip: string) => {
+    // The walkthrough owns its chips while it is running — a tap is confirm/correct/skip, and the
+    // hook interprets it against the labels the SERVER supplied rather than against literals here.
+    if (walkthroughMode) {
+      removeLive(messageId);
+      if (activeChips.current?.msgId === messageId) activeChips.current = null;
+      await walkthrough.submitChip(chip);
+      return;
+    }
+    if (chip === WALKTHROUGH_CHIP) {
+      removeLive(messageId);
+      if (activeChips.current?.msgId === messageId) activeChips.current = null;
+      const echo = addLive({ type: "user-bubble", text: chip });
+      void persistMsgs([echo]);
+      setWalkthroughMode(true);
+      await walkthrough.start();
+      return;
+    }
     // Phase 1 (Problem A): while asking an upfront fact, a chip is an N/A answer ("It's free" → __FREE__)
     // or "Skip" → route it to the fact-answer resolver, not the deal/tweak handlers.
     if (factsMode) {
@@ -2228,9 +2333,27 @@ export default function V2Trail() {
             onStyleChoose={handleStyleChoose}
             onTestimonialDone={handleTestimonialDone}
             onStructuredSubmit={handleFactStructured}
-            onSendText={factsMode && factsMode.inputType === "text" ? handleFactText : (tweakMode ? handleTweakInstruction : undefined)}
-            inputPlaceholder={factsMode && factsMode.inputType === "text" ? "Type your answer…" : "What should change?"}
-            inputDisabled={!(factsMode && factsMode.inputType === "text") && !tweakMode}
+            onSendText={
+              walkthroughMode && walkthrough.active && !walkthrough.awaitingConfirm
+                ? handleWalkthroughText
+                : factsMode && factsMode.inputType === "text"
+                ? handleFactText
+                : tweakMode
+                ? handleTweakInstruction
+                : undefined
+            }
+            inputPlaceholder={
+              walkthroughMode
+                ? "Type your answer…"
+                : factsMode && factsMode.inputType === "text"
+                ? "Type your answer…"
+                : "What should change?"
+            }
+            inputDisabled={
+              walkthroughMode
+                ? walkthrough.busy || !walkthrough.active || walkthrough.awaitingConfirm
+                : !(factsMode && factsMode.inputType === "text") && !tweakMode
+            }
           />
         </div>
       </div>
