@@ -1,29 +1,9 @@
 import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
-import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, REGISTER_STANDARD, truncateQuote } from "./_core/copywritingRules";
+import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, REGISTER_STANDARD, truncateQuote, neutraliseProfileCurrency } from "./_core/copywritingRules";
 import { validateOfferFabricationPatterns, getCanonicalOfferTokens, type OfferSuppliedData, type RawOfferFields } from "./_core/validator";
 import { resolveOfferMode, FREE_STEP_NOUN, DEFAULT_CAMPAIGN_TYPE, type OfferMode } from "./_core/campaignFraming";
 import { offerStandardBlock, offerAngleBlock } from "./_core/offerStandard";
-
-/**
- * Replace currency amounts in CUSTOMER-PROFILE text with a qualitative stand-in before that text
- * reaches the offer prompt.
- *
- * The profile's figures are real and are about the BUYER — "loses £2,000 a month to no-shows" is
- * a fact about their situation, not a price for anything ZAP is selling. Passed through verbatim
- * they are the single most likely thing for a model to echo back into `pricing` or an anchor, and
- * `detectInventedCurrencyAmounts` would then correctly flag every one of them as invented,
- * burning all three retry attempts before the degrade-never-kill floor persists the row anyway.
- *
- * Keeping the MAGNITUDE qualitatively preserves the signal that actually matters — that this is a
- * costly problem — while removing the digits that could be mistaken for an offer fact.
- */
-export function neutraliseProfileCurrency(text: string | null | undefined): string {
-  if (!text) return '';
-  return String(text)
-    .replace(/[£$€¥]\s?\d[\d,]*(?:\.\d+)?\s?(?:k|m|bn)?/gi, 'a specific amount')
-    .replace(/\b\d[\d,]*(?:\.\d+)?\s?(?:pounds|dollars|euros|GBP|USD|EUR)\b/gi, 'a specific amount');
-}
 
 // Phase D Phase 1 — offer hardening (red-team baseline v1 evidence-driven).
 // See docs/redteam-audit-baseline-v1.md for measured pre-fix rates +

@@ -332,12 +332,29 @@ async function describeOffer(
 async function describeMechanism(db: Db, id: number): Promise<string | null> {
   const [m] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, id)).limit(1);
   if (!m) return null;
-  const description = truncateAtSentence(m.mechanismDescription ?? "", 250);
+  // ── THE GOLDEN THREAD WAS BEING CUT HERE ──────────────────────────────────────────────────────
+  // This is the ONLY channel by which the mechanism reaches its six downstream nodes — hvco,
+  // headlines, adCopy, landingPage, email and whatsapp all read this one string. It truncated to
+  // 250 characters against a measured average `hero_mechanisms` description of 1,195, so roughly
+  // 79% of the node's only substantive output was discarded before anything downstream saw it.
+  // What crossed was a name and about forty words.
+  //
+  // 900 is chosen against the measured distribution rather than picked: it carries the whole
+  // description for the large majority of rows while still bounding the six prompts that prepend
+  // it. `truncateAtSentence` keeps the cut on a sentence boundary, so a long one degrades to a
+  // clean paragraph rather than a severed clause.
+  const description = truncateAtSentence(m.mechanismDescription ?? "", 900);
   let desc = `Selected hero mechanism: "${m.mechanismName}".`;
   if (m.descriptor && !hasPlaceholder(m.descriptor)) {
     desc += ` Type: ${m.descriptor}.`;
   }
   desc += ` Description: "${description}".`;
+  // The confidence tag travels with it. A downstream node that knows the mechanism was invented
+  // under the fallback guardrails can lean on it more lightly than one the coach described.
+  if ((m as any).sourceTier === "guarded_fallback") {
+    desc += ` (This mechanism was composed from the audience profile rather than described by the`
+      + ` practitioner — lean on the specifics of the audience, and assert nothing about how it was developed.)`;
+  }
   return desc;
 }
 

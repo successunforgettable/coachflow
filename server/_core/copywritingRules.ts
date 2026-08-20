@@ -390,6 +390,30 @@ export const PROOF_COMPOSITIONAL_CEILING_RULE = `COMPOSITIONAL CEILING (Sprint B
  * Prevents the model spending token budget on quote reproduction rather than copy.
  * Used in: offersGenerator.ts, emailSequences.ts, whatsappSequences.ts
  */
+/**
+ * Replace currency amounts in CUSTOMER-PROFILE text with a qualitative stand-in before that text
+ * reaches a generator prompt.
+ *
+ * The profile's figures are real and are about the BUYER — "loses £2,000 a month to no-shows" is a
+ * fact about their situation, not a price for anything ZAP is selling. Passed through verbatim they
+ * are the single most likely thing for a model to echo back into an offer price, an anchor, or a
+ * mechanism's described result, and `detectInventedCurrencyAmounts` would then correctly flag every
+ * one of them as invented, burning all three retry attempts before the degrade-never-kill floor
+ * persists the row anyway.
+ *
+ * Keeping the MAGNITUDE qualitatively preserves the signal that actually matters — that this is a
+ * costly problem — while removing the digits that could be mistaken for an asset fact.
+ *
+ * Lives here rather than in any one generator: the offer node and the mechanism node both need it,
+ * and a generator importing from a sibling generator is a dependency neither should own.
+ */
+export function neutraliseProfileCurrency(text: string | null | undefined): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/[£$€¥]\s?\d[\d,]*(?:\.\d+)?\s?(?:k|m|bn)?/gi, 'a specific amount')
+    .replace(/\b\d[\d,]*(?:\.\d+)?\s?(?:pounds|dollars|euros|GBP|USD|EUR)\b/gi, 'a specific amount');
+}
+
 export const truncateQuote = (q: string, max = 100): string =>
   q.length > max ? q.slice(0, max - 3) + '...' : q;
 

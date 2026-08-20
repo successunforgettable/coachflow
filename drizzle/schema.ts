@@ -893,6 +893,10 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
   whatTried: text("whatTried").notNull(), // 300 chars
   whyExistingNotWork: text("whyExistingNotWork").notNull(), // 300 chars
   descriptor: varchar("descriptor", { length: 50 }), // Strategy, Framework, Method, System, etc.
+  // Migration 0104 — which of the three sourcing tiers produced this mechanism, and the method row
+  // it was built from. Nullable: all 1,095 pre-0104 rows predate the distinction.
+  sourceTier: mysqlEnum("sourceTier", ["coach_stated", "extracted", "guarded_fallback"]),
+  coachMethodId: int("coachMethodId"),
   application: varchar("application", { length: 100 }), // How it's applied
   desiredOutcome: text("desiredOutcome").notNull(), // Expanded to text for AI-generated content
   credibility: text("credibility").notNull(), // Expanded to text for AI-generated content
@@ -912,6 +916,46 @@ export const heroMechanisms = mysqlTable("heroMechanisms", {
 
 export type HeroMechanism = typeof heroMechanisms.$inferSelect;
 export type InsertHeroMechanism = typeof heroMechanisms.$inferInsert;
+
+/**
+ * Coach Methods (migration 0104) — HOW THIS COACH ACTUALLY WORKS.
+ *
+ * The first place in ZAP that stores a real, coach-stated process. Everything method-shaped that
+ * existed before this (`services.uniqueMechanismSuggestion`, `whyProblemExists`, `failedSolutions`)
+ * is LLM-invented at the service node and unconditionally overwritten there, which is why the
+ * mechanism node had been inventing a method on top of an invented name.
+ *
+ * Per (userId, serviceId) with serviceId NULLABLE — a coach who describes how they work in general
+ * gets one row serving every service they own. Captured once in a guided conversation and reused
+ * by every later campaign and every Auto Mode run, which is the point of capturing it.
+ */
+export const coachMethods = mysqlTable("coachMethods", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId"),
+  /** The ordered spine: [{ name, whatHappens }], 2-5 entries. */
+  steps: json("steps").$type<Array<{ name: string; whatHappens: string }>>().notNull(),
+  /** { kind: 'sequence'|'isolation'|'synthesis'|'none', description }. 'none' is a valid answer. */
+  operationalTwist: json("operationalTwist").$type<{ kind: string; description: string } | null>(),
+  ump: text("ump"),
+  ums: text("ums"),
+  oldVehicle: text("oldVehicle"),
+  differentiator: text("differentiator"),
+  sourceTier: mysqlEnum("sourceTier", ["coach_stated", "extracted", "guarded_fallback"]).notNull(),
+  confidence: mysqlEnum("confidence", ["high", "medium", "low"]).default("low").notNull(),
+  /** Verbatim fragments from the raw material — VERIFIED to appear in it, never paraphrased. */
+  evidence: json("evidence").$type<string[]>(),
+  /** The labelled material the extractor was fed, so a distillation can be audited or re-run. */
+  rawMaterial: json("rawMaterial").$type<Array<{ label: string; text: string }>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userServiceUnique: uniqueIndex("coachMethods_user_service_unique").on(table.userId, table.serviceId),
+  userIdIdx: index("idx_coachMethods_userId").on(table.userId),
+}));
+
+export type CoachMethod = typeof coachMethods.$inferSelect;
+export type InsertCoachMethod = typeof coachMethods.$inferInsert;
 
 /**
  * Analytics Events - Track individual user interactions
