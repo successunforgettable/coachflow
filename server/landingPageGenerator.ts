@@ -1,3 +1,4 @@
+import { lpFramingForCampaign } from "./_core/campaignFraming";
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, GUARANTEE_CLAIMS_RULE, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
@@ -949,25 +950,13 @@ ${icp.implementationBarriers ? `What stops them from taking action: ${icp.implem
 ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
 `.trim() : '';
 
-  const campaignTypeContextMap: Record<string, string> = {
-    webinar: `CAMPAIGN TYPE: Webinar
-Framing: Show-up urgency — the live event is the vehicle. Copy must give a compelling reason to attend live, not just register.
-Urgency mechanism: Date and time of the webinar. Limited seats available.
-CTA language: Register now / Save your seat / Join us live on [date]`,
-    challenge: `CAMPAIGN TYPE: Challenge
-Framing: Community commitment — joining a group doing this together. Daily wins build momentum.
-Urgency mechanism: Challenge start date. Community closes when the challenge begins.
-CTA language: Join the challenge / Claim your spot / Start with us on [date]`,
-    course_launch: `CAMPAIGN TYPE: Course Launch
-Framing: Transformation journey — who they are now vs who they will become. Enrolment is the decision point.
-Urgency mechanism: Enrolment deadline. Cohort size is limited.
-CTA language: Enrol now / Join the programme / Claim your place before [date]`,
-    product_launch: `CAMPAIGN TYPE: Product Launch
-Framing: Early access and founding member status. First to experience something new.
-Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
-CTA language: Get early access / Become a founding member / Lock in launch pricing`,
-  };
-  const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+  // Campaign framing is single-sourced from `_core/campaignFraming.ts`. The map that stood here
+  // carried FOUR of the seven campaign types, so `discovery_call`, `lead_magnet` and
+  // `in_person_event` fell through to `course_launch` — and a FREE discovery-call page was
+  // generated against "Enrolment is the decision point … CTA language: Enrol now", directly
+  // contradicting the `discovery_call_booking` block in PAGETYPE_PROMPTS above. The shared map is
+  // typed `Record<CampaignType, string>`, so an incomplete map is now a compile error.
+  const campaignTypeContext = lpFramingForCampaign(campaignType);
 
   // Social proof
   const socialProof = {

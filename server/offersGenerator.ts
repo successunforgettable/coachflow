@@ -2,83 +2,38 @@ import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, REGISTER_STANDARD, truncateQuote } from "./_core/copywritingRules";
 import { validateOfferFabricationPatterns, getCanonicalOfferTokens, type OfferSuppliedData, type RawOfferFields } from "./_core/validator";
+import { resolveOfferMode, FREE_STEP_NOUN, DEFAULT_CAMPAIGN_TYPE, type OfferMode } from "./_core/campaignFraming";
+import { offerStandardBlock, offerAngleBlock } from "./_core/offerStandard";
+
+/**
+ * Replace currency amounts in CUSTOMER-PROFILE text with a qualitative stand-in before that text
+ * reaches the offer prompt.
+ *
+ * The profile's figures are real and are about the BUYER — "loses £2,000 a month to no-shows" is
+ * a fact about their situation, not a price for anything ZAP is selling. Passed through verbatim
+ * they are the single most likely thing for a model to echo back into `pricing` or an anchor, and
+ * `detectInventedCurrencyAmounts` would then correctly flag every one of them as invented,
+ * burning all three retry attempts before the degrade-never-kill floor persists the row anyway.
+ *
+ * Keeping the MAGNITUDE qualitatively preserves the signal that actually matters — that this is a
+ * costly problem — while removing the digits that could be mistaken for an offer fact.
+ */
+export function neutraliseProfileCurrency(text: string | null | undefined): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/[£$€¥]\s?\d[\d,]*(?:\.\d+)?\s?(?:k|m|bn)?/gi, 'a specific amount')
+    .replace(/\b\d[\d,]*(?:\.\d+)?\s?(?:pounds|dollars|euros|GBP|USD|EUR)\b/gi, 'a specific amount');
+}
 
 // Phase D Phase 1 — offer hardening (red-team baseline v1 evidence-driven).
 // See docs/redteam-audit-baseline-v1.md for measured pre-fix rates +
 // docs/redteam-failure-taxonomy-v1.md for the pass criteria contracts.
 const OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS = 3;
 
-// Angle-specific prompt modifiers for Offers (Industry standard)
-const ANGLE_PROMPTS = {
-  godfather: `
-Generate an IRRESISTIBLE GODFATHER OFFER using the Hormozi value equation: Dream Outcome × Perceived Likelihood of Achievement ÷ Time Delay × Effort and Sacrifice. Every element of the offer must increase the numerator or decrease the denominator.
-
-STRUCTURE:
-1. Name the dream outcome in one specific sentence — not a category, a situation. Not "financial freedom" — "replacing your current salary within [INSERT_FIRST_RESULT_TIMEFRAME]." Use niche-specific language for specificity, never invented currency amounts.
-2. State the likelihood of achievement using whatever the SOCIAL PROOF section below actually supplies. Where it supplies none, establish likelihood through the MECHANISM itself — why the method works, what it accounts for that the approaches they already tried do not — which carries the same persuasive weight while standing on the method rather than on a client count.
-3. Reduce perceived time delay — name the specific first result the customer sees in the first 7 days, not just the end result.
-4. Reduce perceived effort — name the one thing they do NOT have to do that they assumed they would have to do.
-5. Stack the offer: core programme + bonuses (each with a real name and the operator-supplied value or [INSERT_BONUS_N_VALUE] placeholder when none is supplied) + guarantee that removes all financial risk.
-6. The guarantee must make keeping the money feel riskier than giving it back — name exactly what they keep if they refund (all materials, all recordings, all bonus resources). The reader must feel that requesting a refund still leaves them better off than before.
-7. State the programme investment as an explicit pricing line — use the operator-supplied price when provided, otherwise emit the [INSERT_PRICE] placeholder verbatim. Always populate the pricing field with this line even when the call-to-action is a booked call, so the offer's price has a clear home.
-
-Risk reversal: state "or you don't pay" as a specific condition, not a slogan. Name the result that must happen for payment to be earned.
-
-CTA: "Book My Risk-Free [Service] Call"
-
-BANNED GODFATHER PHRASES (never use):
-- "too good to be true"
-- "once in a lifetime"
-- "limited time only" without a specific date
-- "act now"
-- "don't miss out"
-- "this offer expires soon" without a specific date
-- "incredible offer"
-- "you'd be crazy not to"
-  `,
-  free: `
-Generate a FREE OFFER that feels like the full value being given away — not a stripped-down version of the paid programme. The free thing must feel complete at the point of delivery, with nothing held back.
-
-STRUCTURE:
-1. Name the specific deliverable from the free session — a personalised gap analysis, a three-step roadmap, a custom action plan — not "valuable insights" or "clarity." The deliverable must be something the client can act on immediately after the session ends.
-2. Name the perceived value of that deliverable if the client had paid for it — use operator-supplied price data or [INSERT_PRICE] placeholder when no price is supplied. Explain why it has that value — what it includes that makes it worth that amount.
-3. Name who this free offer is NOT for — this increases perceived exclusivity and pre-qualifies leads. Be specific: "This is not for people who are just curious. This is for [specific situation with specific qualifying criteria]."
-4. Name the one thing that will happen in the session that the client cannot get anywhere else — the proprietary analysis, framework, or insight that makes this session unique to this provider.
-
-Offer Name pattern: "FREE [Specific Deliverable Name] for [Specific Avatar]"
-CTA: "Claim Your FREE [Specific Deliverable]"
-
-BANNED FREE OFFER PHRASES (overused — trigger skepticism, do not use):
-- "no strings attached"
-- "completely free" (redundant)
-- "zero cost to you"
-- "nothing to lose"
-- "at no cost"
-- "totally free"
-  `,
-  dollar: `
-Generate a DOLLAR OFFER that anchors against the cost of the problem, not against the cost of a higher-tier programme. The price must feel like the obvious rational choice compared to what staying stuck costs per month.
-
-STRUCTURE:
-1. Frame the cost of the problem — describe what staying stuck costs the customer in concrete terms (time, missed opportunities, ongoing frustration) without inventing specific currency amounts. Use operator-supplied price or [INSERT_PRICE] placeholder for the offer price. The price must feel like the obvious rational choice compared to the cost of inaction.
-2. Name what the customer gets access to immediately on payment — not what they get "over the programme" — what lands in their inbox or account in the next 10 minutes.
-3. Use the tripwire frame: this is not the full programme. This is the specific tool that solves the single most painful problem. Name that specific problem and name that specific tool.
-4. Show the value ladder transparently: name that this low-price entry leads to the full programme. Be open about it — transparency increases conversion because it removes the hidden agenda suspicion.
-
-Offer Name pattern: "The [Specific Tool Name] for [Niche Avatar] — [INSERT_PRICE]"
-CTA: "Get Instant Access for [INSERT_PRICE]"
-Price anchoring: frame the anchor using the cost of the problem (without inventing currency amounts) before presenting the operator-supplied price or [INSERT_PRICE] placeholder.
-
-BANNED DOLLAR PHRASES (do not use):
-- "incredible value"
-- "massive discount"
-- "for a limited time only" without a specific end date
-- "usually costs X" without a real anchor established first
-- "steal"
-- "bargain"
-- "grab this"
-  `
-};
+// The three angle prompts now live in `_core/offerStandard.ts`, in TWO sets: one for a campaign
+// that converts on a FREE next step and one for a campaign that converts on a PURCHASE. The set
+// that used to sit here was paid-shaped in all three angles — it instructed a price line and a
+// refund guarantee on every campaign, including free webinars. See `offerAngleBlock`.
 
 export async function generateOfferAngle(
   productName: string,
@@ -90,6 +45,10 @@ export async function generateOfferAngle(
   socialProof: any,
   cascadeContext: string = "",
   supplied: OfferSuppliedData = {},
+  /** Free-next-step campaign or a genuine purchase. Decides whether price/guarantee exist at all. */
+  mode: OfferMode = "paid",
+  /** What the reader is registering for, so free-mode copy can name it ("live training", "call"). */
+  freeStepNoun: string = "session",
   /** Residual legacy-validator hits, so the persistence gate folds them into ONE verdict. */
   __legacySink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<OfferContent> {
   const offerTypeInstructions = {
@@ -130,10 +89,21 @@ USAGE RULES:
   // pattern: emit canonical operator-fill placeholders verbatim when the
   // operator hasn't supplied the underlying field. Allow-list of canonical
   // tokens is enforced post-generation by validateOfferFabricationPatterns.
-  const suppliedPriceLine = supplied.price
+  // ── FREE-EVENT MODE: the price and guarantee facts are WITHHELD, not just unmentioned ──────
+  // This campaign converts on a free next step, so the coach's programme price and refund terms
+  // are not facts about anything on this page. Handing them to the model and asking it not to use
+  // them is the failure mode this fix exists to close: measured on service 1 (£3,000 / "Full
+  // refund" / "90 days"), supplying the facts put the price in faq[4] and the money-back promise
+  // in faq[5] of a FREE webinar page, on three of four angles. The fix is to not supply them.
+  const isFreeEvent = mode === "free_event";
+  const suppliedPriceLine = isFreeEvent
+    ? `- This campaign converts on a FREE ${freeStepNoun}. It has no price, so no section carries one. Where the paid programme is referred to at all, it is referred to as something discussed later, never with a figure. Emit no price token.`
+    : supplied.price
     ? `- The operator HAS supplied a price: ${supplied.price}. Use this exact number in pricing. Do not invent additional anchor prices or alternative tiers.`
     : `- The operator has NOT supplied a price. Emit the placeholder [INSERT_PRICE] verbatim wherever the price would appear. Do NOT invent a currency amount.`;
-  const suppliedGuaranteeLine = (supplied.guaranteeType || supplied.guaranteeDuration)
+  const suppliedGuaranteeLine = isFreeEvent
+    ? `- A free ${freeStepNoun} takes no money, so there is nothing to refund and no guarantee section in the money sense. The guarantee field carries the ATTENDANCE PROMISE instead: what the reader walks away holding, and that nothing is sold in the room. Emit no guarantee token and no refund language.`
+    : (supplied.guaranteeType || supplied.guaranteeDuration)
     ? `- The operator HAS supplied guarantee terms: ${[supplied.guaranteeDuration, supplied.guaranteeType].filter(Boolean).join(", ")}. Use these terms verbatim in the guarantee section.`
     : `- The operator has NOT supplied a guarantee. Emit the placeholder [INSERT_GUARANTEE_TERMS] verbatim in the guarantee section. Do NOT invent refund mechanics, timeframes, or "pay nothing" / "full refund" / "money-back" language.`;
   const suppliedDurationLine = supplied.deliveryDuration
@@ -183,8 +153,20 @@ ABSOLUTE PROHIBITIONS — these are zero-tolerance fabrications that will trigge
 - Emitting any [INSERT_X] token NOT in the canonical allow-list above
 `;
 
+  const modeHeader = mode === "free_event"
+    ? `THIS CAMPAIGN CONVERTS ON A FREE NEXT STEP — a ${freeStepNoun} the reader registers for at no cost.
+The coach's paid programme is real and is sold LATER, in conversation, away from this page. So the
+offer you are writing is the PROGRAMME CONTEXT that makes attending worth an hour of someone's
+life: the transformation, the mechanism, and the value equation. It carries no price and makes no
+refund promise, because nothing is being bought here.`
+    : `THIS CAMPAIGN CONVERTS ON A PURCHASE. The price and the guarantee are real parts of the offer
+and belong in it, written from the operator's supplied facts.`;
+
   const prompt = `
-You are an expert offer creator specializing in irresistible offers for coaches, speakers, and consultants.
+You are an expert B2C offer creator for coaches, speakers, consultants and practitioners —
+individual people selling to individual people. Your reader is one person deciding for themselves.
+There is no buying committee, no procurement process and no business case; the decision is
+personal, and it is made on identity and trust.
 
 Product: ${productName}
 Description: ${productDescription}
@@ -193,56 +175,35 @@ Main Benefit: ${mainBenefit}
 Offer Type: ${offerTypeInstructions[offerType]}
 Angle: ${angle}
 
-${ANGLE_PROMPTS[angle]}
+${modeHeader}
+
+${offerAngleBlock(mode, angle)}
+
+${offerStandardBlock(mode)}
 
 ${socialProofGuidance}
 
 ${operatorFillBlock}
 
-LOSS AVERSION PRINCIPLE — apply throughout every section:
-The cost of NOT buying must feel greater than the cost of buying. At least one section must name the specific ongoing cost of the customer's current situation (time, money, missed opportunities, continued pain). Make saying no feel more expensive than saying yes.
-
-ANCHORING PRINCIPLE — apply to pricing and bonuses (within the operator-fill constraints above):
-- If the operator has supplied a price, establish a high anchor price BEFORE revealing the actual price (but anchor must be operator-supplied or derived from supplied data — never invent a fabricated anchor)
-- Every bonus must have an operator-supplied dollar value OR a [INSERT_BONUS_N_VALUE] placeholder (never invent the £/$ amount)
-- The total bonus value, if stated, must come from operator-supplied data (never invent the summation)
-- The actual price (if supplied) must be presented as a fraction of the total value
-
 SPECIFICITY RULE — applies to every field:
-Every output must pass this test: could this offer have been written for a different coaching programme in a different niche? If yes, it is not specific enough — rewrite it until the answer is no. The offer must contain at least three niche-specific words or phrases — terms that only someone in this world would recognise. Specificity comes from NICHE-SPECIFIC LANGUAGE, never from invented currency amounts or durations.
-
-BONUS CREDIBILITY RULE:
-Every bonus must feel like something that took real effort to create — not a PDF that could be made in an afternoon. Name the format explicitly: recorded workshop, live group call, private community access, custom assessment, done-for-you template, annotated swipe file. Name the specific outcome of using that bonus — what will the buyer be able to do after using it that they could not do before? Never use "access to X" as the bonus description — name what X specifically gives them. For bonus VALUES, use the operator-fill placeholders specified above.
+Every output must pass this test: could this offer have been written for a different coaching
+programme in a different niche? If yes, it is not specific enough — rewrite it until the answer is
+no. The offer must contain at least three niche-specific words or phrases — terms that only
+someone in this world would recognise. Specificity comes from NICHE-SPECIFIC LANGUAGE, never from
+invented currency amounts or durations.
 
 OUTCOME SPECIFICITY RULE:
-Replace any outcome that uses these words with a specific measurable alternative: results, transformation, success, growth, improvement, better, more, less. Every outcome must have a number, a timeframe, or a named situation — but the number, timeframe, or situation MUST come from operator-supplied data or be marked with a canonical token. Not "better results" — "3 new clients in 60 days" (if 60 days is operator-supplied), or "3 new clients in [INSERT_FIRST_RESULT_TIMEFRAME]" if not.
+Replace any outcome that uses these words with a specific alternative: results, transformation,
+success, growth, improvement, better, more, less. Every outcome names a situation, and where it
+names a number or a timeframe that number or timeframe comes from operator-supplied data or
+carries its canonical token. Not "better results" — "3 new clients in 60 days" where 60 days is
+supplied, or "3 new clients in [INSERT_FIRST_RESULT_TIMEFRAME]" where it is not.
 
-GODFATHER OFFER RULE (for godfather angle): Make it impossible to say no. Structure so refusing it feels irrational — bonus stack (with canonical-token values when not supplied), a guarantee (with canonical-token terms when not supplied), and a price (operator-supplied or [INSERT_PRICE] placeholder).
-
-Generate a complete offer with 7 sections:
-
-1. **Offer Name** (5-10 words, outcome-specific and risk-reversed per the angle rules)
-   Must name the specific result + the angle-specific risk reversal phrase. Not a generic name.
-
-2. **Value Proposition** (20-30 words)
-   State the specific functional outcome (number, timeframe, or named situation) the customer gets. Then immediately name what it costs them if they stay where they are. Not a feeling — a situation.
-
-3. **Pricing** (price section, 30-50 words)
-   Use operator-supplied price OR [INSERT_PRICE] placeholder verbatim. Do NOT invent a price, anchor range, or cost comparison with a fabricated number. Include the guarantee duration only if operator-supplied; otherwise reference the [INSERT_GUARANTEE_TERMS] placeholder.
-
-4. **Bonuses** (EXACTLY 3 bonuses)
-   Emit ONLY the bonus NAME slot for each — one bonus per line, NAME token only, NO description, and NO value unless the operator supplied one. The real bonus name and its one-line description are filled in from the campaign's generated bonus stack after this step; adding your own description here would contradict the real bonus (a checklist wrongly described as a "live call"), so leave the line at the name slot.
-   Format WITHOUT a supplied value (the default): "BONUS #1: [INSERT_BONUS_1_NAME]" then "BONUS #2: [INSERT_BONUS_2_NAME]" then "BONUS #3: [INSERT_BONUS_3_NAME]", each on its own line (N=1, 2, 3 only).
-   Format WITH an operator-supplied value: "BONUS #1: The Strategy Playbook (£497 value)".
-
-5. **Guarantee** (50-75 words, specific risk reversal)
-   Use operator-supplied guarantee terms OR [INSERT_GUARANTEE_TERMS] placeholder verbatim. Do NOT invent "30-day refund", "pay nothing", "full refund", "money-back" mechanics.
-
-6. **Urgency/Scarcity** (30-50 words, angle-specific)
-   Use [INSERT_COHORT_LIMIT] for cohort sizes and [INSERT_COHORT_CLOSE_DATE] for closing dates. Never invent "8 leaders per cohort" / "next cohort opens".
-
-7. **Call to Action** (clear next step, 20-30 words)
-   One clear action. Use angle-appropriate CTA language from the angle rules above.
+BONUS CREDIBILITY RULE:
+Every bonus reads as something that took real effort to make. Name the format explicitly:
+recorded workshop, live group call, private community access, custom assessment, done-for-you
+template, annotated swipe file. Name what the buyer can DO after using it that they could not do
+before. For bonus values, use the operator-fill placeholders specified above.
 
 Return ONLY valid JSON with these exact keys: offerName, valueProposition, pricing, bonuses, guarantee, urgency, cta
 `;
@@ -368,16 +329,19 @@ export async function generateAllOfferAngles(
   cascadeContext: string = "",
   supplied: OfferSuppliedData = {},
   /** Shared sink so all three angles' residual legacy hits reach ONE verdict at persist. */
-  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<{
+  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> },
+  /** Free-next-step campaign or a genuine purchase. Threaded to all three angles identically. */
+  mode: OfferMode = "paid",
+  freeStepNoun: string = "session"): Promise<{
   godfather: OfferContent;
   free: OfferContent;
   dollar: OfferContent;
 }> {
   const __offerLegacySink = __sink ?? { hits: [] as Array<{ classId: string; matched: string; location: string }> };
   const [godfather, free, dollar] = await Promise.all([
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof, cascadeContext, supplied, __offerLegacySink),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof, cascadeContext, supplied, __offerLegacySink),
-    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof, cascadeContext, supplied, __offerLegacySink),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'godfather', offerType, socialProof, cascadeContext, supplied, mode, freeStepNoun, __offerLegacySink),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'free', offerType, socialProof, cascadeContext, supplied, mode, freeStepNoun, __offerLegacySink),
+    generateOfferAngle(productName, productDescription, targetCustomer, mainBenefit, 'dollar', offerType, socialProof, cascadeContext, supplied, mode, freeStepNoun, __offerLegacySink),
   ]);
 
   return { godfather, free, dollar };
@@ -399,6 +363,12 @@ export async function runOfferGeneration(input: {
   serviceId: number;
   campaignId?: number;
   offerType: 'standard' | 'premium' | 'vip';
+  /**
+   * Auto Mode passes this straight through. Every OTHER generator already resolves it from the
+   * campaign kit and the offer node was the only one that did not, which is why it wrote a
+   * priced, refund-guaranteed offer for a free webinar. Omitted → resolved from the kit below.
+   */
+  campaignType?: string | null;
 }): Promise<{ offerId: number }> {
   // Lazy-import DB types/runtime to keep this file framework-agnostic for the
   // orchestrator's direct-call path.
@@ -448,13 +418,53 @@ export async function runOfferGeneration(input: {
   // Cascade context — upstream campaignKits selections for this ICP
   const cascadeContext = await getCascadeContext(input.userId, icp?.id, "offer");
 
-  // ICP context block
+  // ── Offer mode — resolved from the kit, exactly as every other generator resolves campaignType ──
+  // The kit is the V2 source of truth. `campaignFacts.price` is the coach's own upfront answer and
+  // outranks the campaign-type default in both directions (a priced event is paid; an explicit
+  // "it's free" is free), which is also the seam the deferred paid tripwire will land on.
+  const { campaignKits } = await import("../drizzle/schema");
+  let kitCampaignType: string | null = input.campaignType ?? null;
+  let kitFacts: { price?: any } | null = null;
+  if (icp?.id) {
+    const [kit] = await db
+      .select()
+      .from(campaignKits)
+      .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, icp.id)))
+      .limit(1);
+    if (kit) {
+      kitCampaignType = kitCampaignType ?? kit.campaignType ?? null;
+      kitFacts = (kit.campaignFacts as { price?: any } | null) ?? null;
+    }
+  }
+  const offerMode = resolveOfferMode({ campaignType: kitCampaignType, campaignFacts: kitFacts });
+  const freeStepNoun = FREE_STEP_NOUN[(kitCampaignType ?? DEFAULT_CAMPAIGN_TYPE) as keyof typeof FREE_STEP_NOUN]
+    ?? FREE_STEP_NOUN[DEFAULT_CAMPAIGN_TYPE];
+  console.log(`[offer] serviceId=${input.serviceId} campaignType=${kitCampaignType ?? "none"} mode=${offerMode}`);
+
+  // ── ICP context block — now carrying the value equation's OWN inputs ──────────────────────────
+  // The block used to supply four fields, none of which is a lever in the equation the prompt is
+  // built on: objections, buyingTriggers, implementationBarriers, successMetrics. The Dream
+  // Outcome (hopesDreams) and the cost of inaction (pains, fears) were sitting unused in the same
+  // row. They are the numerator and the denominator; without them the equation had no inputs.
+  //
+  // 🔴 GUARDED. The customer profile is EVIDENCE ABOUT THE BUYER and is never a source of offer
+  // facts. Since ICP Phase A, `pains` legitimately contains the coach's own currency figures, and
+  // `detectInventedCurrencyAmounts` (_core/validator.ts) flags EVERY £N in the output when no
+  // price is supplied — so a figure copied out of the profile would burn all three retries and
+  // then persist anyway. `neutraliseProfileCurrency` makes that structurally impossible rather
+  // than asking the prompt nicely, which is the lesson this codebase has already paid for twice.
   const icpContext = icp ? [
-    'IDEAL CUSTOMER PROFILE — use this to make every offer specific and targeted:',
-    icp.objections ? `Their objections to buying: ${icp.objections}` : '',
-    icp.buyingTriggers ? `What makes them buy: ${icp.buyingTriggers}` : '',
-    icp.implementationBarriers ? `What stops them from taking action: ${icp.implementationBarriers}` : '',
-    icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : '',
+    'IDEAL CUSTOMER PROFILE — evidence about the person who reads this offer.',
+    'Use it to make every section specific to them. It describes the BUYER and their situation;',
+    'it is never a source of facts about the offer itself — not its price, its value, or its terms.',
+    '',
+    icp.hopesDreams ? `DREAM OUTCOME — what they are reaching for: ${neutraliseProfileCurrency(icp.hopesDreams)}` : '',
+    icp.pains ? `THE COST OF STAYING STUCK — what the current situation takes from them: ${neutraliseProfileCurrency(icp.pains)}` : '',
+    icp.fears ? `WHAT THEY ARE AFRAID OF — the risk they feel in changing anything: ${neutraliseProfileCurrency(icp.fears)}` : '',
+    icp.objections ? `Their objections to buying: ${neutraliseProfileCurrency(icp.objections)}` : '',
+    icp.buyingTriggers ? `What makes them buy: ${neutraliseProfileCurrency(icp.buyingTriggers)}` : '',
+    icp.implementationBarriers ? `What stops them from taking action: ${neutraliseProfileCurrency(icp.implementationBarriers)}` : '',
+    icp.successMetrics ? `How they measure success: ${neutraliseProfileCurrency(icp.successMetrics)}` : '',
   ].filter(Boolean).join('\n').trim() : '';
 
   // SOT fetch + context block
@@ -519,7 +529,9 @@ export async function runOfferGeneration(input: {
     socialProof,
     cascadeContext,
     offerSupplied,
-    __offerSink
+    __offerSink,
+    offerMode,
+    freeStepNoun
   );
 
   const __offerRow = {

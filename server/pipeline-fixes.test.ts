@@ -22,6 +22,8 @@ import { resolveTokensInText, normalizeToken, TOKEN_SYNONYMS, type ResolvedEntry
 import { resolveTokensInObject } from "./lib/placeholderResolver";
 import { ICP_CONTENT_FIELDS, buildNullOnlyUpdates } from "./_core/icpEnrichment";
 import { validateQuizBody, type QuizBody } from "./leadMagnetContentGenerator";
+import { resolveOfferMode, CAMPAIGN_TO_PAGE_TYPE, LP_CAMPAIGN_FRAMING } from "./_core/campaignFraming";
+import { FREE_EVENT_ANGLE_PROMPTS, PAID_ANGLE_PROMPTS } from "./_core/offerStandard";
 
 // ─── Issue 1: Gradient fallback throws ────────────────────────────────────────
 
@@ -3365,36 +3367,77 @@ describe("S3 — invented currency detected in ALL 7 offer fields (not just pric
 
 describe("S4 — offer generator prompts do not instruct concrete currency amounts", () => {
   const offerSrc = readFileSync(join(__dirname, "offersGenerator.ts"), "utf8");
+  // The three angle prompts moved to `_core/offerStandard.ts` when the offer node became
+  // campaign-type-aware, and they moved as TWO sets — free_event and paid. These assertions were
+  // repointed there rather than deleted. One of them had gone silently vacuous in the move:
+  // `indexOf("const ANGLE_PROMPTS")` returned -1, `slice(-1, …)` produced an EMPTY string, and the
+  // `not.toContain` passed against nothing. A gate that reports green while testing zero is the
+  // exact failure shape CLAUDE.md §15a is a law about, so the slice is gone entirely — these now
+  // read the real exported prompt objects instead of guessing at source-text offsets.
+  const stdSrc = readFileSync(join(__dirname, "_core/offerStandard.ts"), "utf8");
+  const freeAngles = Object.values(FREE_EVENT_ANGLE_PROMPTS);
+  const paidAngles = Object.values(PAID_ANGLE_PROMPTS);
+  const allAngles = [...freeAngles, ...paidAngles];
 
-  it("godfather angle does not instruct 'specific £/$ value' for bonuses in the prompt", () => {
-    // The old prompt said "each with real name and specific £/$ value"
-    // The string still exists in a comment documenting the root cause — that's fine.
-    // The ANGLE_PROMPTS section must not contain it as an instruction.
-    const angleStart = offerSrc.indexOf("const ANGLE_PROMPTS");
-    const angleEnd = offerSrc.indexOf("};", angleStart);
-    const angleBlock = offerSrc.slice(angleStart, angleEnd);
-    expect(angleBlock).not.toContain("specific £/$ value");
+  it("neither angle set instructs a 'specific £/$ value' for bonuses", () => {
+    expect(allAngles).toHaveLength(6);
+    for (const a of allAngles) expect(a).not.toContain("specific £/$ value");
   });
 
-  it("godfather angle does not use £8,000/month as a concrete example", () => {
+  it("neither angle set contains ANY concrete currency figure", () => {
+    // Replaces the old fixed-string checks for "£8,000/month" with the general property those
+    // checks were reaching for. A currency symbol or amount-word followed by digits, anywhere.
+    for (const a of allAngles) {
+      expect(a).not.toMatch(/[£$€¥]\s?\d/);
+      expect(a).not.toMatch(/\b\d[\d,]*(?:\.\d+)?\s?(?:pounds|dollars|euros|GBP|USD|EUR)\b/i);
+    }
+  });
+
+  it("the FREE-EVENT angle set contains no price or refund directive at all", () => {
+    // The whole point of the mode split: on a campaign that converts on a free next step there is
+    // nothing to buy and therefore nothing to refund.
+    for (const a of freeAngles) {
+      expect(a).not.toMatch(/\[INSERT_PRICE\]/);
+      expect(a).not.toMatch(/money[- ]back|refund|you don\W?t pay|risk[- ]free/i);
+      // Matched on DIRECTIVES, not the bare word: the free angles deliberately say things like
+      // "not against any price" and "keep the passage free of price framing", and a bare \bprice\b
+      // would flag the very sentences doing the work.
+      expect(a).not.toMatch(/(?:present|state|reveal|name|show|use)\s+the\s+price/i);
+      expect(a).not.toMatch(/supplied\s+price|price\s+token|actual\s+price|entry[- ]priced/i);
+    }
+  });
+
+  it("neither angle set carries the retired paid-shaped instructions", () => {
+    for (const a of allAngles) {
+      expect(a).not.toContain("state that number explicitly");
+      expect(a).not.toContain("clear price with anchoring");
+    }
+    expect(offerSrc).not.toContain("state that number explicitly");
+    expect(offerSrc).not.toContain("clear price with anchoring");
     expect(offerSrc).not.toContain("£8,000/month");
   });
 
-  it("dollar angle does not instruct 'state that number explicitly' for cost-of-problem", () => {
-    expect(offerSrc).not.toContain("state that number explicitly");
+  it("offerStandard.ts as a whole primes no concrete currency figure", () => {
+    // Added with the rebuild: the "(£497 value)" worked example that used to sit in the section
+    // spec was placeholder-ised, because a worked figure in a prompt is itself a priming source.
+    expect(stdSrc).not.toMatch(/[£$€¥]\s?\d/);
   });
 
-  it("pricing section header does not say 'clear price with anchoring'", () => {
-    expect(offerSrc).not.toContain("clear price with anchoring");
+  it("the operator-fill block still directs bonuses to [INSERT_BONUS_N_VALUE]", () => {
+    // The placeholder-directive literals live in offersGenerator's operator-fill block, which did
+    // NOT move. Asserted at their real home rather than inside the relocated angle prompts.
+    expect(offerSrc).toContain("[INSERT_BONUS_N_VALUE]");
+    expect(offerSrc).toMatch(/Do NOT invent "\(£497 value\)"|Do NOT invent .{0,40}value/);
   });
 
-  it("godfather angle references [INSERT_BONUS_N_VALUE] placeholder for unsupplied bonuses", () => {
-    expect(offerSrc).toContain("[INSERT_BONUS_N_VALUE] placeholder when none is supplied");
+  it("the operator-fill block still directs an unsupplied price to [INSERT_PRICE]", () => {
+    expect(offerSrc).toContain("[INSERT_PRICE]");
+    expect(offerSrc).toMatch(/operator has NOT supplied a price[\s\S]{0,200}\[INSERT_PRICE\]/);
   });
 
-  it("dollar angle references [INSERT_PRICE] placeholder for unsupplied price", () => {
-    // Dollar angle's cost-of-problem framing now uses placeholder
-    expect(offerSrc).toContain("operator-supplied price or [INSERT_PRICE] placeholder");
+  it("the canonical-token allow-list guidance is still emitted", () => {
+    expect(offerSrc).toContain("CANONICAL TOKEN ALLOW-LIST");
+    expect(offerSrc).toMatch(/getCanonicalOfferTokens/);
   });
 
   it("validator still catches invented price in pricing field when no price supplied", () => {
@@ -4056,5 +4099,74 @@ describe("Quiz C1 — validateQuizBody rubric validator", () => {
   it("rejects a blank promise", () => {
     const b = validBody(); b.promise = "   ";
     expect(validateQuizBody(b).ok).toBe(false);
+  });
+});
+
+
+// ─── Offer node — free-event vs paid mode resolution ────────────────────────
+// The offer node was the ONLY generator in the cascade that never resolved campaignType, so it
+// wrote a priced, refund-guaranteed offer for a FREE webinar. `resolveOfferMode` is the pure
+// function that gates all of that, so its four branches are pinned here.
+describe("resolveOfferMode — free-event vs paid", () => {
+  it("a webinar campaign converts on a FREE next step", () => {
+    expect(resolveOfferMode({ campaignType: "webinar" })).toBe("free_event");
+  });
+
+  it("a course launch converts on a PURCHASE", () => {
+    expect(resolveOfferMode({ campaignType: "course_launch" })).toBe("paid");
+  });
+
+  it("an operator-set price upgrades a free type to paid (the deferred-tripwire seam)", () => {
+    expect(
+      resolveOfferMode({ campaignType: "webinar", campaignFacts: { price: { amount: "250" } } }),
+    ).toBe("paid");
+  });
+
+  it("an explicit __FREE__ answer downgrades a paid type to free", () => {
+    expect(
+      resolveOfferMode({ campaignType: "course_launch", campaignFacts: { price: { amount: "__FREE__" } } }),
+    ).toBe("free_event");
+  });
+
+  it("silence is never read as free — an unpriced event falls through to its campaign default", () => {
+    // Three-state discipline: only an EXPLICIT __FREE__ means free. An empty price is unanswered.
+    expect(resolveOfferMode({ campaignType: "in_person_event", campaignFacts: { price: undefined } }))
+      .toBe("free_event");
+    expect(resolveOfferMode({ campaignType: "course_launch", campaignFacts: { price: { amount: "" } } }))
+      .toBe("paid");
+  });
+
+  it("every one of the seven campaign types resolves to a mode", () => {
+    for (const t of Object.keys(CAMPAIGN_TO_PAGE_TYPE)) {
+      expect(["free_event", "paid"]).toContain(resolveOfferMode({ campaignType: t }));
+    }
+  });
+});
+
+// ─── The 4-of-7 landing-page framing drift ──────────────────────────────────
+// The map inside landingPageGenerator.ts carried FOUR of the seven campaign types, so a FREE
+// discovery-call page was generated against "Enrolment is the decision point / CTA: Enrol now".
+describe("LP_CAMPAIGN_FRAMING covers every campaign type", () => {
+  it("has an entry for all seven, matching CAMPAIGN_TO_PAGE_TYPE's key set", () => {
+    expect(Object.keys(LP_CAMPAIGN_FRAMING).sort()).toEqual(Object.keys(CAMPAIGN_TO_PAGE_TYPE).sort());
+    expect(Object.keys(LP_CAMPAIGN_FRAMING)).toHaveLength(7);
+  });
+
+  it("the three formerly-missing types no longer fall through to course_launch", () => {
+    // THE ACTUAL REGRESSION. These three had no entry, so `map[type] || map['course_launch']`
+    // handed a FREE page the course-launch framing. Asserting they are DISTINCT from it is the
+    // property that matters; regexing the prose is fragile because the prose discusses what to
+    // avoid ("Never an enrolment deadline") in the very sentence doing the work.
+    for (const t of ["discovery_call", "lead_magnet", "in_person_event"] as const) {
+      expect(LP_CAMPAIGN_FRAMING[t]).not.toBe(LP_CAMPAIGN_FRAMING.course_launch);
+      expect(LP_CAMPAIGN_FRAMING[t]).toMatch(/^CAMPAIGN TYPE: /);
+    }
+  });
+
+  it("no free campaign type's CTA line tells the reader to enrol or buy", () => {
+    for (const t of ["discovery_call", "lead_magnet", "webinar", "in_person_event"] as const) {
+      const cta = (LP_CAMPAIGN_FRAMING[t].match(/^CTA language:.*$/m) ?? [""])[0];
+      expect(cta).not.toMatch(/enrol|buy now|purchase|checkout/i);
+    }
   });
 });

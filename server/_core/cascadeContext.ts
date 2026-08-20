@@ -53,6 +53,7 @@
  */
 
 import { eq, and } from "drizzle-orm";
+import { resolveOfferMode } from "./campaignFraming";
 import { getDb } from "../db";
 import {
   campaignKits,
@@ -231,7 +232,16 @@ const hasPlaceholder = (v: string | null | undefined): boolean =>
 export { hasPlaceholder as _hasPlaceholder };
 export { CASCADE_NODE_TO_KIT_FIELD as _CASCADE_NODE_TO_KIT_FIELD };
 
-async function describeOffer(db: Db, id: number): Promise<string | null> {
+async function describeOffer(
+  db: Db,
+  id: number,
+  /**
+   * The KIT's campaign type — not the offer's. What matters is whether the page this context
+   * feeds converts on money, and that is a property of the campaign, not of the offer row.
+   */
+  campaignType?: string | null,
+  campaignFacts?: { price?: any } | null,
+): Promise<string | null> {
   const [offer] = await db.select().from(offers).where(eq(offers.id, id)).limit(1);
   if (!offer) return null;
   const angleKey = offer.activeAngle ?? "godfather";
@@ -248,6 +258,28 @@ async function describeOffer(db: Db, id: number): Promise<string | null> {
   const valueProp = content.valueProposition ?? "";
   const cta = content.cta ?? "";
   let desc = `Selected offer: "${offer.productName}" (${angleKey} angle). Value proposition: "${valueProp}". Offer CTA: "${cta}".`;
+
+  // ── THE FREE-EVENT FENCE ────────────────────────────────────────────────────────────────────
+  // Measured 2026-08-20 on service 1 (price 3000.00, guaranteeType "Full refund", guaranteeDuration
+  // "90 days"): this function appended `Price: 3000.00. Guarantee: Full refund, 90 days.` to the
+  // landing-page prompt REGARDLESS of campaign type, and the generated FREE webinar page then
+  // carried the £3,000 in faq[4] and the money-back promise in faq[5] — on three of its four
+  // angles — where `webinarRajsekar`/`webinarLight` render faq[0..5] straight to the buyer.
+  //
+  // The page-type prompt's `guarantee: ""` instruction did not stop it, and could not: the model
+  // had the facts and a legitimate-looking place to put them. So the facts are withheld here
+  // instead. This is a SEPARATE guard from the offer node's own mode-awareness, deliberately: it
+  // is keyed off the PAGE's campaign type, so it holds even when the offer row was generated
+  // paid-shaped (a legacy row, or a campaign whose type was set after the offer was made).
+  const mode = resolveOfferMode({ campaignType, campaignFacts });
+  if (mode === "free_event") {
+    desc += ` This campaign converts on a FREE next step, so this offer carries no price and no`
+      + ` refund guarantee — it is the programme context that makes the free step worth attending.`
+      + ` Name no price, fee or refund anywhere in the page you generate.`;
+    if (!hasPlaceholder(content.bonuses)) desc += ` Bonuses: ${content.bonuses}`;
+    if (!hasPlaceholder(content.urgency)) desc += ` Urgency: ${content.urgency}`;
+    return desc;
+  }
 
   // Fetch authoritative operator facts from services table via offer.serviceId
   let svcPrice: string | null = null;
@@ -379,7 +411,9 @@ async function describeUpstream(
 ): Promise<string | null> {
   switch (upstream) {
     case "offer":
-      return kit.selectedOfferId ? describeOffer(db, kit.selectedOfferId) : null;
+      return kit.selectedOfferId
+        ? describeOffer(db, kit.selectedOfferId, kit.campaignType, (kit.campaignFacts as any) ?? null)
+        : null;
     case "mechanism":
       return kit.selectedMechanismId ? describeMechanism(db, kit.selectedMechanismId) : null;
     case "hvco":

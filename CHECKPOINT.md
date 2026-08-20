@@ -24,7 +24,7 @@
 | Node 5 body / bonuses | ✅ **BANKED, NOT DEPLOYED.** See §0-N5 |
 | Safe-to-run checklist | items 1 (teardown fence) and 2 (currency-aware budget floor) ✅ **BANKED**; items 3–5 open. See §0-SAFE |
 | Node 2 ICP — Phase A | ✅ **BANKED, NOT DEPLOYED.** Inputs widened + prompt raised to the research standard, output shape byte-unchanged. Phase B (multi-persona) is scoped and NOT started. See §0-ICP |
-| Phase 2 — node research pass | 🔵 **IN PROGRESS.** ZAP is **B2C ONLY**. Node 3 Offer research banked to `docs/offer-research/`; rebuild NOT started. ⚠️ Arfeen's research lives OFF-REPO (`~/Downloads`, Drive) — repo-only audits mislead. See §0-P2 |
+| Phase 2 — node research pass | 🔵 **IN PROGRESS.** ZAP is **B2C ONLY**. Node 2 ICP Phase A and **Node 3 Offer ✅ REBUILT + BANKED, NOT DEPLOYED** (standard in `docs/offer-research/README.md`). ⚠️ Arfeen's research lives OFF-REPO (`~/Downloads`, Drive) — repo-only audits mislead. See §0-P2 |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -213,7 +213,58 @@ wire research report"* that exists **nowhere** — not in the repo, not in Downl
 
 Phase A shipped (see §0-ICP). Phase B (multi-persona) scoped, not started.
 
-### Node 3 — Offer: research DONE, rebuild NOT started
+### Node 3 — Offer: ✅ RESEARCH DONE, REBUILD DONE + BANKED, NOT DEPLOYED
+
+**Shipped local-only in one commit** (run `git log --oneline -1` for the SHA — never quote one from
+here). Eight paths: the standard, the two new `_core` modules, and the four generators it touches.
+
+- **The node is campaign-type-aware.** `_core/campaignFraming.ts` owns `resolveOfferMode` →
+  `free_event | paid`, single-sourced off the SAME `campaignType → pageType` chain the landing page
+  uses, so the offer and the page it feeds cannot disagree about whether money changes hands. An
+  operator price in `campaignKits.campaignFacts.price` overrides in BOTH directions — that override
+  is the seam the deferred paid tripwire lands on, and it is already tested.
+- 🔑 **THE FAQ LEAK IS CLOSED AT SOURCE, WITH TWO INDEPENDENT GUARDS.** Measured on service 1
+  (`price=3000.00`, `"Full refund"`, `"90 days"`): a FREE webinar page carried the £3,000 in
+  `faq[4]` and the money-back promise in `faq[5]` on **three of four angles**, inside the
+  `faq[0..5]` window both webinar templates render to the buyer. The page-type prompt's
+  `guarantee: ""` could not stop it — the model had the facts and a plausible place to put them.
+  Guard 1: the offer node WITHHOLDS the facts in free mode. Guard 2: `describeOffer` suppresses
+  them on the way into the LP prompt, keyed off the **page's** campaign type, so it holds for a
+  legacy offer row generated paid-shaped. Re-measured after the fix: **0 currency, 0 refund,
+  guarantee empty on all four angles, 0 tier-1 blocking hits.**
+- **The value equation is fed its own inputs** — ICP `hopesDreams` (Dream Outcome) + `pains`/`fears`
+  (cost of inaction), which were sitting unused while the prompt read four fields that are not
+  levers. Guarded STRUCTURALLY by `neutraliseProfileCurrency`, not by a prompt instruction: since
+  ICP Phase A `pains` legitimately carries the coach's own figures, and
+  `detectInventedCurrencyAmounts` flags every `£N` when no price is supplied, so a copied figure
+  would burn all three retries and persist anyway.
+- **Output schema UNCHANGED** — same seven `OfferContent` keys, same three angle columns, same
+  `activeAngle` enum, no migration. The three angles are REINTERPRETED per mode. `pricing` and
+  `guarantee` stay non-empty in free mode (they carry access-terms and the attendance promise);
+  an empty `pricing` renders as "Pricing: —" on the kit card and ships blank in exports.
+- **The 4-of-7 framing drift is closed.** `LP_CAMPAIGN_FRAMING` is typed `Record<CampaignType, …>`,
+  so an incomplete map is a compile error rather than a silent fallthrough to `course_launch`.
+
+⚠️ **THE S4 GATES MOVED, AND ONE HAD GONE SILENTLY VACUOUS.** Three assertions read literal strings
+out of `ANGLE_PROMPTS` in `offersGenerator.ts`; the prompts now live in `_core/offerStandard.ts` as
+two sets. One used `indexOf("const ANGLE_PROMPTS")` → **-1**, `slice(-1, …)` → **empty string**, and
+its `not.toContain` **passed against nothing**. Repointed and strengthened, 3 assertions → 8, and
+proven non-vacuous (the directive regexes fire on the paid set, 1/2/2, and are clean on the free
+set, 0/0/0). The `"(£497 value)"` worked example was placeholder-ised — a concrete figure in a
+prompt is itself a priming source (§14) — and a property gate now asserts `offerStandard.ts`
+contains no currency figure at all.
+
+#### 🔵 TWO FOLLOW-UPS HELD — both are Arfeen's product call, neither is a defect
+
+1. **The null-campaignType default is `course_launch` → `paid`**, i.e. unchanged from today and
+   matching all six other generators. Product truth argues free should win, since free is the
+   overwhelming majority. It is a **one-line flip** in `DEFAULT_CAMPAIGN_TYPE`. Held deliberately
+   rather than smuggled in, and safe to hold because guard 2 protects the page independently.
+2. **`challenge` resolves to `paid`** because it maps to `sales_page`. If challenges are usually
+   free for ZAP's coaches this is wrong — but changing it also moves the LANDING PAGE, so it is a
+   bigger decision than the one-line diff suggests.
+
+### Node 3 — Offer: the research that grounds it
 
 **Six B2C NotebookLM reports are now IN THE REPO at `docs/offer-research/`** (copied from
 `~/Downloads` 2026-08-20; originals left in place):
@@ -290,13 +341,20 @@ a refund the coach never agreed to.
 
 ### 📌 PENDING NEXT ACTIONS — in this order
 
-1. **Read-only trace: the free-webinar / tripwire funnel vs the Offer node architecture.** Where the
-   free-vs-paid and event-type choice actually lives (Campaign Type "Node 0" / landing-page CTA);
-   how Offer (3) relates to Lead Magnet (5) and the landing CTA; and **whether the offer's
-   `pricing` / `guarantee` / `bonuses` schema is used at all on the free path.**
-2. **Bank the Offer README + distilled standard** into `docs/offer-research/`.
-3. **Rebuild the Offer node for the FREE-event offer** — propose-first → A/B on a real service row →
-   bank + backup.
+1. ✅ **DONE — the read-only funnel trace.** The free-vs-paid + event-type choice lives at intake as
+   the campaign-type chip ("What are you inviting people to?", `V2TrailIntake.tsx`), persisted to
+   `campaignKits.campaignType` and derived to `pageType`. **Node 5 (HVCO/"Lead Magnet") is already
+   the free-next-step node** and is campaign-type-aware for all 7 types — only `lead_magnet`
+   campaigns get a downloadable body. The offer's paid schema was dormant in the free page's
+   TEMPLATES (they never bind `guarantee`/`price`) but live in the PROMPT via `describeOffer`,
+   and live coach-facing on the kit card and exports.
+2. ✅ **DONE — the Offer README + standard banked** at `docs/offer-research/README.md`.
+3. ✅ **DONE — the Offer node rebuilt** for the free-event offer. See above.
+4. **NEXT — the two held follow-ups above** (null-default flip; `challenge` remap), then the
+   remaining unresearched nodes: **Unique Method · Email · WhatsApp** must be commissioned;
+   Lead Magnet and Landing Page research exists OFF-REPO and needs banking first.
+   ⚠️ `whatsappSequenceGenerator.ts:206` cites a *"WhatsApp wire research report"* that exists
+   **nowhere** — not in the repo, not in Downloads.
 
 ---
 

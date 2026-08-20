@@ -65,19 +65,13 @@ import { enqueueBonusPdfJob } from "../bonusPdfGenerator";
 // ─── Locked B-2 Zappy script labels ────────────────────────────────────────
 // 10 labels: init + 8 steps + finalize. V2AutoModeProgress (Phase B3) reads
 // these from progress.label as the orchestrator advances.
-// Campaign type → landing page type. The single chain that also tells us whether
-// a campaign converts on a downloadable (lead_magnet_download) vs a
-// registration/call/purchase. Module-level so both the landingPage step and the
-// hvco step (which gates lead-magnet BODY generation on it) share one source.
-export const CAMPAIGN_TO_PAGE_TYPE: Record<string, "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration"> = {
-  webinar: "webinar_registration",
-  discovery_call: "discovery_call_booking",
-  lead_magnet: "lead_magnet_download",
-  in_person_event: "event_registration",
-  course_launch: "sales_page",
-  product_launch: "sales_page",
-  challenge: "sales_page",
-};
+// Campaign type → landing page type, and campaign type → landing-page copy framing, both now
+// live in `_core/campaignFraming.ts` alongside the free-vs-paid offer-mode resolver, because all
+// three are the same fact about a campaign and used to drift apart. Re-exported here so every
+// existing importer (`routers/campaignKits.ts`, and this file's own steps) is untouched.
+export { CAMPAIGN_TO_PAGE_TYPE, pageTypeForCampaign } from "./campaignFraming";
+import { pageTypeForCampaign } from "./campaignFraming";
+
 /**
  * Which WhatsApp sequence shape fits a campaign. Only campaigns that actually HAVE an event
  * may use the event-anchored engagement builder.
@@ -91,10 +85,6 @@ const WHATSAPP_SEQUENCE_FOR_CAMPAIGN: Record<string, "engagement" | "nurture"> =
   course_launch: "nurture",
   product_launch: "nurture",
 };
-
-export function pageTypeForCampaign(campaignType?: string | null): "sales_page" | "webinar_registration" | "discovery_call_booking" | "lead_magnet_download" | "event_registration" {
-  return campaignType ? (CAMPAIGN_TO_PAGE_TYPE[campaignType] ?? "sales_page") : "sales_page";
-}
 
 // ── Phase 1 (Problem A) — campaign facts feed generation ─────────────────────────────────────────────
 /** WhatsApp/email sequence length from event-date proximity: closer → shorter & punchier, further →
@@ -376,6 +366,9 @@ export async function runOrchestrationStep(
         userId: input.userId,
         serviceId: input.serviceId,
         offerType: "premium", // matches V2 wizard ADVANCED default at L168
+        // The offer node was the ONLY generator in the cascade that never received this. Without
+        // it, a free webinar campaign produced a priced, refund-guaranteed offer.
+        campaignType: input.campaignType,
       });
       generatedId = offerId;
       // Phase 1 (item 7): apply the kit's UPFRONT campaign facts to the freshly-generated offer, exactly as
