@@ -1,4 +1,4 @@
-# CHECKPOINT — image chapter LIVE; COPY + CONCEPT-PAIRING chapter PROVEN, held local through step 3
+# CHECKPOINT — NODE 4 (Unique Method) SHIPPED, LIVE and TIER-1 PROVEN; next node is the Lead Magnet
 
 **For a cold terminal with no memory of the session that produced this.** Read this file, then
 `docs/handovers/STATE.md`. Everything below was verified in-session, not recalled.
@@ -7,24 +7,22 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 THE FAQ BLOCKER IS FIXED AT THE SOURCE AND BANKED. NOTHING IS DEPLOYED.
+# 👉 NODE 4 (UNIQUE METHOD) IS SHIPPED, LIVE AND PROVEN. NEXT NODE IS THE LEAD MAGNET.
 
-### STATE AT SHUTDOWN — 2026-08-19
+### STATE AT SHUTDOWN — 2026-08-21
 
 | | |
 |---|---|
-| Last CODE commit | **ICP node (Node 2) Phase A** — the early-node rebuild starts here, see §0-ICP. Run the command below for the SHAs; §1 records what hardcoding one here costs |
-| HEAD | that commit. Working tree clean of tracked changes |
-| Since `52f440c` | **seven code commits — the promised-result precision fix, the `"condition"` sense split, the FAQ guardrail, Node 5 screening coverage, the teardown fence, the currency-aware budget floor, and ICP Phase A. No deploy, no migration, no DB write. TWO READ-ONLY prod queries were run (§0-SAFE, §0-ICP).** |
-| `origin/railway-build` | **`51eda78` — UNCHANGED. Nothing is deployed.** Re-read the ahead-count from git; never quote one from here |
-| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` — ✅ **fast-forwarded to the commit you are reading**, 2026-08-19, and SHA-verified against `git ls-remote`. It carries the teardown fence, the budget floor and ICP Phase A. ⚠️ It goes stale again with every commit after — **re-read it, never assume it. It does NOT deploy** |
-| The ad account | **CLEAN.** Nothing was ever created on it. The three pre-existing orphans are still three |
-| tsc | **34**, re-confirmed 2026-08-19 either side of this commit |
-| The FAQ guardrail | ✅ **BANKED, NOT DEPLOYED.** Phase 1 step 2 complete. See §0-FAQ |
-| Node 5 body / bonuses | ✅ **BANKED, NOT DEPLOYED.** See §0-N5 |
-| Safe-to-run checklist | items 1 (teardown fence) and 2 (currency-aware budget floor) ✅ **BANKED**; items 3–5 open. See §0-SAFE |
-| Node 2 ICP — Phase A | ✅ **BANKED, NOT DEPLOYED.** Inputs widened + prompt raised to the research standard, output shape byte-unchanged. Phase B (multi-persona) is scoped and NOT started. See §0-ICP |
-| Phase 2 — node research pass | 🔵 **IN PROGRESS.** ZAP is **B2C ONLY**. Node 2 ICP Phase A and **Node 3 Offer ✅ REBUILT + BANKED, NOT DEPLOYED** (standard in `docs/offer-research/README.md`). ⚠️ Arfeen's research lives OFF-REPO (`~/Downloads`, Drive) — repo-only audits mislead. See §0-P2 |
+| Last CODE commit | **`f5be0b0`** — the `truncateAtSentence` g-flag fix. Node 4 shipped in the three commits before it. Run the command below for live SHAs; §1 records what hardcoding one here costs |
+| HEAD / `origin/railway-build` | **both `f5be0b0`** — 0 ahead, 0 behind. **Everything below is DEPLOYED.** Re-read the count from git; never quote one from here |
+| Railway | ✅ deploy of `f5be0b0` **SUCCESS**. Site 200, live tRPC probe 200, boot clean (`[boot] Font validation OK`, `reaper: 0 pending`). ⚠️ `/health` and `/api/health` are the SPA catch-all, NOT a liveness route |
+| Everything banked at 08-19 | ✅ **NOW DEPLOYED.** `51eda78` is 44 commits behind HEAD — the FAQ guardrail, Node 5 body/bonuses, the teardown fence, the currency-aware budget floor and ICP Phase A all went out with the intervening sprints |
+| Migrations | **0097–0104 are APPLIED to production — do NOT re-apply.** 0104 = `coachMethods` + `heroMechanisms.sourceTier` / `coachMethodId` |
+| Off-machine backup | `origin/backup/publish-path-sprint-2026-08-08` = **`3085b50`** — deliberately behind HEAD. It does **NOT** deploy. Off-machine backups go **only** there, never to `railway-build` |
+| tsc | **34**, re-confirmed either side of `f5be0b0`. Suites green: pipeline-fixes 394, complianceFilter 31, tokenCrypto 10, cascadeContext.truncate 9 |
+| **Node 4 — Unique Method** | ✅ **SHIPPED, LIVE and PROVEN on prod.** Full account in §0-P2 → Node 4 |
+| Step-4c Meta publish scripts | ⚠️ shipped **DORMANT** under `server/scripts/` — **do not invoke them** |
+| Phase 2 — node research pass | 🔵 **IN PROGRESS.** ZAP is **B2C ONLY**. Nodes 2 · 3 · 4 done. **NEXT: the Lead Magnet node.** ⚠️ Arfeen's research lives OFF-REPO (`~/Downloads`, Drive) — repo-only audits mislead. See §0-P2 |
 
 ⚠️ **The ahead-count moves with every docs commit — re-read it, never quote it.**
 `git fetch origin && git rev-parse HEAD origin/railway-build origin/backup/publish-path-sprint-2026-08-08`
@@ -203,8 +201,8 @@ is unresearched without checking off-repo first.**
 
 | | |
 |---|---|
-| **Genuinely missing — must be commissioned** | **Unique Method · Email · WhatsApp** |
-| **Research exists OFF-REPO** | **Offer · Lead Magnet · Landing Page** |
+| **Genuinely missing — must be commissioned** | **Email · WhatsApp** (Unique Method is now ✅ done — researched, rebuilt, deployed and proven) |
+| **Research exists OFF-REPO** | **Lead Magnet · Landing Page** (Offer ✅ banked in-repo) |
 
 ⚠️ The WhatsApp case is worse than missing: `whatsappSequenceGenerator.ts:206` cites a *"WhatsApp
 wire research report"* that exists **nowhere** — not in the repo, not in Downloads.
@@ -327,6 +325,107 @@ a refund the coach never agreed to.
   supplied when only the AI suggestion exists, while the generator does not. Two definitions of
   "supplied" in two files.
 
+### Node 4 — Unique Method: ✅ SHIPPED, LIVE on prod, and PROVEN
+
+**Four commits, all deployed** — `bf4bdc5` (migration 0104), `dbce424` (server rebuild), `b54522b`
+(the Zappy walkthrough surface), and `f5be0b0` (the `truncateAtSentence` fix that unblocked the
+cascade the rebuild depends on). `origin/railway-build` = `f5be0b0`, Railway green.
+
+**Three tiers, ONE source-agnostic extractor** (`server/_core/methodExtractor.ts`). Tier 1 is a
+stored `coachMethods` row from the guided Zappy conversation (`server/routers/methods.ts` +
+`client/src/v2/components/V2MethodWalkthrough.tsx`). Tier 2 mines the same extractor over service +
+`sourceOfTruth` material. Tier 3 is a guarded fallback governed by `validateMechanismName()`, and
+it is reached only when the first two genuinely produce nothing. The brain never learns whether a
+human was typing — chat turns become `RawMaterial[]` at the router boundary and nowhere below it.
+
+#### ✅ TIER 1 VALIDATED ON PROD — 2026-08-21, and this is the part that was never proven before
+
+Driven through the **real router procedures** (`walkthroughTurn` → `walkthroughTurn` → `saveMethod`
+via `methodsRouter.createCaller({user:{id:1613}})`, HTTP auth bypassed and nothing else), on test
+service 233, with an authored realistic coaching method — one client, first / then / then, in the
+voice a coach actually answers in.
+
+**A real method produces a genuinely more grounded mechanism than either the old baseline or the
+tier-3 fallback.** The evidence, not the impression:
+
+- **7 of 7 evidence fragments were verbatim substrings of the coach's own words** — checked
+  mechanically after case/punctuation normalisation, not by eye. Zero fabricated citations.
+- **`operationalTwist` was correctly caught as `kind: "sequence"`** — the ordering claim ("blocks
+  all talk of what you want until two weeks of behavioural evidence exists") is the real
+  differentiator, and it was identified as the twist rather than flattened into a step.
+- **`ump`/`ums` came back a matched pair, both written as properties of the APPROACH**, not of the
+  reader — which is the standard's hardest requirement to hold.
+- Names moved from interchangeable niche nouns ("The Sector Translation Audit", "Cross-Sector
+  Positioning Audit") to named operations that trace 1:1 onto the extracted steps ("Conditions
+  Audit Before Career Conversation", "Real-Money Test Before Resignation").
+
+**The foundation is solid enough to build the downstream nodes on.** That was the open question;
+it is now answered.
+
+#### The cascade fix the rebuild depended on — `f5be0b0`, measured
+
+`truncateAtSentence` (`server/_core/cascadeContext.ts`) ran `/[.!?]\s/.exec()` **without the `g`
+flag**, so it always cut at the FIRST sentence and the character cap barely mattered. Pre-existing
+since `0002071`; inherited when `dbce424` raised the mechanism cap 250 → 900, which is why that
+raise carried far less than intended. Fixed to take the LAST boundary within the cap; hard-cut at
+cap when no boundary fits.
+
+Measured on 60 production rows (services 233 + 2, avg description 1,137 chars): mechanism
+descriptions now carry **~57% downstream, up from ~16%** (on the new `sourceTier` rows,
+60.2% up from 16.3%). `hvcoTopic` at its 300 cap is **effectively unchanged** — 399 of the 400 most
+recent rows are byte-identical, since no live row exceeds the cap. New test
+`server/_core/cascadeContext.truncate.test.ts` (9 tests) covers multi-sentence carry at both caps
+and every unchanged case; `truncateAtSentence` is exported so the test exercises the real function
+rather than a copy.
+
+#### 🧹 TEST DATA CLEANED UP — 2026-08-21, both services restored to pre-test state
+
+Nothing of ours is left on prod. `heroMechanisms` back to **1095 rows, max id 1195**; `coachMethods`
+**empty**; kit 152's `selectedMechanismId` restored to **712** ("The Sector Translation Audit" — the
+mechanism its downstream assets were actually built against, recovered from the kit's persisted
+trail transcript, not guessed); kit 221 removed entirely, since it was created by the test's own
+auto-select two seconds after the rows it pointed at. 45 mechanism rows, 1 method row and 1 kit row
+deleted; service 233 keeps its original 712-726 and service 2 its March set.
+
+⚠️ `users.heroMechanismGeneratedCount` was left at 3 on both test accounts (1613, 1254)
+**deliberately** — the pre-test values are inferred rather than recovered, and it is a quota counter
+on test accounts. Repo untouched throughout at `f5be0b0`; the driver scripts live in the scratchpad,
+outside the repo.
+
+#### 📌 NODE 4 FINISHING BACKLOG — PARKED for a pre-launch pass. None of it blocks the next node
+
+1. **The durable walkthrough entry point — DESIGNED, NOT BUILT.** As shipped, the "Tell Zappy how
+   I work" chip (`V2Trail.tsx:509`) is transient, auto-path-only, never persisted, and has no
+   return-visit surface — the auto driver does not block on chips, so the next node's reveal
+   collapses it within about thirty seconds, and `runManualLoop` never offers it at all. **In
+   practice it is unreachable, which is why `coachMethods` is empty.** The design: a permanent
+   button in the Campaign Kit's Unique Method section (`V2CampaignKit.tsx`, inside `AssetSection`,
+   which already receives `serviceId`/`kitId`/`navigate`), opening the **currently dead-code
+   standalone `V2MethodWalkthrough` render** in the modal shell this file already uses for
+   `V2QuizReviewModal`. `onSaved` from the Kit **captures only** — it refetches, closes, and offers
+   an explicit "rebuild from this?" that routes to the existing `?node=uniqueMethod&action=swap`
+   path. It must **never** silently regenerate a locked node. No server change, no migration.
+2. **Naming — 2 of 5 still jargon.** "Condition-First Sector Mapping Process" is barely
+   distinguishable from the tier-3 fallback it replaced. The scoring engine picks one, so *which*
+   lands matters more than the batch average.
+3. **Descriptions read as consultant prose** — ~1,200 characters of analytical register, nothing
+   like the voice of the coach who said "if nobody has paid for it, it's a daydream." This is the
+   shared copy-readability/register standard, not a Node 4 defect.
+4. **Hide `beast_mode` / `headline_ideas`.** Both tabs ignore the method (their names came back
+   unchanged in character even carrying the `coach_stated` stamp), and neither can be selected into
+   the cascade — but the coach still sees them.
+5. **The walkthrough's substance bar is too low.** `hasSubstance` went true after ONE substantive
+   answer, so the session closed before asking for the coach's second real move; a step got
+   salvaged from the optional differentiator beat instead. Ending on substance rather than a field
+   count is right in principle — the bar is what needs raising.
+6. **Two extractor wrinkles.** `oldVehicle` was filled with the client's *background* rather than a
+   failed prior approach, and one description illustrated with a number ("two layers of sign-off")
+   that the coach never said (they said four). Framed as an example, so not a fabrication in the
+   anti-fabrication sense — but worth watching.
+7. **Compliance.** The new copy trips the persistence gate on multiple classes; the publish gate
+   holds, so nothing unsafe ships, but the copy is not compliance-clean. **Compare the hit rate
+   against the old generator before calling this launch-ready.**
+
 ### Research method — STANDING, use this for every node
 
 1. The assistant gives a **~2,000-character seed prompt** for an **empty NotebookLM notebook** —
@@ -350,9 +449,14 @@ a refund the coach never agreed to.
    and live coach-facing on the kit card and exports.
 2. ✅ **DONE — the Offer README + standard banked** at `docs/offer-research/README.md`.
 3. ✅ **DONE — the Offer node rebuilt** for the free-event offer. See above.
-4. **NEXT — the two held follow-ups above** (null-default flip; `challenge` remap), then the
-   remaining unresearched nodes: **Unique Method · Email · WhatsApp** must be commissioned;
-   Lead Magnet and Landing Page research exists OFF-REPO and needs banking first.
+4. ✅ **DONE — Node 4 Unique Method** researched, rebuilt, deployed and tier-1-proven. See above.
+5. **NEXT — THE LEAD MAGNET NODE.** Start by **reconciling Arfeen's existing lead-magnet research
+   (in `~/Downloads`) against a B2C lead-magnet standard**, then seed NotebookLM **only for the
+   gaps that reconciliation exposes**. Do not commission fresh research over work already done —
+   that is the exact mistake the off-repo finding above exists to prevent.
+6. **After that** — the two held Offer follow-ups (null-default flip; `challenge` remap), then the
+   two genuinely uncommissioned nodes: **Email · WhatsApp**. Landing Page research exists OFF-REPO
+   and needs banking first.
    ⚠️ `whatsappSequenceGenerator.ts:206` cites a *"WhatsApp wire research report"* that exists
    **nowhere** — not in the repo, not in Downloads.
 
@@ -2166,7 +2270,13 @@ failed redaction and **has been rotated**; the Meta connection was re-establishe
 ## 10. Standing rules
 
 - **⛔ NO PUSH WITHOUT ARFEEN'S EXPLICIT "push" IN THE IMMEDIATELY PRECEDING MESSAGE.**
+  **`railway-build` auto-deploys on push — a push IS an instant production deploy.** Each
+  authorisation is one-time and covers one action; it never carries to the next.
 - **Every prod write needs explicit "execute"/"go ahead" in the immediately preceding message.**
+  Same rule for deletes and restores, no exception for "small", "test-account" or "obviously right".
+- **Migrations 0097–0104 are APPLIED to production — do NOT re-apply any of them.**
+- **Off-machine backups go ONLY to `backup/publish-path-sprint-2026-08-08`, never to `railway-build`.**
+- **The step-4c Meta publish scripts under `server/scripts/` shipped DORMANT — do not invoke them.**
 - **A LIVE RENDER IS THE ONLY PROOF OF A LIVE IMAGE PATH** — and for anything involving the text
   overlay, **the COMPOSITE is the only proof**. The raw render passed while the finished ad was broken.
 - **Save proof images to disk BEFORE any teardown.** Teardown outranks the artifact read.
