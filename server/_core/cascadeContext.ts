@@ -177,22 +177,31 @@ export async function validateCascadePrereqs(
 // ─── Truncation utilities ─────────────────────────────────────────────
 
 /**
- * Sentence-aware truncation, first-boundary semantics.
- * Locked rule: first sentence OR `maxChars`, whichever comes first.
- * - If a sentence-ender (`.`, `!`, `?` followed by whitespace) appears
- *   within `maxChars`, cut right after it (single sentence only).
- * - Else if the text is shorter than `maxChars`, return it as-is.
- * - Else hard-truncate at `maxChars`.
- * Used for mechanism descriptions to keep cascade context terse.
+ * Sentence-aware truncation, last-boundary-within-cap semantics.
+ * Rule: carry as many whole sentences as fit inside `maxChars`.
+ * - If the text already fits, return it unchanged.
+ * - Else scan every sentence-ender (`.`, `!`, `?` followed by
+ *   whitespace) and cut after the LAST one that falls within `maxChars`.
+ * - Else (no boundary fits) hard-truncate at `maxChars`.
+ *
+ * The previous implementation ran `/[.!?]\s/.exec()` without the `g`
+ * flag, so it always cut at the FIRST sentence and `maxChars` barely
+ * mattered — a 900-cap mechanism description carried roughly one
+ * opening line. The cap is the budget; this spends it.
  */
-function truncateAtSentence(text: string, maxChars: number): string {
+export function truncateAtSentence(text: string, maxChars: number): string {
   if (!text) return "";
   const trimmed = text.trim();
-  const match = /[.!?]\s/.exec(trimmed);
-  if (match && match.index + 1 <= maxChars) {
-    return trimmed.slice(0, match.index + 1);
-  }
   if (trimmed.length <= maxChars) return trimmed;
+  const boundaries = /[.!?]\s/g;
+  let lastEnd = -1;
+  let match: RegExpExecArray | null;
+  while ((match = boundaries.exec(trimmed)) !== null) {
+    const end = match.index + 1; // cut just after the sentence-ender
+    if (end > maxChars) break;
+    lastEnd = end;
+  }
+  if (lastEnd > 0) return trimmed.slice(0, lastEnd);
   return trimmed.slice(0, maxChars);
 }
 
