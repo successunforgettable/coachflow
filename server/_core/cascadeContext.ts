@@ -338,33 +338,57 @@ async function describeOffer(
   return desc;
 }
 
-async function describeMechanism(db: Db, id: number): Promise<string | null> {
-  const [m] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, id)).limit(1);
-  if (!m) return null;
-  // ── THE GOLDEN THREAD WAS BEING CUT HERE ──────────────────────────────────────────────────────
-  // This is the ONLY channel by which the mechanism reaches its six downstream nodes — hvco,
-  // headlines, adCopy, landingPage, email and whatsapp all read this one string. It truncated to
-  // 250 characters against a measured average `hero_mechanisms` description of 1,195, so roughly
-  // 79% of the node's only substantive output was discarded before anything downstream saw it.
-  // What crossed was a name and about forty words.
-  //
-  // 900 is chosen against the measured distribution rather than picked: it carries the whole
-  // description for the large majority of rows while still bounding the six prompts that prepend
-  // it. `truncateAtSentence` keeps the cut on a sentence boundary, so a long one degrades to a
-  // clean paragraph rather than a severed clause.
-  const description = truncateAtSentence(m.mechanismDescription ?? "", 900);
-  let desc = `Selected hero mechanism: "${m.mechanismName}".`;
+/**
+ * The default cap. Five downstream nodes (headlines, adCopy, landingPage, email, whatsapp) and the
+ * lead-magnet TITLE generator reference the mechanism; 900 is sized for that job and they are
+ * unchanged by the parameter below.
+ *
+ * Node 5's BODY is the one consumer whose content IS the method — the lead magnet teaches the
+ * coach's method in miniature — so it opts into a wider cap at its own call site rather than moving
+ * this number for everyone.
+ */
+export const MECHANISM_CHARS_DEFAULT = 900;
+
+/** Shape of the columns this renderer reads. Loose on purpose so the test can pass a plain object. */
+export type MechanismRowLike = {
+  mechanismName?: string | null;
+  mechanismDescription?: string | null;
+  descriptor?: string | null;
+  sourceTier?: string | null;
+};
+
+/**
+ * PURE. Exported for the same reason `truncateAtSentence` is: so the tests exercise the real
+ * renderer rather than a copy that can drift away from it.
+ */
+export function describeMechanismText(m: MechanismRowLike, maxChars: number = MECHANISM_CHARS_DEFAULT): string {
+  const description = truncateAtSentence(m.mechanismDescription ?? "", maxChars);
+  let desc = `Selected hero mechanism: "${m.mechanismName ?? ""}".`;
   if (m.descriptor && !hasPlaceholder(m.descriptor)) {
     desc += ` Type: ${m.descriptor}.`;
   }
   desc += ` Description: "${description}".`;
   // The confidence tag travels with it. A downstream node that knows the mechanism was invented
   // under the fallback guardrails can lean on it more lightly than one the coach described.
-  if ((m as any).sourceTier === "guarded_fallback") {
+  if (m.sourceTier === "guarded_fallback") {
     desc += ` (This mechanism was composed from the audience profile rather than described by the`
       + ` practitioner — lean on the specifics of the audience, and assert nothing about how it was developed.)`;
   }
   return desc;
+}
+
+async function describeMechanism(db: Db, id: number, maxChars: number = MECHANISM_CHARS_DEFAULT): Promise<string | null> {
+  const [m] = await db.select().from(heroMechanisms).where(eq(heroMechanisms.id, id)).limit(1);
+  if (!m) return null;
+  // ── THE GOLDEN THREAD WAS BEING CUT HERE ──────────────────────────────────────────────────────
+  // This is the ONLY channel by which the mechanism reaches its downstream nodes. It truncated to
+  // 250 characters against a measured average `hero_mechanisms` description of 1,195, so roughly
+  // 79% of the node's only substantive output was discarded before anything downstream saw it.
+  //
+  // 900 stays the default for the nodes that REFERENCE the mechanism. Node 5's body TEACHES it, so
+  // it passes a wider cap at its call site; measured 2026-08-24 across 1,095 production rows, the
+  // description is 100% populated with a median of 1,237 and a p90 of 1,600.
+  return describeMechanismText(m as MechanismRowLike, maxChars);
 }
 
 async function describeHvco(db: Db, id: number): Promise<string | null> {
@@ -434,6 +458,7 @@ async function describeUpstream(
   db: Db,
   upstream: CascadeNode,
   kit: typeof campaignKits.$inferSelect,
+  opts?: CascadeOptions,
 ): Promise<string | null> {
   switch (upstream) {
     case "offer":
@@ -441,7 +466,9 @@ async function describeUpstream(
         ? describeOffer(db, kit.selectedOfferId, kit.campaignType, (kit.campaignFacts as any) ?? null)
         : null;
     case "mechanism":
-      return kit.selectedMechanismId ? describeMechanism(db, kit.selectedMechanismId) : null;
+      return kit.selectedMechanismId
+        ? describeMechanism(db, kit.selectedMechanismId, opts?.mechanismChars ?? MECHANISM_CHARS_DEFAULT)
+        : null;
     case "hvco":
       return kit.selectedHvcoId ? describeHvco(db, kit.selectedHvcoId) : null;
     case "headlines":
@@ -465,6 +492,14 @@ async function describeUpstream(
 }
 
 /**
+ * Per-call-site knobs. Optional throughout, so every existing caller is byte-unchanged.
+ */
+export type CascadeOptions = {
+  /** How much of `mechanismDescription` to carry. Defaults to MECHANISM_CHARS_DEFAULT (900). */
+  mechanismChars?: number;
+};
+
+/**
  * Public entry point. Returns a formatted UPSTREAM CONTEXT block that
  * downstream generators prepend to their user-prompt string before
  * calling invokeLLM. Returns the empty string if cascade isn't
@@ -474,6 +509,7 @@ export async function getCascadeContext(
   userId: number,
   icpId: number | null | undefined,
   forNode: CascadeNode,
+  opts?: CascadeOptions,
 ): Promise<string> {
   const expected = UPSTREAM[forNode]?.length ?? 0;
 
@@ -510,7 +546,7 @@ export async function getCascadeContext(
   // Resolve each upstream selection in declared order.
   const parts: string[] = [];
   for (const upstream of UPSTREAM[forNode]) {
-    const part = await describeUpstream(db, upstream, kit);
+    const part = await describeUpstream(db, upstream, kit, opts);
     if (part) parts.push(part);
   }
 

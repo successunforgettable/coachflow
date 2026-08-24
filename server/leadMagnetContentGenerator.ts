@@ -13,7 +13,7 @@
  */
 
 import { getDb } from "./db";
-import { services, idealCustomerProfiles, campaignKits, heroMechanisms, sourceOfTruth, campaigns } from "../drizzle/schema";
+import { services, idealCustomerProfiles, campaignKits, heroMechanisms, coachMethods, sourceOfTruth, campaigns } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { GUARANTEE_CLAIMS_RULE } from "./_core/copywritingRules";
 
@@ -126,7 +126,15 @@ export interface MagnetContext {
   title: string;
   programme: string;
   mainBenefit: string;
-  mechanism: string;
+  /**
+   * The upstream cascade block — the selected offer and, when one is selected, the coach's
+   * mechanism carried with its DESCRIPTION rather than only its name. Rendered verbatim.
+   */
+  upstream: string;
+  /** True only when a real selected mechanism resolved. Never inferred, never defaulted. */
+  hasMethod: boolean;
+  /** Ordered steps and the operational twist, when the tier-1 coachMethods row exists. Often "". */
+  methodDetail: string;
   offerDescription: string;
   icpPains: string;
   icpGoals: string;
@@ -137,7 +145,8 @@ export interface MagnetContext {
   contentBrief: string;
 }
 
-async function gatherContext(userId: number, serviceId: number, icpId: number | null, campaignId: number | null, title: string): Promise<MagnetContext | null> {
+/** Exported so the A/B harness and tests build context through the real path rather than a copy. */
+export async function gatherContext(userId: number, serviceId: number, icpId: number | null, campaignId: number | null, title: string): Promise<MagnetContext | null> {
   const db = await getDb();
   if (!db) return null;
   const [service] = await db.select().from(services).where(eq(services.id, serviceId)).limit(1);
@@ -153,14 +162,39 @@ async function gatherContext(userId: number, serviceId: number, icpId: number | 
   }
   if (!icp) [icp] = await db.select().from(idealCustomerProfiles).where(eq(idealCustomerProfiles.serviceId, serviceId)).limit(1);
 
-  let mechanism = service.uniqueMechanismSuggestion || "";
+  // ── THE METHOD, NOT THE LABEL ON IT ─────────────────────────────────────────────────────────
+  // This read used to take a single column — the mechanism's NAME — off the correct row, reached
+  // through the correct foreign key. Node 5 is the node whose CONTENT is the coach's method: the
+  // lead magnet teaches the method in miniature while the paid work teaches the personalised
+  // execution. It was the only node told what the method is CALLED and never what it IS.
+  //
+  // It now routes through the same cascade helper the title generator and five other nodes use,
+  // so Node 5 stops hand-rolling upstream context, and inherits two things it never had: the
+  // guarded_fallback confidence caveat, and `describeOffer`'s campaign-type awareness, which
+  // withholds price and guarantee facts on free campaigns.
+  //
+  // Both previous fallbacks are gone. The first was an LLM-invented service-node field that the
+  // mechanism generator itself refuses to read, on the grounds that feeding it back in launders an
+  // invention into evidence; Node 5 was doing exactly that. The second was a literal placeholder
+  // string. Where no mechanism resolves, the prompt now names no method at all — see
+  // `userPromptFor`, which asks for plain description instead.
+  let upstream = "";
+  let hasMethod = false;
+  let methodDetail = "";
   if (icp?.id) {
+    const { getCascadeContext } = await import("./_core/cascadeContext");
+    // 1600 is the measured p90 of `mechanismDescription` across 1,095 production rows (100%
+    // populated, median 1,237). The whole description crosses for roughly nine rows in ten, and
+    // `truncateAtSentence` degrades the rest to a clean paragraph. Every other call site keeps 900.
+    upstream = await getCascadeContext(userId, icp.id, "hvco", { mechanismChars: 1600 });
     const [kit] = await db.select().from(campaignKits)
       .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icp.id))).limit(1);
     if (kit?.selectedMechanismId) {
-      const [m] = await db.select({ name: heroMechanisms.mechanismName }).from(heroMechanisms)
-        .where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
-      if (m?.name) mechanism = m.name;
+      const [m] = await db
+        .select({ id: heroMechanisms.id, coachMethodId: heroMechanisms.coachMethodId })
+        .from(heroMechanisms).where(eq(heroMechanisms.id, kit.selectedMechanismId)).limit(1);
+      hasMethod = !!m && upstream.length > 0;
+      methodDetail = await resolveMethodDetail(db, m?.coachMethodId ?? null);
     }
   }
 
@@ -172,7 +206,9 @@ async function gatherContext(userId: number, serviceId: number, icpId: number | 
     title,
     programme: (service.name ?? "").slice(0, 120),
     mainBenefit: service.mainBenefit ?? "",
-    mechanism: mechanism || "the method",
+    upstream,
+    hasMethod,
+    methodDetail,
     offerDescription: (service.description ?? "").slice(0, 400),
     icpPains: (icp?.pains ?? "").slice(0, 600),
     icpGoals: (icp?.goals ?? "").slice(0, 400),
@@ -182,14 +218,60 @@ async function gatherContext(userId: number, serviceId: number, icpId: number | 
   };
 }
 
-function contextBlock(c: MagnetContext): string {
+/**
+ * coachMethods is DESIGNED FOR, never DEPENDED ON.
+ *
+ * The table is empty on production and no `heroMechanisms` row carries a `coachMethodId`, because
+ * the durable walkthrough entry point that would populate it is unbuilt (Node 4 backlog item 1).
+ * So this branch is unreachable in production today and is proven by unit test, not by a live run.
+ * Absent, null or unreadable falls straight through to the cascade block — never an error, never a
+ * prerequisite.
+ */
+async function resolveMethodDetail(db: any, coachMethodId: number | null): Promise<string> {
+  if (coachMethodId == null) return "";
+  try {
+    const [row] = await db.select().from(coachMethods).where(eq(coachMethods.id, coachMethodId)).limit(1);
+    return renderMethodDetail(row ?? null);
+  } catch {
+    return "";
+  }
+}
+
+/** The subset of a coachMethods row this renders. Loose so a test can hand it a plain object. */
+export type CoachMethodLike = {
+  steps?: unknown;
+  operationalTwist?: { kind?: string; description?: string } | null;
+  oldVehicle?: string | null;
+  differentiator?: string | null;
+};
+
+/** PURE. Returns "" for anything it cannot use, so the caller never has to check first. */
+export function renderMethodDetail(m: CoachMethodLike | null | undefined): string {
+  if (!m) return "";
+  const raw = Array.isArray(m.steps) ? (m.steps as Array<{ name?: string; whatHappens?: string }>) : [];
+  const steps = raw.filter((s) => s?.name?.trim() && s?.whatHappens?.trim());
+  if (steps.length === 0) return "";
+  const lines = [
+    "How the method runs, in order: " +
+      steps.map((s, i) => `${i + 1}) ${s.name!.trim()} — ${s.whatHappens!.trim()}`).join(" "),
+  ];
+  const twist = m.operationalTwist?.description?.trim();
+  if (twist) lines.push(`What makes it different in practice: ${twist}`);
+  if (m.oldVehicle?.trim()) lines.push(`What people were doing before this: ${m.oldVehicle.trim()}`);
+  if (m.differentiator?.trim()) lines.push(`In the coach's own words: ${m.differentiator.trim()}`);
+  return lines.join("\n");
+}
+
+export function buildMagnetContextBlock(c: MagnetContext): string {
   return [
     `Lead magnet title (the promise to deliver on): "${c.title}"`,
     c.contentBrief ? `MUST-MATCH BRIEF — the deliverable already advertised to the buyer; the content you produce must deliver exactly this, not a re-interpretation of the title: ${c.contentBrief}` : "",
     `Niche / audience: ${c.niche}`,
     c.programme ? `Paid programme name (what nextStep bridges to): ${c.programme}` : "",
     c.mainBenefit ? `Main benefit of the paid offer: ${c.mainBenefit}` : "",
-    c.mechanism ? `The named method behind it: ${c.mechanism}` : "",
+    // The cascade block sits in the slot the one-line method reference used to occupy.
+    c.upstream ? c.upstream.trim() : "",
+    c.methodDetail ? c.methodDetail : "",
     c.offerDescription ? `Offer context: ${c.offerDescription}` : "",
     c.icpPains ? `Audience pains: ${c.icpPains}` : "",
     c.icpGoals ? `Audience goals: ${c.icpGoals}` : "",
@@ -289,14 +371,27 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
 }
 
 export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: DeliverableMode = "lead_magnet"): string {
-  const ctx = contextBlock(c);
+  const ctx = buildMagnetContextBlock(c);
   const programme = c.programme || "the paid programme";
   const bonus = mode === "bonus";
+  // Two positive directives, one per branch. A prohibition primes the shape it forbids
+  // (CLAUDE.md §14), so neither says what to avoid.
+  //
+  // WITH a method: the description is SOURCE MATERIAL to teach FROM. Naming that explicitly is
+  // load-bearing, not decoration. A `mechanismDescription` can itself close on an illustrative
+  // vignette carrying invented names and quotes, and a body that reads the description as an
+  // example of how to WRITE will produce its own — which lands fabricated people and real named
+  // organisations in the longest asset ZAP generates and the only one a prospect keeps a copy of.
+  //
+  // WITHOUT one: describe the approach plainly rather than naming a method that does not exist.
+  const methodDirective = c.hasMethod
+    ? `Treat the method above as source material to teach from: explain what it says goes wrong for this reader and what its sequence puts right, in your own words, using examples you build from the audience described here.\n\n`
+    : `Write about the approach in plain descriptive terms, using only the situation, audience and outcome given above.\n\n`;
   // Bonus: write to a buyer who has already enrolled; the nextStep helps them execute inside the programme they
   // joined (no sales pitch); and it opens with a howToUse orientation. Lead magnet: unchanged conversion bridge.
   const common = bonus
-    ? `Create this BONUS deliverable to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, the words this audience actually uses. No generic filler, no padding.\n\nThe reader has already enrolled in "${programme}" — write to a buyer on the inside who is ready to execute, not a prospect you are trying to convert.\n\n${ctx}\n\nBegin with a "howToUse": 2-4 sentences stating plainly what this document is, how to use it, and what it achieves. Then a TIGHT promise: max two sentences on what they can DO with this. End with a nextStep that helps them put this to work and get the most from "${programme}" — a heading, a short body orienting them to the next action inside the programme they have joined, and a concrete ctaLabel about USING it (for example "Start With Step 1"). No dead end.\n\n`
-    : `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\nOpen with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). End with a nextStep that bridges to "${programme}" — a heading, a short body that connects this free win to the paid outcome, and a concrete ctaLabel (e.g. "Book My Free Call"). No dead end.\n\n`;
+    ? `Create this BONUS deliverable to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, the words this audience actually uses. No generic filler, no padding.\n\nThe reader has already enrolled in "${programme}" — write to a buyer on the inside who is ready to execute, not a prospect you are trying to convert.\n\n${ctx}\n\n${methodDirective}Begin with a "howToUse": 2-4 sentences stating plainly what this document is, how to use it, and what it achieves. Then a TIGHT promise: max two sentences on what they can DO with this. End with a nextStep that helps them put this to work and get the most from "${programme}" — a heading, a short body orienting them to the next action inside the programme they have joined, and a concrete ctaLabel about USING it (for example "Start With Step 1"). No dead end.\n\n`
+    : `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\n${methodDirective}Open with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). End with a nextStep that bridges to "${programme}" — a heading, a short body that connects this free win to the paid outcome, and a concrete ctaLabel (e.g. "Book My Free Call"). No dead end.\n\n`;
   const howToJson = bonus ? `"howToUse", ` : "";
   if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nReturn JSON: { ${howToJson}"promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
