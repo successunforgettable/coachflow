@@ -1871,3 +1871,142 @@ the shape it was built to stop.
 
 **Not chased now. Recorded so the next audit of "which rules actually reach which generator" starts
 from a list rather than from scratch.**
+
+---
+
+# STEP 4 — TIER 3 BUILT. Tiers 1 and 2 scoped only. 2026-08-26
+
+The destination chain is Node 4's tier pattern applied to destinations rather than to mechanisms:
+**tier 1** a free-type sibling campaign on the same service · **tier 2** an operator-captured URL
+asked for at publish · **tier 3** no destination, card renders as text with no button, nothing ever
+invented.
+
+**Only tier 3 is built.** It is correct under every version of the product decision still open, and
+it is today's behaviour for 100% of production rows.
+
+## What changed — three surfaces, one rule
+
+| surface | was | now |
+|---|---|---|
+| downloadable `nextStepBlock` | `<a class="cta" href="#">` — a dead anchor on a page that runs no script, so nothing could ever fill it | `<p class="cta-text">` carrying the same label |
+| delivery page `next_cta` | script set `c.href = view` — **the magnet the reader had just been handed** | no anchor emitted; label rendered into `#next_cta_text` |
+| quiz result `qz_cta_a` | script set `a.href = CFG.pageUrl` — **the quiz's own address** | no anchor emitted; label rendered into `#qz_cta_text` |
+
+**The CTA label is kept as text on every surface.** Dropping it would silently delete generated
+copy rather than degrade it; the coach's closing line still reads as a closing line, it just is not
+a button that goes nowhere.
+
+`nextStepUrl` is the seam tiers 1 and 2 land on: pass one and the anchor returns, on all three
+surfaces, with `target="_blank" rel="noopener"`. **Nothing populates it** — every caller in
+`leadMagnetPublisher.ts` omits it. That is the true state of the data, not a stub.
+
+⚠️ `QuizPageOpts.pageUrl` is now **read by nothing**. It was the result CTA's target, which is
+exactly the loop removed here. It is still carried into the page config so the publisher's call
+site is untouched, and it is flagged in-file as never a fallback for a destination.
+
+**Gates:** TS baseline **34** · **528 tests green**, 17 new · zero production writes · no published
+row touched — the republish sweep remains out of scope and needs its own authorisation.
+
+📌 One test was **loosened during the build, deliberately**: an assertion that no surface emits
+`href="#"` failed on the opt-in page's *Read online* and *Download PDF* links, which ship as
+placeholders and are filled by script from the capture response. Those are the magnet's own
+delivery links, not the bridge. The assertion was wrong, not the code; it is now scoped to the
+next-step CTA, with the downloadable — which runs no script — still asserted to emit no dead
+anchor at all.
+
+---
+
+## TIER 1 SCOPE — a free-type sibling campaign. NOT BUILT.
+
+**Is `campaign_links` usable? No. It is the wrong shape.**
+
+Its semantics fit — `linkType: "leads_to"` — and it has **0 rows**, so nothing would be disturbed.
+But it links `campaignAssets` to `campaignAssets` within one `campaignId`, and it is V1 canvas
+furniture: `db.ts:486` `createCampaignLink` has exactly one caller, `routers/campaigns.ts:241`, on
+the V1 path. The `campaigns` table it hangs off has **2 rows on production** and is vestigial — the
+real campaign object is `campaignKits` (68 rows). So the table joins the wrong two things, inside
+a table nothing uses, keyed to a table that is not where campaigns live. **Reusing it would mean
+re-pointing all three of its foreign keys, which is a new table with an old name.**
+
+**What would actually express it:** a nullable `nextStepKitId` on `campaignKits`, resolving to
+another kit on the same service whose `campaignType` is `webinar`, `discovery_call` or
+`in_person_event`, and reading that kit's `selectedLandingPageId` → `landingPages.publicUrl`.
+
+**Cost:** one migration (nullable column, no backfill) · a resolver in the publisher, which already
+receives only `hvcoId` and resolves the rest, so `serviceId` is in reach · a UI affordance for
+choosing the sibling · publish-time re-resolution, since the sibling's page may be published after
+the magnet.
+
+⚠️ **Tier 1 resolves for nothing today.** Of the 3 services owning a lead-magnet kit, **0** carry a
+webinar, discovery-call or event kit. Building it does not light up a single production row.
+
+---
+
+## TIER 2 SCOPE — an operator-captured URL. NOT BUILT.
+
+**The machinery works and is proven** — `[INSERT_BOOKING_URL]` is how a discovery-call page gets a
+real calendar link. A new token is genuinely cheap: one entry in `OPERATOR_TOKEN_REGISTRY`
+(`operatorFields.ts:188`) and one non-empty list at `PAGETYPE_REQUIRED_TOKENS.lead_magnet_download`,
+which is `[]` today.
+
+The registry entry has an obvious shape, modelled on the booking token — a hard-hold with a
+first-class N/A branch, since **"I don't have one yet" must stay a valid answer** and must land on
+tier 3 rather than blocking publish.
+
+**🔴 The token is the cheap half. The expensive half is where the answer lives and who reads it.**
+
+`[INSERT_BOOKING_URL]` has `scope: "coach"`, `path: "bookingUrl"` — it writes one value to the
+`users` row, because a coach has one calendar. **A next-step destination is not per-coach**: a coach
+may run several magnets pointing at different free events. So it needs `scope: "content"` against a
+new field, or a new scope entirely.
+
+And the read path does not currently exist. Operator capture is keyed to a **landing page** —
+`routers/landingPages.ts:346` derives questions from `page.pageType` and the angle's content. The
+magnet renderer is not on that path: `publishLeadMagnet({ hvcoId })` resolves from `hvcoTitles`.
+**A captured answer would sit in landing-page content that the publisher never reads.**
+
+**Cost:** the token and the list (small) · a decision on where the answer is stored, which is the
+real work · a read path from that store into `publishDeliverableBody` and `renderOptInHtml` ·
+**and the ordering problem** — operator capture runs at landing-page publish, while the magnet is
+published from `orchestration.ts:475` during the cascade, which is earlier. Either the magnet
+publishes before the answer exists, or magnet publish moves behind the capture step. **That
+ordering question is the decision tier 2 actually turns on, not the token.**
+
+⚠️ **Also near-empty today:** 1 of 23 coaches has even a `bookingUrl`. The capture step exists but
+coaches are not reaching it.
+
+---
+
+# 🔴 THE REAL GAP IS UPSTREAM — nothing in the cascade asks the coach to build the free next step
+
+**This is the largest finding of the sprint and it is not a Node 5 problem. Recorded under its own
+heading so it is not read as a bridge detail.**
+
+`campaignFraming.ts:56-58` states the model outright: *"ZAP's coaches almost always convert on a
+FREE next step — a webinar, a training, a free call, a report, a lead magnet — and sell the
+high-ticket programme LATER, off-page, after that free step."* The code acts on that belief in
+`OfferMode`, in price and guarantee suppression, and in page-type selection. The lead-magnet
+standard is built on it: close the minor loop, open the major loop, hand off to **one more free
+step**.
+
+**But a campaign is one kit with one landing page.** A lead-magnet kit produces a magnet and the
+opt-in page for that magnet, and that is the entire campaign. **Nowhere in the eleven-node cascade
+is the coach asked to create, name, or point at the free next step.** It is not a field that is
+empty. It is a concept with no field, and no step in the flow that would produce one.
+
+**That is why 0 of 3 services with a lead-magnet kit have a sibling free campaign** — not coach
+neglect, and not a data-quality problem. Nothing ever asked.
+
+🔑 **The tier chain makes the failure honest. It does not make the bridge work.** Tier 3 stops the
+asset lying to the reader. Tiers 1 and 2 are both retrieval mechanisms for a thing that, today, no
+part of the product creates — which is why neither lights up a production row, and why building
+either first would be building the back half of a path with no front half.
+
+**The real fix is upstream: ZAP generating or prompting the free next step as part of the flow.**
+It belongs on the roadmap **before launch rather than after**, because a lead magnet whose bridge
+goes nowhere is the dead-end failure mode the standard names as the single most common reason a
+good free asset produces nothing — and the standard's whole loop-splicing spine depends on the
+handoff existing.
+
+**Deliberately not scoped here.** It is a product question — what a campaign's free next step *is* —
+and it sits upstream of anything the renderer, the publisher or the generator can fix.

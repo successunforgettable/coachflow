@@ -190,6 +190,7 @@ function baseCss(extra = ""): string {
   .next h2{margin:0 0 10px}
   .next p{color:${SEC};margin:0 0 20px}
   .cta{display:inline-block;border:1.5px solid ${INK};border-radius:9999px;padding:13px 28px;font-weight:600;font-size:16px;color:${INK};text-decoration:none}
+  .cta-text{font-weight:600;font-size:16px;color:${INK};margin-top:14px}
   /* Footer brand: coach logo when present, otherwise the footer is omitted
      entirely — the coach's deliverable is never signed with ZAP's name. */
   .foot{text-align:center;margin:72px 0 0}
@@ -220,34 +221,70 @@ function cover(kicker: string, title: string, promise: string, coachLogoUrl?: st
   return `<div class="cover"><p class="kick">${esc(kicker)}</p><h1>${esc(title)}</h1>` +
     `<p class="promise">${esc(promise)}</p><div class="coverline"></div>${brandMark(coachLogoUrl)}</div>`;
 }
-function nextStepBlock(n: NextStep): string {
-  if (!n) return "";
-  return `<section class="next"><p class="kick">Your next step</p><h2>${esc(n.heading)}</h2>` +
-    `<p>${esc(n.body)}</p><a class="cta" href="#">${esc(n.ctaLabel)}</a></section>`;
+/**
+ * THE DESTINATION CHAIN — tier 3, and tier 3 only, is implemented here.
+ *
+ * The free next step a lead magnet bridges to has no home in the data. Nothing on the campaign,
+ * the kit, the offer, the service or the coach names it; `campaign_links` carries `leads_to`
+ * semantics and zero rows; and `operatorFields` gives `discovery_call_booking` an
+ * `[INSERT_BOOKING_URL]` while `lead_magnet_download` gets an empty list. So there was nothing to
+ * point a CTA at, and each of the three surfaces coped differently — a dead `href="#"` here, a
+ * loop back to the magnet just delivered on the opt-in page, and a link to its own page on the
+ * quiz.
+ *
+ * ⚠️ THE RULE: where no destination resolves, the card renders as TEXT WITH NO BUTTON, and no URL
+ * is ever invented. A dead end that looks like a dead end is honest; one wearing a button is not,
+ * and a button that loops the reader back to what they are already holding is worse than either.
+ *
+ * `nextStepUrl` is the seam the higher tiers land on — tier 1 a free-type sibling campaign in the
+ * same service, tier 2 an operator-captured URL asked for at publish. NEITHER IS BUILT, and
+ * nothing populates this parameter today: every caller omits it, so every surface currently takes
+ * the text-only path. That is correct rather than provisional — it is the true state of the data
+ * for 100% of production rows.
+ */
+function resolvedDestination(url?: string | null): string | null {
+  const u = typeof url === "string" ? url.trim() : "";
+  return u === "" ? null : u;
 }
 
-function renderGuide(b: GuideBody, logo?: string | null): string {
+function nextStepBlock(n: NextStep, nextStepUrl?: string | null): string {
+  if (!n) return "";
+  const dest = resolvedDestination(nextStepUrl);
+  // The label is the coach's copy either way. With a destination it is the button; without one it
+  // stays on the page as the closing line, because dropping it would silently delete generated
+  // content rather than degrade it.
+  const tail = dest
+    ? `<a class="cta" href="${esc(dest)}" target="_blank" rel="noopener">${esc(n.ctaLabel)}</a>`
+    : `<p class="cta-text">${esc(n.ctaLabel)}</p>`;
+  return `<section class="next"><p class="kick">Your next step</p><h2>${esc(n.heading)}</h2>` +
+    `<p>${esc(n.body)}</p>${tail}</section>`;
+}
+
+function renderGuide(b: GuideBody, logo?: string | null, nextStepUrl?: string | null): string {
   const sections = (b.sections || []).map((s, i) =>
     `<section><h2>${esc(s.heading)}</h2>${paras(s.body)}</section>${i < b.sections.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Guide", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${sections}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Guide", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${sections}${nextStepBlock(b.nextStep, nextStepUrl)}${foot(logo)}</div>`;
 }
-function renderChecklist(b: ChecklistBody, logo?: string | null): string {
+function renderChecklist(b: ChecklistBody, logo?: string | null, nextStepUrl?: string | null): string {
   const items = (b.items || []).map(i =>
     `<div class="check"><div class="box"></div><div><p class="label">${inlineMd(esc(i.label))}</p><p class="detail">${inlineMd(esc(i.detail))}</p></div></div>`).join("");
-  return `<div class="wrap">${cover("Checklist", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}<div>${items}</div>${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Checklist", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}<div>${items}</div>${nextStepBlock(b.nextStep, nextStepUrl)}${foot(logo)}</div>`;
 }
-function renderToolkit(b: ToolkitBody, logo?: string | null): string {
+function renderToolkit(b: ToolkitBody, logo?: string | null, nextStepUrl?: string | null): string {
   const tools = (b.tools || []).map((t, i) =>
     `<section class="tool"><div class="tag">${esc(TYPE_LABEL[t.type] || t.type)}</div><h2>${esc(t.name)}</h2>` +
     `<p class="inst">${esc(t.instructions)}</p><div class="toolbody">${mdToHtml(t.content)}</div></section>` +
     `${i < b.tools.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Toolkit", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${tools}${nextStepBlock(b.nextStep)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Toolkit", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${tools}${nextStepBlock(b.nextStep, nextStepUrl)}${foot(logo)}</div>`;
 }
 
 export interface RenderDeliverableOpts {
   /** Coach logo URL for the brand slot. Absent today (brand-capture not shipped),
    *  so the wordmark is simply omitted rather than showing ZAP's name. */
   coachLogoUrl?: string | null;
+  /** Tier 1/2 of the destination chain land here. Nothing populates it today — see
+   *  `nextStepBlock`. Absent means the next-step card renders as text with no button. */
+  nextStepUrl?: string | null;
 }
 
 /**
@@ -257,9 +294,9 @@ export interface RenderDeliverableOpts {
 export function renderDeliverableHtml(body: LeadMagnetBody, opts: RenderDeliverableOpts = {}): string | null {
   const logo = opts.coachLogoUrl ?? null;
   switch (body.format) {
-    case "guide": return shell(body.title, renderGuide(body, logo));
-    case "checklist": return shell(body.title, renderChecklist(body, logo));
-    case "toolkit": return shell(body.title, renderToolkit(body, logo));
+    case "guide": return shell(body.title, renderGuide(body, logo, opts.nextStepUrl));
+    case "checklist": return shell(body.title, renderChecklist(body, logo, opts.nextStepUrl));
+    case "toolkit": return shell(body.title, renderToolkit(body, logo, opts.nextStepUrl));
     case "quiz": return null; // next sprint (interactive scored surface)
     default: return null;
   }
@@ -278,6 +315,9 @@ export interface OptInPageOpts {
   privacyPolicyUrl: string;
   apiBase: string;            // same-origin fetch base
   nextStep: NextStep;         // tailored next step on the bridge
+  /** Destination chain tier 1/2 land here; nothing populates it today. Absent means the bridge
+   *  card renders as text with no button rather than looping back to the magnet. */
+  nextStepUrl?: string | null;
   testimonial?: OptInTestimonial | null; // social-proof slot (hidden if absent)
   coachLogoUrl?: string | null; // brand slot; omitted (no ZAP stamp) until brand-capture
 }
@@ -313,6 +353,7 @@ export function renderOptInHtml(o: OptInPageOpts): string {
   .bridge h2{margin:0 0 8px}
   .bridge .sub{color:${SEC};margin:0 0 22px}
   .dl{display:inline-block;margin:6px 6px 0;padding:14px 26px;border-radius:9999px;font-weight:600;font-size:16px;text-decoration:none}
+  .cta-text{font-weight:600;font-size:16px;color:${INK};margin-top:12px}
   .dl.primary{background:${INK};color:${PAPER}}
   .dl.secondary{background:${PAPER};color:${INK};border:1px solid ${HAIR}}
   .nextcard{margin:18px 0 0;padding:26px 24px;background:${PAPER};border:1px solid ${HAIR};border-radius:16px;text-align:left}
@@ -321,6 +362,7 @@ export function renderOptInHtml(o: OptInPageOpts): string {
   .nextcard p{color:${SEC};margin:0 0 18px}`;
 
   const nextData = JSON.stringify({ heading: o.nextStep?.heading || "", body: o.nextStep?.body || "", ctaLabel: o.nextStep?.ctaLabel || "" });
+  const nextDest = resolvedDestination(o.nextStepUrl);
 
   const inner = `<div class="wrap">
   <p class="kick">Free ${esc(noun)}</p>
@@ -350,7 +392,9 @@ export function renderOptInHtml(o: OptInPageOpts): string {
       <p class="kick">Your next step</p>
       <h3 id="next_heading"></h3>
       <p id="next_body"></p>
-      <a class="dl primary" id="next_cta" href="#" target="_blank" rel="noopener"></a>
+      ${nextDest
+        ? `<a class="dl primary" id="next_cta" href="${esc(nextDest)}" target="_blank" rel="noopener"></a>`
+        : `<p class="cta-text" id="next_cta_text"></p>`}
     </div>
   </div>
   ${foot(o.coachLogoUrl)}</div>
@@ -379,7 +423,12 @@ export function renderOptInHtml(o: OptInPageOpts): string {
         if (NEXT.heading) {
           document.getElementById('next_heading').textContent = NEXT.heading;
           document.getElementById('next_body').textContent = NEXT.body;
-          var c = document.getElementById('next_cta'); c.textContent = NEXT.ctaLabel || 'Learn more'; c.href = view;
+          // ⚠️ THIS USED TO SET c.href TO view — pointing the bridge at the magnet the reader
+          // had just been handed. A CTA that loops back to what they are already holding is the
+          // dead-end failure implemented as a button. With no destination the label stays as
+          // text; the anchor only exists when one resolved at render.
+          var c = document.getElementById('next_cta') || document.getElementById('next_cta_text');
+          if (c) { c.textContent = NEXT.ctaLabel || 'Learn more'; }
           document.getElementById('nextcard').style.display = 'block';
         }
         f.style.display = 'none';
@@ -405,7 +454,15 @@ export interface QuizPageOpts {
   hvcoId: number;
   privacyPolicyUrl: string;
   apiBase: string;                       // same-origin fetch base
-  pageUrl: string;                       // this page's own URL (interim CTA target until booking-URL capture)
+  /** This page's own URL. ⚠️ NOW READ BY NOTHING: it was the quiz result CTA's target, which is
+   *  exactly the loop tier 3 removed. It is still carried into the page config so the publisher's
+   *  call site is untouched by this change, and it remains the right value for a future share or
+   *  canonical link. It is NOT a destination and must never be used as a fallback for one. */
+  pageUrl: string;
+  /** Destination chain tier 1/2 land here; nothing populates it today. Absent means the band's
+   *  next-step card renders as text with no button.
+   *  ⚠️ pageUrl IS NOT A FALLBACK FOR THIS — see its own note above. */
+  nextStepUrl?: string | null;
   testimonial?: OptInTestimonial | null; // social-proof slot on the result (hidden if absent)
   coachLogoUrl?: string | null;          // brand slot; omitted (no ZAP stamp) until brand-capture
 }
@@ -417,6 +474,7 @@ function jsData(v: unknown): string {
 }
 
 export function renderQuizPage(o: QuizPageOpts): string {
+  const qzDest = resolvedDestination(o.nextStepUrl);
   const b = o.body;
   const maxScore = (b.questions || []).reduce(
     (s, q) => s + Math.max(0, ...(q.options || []).map(op => op.weight || 0)), 0);
@@ -471,7 +529,8 @@ export function renderQuizPage(o: QuizPageOpts): string {
   .nextcard .kick{color:${ACC};margin:0 0 10px}
   .nextcard h3{font-family:${HEAD};font-weight:600;font-size:21px;margin:0 0 8px}
   .nextcard p{color:${SEC};margin:0 0 18px}
-  .dl{display:inline-block;padding:14px 26px;border-radius:9999px;font-weight:600;font-size:16px;text-decoration:none;background:${INK};color:${PAPER}}`;
+  .dl{display:inline-block;padding:14px 26px;border-radius:9999px;font-weight:600;font-size:16px;text-decoration:none;background:${INK};color:${PAPER}}
+  .cta-text{font-weight:600;font-size:16px;color:${INK};margin-top:12px}`;
 
   const inner = `<div class="wrap">
   <div class="qz-prog" id="qz_prog"><div class="qz-bar" id="qz_bar"></div></div>
@@ -514,7 +573,9 @@ export function renderQuizPage(o: QuizPageOpts): string {
       <p class="kick">Your next step</p>
       <h3 id="qz_cta_h"></h3>
       <p id="qz_cta_b"></p>
-      <a class="dl" id="qz_cta_a" href="#" target="_blank" rel="noopener"></a>
+      ${qzDest
+        ? `<a class="dl" id="qz_cta_a" href="${esc(qzDest)}" target="_blank" rel="noopener"></a>`
+        : `<p class="cta-text" id="qz_cta_text"></p>`}
     </div>
     ${proof}
     ${foot(o.coachLogoUrl)}
@@ -582,7 +643,11 @@ export function renderQuizPage(o: QuizPageOpts): string {
     $('qz_rmean').textContent = band.meaning;
     $('qz_cta_h').textContent = band.cta.heading;
     $('qz_cta_b').textContent = band.cta.body;
-    var a = $('qz_cta_a'); a.textContent = band.cta.ctaLabel || 'Learn more'; a.href = CFG.pageUrl || '#';
+    // ⚠️ THIS USED TO SET a.href TO CFG.pageUrl — the quiz's own address, so finishing the quiz
+    // offered a button back to the quiz. The label is the coach's copy and stays either way; the
+    // anchor exists only when a destination resolved at render.
+    var a = $('qz_cta_a') || $('qz_cta_text');
+    if (a) { a.textContent = band.cta.ctaLabel || 'Learn more'; }
     show('qz_result');
     window.scrollTo(0, 0);
   }
