@@ -9,7 +9,8 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { applyBodyBounds, BOUNDS, schemaFor, userPromptFor } from "./leadMagnetContentGenerator";
+import { applyBodyBounds, BOUNDS, schemaFor, userPromptFor, systemPromptFor } from "./leadMagnetContentGenerator";
+import { NO_RESEARCH_STATISTIC_FABRICATION_RULE } from "./_core/copywritingRules";
 
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(" ") + ".";
 const long = (chars: number) => "Sentence one is here. ".repeat(Math.ceil(chars / 22)).slice(0, chars);
@@ -314,5 +315,62 @@ describe("the length target lives in the PROMPT, not only in the trim", () => {
     // ~200 words is roughly 1,200 characters at the measured character-per-word rate; the cap is
     // more than twice that, which is what makes it an outlier bound rather than a second target.
     expect(BOUNDS.guide.sections.body).toBeGreaterThan(2 * 1200);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NUMERIC SOURCE-BOUNDEDNESS — inherited, not re-derived.
+//
+// The rule already existed. Node 5's body generator simply never imported it: it took
+// GUARANTEE_CLAIMS_RULE alone while landingPage, emailSequence and whatsappSequence took both.
+// That is a missing import rather than a missing rule, so this is an import and nothing else —
+// the shared rule is not modified, no local variant is written, and methodDirective is untouched.
+//
+// It lands in the SYSTEM prompt, beside the guarantee rule, which is the rules layer. The four
+// statements pulling toward concreteness live in the USER prompt. Different layers, so this adds
+// no instruction competing with them — and adding a second voice on the same topic is precisely
+// the failure this sprint documented.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("the body generator inherits the shared numeric rule", () => {
+  const marker = "NO RESEARCH STATISTIC FABRICATION";
+
+  it("carries it in the lead-magnet system prompt", () => {
+    expect(systemPromptFor("lead_magnet")).toContain(marker);
+  });
+
+  it("carries it in the bonus system prompt — a bonus is generated copy too", () => {
+    expect(systemPromptFor("bonus")).toContain(marker);
+  });
+
+  it("keeps the guarantee rule alongside it rather than replacing it", () => {
+    const p = systemPromptFor("lead_magnet");
+    expect(p).toContain("GUARANTEE AND REMEDY CLAIMS");
+    expect(p).toContain(marker);
+  });
+
+  it("carries the rule's positive ladder, which is what redirects the model", () => {
+    const p = systemPromptFor("lead_magnet");
+    expect(p).toContain("Real statistics supplied in input fields");
+    expect(p).toContain("many of the people I work with");
+  });
+
+  it("is the SHARED rule verbatim — no local variant, no re-derivation", () => {
+    expect(systemPromptFor("lead_magnet")).toContain(NO_RESEARCH_STATISTIC_FABRICATION_RULE);
+  });
+
+  it("adds nothing to the USER prompt, where the concreteness statements live", () => {
+    // The import must not become a second voice on figures in the layer that already asks for
+    // "real" and "specific". Those four statements stay exactly as they are.
+    for (const f of ["guide", "checklist", "toolkit", "quiz"] as const) {
+      const u = userPromptFor(f, { niche:"n", audience:"a", outcome:"o", programme:"p" } as any);
+      expect(u).not.toContain(marker);
+      expect(u).not.toMatch(/statistic/i);
+    }
+  });
+
+  it("leaves methodDirective untouched — it is not the slot for this", () => {
+    const withMethod = userPromptFor("guide", { niche:"n", audience:"a", outcome:"o", programme:"p", hasMethod:true, methodDetail:"M" } as any);
+    expect(withMethod).toContain("Treat the method above as source material to teach from");
+    expect(withMethod).not.toMatch(/figure|statistic/i);
   });
 });

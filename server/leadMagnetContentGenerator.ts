@@ -15,7 +15,7 @@
 import { getDb } from "./db";
 import { services, idealCustomerProfiles, campaignKits, heroMechanisms, coachMethods, sourceOfTruth, campaigns } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { GUARANTEE_CLAIMS_RULE } from "./_core/copywritingRules";
+import { GUARANTEE_CLAIMS_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE } from "./_core/copywritingRules";
 import { truncateAtSentence, truncateAtBlock } from "./_core/cascadeContext";
 
 export type LeadMagnetFormat = "guide" | "checklist" | "toolkit" | "quiz";
@@ -301,8 +301,30 @@ export function systemPromptFor(mode: DeliverableMode = "lead_magnet"): string {
   // It already reads to the SHAPE of the promise rather than to any trade's vocabulary — it
   // names tarot, astrology and yoga alongside consulting — so it ports unchanged. Re-deriving
   // it here is what would let the two copies drift.
+  //
+  // NO_RESEARCH_STATISTIC_FABRICATION_RULE is PORTED for the same reason, and it closes a MISSING
+  // IMPORT rather than a missing rule. `landingPageGenerator`, `emailSequenceGenerator` and
+  // `whatsappSequenceGenerator` have carried it since 3d604cd; this generator took the guarantee
+  // rule alone. Node 5 writes the longest asset in the kit and the only one a prospect keeps a
+  // copy of, and a bridge it produced carried a population percentage nothing in the coach's
+  // material supports — the class this rule exists for.
+  //
+  // MEASURED BEFORE IMPORTING, rather than assumed to work because it is present. Across stored
+  // production rows for the three generators that inherit it, partitioned at the rule's own
+  // commit: the validator's statistic patterns fire 3 times before and 0 after, and a wider sweep
+  // with the group-noun restriction removed falls from 0.032 to 0.011 hits per thousand
+  // characters on the landing page. Every post-rule hit was read, and none is a genuine invented
+  // statistic — they are deliverable timings, the reader's own numbers, and the coach's own
+  // clients in the framing the rule itself permits.
+  //
+  // ⚠️ IT GOES IN THE SYSTEM PROMPT, WHICH IS THE RULES LAYER, AND NOWHERE ELSE. Four statements
+  // in the USER prompt already push toward concreteness, and an invented figure is the cheapest
+  // way for a model to be concrete. A second voice on figures in that layer would compete with
+  // them rather than reinforce them — the failure this sprint measured, where restating a
+  // section's shape one line below its first statement displaced a beat entirely. One change,
+  // one layer, so the next measurement says whether it was sufficient on its own.
   const base = mode === "bonus" ? SYSTEM_PROMPT_BONUS : SYSTEM_PROMPT_LEAD_MAGNET;
-  return `${base}\n\n${GUARANTEE_CLAIMS_RULE}`;
+  return `${base}\n\n${GUARANTEE_CLAIMS_RULE}\n\n${NO_RESEARCH_STATISTIC_FABRICATION_RULE}`;
 }
 
 

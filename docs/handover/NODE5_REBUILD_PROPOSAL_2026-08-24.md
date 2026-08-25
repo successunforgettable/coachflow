@@ -1705,3 +1705,169 @@ diagnosis section is naturally the shortest section in the body, so length instr
 mechanism arrived in step 2 — it is unguarded by any gate, and it is the one an edit aimed at
 length will silently displace, because it is the section that carries no worked example and so
 looks like the slack when a shape is restated.
+
+---
+
+# NUMERIC SOURCE-BOUNDEDNESS — closed by an IMPORT, not by a new rule. 2026-08-26
+
+**The task changed at the inventory.** The rule already existed. `landingPageGenerator`,
+`emailSequenceGenerator` and `whatsappSequenceGenerator` have carried
+`NO_RESEARCH_STATISTIC_FABRICATION_RULE` since `3d604cd` (2026-05-10). Node 5's body generator
+imported `GUARANTEE_CLAIMS_RULE` alone. **A missing import, not a missing rule.**
+
+Built: one line added to the import, one clause appended in `systemPromptFor`. The shared rule is
+**not modified**, no local variant is written, `methodDirective` is **untouched**.
+
+## Why the SYSTEM prompt and nowhere else
+
+Four statements in the **user** prompt already push toward concreteness — *"Everything is concrete
+and specific… **real** fill-in-the-blank content"* (system), *"**real** fill-in content, **real**
+swipe copy"* (`common`, all four formats), *"the **ACTUAL** usable content"* (toolkit), *"ONE
+**real** dimension of readiness"* (quiz) — and an invented figure is the cheapest way for a model
+to be concrete.
+
+The import lands in the **system** prompt, beside `GUARANTEE_CLAIMS_RULE`. **That is the rules
+layer; the concreteness statements are in the instruction layer.** Different layers, so this adds
+nothing competing with them. Writing a second voice on figures in the user prompt as well would be
+the exact failure documented above — and would also destroy the measurement, since two levers moved
+at once tells you nothing about either. One change, one layer.
+
+## The result — five rows, service 233, zero writes
+
+| corpus | bodies | chars | wide /1k | **non-timing /1k** | rows carrying one |
+|---|---:|---:|---:|---:|---:|
+| 1 · A/B corpus, pre-framing | 19 | 217k | 0.064 | **0.014** | 2/19 |
+| 2 · prior proof, step 3 as built | 5 | 58k | 0.103 | **0.052** | 2/5 |
+| 3 · caps revised, no rule | 5 | 53k | 0.094 | **0.000** | 0/5 |
+| 4 · **rule imported** | 5 | 54k | **0.037** | **0.000** | **0/5** |
+
+Invented-statistic count per row against the thread's history — **1 of 5, then 3 of 5 after the
+source-material framing, then 0 of 5 twice, now 0 of 5 a third time.**
+
+**Both remaining hits are deliverable timings** — *"in 60 minutes"* (the offer's own duration) and
+*"within 60 seconds"* (a tool instruction). Neither is a population claim; both are what
+`GUARANTEE_CLAIMS_RULE` explicitly permits. **The non-timing rate is 0.000, at or below the
+0.011–0.028 band the three inheriting generators sit in** — whose own post-rule hits, on
+inspection, were also all non-genuine.
+
+✅ **All five bridges clean.** `nextStep.body` is the field deliberately uncapped on length and the
+one that carried *"ahead of 90% of senior managers"*. Zero numeric hits across all five.
+
+✅ **Root-cause opener 5/5** — the standing check, run because this touches the prompt. Every row
+opens *"Why You're Stuck…"* / *"Why Smart Senior Leaders Stay Stuck…"*.
+
+## 🔴 THIS RUN DID NOT PROVE THE IMPORT WORKED. Do not cite it as evidence that it did.
+
+**Read this before quoting any number in the table above.**
+
+**The non-timing rate reached 0.000 in run 3 — BEFORE the import — and stayed at 0.000 after it.**
+There is no movement in the class the rule governs, because there was no room left to move.
+
+**The visible improvement, 0.094 → 0.037, sits ENTIRELY in deliverable timings** — *"in 60
+minutes"*, *"within 60 seconds"* — which are permitted copy that `GUARANTEE_CLAIMS_RULE` explicitly
+endorses. Fewer of them is not a compliance gain. It is noise moving.
+
+**At five rows the run was STRUCTURALLY UNABLE to detect the rule's contribution.** The class
+historically appears in 1 of 5 and 3 of 5 rows. A sample that size cannot separate "the rule
+suppressed it" from "it did not occur", and run 3 had already shown it not occurring without the
+rule present.
+
+### What the import IS justified by
+
+**Consistency of inheritance, and nothing else. Node 5 should carry what its three sibling
+generators carry.** `landingPageGenerator`, `emailSequenceGenerator` and `whatsappSequenceGenerator`
+have had this rule since `3d604cd`; Node 5 writes the longest asset in the kit and the only one a
+prospect keeps a copy of, and it had never been given it. Closing that gap needs no experimental
+result, and it did not get one.
+
+⚠️ **The measurement that DOES stand is the one over the three inheriting generators' production
+rows** — that corpus is 4.57M post-rule characters, not 54k. It says the rule is not harmful and is
+plausibly working WHERE IT HAS BEEN. It says nothing about Node 5, which had no post-import
+production corpus at the time of writing.
+
+### The consequence for the `methodDirective` sibling extension
+
+**It stays unwritten and undecided.** The whole point of importing alone was to learn whether the
+import was sufficient on its own. **At this sample we cannot tell**, so the question is open, not
+answered. A future session must not read "0 of 5 after the import" as having closed it.
+
+**What would actually settle it:** a corpus large enough for the class's base rate to be visible —
+the same treatment the three inheriting generators got, run over Node 5's own production rows once
+enough exist post-import, partitioned at this commit.
+
+⚠️ **n=5, ~54k characters. Absence at this sample is not proof.** The class appeared in 1 of 5 and
+3 of 5 on earlier runs, so it was never dense enough for five clean rows to settle it.
+
+## 📌 METHOD NOTE — check WHEN, not only WHAT
+
+**Recorded as method, because the first pass produced a confident wrong answer.**
+
+The scan over the three inheriting generators returned what looked like proof the rule was broken:
+a fabricated **Harvard Study of Adult Development** citation, a fabricated *"2023 study on
+professional women's wellbeing… more than 7 in 10 high-achieving women aged 35-55"*, and — most
+damning-looking of all — *"the average working parent makes their first reactive decision of the
+day within 90 seconds of waking"*, which is **the rule's own banned bullet reproduced almost word
+for word.**
+
+**Then the rows were dated.** LP 29/33/34/36 were created 28 April; email 13 on 23 March. The rule
+landed 10 May. **Every one of them predates it.** Partitioned at the rule's commit timestamp the
+picture inverts: validator hits **3 before, 0 after**; the wider sweep falls **0.032 → 0.011 per
+thousand characters** on the landing page.
+
+🔑 **Checking WHEN a row was written, not only WHAT it says, is what turned an impression into a
+measurement.** The same trap waits in any before-and-after run over stored rows — the corpus is
+never uniformly aged, and the oldest rows are the dirtiest precisely because they predate the fix
+being evaluated.
+
+**Caveats that travel with the result:**
+
+- **Correlational, not controlled.** The compliance layer and the anti-fabrication validator landed
+  in the same window; the rule's own contribution cannot be isolated from them.
+- **Landing page carries the weight** — 4.30M post-rule characters against email's 170k and
+  WhatsApp's 107k. The two smaller corpora support the finding; they do not establish it.
+- Every post-rule hit was **read, not counted**: 20 deliverable timings, 23 the reader's or coach's
+  own numbers, 6 the coach's own clients in the framing the rule itself permits, 2 *"On-chain data
+  shows…"* (a real observable source), 3 a count and two outcome claims.
+
+---
+
+# 🔴 BANKED — THE VALIDATOR BLIND SPOT. It shapes step 5 and is NOT part of this change.
+
+**The import is a prompt-side fix with nothing downstream to catch a miss.**
+
+`_core/validator.ts` implements this rule's percentage class as:
+
+- a quantifier from a fixed list — `above | over | nearly | almost | fewer than | less than`
+- a group noun from a fixed list — `people | adults | women | men | professionals | leaders |
+  founders | coaches | workers | parents | consultants | clients`
+
+**Node 5's own known statistic — *"puts you ahead of 90% of senior managers"* — matches NEITHER.**
+`ahead of` is not a listed quantifier and `senior managers` is not a listed group noun. The X-of-Y
+pattern has the same shape and the same gap: the WhatsApp row carrying *"losing roughly 4 in 5 HNW
+conversations"* is invisible to it for the same reason.
+
+⚠️ **This is a known gap in the compliance layer on precisely the class of statistic this entire
+thread has been about.** It is why the wider sweep was written for the measurement above — the
+validator's own patterns fire zero times on post-rule content, and that zero is partly the rule
+working and partly the patterns not looking.
+
+🔑 **It shapes step 5 directly: a publish gate that cannot see this class is not a gate for it.**
+Any claim that the publish-time compliance gate covers invented statistics has to be checked
+against these two lists first.
+
+**Widening the patterns is its own scoped work.** It lives in the compliance path, `validator.ts`
+is read by four modules, and it is not part of this change. Not started.
+
+# 📌 BANKED — `PROOF_COMPOSITIONAL_CEILING_RULE`: the same missing-import shape
+
+Defined in `copywritingRules.ts` and **pasted into no prompt anywhere** — its own docblock records
+that it was rolled back the day it landed after a JSON-shape regression, and that a post-generation
+validator was to replace it. `validator.ts` is its only consumer.
+
+**This is structurally identical to what was just found on Node 5**: a rule that exists, reads as
+covered because it is present in the file, and is not actually reaching the generator it was
+written for. The WhatsApp composite carrying an invented ratio inside an invented client story is
+the shape it was built to stop.
+
+**Not chased now. Recorded so the next audit of "which rules actually reach which generator" starts
+from a list rather than from scratch.**
