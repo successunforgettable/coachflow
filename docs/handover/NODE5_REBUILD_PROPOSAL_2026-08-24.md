@@ -1234,3 +1234,474 @@ not obvious at the start:
 
 Ordering within step 3: the numeric source-boundedness rule above goes first, then the schema-level
 array bounds.
+
+---
+
+# STEP 3 PROPOSAL — size limits. Plan only, nothing built. 2026-08-25
+
+Ordering reversed as instructed: **bounds first, numeric source-boundedness second**, so the numeric
+rule is measured once on the shape that ships.
+
+**Two measurements changed this proposal before a single number was picked.**
+
+## 🔴 FINDING 1 — array bounds barely bite. The length is inside the items, not in their count
+
+Measured across the **19 guide bodies generated this sprint** and the **8 production `assetBody`
+rows**:
+
+| format | array counts observed | prompt's stated range | verdict |
+|---|---|---|---|
+| guide | **5–6 sections** (7 rows at 5, 12 at 6) | 3–6 | already inside |
+| checklist | 7 and 13 items | 7–15 | already inside |
+| toolkit | 4, 4, 4, 4, 4, **6** tools | 3–4 | **one row over** |
+
+**`maxItems` on the guide would change nothing at all**, because nothing exceeds it. The length
+lives in the per-item text:
+
+| field | median | p90 | max |
+|---|---:|---:|---:|
+| guide `section.body` | **265 words** | 379 | 679 |
+| checklist `item.detail` | **74 words** | — | 127 |
+| toolkit `tool.content` | **546 words** | 908 | 1,102 |
+| guide `promise` | 49 | 59 | 61 |
+| guide `nextStep.body` | 163 | 236 | 237 |
+
+**84% of a guide body's words sit in `section.body`.** So array bounds are still worth doing — they
+close the `length > 0` degenerate-body gap and they catch the toolkit overrun — but **`maxLength` on
+the strings is what actually reduces 2,038 words.** Both are schema-level and both act at
+generation, so both belong in this step; only the second does the work.
+
+## 🔴 FINDING 2 — "constrained at generation" is only partly true on this provider
+
+`invokeLLM` is **Anthropic**, and `response_format: { type: "json_schema" }` is translated into a
+**forced tool call**: a synthetic tool is built from the schema and `tool_choice` forces it
+(`server/_core/llm.ts:279-289, 362-365`). The in-repo note scopes what that guarantees precisely —
+Anthropic validates *"OBJECT-where-string, missing required fields, type mismatches"*.
+
+**Bounds are not in that class.** `maxItems` / `maxLength` are a strong hint to the model, not a
+grammar the decoder is held to, and **there is no client-side schema validation of the response
+anywhere** (no ajv, no length checks — verified by search). So a schema bound will usually be obeyed
+and is **not guaranteed**.
+
+**Therefore the proposal does not rest on the schema obeying.** It pairs the bound with a
+deterministic repair, which is also the clean answer to the failure mode below.
+
+## ✅ THE FAILURE MODE — how a missed bound never produces a null body
+
+The risk flagged earlier: a bound is missed → retry → second attempt also misses → `return null` →
+`assetBody` NULL → coach gets a magnet with no content, on the path every coach hits.
+
+**The rule that removes it: upper bounds are REPAIRED, never rejected. Lower bounds add no new
+rejection at all.**
+
+| bound | mechanism | can it produce a null? |
+|---|---|---|
+| **upper** (`maxItems`, `maxLength`) | schema hint, then **deterministic trim** after parse — extra array entries dropped, over-long strings cut with the existing `truncateAtSentence` | **No.** A repair always succeeds |
+| **lower** (`minItems`) | schema hint + the prompt text already present | **No.** The acceptance test is **left exactly as it is** (`sections.length > 0`) |
+
+**No new rejection reason is introduced anywhere.** The acceptance threshold is deliberately *not*
+tightened to the new minimum: raising it to `>= 3` would manufacture precisely the null path this
+is meant to avoid. A 2-section guide stays acceptable — it is thin, not broken.
+
+Trimming **keeps the FIRST N entries, never the last**. The root-cause diagnosis now opens every
+body (see the re-run), so trimming from the end preserves the beat that only just arrived.
+
+`truncateAtSentence` is reused rather than re-derived — already exported, already tested at 9 cases.
+
+## The numbers, and where each comes from
+
+**Two derivation rules, and no research figure is used, quoted, or referenced in any comment:**
+
+1. **Promote the prompt's OWN stated range into the schema.** Those numbers are already the agreed
+   contract; enforcing what we already ask for invents nothing.
+2. **Where the prompt states a shape rather than a count, size the cap from what the field has to
+   DO**, and check it against the measured distribution so it trims the tail rather than the median.
+
+### GUIDE
+
+| field | bound | derivation |
+|---|---|---|
+| `sections` | **minItems 3, maxItems 6** | the prompt's own "3-6 sections" |
+| `promise` | **maxLength 320** | the prompt's own "max two sentences" ≈ 45 words. Measured median 49 words — holds the line already being drawn |
+| `section.heading` | **maxLength 120** | measured p90 is 17 words |
+| `section.body` | **maxLength 1400** | what one section must do: state the move, say how to run it, give one worked example ≈ 200 words. Trims the tail (p90 379, max 679), leaves the median (265) near-intact |
+| `nextStep.body` | **UNCAPPED in v1** | see the loop-splicing section — deliberate |
+
+Worst case ≈ 320 + 6×(120+1400) ≈ **9,440 chars ≈ ~1,420 words** plus the bridge, against a measured
+median of 1,893 and max of 2,300.
+
+### CHECKLIST
+
+| field | bound | derivation |
+|---|---|---|
+| `items` | **minItems 7, maxItems 15** | the prompt's own "7-15 concrete action items" |
+| `item.label` | **maxLength 90** | a verb-led action label ≈ 12 words; measured 9–18 |
+| `item.detail` | **maxLength 300** | the prompt's own "one-to-two-sentence detail" ≈ 45 words. **Measured median is 74 words — this one genuinely bites, and should** |
+
+### TOOLKIT
+
+| field | bound | derivation |
+|---|---|---|
+| `tools` | **minItems 3, maxItems 4** | the prompt's own "3-4 focused tools". **The only array bound that bites today** — one production row carries 6 |
+| `tool.instructions` | **maxLength 180** | the prompt's own "one-line usage instructions" ≈ 25 words; measured median 28 |
+| `tool.name` | **maxLength 80** | a tool name |
+| `tool.content` | **maxLength 4000** | **the content IS the deliverable** — a real template the reader copies — so this trims only the tail: measured median 546 words, p90 908, max 1,102 |
+
+📌 **Toolkit stays the longest format, by design.** The reader *operates* it tool by tool rather than
+reading it through, so its budget is not the guide's. 🔑 Side benefit: `tool.content` is the field
+carrying **86% of all compliance misfires**, so bounding it shrinks that surface too.
+
+### QUIZ — mirrors the existing validator exactly, inventing nothing
+
+| field | bound | source |
+|---|---|---|
+| `questions` | minItems 5, maxItems 12 | `validateQuizBody` |
+| `options` | minItems 3, maxItems 4 | validator floor; 4 from the prompt's "3-4 options" |
+| `scoring.bands` | minItems 3, maxItems 5 | `validateQuizBody` |
+| `band.meaning` | maxLength 600 | the prompt's own "2-4 sentences" ≈ 85 words |
+| `band.teaser` | maxLength 200 | the prompt's own "one-line teaser" |
+
+**Quiz is the one format where a bound violation ALREADY causes a retry and then a null** — it is the
+only format running a rubric validator. Mirroring the validator into the schema makes compliance
+more likely at generation while the validator stays as the backstop, so this strictly *reduces* the
+existing null risk rather than adding to it.
+
+## The catch-all default — what happens to a title that matches nothing
+
+`inferLeadMagnetFormat` is positive-only, most-specific-first (quiz → toolkit → checklist), and
+**anything unmatched becomes `guide`** (`leadMagnetContentGenerator.ts:120`).
+
+**Today that means the catch-all default is the ONE unbounded format — the worst possible pairing.**
+After this change the default is bounded, which is most of the answer.
+
+**I am not proposing to change the inference itself** — that is a separate concern with its own
+failure modes. Residual risk, stated: a title that *implies* a toolkit but misses the signal list
+gets guide-shaped bounds, and a toolkit squeezed into a guide's budget is worse than either.
+**Proposed alongside: log the inferred format and whether it came from a signal match or the
+default.** No behaviour change, and it sizes how often the default actually fires before anyone
+argues about changing it.
+
+## ⚠️ Will bounding break the loop-splicing structure?
+
+**Yes, it could — and one specific cap is where the risk sits, so v1 does not apply it.**
+
+The asset must still close the symptom loop, open the root-cause loop, and bridge. Two of those
+three only started working with the source-material framing, which landed hours ago.
+
+| beat | where it lives | risk under bounds | mitigation |
+|---|---|---|---|
+| close the symptom loop | the doing sections | low — 1,400 chars is ~200 words per section | — |
+| **open the root-cause loop** | now **section 1** in all five re-run rows | **would be lost if trimming took from the end** | trim **keeps the first N**, never the last |
+| **bridge** | `nextStep.body` | 🔴 **highest** — the best loop-opening bridge measured (C2) is also a long one | **`nextStep.body` is left UNCAPPED in v1** |
+
+**Why uncapped is the right call rather than a generous cap:** `nextStep.body` is **163 of 1,893
+median words — under 9% of the body.** Capping it buys almost nothing against the 84% sitting in
+section bodies, while risking the one beat that only just began working. Cap where the length is.
+
+**Proposed proof, same harness, zero writes:** after the change, re-run 5 guide rows on service 233
+and confirm all three beats survive — a root-cause section still opens the body, the doing sections
+still carry a worked example each, and the bridge still names a gap rather than listing features.
+Word counts alone will not show that; the read will.
+
+## Gates
+
+TS baseline 34 · existing suites green · new tests written first, covering each bound and — the
+important one — **a test that a body exceeding every upper bound is repaired and returned, never
+turned into a null.**
+
+---
+
+# STEP 3 BUILT AND PROVEN — 🔴 DO NOT SHIP THE CAPS AS SET. 2026-08-25
+
+Built as approved: `BOUNDS`, `applyBodyBounds` (repair-not-reject), schema bounds on all four
+formats, quiz mirroring `validateQuizBody`, `nextStep` uncapped. **19 new tests, 463 green, TS 34.**
+Five-row proof on service 233, zero writes. **The proof says the numbers are wrong.**
+
+## Repair frequency — the measurement that decides it
+
+| corpus | bodies repaired | **sections trimmed** |
+|---|---|---|
+| 19 guide bodies generated **without** the schema hint | 19/19 | **73/107 (68%)** |
+| 5 guide bodies generated **with** the hint | 5/5 | **16/30 (53%)** |
+| production toolkit rows (no hint) | 5/6 | 7/26 tools (27%) |
+| production checklist rows (no hint) | 2/2 | 20/20 items (100%) |
+
+**The hint moved the distribution, weakly: 68% → 53%.** Median `section.body` is **1,442 chars
+against a cap of 1,400** — the cap sits *on* the median, so by construction half of everything is
+trimmed. Mean body words 1,859 → 1,462, and **the repair is doing that reduction, not the hint.**
+
+By the criterion set in advance — *if repair fires on most sections, the cap is wrong rather than the
+approach* — **the cap is wrong.**
+
+**The error is identifiable and mine.** I derived 1,400 chars as "what one section needs to do its
+job" ≈ 200 words, and the model produces ≈ 212. **I set the cap at the target instead of above it.**
+A cap that trims the tail has to sit above the intended centre; one placed on the centre truncates
+half the corpus by definition.
+
+## ✅ The diagnosis survived — the risk flagged in advance did not materialise
+
+**The root-cause section was trimmed in none of the five rows.** Section 0 measured 1,173 / 1,069 /
+798 / 1,078 / 1,240 chars — all under the cap. Trims landed on sections 1–5 only. It is structural
+rather than lucky: the diagnosis is a framing section, not a step carrying a worked example, so it
+is naturally the shortest. n=5.
+
+And it lands. Every row's section 0 delivers its payoff in the closing lines:
+
+> row 3: *"Skipping to the CV before answering all three is why most people in your position get
+> automated rejections before a human reads their name."*
+
+> row 5: *"…not because the capability is wrong, but because the language is coded as 'not us.'"*
+
+**No front-loading instruction is needed.** Reporting that rather than pre-emptively building one.
+
+## 🔴 But the trims are severing the deliverable, and that is the reason to stop
+
+What truncation actually removed:
+
+| row · section | chars | what was cut |
+|---|---|---|
+| 2 §2 *"Your Exact Agenda"* | **4,492 → 1,060** | the fill-in template — *"'In my highest-leverage moments the thing I was actually doing was ______'"* |
+| 1 §1 *"Solo Session Structure"* | **2,720 → 819** | the sector-filter checklist the reader ticks |
+| 1 §4 *"Swipe Copy — Three Warm Outreach Messages"* | 1,808 → 1,390 | **a swipe message cut mid-sentence.** Kept: *"…I'm in the process of making a considered move into [TARGET SECTOR]."* Cut: the rest of the message |
+| 1 §3 | 1,966 → 1,305 | the *"→ Fix:"* line — the remedy the section builds to |
+
+**A swipe message truncated halfway is worse than absent.** The 80/20 bar makes usable tools the
+point of the asset, and this cuts them mid-artefact.
+
+### A second, separate defect — the repair over-cuts on markdown
+
+Row 1 §1 went to **819 chars against a 1,400 cap** — 40% below what the cap required.
+`truncateAtSentence` cuts at the last `[.!?]\s` inside the cap, and this content is markdown:
+bold labels, bullet lists, table rows, `□` checkboxes. Those do not end in sentence punctuation, so
+the last boundary can sit far back. **The function is correct and well-tested for prose; it is the
+wrong instrument for structured content.**
+
+## The three beats, after bounding
+
+| beat | verdict |
+|---|---|
+| close the symptom loop | 🔴 **harmed** — the tools that close it are what truncation cuts |
+| open the root-cause loop | ✅ **intact** — untouched in all five rows, diagnosis lands |
+| bridge | ✅ **intact** — `nextStep` uncapped, and leaving it uncapped is vindicated |
+
+📌 One thing to note in the bridges: row 2 carries *"puts you ahead of 90% of senior managers"* — an
+invented statistic, in the uncapped field. **The class flagged after the re-run is still live**, and
+it is the next lever regardless of what happens to the caps.
+
+## Recommendation — two changes, both needing a decision, neither built
+
+1. **Move the length lever from truncation to generation.** Raise `section.body` to sit above the
+   intended centre so it catches outliers like the 4,492-char section and leaves typical sections
+   untouched, and get the median down by asking for it in the prompt — which is where a target
+   belongs — rather than by cutting tails.
+2. **Stop using `truncateAtSentence` on structured fields.** A trim on `section.body`,
+   `tools[].content` or `items[].detail` must cut on a **block** boundary — a blank line, a list
+   item, a heading — so it can never sever a template, a checklist or a swipe message mid-artefact.
+   Prose fields keep the existing function.
+
+**Checklist's 100% trim rate is untouched by either and needs its own look:** `item.detail` at 300
+chars against a measured median of ~490 means the cap and the output have never agreed. Sample is 2
+bodies / 20 items.
+
+## 📌 Length: progress, not arrival
+
+Post-repair bodies are **~1,462 words**, and the worst case the caps permit is **~1,420**. Both are
+**progress toward the standard's consumable-in-one-sitting bar and not arrival at it** — and the
+current figure is reached by truncating deliverable content, which is not a way to arrive at
+anything. **A future session must not read step 3 as having closed the length question.**
+
+---
+
+# STEP 3 REVISED — caps re-derived, target moved into the prompt, structured trims made block-safe. 2026-08-25
+
+Built as approved. **Nothing committed; held for authorisation.** TS baseline **34**, suites green
+(**488**). Two five-row proofs on service 233, **zero production writes**.
+
+## Change 1 — `section.body` raised from the centre to the outlier threshold
+
+**Derivation corpus.** Production carries **no guide body at all** — its 8 populated `assetBody`
+rows are 6 toolkit and 2 checklist — so the corpus is every guide section this rebuild has
+generated: **137 sections across 24 bodies**, measured before any trim.
+
+| | chars |
+|---|---:|
+| Q1 | 1,287 |
+| median | 1,577 |
+| Q3 | 1,858 |
+| IQR | 571 |
+| max | 4,492 |
+
+An outlier is a point beyond the upper fence, **Q3 + 1.5 × IQR = 2,714.5**. Rounded **up** to the
+nearest hundred — up, so nothing sitting at the fence is trimmed by a rounding artefact — the cap
+is **2,800**.
+
+**Retro over the same 137 sections: 7 trimmed, 5.1%** — against **89, 65%** at the old 1,400. The
+2,720-char sector-filter checklist the first set cut to 819 is now untouched; the 4,492-char
+fill-in template is still caught, which is the point of having a cap.
+
+## Change 2 — the length target moved into the prompt
+
+`about 200 words` per section. Derived as this generator's own **lower quartile (Q1 = 207 words)** —
+the length at which a quarter of sections already carry the full shape the prompt asks for, stated
+as the target for all of them.
+
+### ⚠️ The first wording of it cost a beat, and that is why the shipped line states length only
+
+The first version read *"about 200 words: the move, how to run it, and one worked example."* That
+is a template for a DOING step, and over five rows it **pushed the root-cause diagnosis out of the
+opening section, which had held it in 5 of 5 before** — down to 2 of 5, with row 4 carrying no
+framed diagnosis at all. The shape is already stated in the line above it. **Saying it twice
+displaced the beat.** Re-worded to a length target plus an artefact carve-out, the opener came back
+at **5 of 5**.
+
+## Change 3 — structured trims cut on a block boundary
+
+New `truncateAtBlock` beside `truncateAtSentence` in `server/_core/cascadeContext.ts`. It cuts only
+where a new block starts — blank line, list item, heading, table row, bold label — and falls back
+to the sentence cut where the content inside the cap has no block structure, because that content
+is prose. **`sections[].body` and `tools[].content` use it; every prose field keeps
+`truncateAtSentence`.** 9 new cases, including the exact severing observed.
+
+## Change 4 — checklist held out entirely
+
+`BOUNDS` has no `checklist` key; `schemaFor("checklist")` and `applyBodyBounds(_, "checklist")` are
+both back to pre-bounds behaviour. Re-measured on production: **the shortest of the 20 items
+measured 309 against a proposed cap of 300** (p50 413, max 743), so the cap and the output have
+never once agreed. That is an unmeasured cap, not a long output. **The array bounds went out with
+it** — they never bit, and nothing on checklist ships without checklist evidence.
+
+⚠️ `applyBodyBounds` now matches **quiz explicitly** rather than leaving it as the catch-all `else`,
+so the hold-out cannot silently route checklists into the quiz branch. Covered by a test.
+
+**Toolkit ships as proposed** (27% of tools trimmed, tail-only, its content IS the deliverable).
+**Quiz counts still never trimmed** — bands must partition 0–100 and options must carry differing
+weights, so a count repair there manufactures the null the repair exists to prevent.
+
+## The five-row proof — service 233, zero writes
+
+| | before this change | after |
+|---|---|---|
+| bodies repaired | 5/5 | **1/5** (a `promise`, a prose field) |
+| sections trimmed | 16/30 (53%) | **0/30** |
+| deliverables severed | **3** | **0** |
+| root-cause opener | 5/5 | **5/5** |
+| section median | 1,577 c / 257 w | **1,410 c / 227 w** |
+| body words | 1,859 pre-repair → 1,462 post-truncation | **1,712, untruncated** |
+
+## 📌 Length, again: progress, not arrival
+
+The reduction is now generation-side, which is the point — but it is **1,859 → 1,712, about 8%**.
+The old 1,462 was lower and was reached by cutting deliverables, which is not a way to arrive
+anywhere. **The length question is still open.** n=5.
+
+---
+
+# REPORTED, NOT FIXED — 2026-08-25
+
+## 1. `truncateAtSentence` on structured content elsewhere — audited, and it is clean
+
+Three call sites in code, repo-wide (`rg`, positive control run):
+
+| site | field | cap | verdict |
+|---|---|---|---|
+| `leadMagnetContentGenerator` `capStr` | prose fields only | various | correct by construction after this change |
+| `cascadeContext.ts` `describeMechanismText` | `heroMechanisms.mechanismDescription` | 900, and **1,600 at Node 5's call site** | ✅ prose |
+| `cascadeContext.ts` `describeHvco` | `hvcoTitles.hvcoTopic` | 300 | ✅ prose, and never actually cuts |
+
+Measured read-only on production, not assumed:
+
+- **`mechanismDescription`, 1,095 rows: 0 contain a newline, 0 contain a markdown block marker.**
+  It is cut often — 714 rows (65%) exceed 900, 109 exceed 1,600 — but every one of those cuts is
+  through prose, which is what `truncateAtSentence` is for. **No change needed.**
+- **`hvcoTopic`, 2,077 rows: 0 newlines, 0 block markers, and 0 rows exceed 300** — its maximum
+  observed length IS 300, so the column bounds it at write time and the function never fires.
+
+**"Probably fine" is now measured fine.** The instrument is correctly matched at both sites.
+
+## 2. The invented statistic in `nextStep.body` — the field deliberately left uncapped
+
+Confirmed verbatim in the prior run, row 2:
+
+> *"That puts you ahead of **90%** of senior managers attempting this move."*
+
+Nothing in the coach's material supports it. It did **not** recur in either five-row run this
+session (0/5 and 0/5 bridges carrying a bare figure), but **n=5 twice and nothing in this change
+addresses it** — the disappearance is not evidence of a fix.
+
+🔑 **Leaving `nextStep` unbounded on LENGTH was right and stays right** — it is under 9% of a body's
+words and it carries the bridge. **Source-boundedness is a different axis from length, and the
+numeric rule that comes next must name `nextStep.body` explicitly.** A field exempt from the length
+cap is not exempt from where its numbers come from, and this is the one place that gap is already
+proven to have been exercised.
+
+---
+
+# 🔑 A PROPERTY OF PROMPTS, NOT A SLIP — instructions COMPETE for a slot, they do not reinforce
+
+**This is larger than the change that surfaced it, and it is recorded here so it is not buried
+inside the step-3 revision.**
+
+## What happened, precisely
+
+The step-3 prompt already specified a guide section's shape:
+
+> *"…each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example
+> the reader applies) — not padded prose."*
+
+The length target was added on the line immediately below, and its first wording **restated that
+shape while stating the length**:
+
+> *"Write each section to about 200 words: the move, how to run it, and one worked example."*
+
+Measured over five live rows: **the root-cause diagnosis fell out of the opening section, from 5 of
+5 to 2 of 5.** One row carried no framed diagnosis anywhere. Re-worded to state **length only**,
+keeping an artefact carve-out and nothing else, the opener returned at **5 of 5** — the baseline.
+
+## The property, stated generally
+
+**Two instructions describing the same thing do not add up. They compete for the same slot, and the
+second can OVERRIDE the first rather than strengthening it.**
+
+The restatement was not wrong and it did not contradict the line above it. It was a *narrower*
+description of the same slot — a doing step — and being second and more concrete, it won. The beat
+that had no room left was the one the earlier line permitted but did not name: a framing section
+that opens the body by naming why previous attempts failed.
+
+⚠️ **Do not read this as a wording slip to be more careful about next time.** The failure mode is
+structural: adding an instruction that overlaps an existing one is a *silent edit to the existing
+one*. Nothing throws, nothing fails a gate, and the output stays fluent and plausible — the loss is
+a beat, and only a read finds it.
+
+## Why it generalises across all eleven nodes
+
+Every node's prompt is a stack of layered instructions written at different times by different
+sprints, and **none of them was written knowing what the others would later add.** This node's
+prompt alone carries the 80/20 bar, the method directive, the promise shape, the bridge shape, the
+per-format shape and now a length target — six instructions competing over one output.
+
+🔗 **It pairs directly with the prompt-versus-output divergence audit already banked** (§7 of the
+pause checkpoint, item 4: *"several prompts state ranges their output has never matched"*). That
+audit was framed as prompts asking for what they do not get. **This says why that happens**: an
+instruction that a later, narrower one overlaps stops being enforced without ever being removed.
+The audit should look for overlap, not only for divergence — the divergent range is the symptom,
+the competing instruction is the cause.
+
+---
+
+# 📌 STANDING CHECK — any edit to a section-shape or length instruction requires a live run
+
+**Trigger:** any change to a node's section-shape instruction or its length instruction, however
+unrelated to structure it looks. A length target is exactly such a change, and it moved the beat.
+
+**The check:** run live rows and **read the opening section of each — does it still open by naming
+why previous attempts failed?** Report the rate. Do not trust the change until that read is done.
+
+**It is a READ, not a metric.** No word count, no character distribution, no schema assertion and
+no test detects it — every one of those was green across the run in which the beat was lost. The
+diagnosis section is naturally the shortest section in the body, so length instrumentation looks
+*healthier* precisely as it disappears.
+
+**Why this beat and not another:** it is the newest of the three — it only began landing when the
+mechanism arrived in step 2 — it is unguarded by any gate, and it is the one an edit aimed at
+length will silently displace, because it is the section that carries no worked example and so
+looks like the slack when a shape is restated.

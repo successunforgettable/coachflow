@@ -16,6 +16,7 @@ import { getDb } from "./db";
 import { services, idealCustomerProfiles, campaignKits, heroMechanisms, coachMethods, sourceOfTruth, campaigns } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { GUARANTEE_CLAIMS_RULE } from "./_core/copywritingRules";
+import { truncateAtSentence, truncateAtBlock } from "./_core/cascadeContext";
 
 export type LeadMagnetFormat = "guide" | "checklist" | "toolkit" | "quiz";
 export type ToolType = "swipe" | "template" | "sop" | "worksheet" | "script" | "checklist";
@@ -304,12 +305,152 @@ export function systemPromptFor(mode: DeliverableMode = "lead_magnet"): string {
   return `${base}\n\n${GUARANTEE_CLAIMS_RULE}`;
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIZE LIMITS — bound at generation, repair after, never reject.
+//
+// Two derivations only, and no external figure is used anywhere, including in these comments:
+//   1. where the prompt already states a range, that range becomes the bound — enforcing what we
+//      already ask for invents nothing;
+//   2. where the prompt states a SHAPE rather than a count, the cap is placed at the OUTLIER
+//      THRESHOLD of the field's own measured distribution.
+//
+// ⚠️ The first version of this set applied rule 2 wrongly and must not be reinstated. It sized
+// `section.body` at what one section needs to DO its job — the intended CENTRE — which put the cap
+// on the median and truncated half the corpus by construction: 89 of 137 measured sections, 65%.
+// A cap that trims a tail has to sit ABOVE the centre, and the target belongs in the prompt.
+//
+// THE DERIVATION, re-run over every guide section this rebuild has generated — 137 sections across
+// 24 bodies, measured before any trim. Production carries no guide body at all (its 8 populated
+// `assetBody` rows are 6 toolkit and 2 checklist), so the generated corpus is the only one there
+// is, and it is the current generator's own output.
+//
+//   Q1 1,287 · median 1,577 · Q3 1,858 · IQR 571 · max 4,492 characters
+//
+// An outlier is a point beyond the upper fence, Q3 + 1.5 x IQR = 2,714.5. Rounded UP to the
+// nearest hundred — up, so nothing sitting at the fence is trimmed by a rounding artefact —
+// that is 2,800, and it trims 7 of 137 sections, 5.1%. The sections it now leaves alone include
+// the 2,720-character sector-filter checklist the first set cut to 819. The 4,492-character
+// fill-in template is still caught, which is the point of having a cap.
+//
+// `promise` and the headings keep the caps derived from the prompt's own stated shape.
+//
+// CHECKLIST IS DELIBERATELY ABSENT. Every one of the 20 items in the production sample exceeded
+// the detail cap that was proposed — the minimum measured 309 against a cap of 300 — so the cap
+// and the output have never once agreed. That is an unmeasured cap rather than a long output, and
+// it needs its own evidence rather than riding along on a guide result. `schemaFor("checklist")`
+// and `applyBodyBounds(_, "checklist")` are both back to their pre-bounds behaviour.
+//
+// `nextStep` is DELIBERATELY UNCAPPED. It is under 9% of a body's words, and it carries the
+// bridge — the beat that only began working when the mechanism arrived. Cap where the length is.
+// ─────────────────────────────────────────────────────────────────────────────
+export const BOUNDS = {
+  guide:     { promise: 320, sections: { minItems: 3, maxItems: 6,  heading: 120, body: 2800 } },
+  toolkit:   { promise: 320, tools:    { minItems: 3, maxItems: 4,  name: 80, instructions: 180, content: 4000 } },
+  quiz:      { promise: 320,
+               questions: { minItems: 5, maxItems: 12, optionsMin: 3, optionsMax: 4, question: 300, label: 150 },
+               bands:     { minItems: 3, maxItems: 5, meaning: 600, teaser: 200 } },
+} as const;
+
+export type BoundRepair = { field: string; kind: "items" | "length"; from: number; to: number };
+
+/**
+ * Deterministic repair. THE POINT: an upper bound must never become a new way for a body to come
+ * back null on the path every coach hits. A rejection would retry and can end at `null`; a repair
+ * always succeeds. Lower bounds are therefore never enforced here — they live in the schema and
+ * the prompt only, and the caller's acceptance test is deliberately left as it was.
+ *
+ * Array trims keep the FIRST entries. The root-cause diagnosis now opens the body, so cutting from
+ * the end preserves it.
+ *
+ * STRUCTURED fields cut on a BLOCK boundary; prose fields cut on a sentence. The deliverables — a
+ * fill-in template, a checklist the reader ticks, a swipe message they paste — live in
+ * `sections[].body` and `tools[].content`, and none of a bold label, a bullet, a checkbox row or a
+ * table row ends in sentence punctuation. Cutting those at a sentence boundary severed three
+ * artefacts, one of them a swipe message stopped mid-message, and left another 40% under its own
+ * cap. Always returning something is not the same as always returning something USABLE, and a
+ * repair that damages the deliverable is not a repair.
+ *
+ * ⚠️ QUIZ COUNTS ARE NEVER TRIMMED. Bands must partition 0..100 contiguously and a question's
+ * options must carry differing weights — both are invariants `validateQuizBody` enforces. Dropping
+ * a band leaves the last one short of 100 and dropping options can erase weight variation, so a
+ * count repair there would GUARANTEE the validator failure that ends in the null this exists to
+ * prevent. Only the quiz's prose fields, which carry no invariant, are capped.
+ */
+export function applyBodyBounds(
+  body: any,
+  format: LeadMagnetFormat,
+): { body: any; repairs: BoundRepair[] } {
+  const repairs: BoundRepair[] = [];
+  if (!body || typeof body !== "object") return { body, repairs };
+
+  // Prose cuts on a sentence; structured content cuts on a block. Nothing else differs.
+  const capStr = (obj: any, key: string, max: number, label: string) => {
+    const v = obj?.[key];
+    if (typeof v !== "string" || v.length <= max) return;
+    obj[key] = truncateAtSentence(v, max);
+    repairs.push({ field: label, kind: "length", from: v.length, to: obj[key].length });
+  };
+  const capBlock = (obj: any, key: string, max: number, label: string) => {
+    const v = obj?.[key];
+    if (typeof v !== "string" || v.length <= max) return;
+    obj[key] = truncateAtBlock(v, max);
+    repairs.push({ field: label, kind: "length", from: v.length, to: obj[key].length });
+  };
+  const capArr = (obj: any, key: string, max: number, label: string) => {
+    const v = obj?.[key];
+    if (!Array.isArray(v) || v.length <= max) return;
+    obj[key] = v.slice(0, max);
+    repairs.push({ field: label, kind: "items", from: v.length, to: max });
+  };
+
+  try {
+    if (format === "guide") {
+      const B = BOUNDS.guide;
+      capStr(body, "promise", B.promise, "promise");
+      capArr(body, "sections", B.sections.maxItems, "sections");
+      for (const sec of Array.isArray(body.sections) ? body.sections : []) {
+        capStr(sec, "heading", B.sections.heading, "sections[].heading");
+        capBlock(sec, "body", B.sections.body, "sections[].body");
+      }
+    } else if (format === "toolkit") {
+      const B = BOUNDS.toolkit;
+      capStr(body, "promise", B.promise, "promise");
+      capArr(body, "tools", B.tools.maxItems, "tools");
+      for (const t of Array.isArray(body.tools) ? body.tools : []) {
+        capStr(t, "name", B.tools.name, "tools[].name");
+        capStr(t, "instructions", B.tools.instructions, "tools[].instructions");
+        capBlock(t, "content", B.tools.content, "tools[].content");
+      }
+    } else if (format === "quiz") {
+      const B = BOUNDS.quiz;
+      capStr(body, "promise", B.promise, "promise");
+      // counts untouched — see the warning above
+      for (const b of Array.isArray(body?.scoring?.bands) ? body.scoring.bands : []) {
+        capStr(b, "teaser", B.bands.teaser, "bands[].teaser");
+        capStr(b, "meaning", B.bands.meaning, "bands[].meaning");
+      }
+    }
+    // `checklist` falls through untouched ON PURPOSE — see the CHECKLIST note on BOUNDS. Quiz is
+    // matched explicitly rather than left as the catch-all so this hold-out cannot silently route
+    // checklists into the quiz branch.
+  } catch {
+    // A repair that cannot run leaves the body exactly as it arrived. Never throw into the cascade.
+  }
+  return { body, repairs };
+}
+
 // ── Per-format response schemas (json_schema, strict) ──
 type ResponseFormat = { type: "json_schema"; json_schema: { name: string; strict: boolean; schema: Record<string, unknown> } };
 export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lead_magnet"): ResponseFormat {
   const s = (name: string, schema: Record<string, unknown>): ResponseFormat => ({ type: "json_schema", json_schema: { name, strict: true, schema } });
   const str = { type: "string" } as const;
   const arr = (items: Record<string, unknown>) => ({ type: "array", items });
+  // Bounded variants. On this provider `response_format` becomes an Anthropic forced tool call,
+  // which validates types and required fields — bounds are a strong hint to the model rather than
+  // a grammar it is held to. That is why every upper bound here is paired with `applyBodyBounds`.
+  const arrB = (items: Record<string, unknown>, minItems: number, maxItems: number) => ({ type: "array", minItems, maxItems, items });
+  const strB = (maxLength: number) => ({ type: "string", maxLength });
   // Shared nextStep bridge — required on every format.
   const nextStep = { type: "object", additionalProperties: false, required: ["heading", "body", "ctaLabel"], properties: { heading: str, body: str, ctaLabel: str } };
   const bonus = mode === "bonus";
@@ -320,23 +461,26 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
       ? { required: ["howToUse", ...required], properties: { howToUse: str, ...properties } }
       : { required, properties };
   if (format === "guide") { const g = withHowTo(["promise", "sections", "nextStep"], {
-      promise: str,
-      sections: arr({ type: "object", additionalProperties: false, required: ["heading", "body"], properties: { heading: str, body: str } }),
+      promise: strB(BOUNDS.guide.promise),
+      sections: arrB({ type: "object", additionalProperties: false, required: ["heading", "body"],
+        properties: { heading: strB(BOUNDS.guide.sections.heading), body: strB(BOUNDS.guide.sections.body) } },
+        BOUNDS.guide.sections.minItems, BOUNDS.guide.sections.maxItems),
       nextStep,
     }); return s("lead_magnet_guide", { type: "object", additionalProperties: false, ...g }); }
+  // CHECKLIST carries no bounds. Held out until it has its own measurement — see BOUNDS.
   if (format === "checklist") { const g = withHowTo(["promise", "items", "nextStep"], {
       promise: str,
       items: arr({ type: "object", additionalProperties: false, required: ["label", "detail"], properties: { label: str, detail: str } }),
       nextStep,
     }); return s("lead_magnet_checklist", { type: "object", additionalProperties: false, ...g }); }
   if (format === "toolkit") { const g = withHowTo(["promise", "tools", "nextStep"], {
-      promise: str,
-      tools: arr({ type: "object", additionalProperties: false, required: ["name", "type", "instructions", "content"], properties: {
-        name: str,
+      promise: strB(BOUNDS.toolkit.promise),
+      tools: arrB({ type: "object", additionalProperties: false, required: ["name", "type", "instructions", "content"], properties: {
+        name: strB(BOUNDS.toolkit.tools.name),
         type: { type: "string", enum: ["swipe", "template", "sop", "worksheet", "script", "checklist"] },
-        instructions: str,
-        content: str,
-      } }),
+        instructions: strB(BOUNDS.toolkit.tools.instructions),
+        content: strB(BOUNDS.toolkit.tools.content),
+      } }, BOUNDS.toolkit.tools.minItems, BOUNDS.toolkit.tools.maxItems),
       nextStep,
     }); return s("lead_magnet_toolkit", { type: "object", additionalProperties: false, ...g }); }
   const pct = { type: "integer", minimum: 0, maximum: 100 } as const;
@@ -344,25 +488,29 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
     type: "object", additionalProperties: false,
     required: ["promise", "questions", "scoring", "nextStep"],
     properties: {
-      promise: str,
-      questions: arr({
+      promise: strB(BOUNDS.quiz.promise),
+      // These mirror `validateQuizBody` exactly. Nothing new is invented: the validator is already
+      // the agreed contract, and putting the same numbers in the schema turns a post-hoc REJECTION
+      // — which retries and can end at a null body — into a constraint the model sees up front.
+      questions: arrB({
         type: "object", additionalProperties: false, required: ["question", "options"],
         properties: {
-          question: str,
-          options: arr({
+          question: strB(BOUNDS.quiz.questions.question),
+          options: arrB({
             type: "object", additionalProperties: false, required: ["label", "weight"],
-            properties: { label: str, weight: { type: "integer", minimum: 0, maximum: 3 } },
-          }),
+            properties: { label: strB(BOUNDS.quiz.questions.label), weight: { type: "integer", minimum: 0, maximum: 3 } },
+          }, BOUNDS.quiz.questions.optionsMin, BOUNDS.quiz.questions.optionsMax),
         },
-      }),
+      }, BOUNDS.quiz.questions.minItems, BOUNDS.quiz.questions.maxItems),
       scoring: {
         type: "object", additionalProperties: false, required: ["bands"],
         properties: {
-          bands: arr({
+          bands: arrB({
             type: "object", additionalProperties: false,
             required: ["name", "minPercent", "maxPercent", "teaser", "meaning", "cta"],
-            properties: { name: str, minPercent: pct, maxPercent: pct, teaser: str, meaning: str, cta: nextStep },
-          }),
+            properties: { name: str, minPercent: pct, maxPercent: pct,
+              teaser: strB(BOUNDS.quiz.bands.teaser), meaning: strB(BOUNDS.quiz.bands.meaning), cta: nextStep },
+          }, BOUNDS.quiz.bands.minItems, BOUNDS.quiz.bands.maxItems),
         },
       },
       nextStep,
@@ -393,7 +541,22 @@ export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: 
     ? `Create this BONUS deliverable to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, the words this audience actually uses. No generic filler, no padding.\n\nThe reader has already enrolled in "${programme}" — write to a buyer on the inside who is ready to execute, not a prospect you are trying to convert.\n\n${ctx}\n\n${methodDirective}Begin with a "howToUse": 2-4 sentences stating plainly what this document is, how to use it, and what it achieves. Then a TIGHT promise: max two sentences on what they can DO with this. End with a nextStep that helps them put this to work and get the most from "${programme}" — a heading, a short body orienting them to the next action inside the programme they have joined, and a concrete ctaLabel about USING it (for example "Start With Step 1"). No dead end.\n\n`
     : `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\n${methodDirective}Open with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). End with a nextStep that bridges to "${programme}" — a heading, a short body that connects this free win to the paid outcome, and a concrete ctaLabel (e.g. "Book My Free Call"). No dead end.\n\n`;
   const howToJson = bonus ? `"howToUse", ` : "";
-  if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nReturn JSON: { ${howToJson}"promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  // ⚠️ THE LENGTH TARGET LIVES HERE, and this is the load-bearing half of the size work.
+  // A schema cap can only remove text that has already been written, and removing it damages the
+  // artefacts the format exists to deliver. A target moves the CENTRE at generation, which is the
+  // only place length can come down without cutting anything.
+  //
+  // 200 words is this generator's own lower quartile — measured across the 137 guide sections it
+  // produced this rebuild, Q1 is 207 words — so it is the length at which a quarter of sections
+  // already carry the full shape asked for below, stated as the target for all of them rather
+  // than as the exception. The schema cap sits at more than twice it and catches outliers only.
+  //
+  // ⚠️ It states a LENGTH and nothing else, and that restraint is measured rather than tidy. A
+  // first version added the section's shape to it — "the move, how to run it, and one worked
+  // example" — which reads as a template for a DOING step, and across five rows it pushed the
+  // root-cause diagnosis out of the opening section that had held it in five of five before. The
+  // shape is already stated in the line above; saying it twice cost a beat.
+  if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nWrite each section to about 200 words. Where a section carries a usable artefact — a fill-in template, a checklist, swipe copy — give the artefact the room and keep the teaching around it to a line or two.\nReturn JSON: { ${howToJson}"promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { ${howToJson}"promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   return `${common}Produce a READINESS SCORECARD — a weighted, single-axis self-assessment that diagnoses where this prospect stands on their journey toward the outcome "${programme}" delivers. Genuinely diagnostic, never a disguised pitch.
@@ -500,7 +663,15 @@ export async function generateLeadMagnetContent(input: {
       });
       const content = response.choices[0].message.content;
       const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
-      const body = { format, title: input.title, ...parsed } as LeadMagnetBody;
+      const raw = { format, title: input.title, ...parsed } as LeadMagnetBody;
+      // Repair, never reject. An upper bound must not become a new way to reach `return null`.
+      const { body, repairs } = applyBodyBounds(raw, format);
+      if (repairs.length > 0) {
+        console.log(
+          `[leadMagnetBounds] ${format} "${input.title}" repaired ${repairs.length}: ` +
+          repairs.map((r) => `${r.field}(${r.kind} ${r.from}->${r.to})`).join(" "),
+        );
+      }
       // Shape guard per format — retry rather than store junk. Quiz runs the full
       // rubric validator (non-degenerate scoring is this format's whole value).
       const quizCheck = format === "quiz" ? validateQuizBody(body as QuizBody) : null;

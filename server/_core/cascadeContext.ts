@@ -206,6 +206,50 @@ export function truncateAtSentence(text: string, maxChars: number): string {
 }
 
 /**
+ * Block-aware truncation, for STRUCTURED content.
+ *
+ * `truncateAtSentence` above is the right instrument for prose and the wrong one here. Structured
+ * content is markdown: bold labels, list items, checkbox rows, table rows, headings. None of those
+ * end in sentence punctuation, which has two consequences, both measured.
+ *
+ * 1. The last `[.!?]\s` inside the cap can sit far back, so the cut lands well under the budget —
+ *    one section came back at 819 characters against a cap of 1,400.
+ * 2. Where a sentence boundary DOES fall inside a block, the cut lands inside the artefact. The
+ *    observed failure kept a swipe message's opening line and cut the rest of that same message.
+ *    A template with half its fill-in blanks, or a checklist stopping mid-item, is worse than one
+ *    that is absent: usable tools are the point of the asset, so a repair that damages one is not
+ *    a repair.
+ *
+ * This cuts only where a NEW BLOCK STARTS — a blank line, a list item, or a heading — so whole
+ * blocks survive and no artefact is left half-written. Content that carries no block structure
+ * inside the cap is prose, and prose falls back to the sentence cut.
+ *
+ * Like its sibling it always returns something. Neither is allowed to empty a field.
+ */
+const BLOCK_START = /^(?:\s*(?:[-*+\u2022\u25aa]|\d+[.)]|[\u25a1\u2610\u25a2\u2713\u2714]|#{1,6}\s|\|)|\s*\*\*)/;
+
+export function truncateAtBlock(text: string, maxChars: number): string {
+  if (!text) return "";
+  const trimmed = text.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+  const lines = trimmed.split("\n");
+  let pos = 0;
+  let prevBlank = false;
+  let lastStart = -1;
+  for (const line of lines) {
+    if (pos > maxChars) break;
+    const blank = line.trim() === "";
+    // A block opens either because a blank line closed the previous one, or because this line is
+    // itself a structural opener. Position 0 is never a cut point — that would empty the field.
+    if (pos > 0 && !blank && (prevBlank || BLOCK_START.test(line))) lastStart = pos;
+    prevBlank = blank;
+    pos += line.length + 1; // +1 for the newline split() removed
+  }
+  if (lastStart > 0) return trimmed.slice(0, lastStart).trimEnd();
+  return truncateAtSentence(trimmed, maxChars);
+}
+
+/**
  * Sentence-or-clause-aware truncation. Looks within `lookRange` for any
  * sentence (`.!?`) or clause (`,;:—–`) boundary; if found, cuts there.
  * Otherwise falls back to a hard cut at `hardMax`. Used for ad-copy
