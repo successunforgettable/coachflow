@@ -357,17 +357,34 @@ export function systemPromptFor(mode: DeliverableMode = "lead_magnet"): string {
 //
 // `promise` and the headings keep the caps derived from the prompt's own stated shape.
 //
-// CHECKLIST IS DELIBERATELY ABSENT. Every one of the 20 items in the production sample exceeded
-// the detail cap that was proposed — the minimum measured 309 against a cap of 300 — so the cap
-// and the output have never once agreed. That is an unmeasured cap rather than a long output, and
-// it needs its own evidence rather than riding along on a guide result. `schemaFor("checklist")`
-// and `applyBodyBounds(_, "checklist")` are both back to their pre-bounds behaviour.
+// CHECKLIST — held out of the first set, landed here on its own evidence.
+//
+// It was held out because the cap proposed for it had never once agreed with the output: the
+// SHORTEST of the 20 items then in existence measured 309 characters against a proposed 300, so
+// every item would have been trimmed. That was an unmeasured cap, not a long output, and the whole
+// corpus was bonus-mode besides — the lead-magnet path had never produced a checklist at all.
+//
+// It now has its own corpus: 173 items across 15 bodies, ALL generated at the shipping length
+// target, spanning both modes — 119 lead-magnet across two titles, 54 bonus across two briefs.
+//
+//   item.detail  Q1 411.0 · Q3 472.0 · IQR 61.0 · fence 563.5 -> 570   trims 2/173 (1.2%)
+//   item.label   Q1  64.0 · Q3  86.0 · IQR 22.0 · fence 119.0 -> 120   trims 1/173 (0.6%)
+//
+// 🔑 THE LEGACY 20-25% BONUS TRIM RATE WAS A PROPERTY OF THE ABANDONED CLAUSE, NOT OF BONUS MODE,
+// and establishing that is what unblocked these caps. `applyBodyBounds` takes a format rather than
+// a mode, so one cap governs both, and every bonus item in existence was old-clause output with the
+// widest spread of any corpus (IQR 171.8, max 743). Regenerating the SAME TWO BRIEFS at the target
+// — same title, same description, same obstacle, only the clause changed — took the trim rate from
+// 25% to 1.9% and the IQR from 171.8 to 52.0. The modes sit 1.5 words apart with identical spread.
+//
+// `promise` and the array range are the prompt's own stated shape, promoted rather than invented.
 //
 // `nextStep` is DELIBERATELY UNCAPPED. It is under 9% of a body's words, and it carries the
 // bridge — the beat that only began working when the mechanism arrived. Cap where the length is.
 // ─────────────────────────────────────────────────────────────────────────────
 export const BOUNDS = {
   guide:     { promise: 320, sections: { minItems: 3, maxItems: 6,  heading: 120, body: 2800 } },
+  checklist: { promise: 320, items:    { minItems: 7, maxItems: 15, label: 120, detail: 570 } },
   toolkit:   { promise: 320, tools:    { minItems: 3, maxItems: 4,  name: 80, instructions: 180, content: 4000 } },
   quiz:      { promise: 320,
                questions: { minItems: 5, maxItems: 12, optionsMin: 3, optionsMax: 4, question: 300, label: 150 },
@@ -444,6 +461,17 @@ export function applyBodyBounds(
         capStr(t, "instructions", B.tools.instructions, "tools[].instructions");
         capBlock(t, "content", B.tools.content, "tools[].content");
       }
+    } else if (format === "checklist") {
+      const B = BOUNDS.checklist;
+      capStr(body, "promise", B.promise, "promise");
+      capArr(body, "items", B.items.maxItems, "items");
+      for (const it of Array.isArray(body.items) ? body.items : []) {
+        capStr(it, "label", B.items.label, "items[].label");
+        // Block-safe, though it falls back to the sentence cut in practice: 0 of 173 measured
+        // details carry a newline, and the renderer emits this field as a single paragraph. The
+        // block instrument costs nothing and covers the day one of them carries a list.
+        capBlock(it, "detail", B.items.detail, "items[].detail");
+      }
     } else if (format === "quiz") {
       const B = BOUNDS.quiz;
       capStr(body, "promise", B.promise, "promise");
@@ -453,9 +481,9 @@ export function applyBodyBounds(
         capStr(b, "meaning", B.bands.meaning, "bands[].meaning");
       }
     }
-    // `checklist` falls through untouched ON PURPOSE — see the CHECKLIST note on BOUNDS. Quiz is
-    // matched explicitly rather than left as the catch-all so this hold-out cannot silently route
-    // checklists into the quiz branch.
+    // Quiz is matched explicitly rather than left as the catch-all. It was made explicit while
+    // checklist was held out, and it stays explicit: the catch-all `else` is the shape that would
+    // silently route a new or renamed format into the quiz branch.
   } catch {
     // A repair that cannot run leaves the body exactly as it arrived. Never throw into the cascade.
   }
@@ -489,10 +517,11 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
         BOUNDS.guide.sections.minItems, BOUNDS.guide.sections.maxItems),
       nextStep,
     }); return s("lead_magnet_guide", { type: "object", additionalProperties: false, ...g }); }
-  // CHECKLIST carries no bounds. Held out until it has its own measurement — see BOUNDS.
   if (format === "checklist") { const g = withHowTo(["promise", "items", "nextStep"], {
-      promise: str,
-      items: arr({ type: "object", additionalProperties: false, required: ["label", "detail"], properties: { label: str, detail: str } }),
+      promise: strB(BOUNDS.checklist.promise),
+      items: arrB({ type: "object", additionalProperties: false, required: ["label", "detail"],
+        properties: { label: strB(BOUNDS.checklist.items.label), detail: strB(BOUNDS.checklist.items.detail) } },
+        BOUNDS.checklist.items.minItems, BOUNDS.checklist.items.maxItems),
       nextStep,
     }); return s("lead_magnet_checklist", { type: "object", additionalProperties: false, ...g }); }
   if (format === "toolkit") { const g = withHowTo(["promise", "tools", "nextStep"], {
@@ -579,7 +608,37 @@ export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: 
   // root-cause diagnosis out of the opening section that had held it in five of five before. The
   // shape is already stated in the line above; saying it twice cost a beat.
   if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nWrite each section to about 200 words. Where a section carries a usable artefact — a fill-in template, a checklist, swipe copy — give the artefact the room and keep the teaching around it to a line or two.\nReturn JSON: { ${howToJson}"promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
-  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a one-to-two-sentence detail that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  // ⚠️ THE CHECKLIST DETAIL LENGTH. This line asked for a "one-to-two-sentence detail" and never
+  // once received one: across every checklist body that exists — 20 items, 2 bodies — 4 of 20 were
+  // within it, the median ran to 3.5 sentences, and the SHORTEST detail measured 309 characters
+  // against a median of 420. The count was not a target the output missed; it was one the output
+  // could not hit while obeying the bar stated above it. The system prompt asks for ~80%
+  // immediately-usable tools and "real fill-in-the-blank content", `common` repeats it, and 16 of
+  // the 20 details carry a quoted fill-in template — a template plus its stop condition does not
+  // fit in two sentences. Three statements of the shape against one of the count, and the count
+  // lost every time.
+  //
+  // THE NUMBER IS SET FROM MEASURED OVERSHOOT, not from a quartile. This generator lands 15-20%
+  // above any stated word target: the guide asks 200 and produces 227; this line asked 70 and
+  // produced 83. 60 is the target that puts the centre near 73 words — where lead-magnet output
+  // sat under the old clause — while keeping the spread a target buys. Checklist is the format
+  // that can least afford to grow: it exists to be the shortest, most scannable asset produced.
+  //
+  // ⚠️ THE GAIN IS PREDICTABILITY, NOT LENGTH. Two readings were offered for this change before it
+  // was measured and BOTH ARE RETIRED. It does not free the 80/20 bar — fill-in-template items went
+  // DOWN, 55/61 to 51/61, when the count was removed. It is not length-neutral — at a target of 70
+  // the median detail ran 477 -> 523 characters, longer than the clause it replaced. What the
+  // target actually buys is SPREAD: IQR 126 -> 69 characters. That is the difference between an
+  // instruction the model can meet and one it can only ignore, and it is the whole case for it.
+  //
+  // ⚠️ The COUNT moved and nothing else did. The shape is already stated three times upstream, so
+  // adding shape words here would be a silent edit to all three — the failure that pushed the
+  // root-cause diagnosis out of the guide's opening section. Held by test.
+  //
+  // 📌 The cap on this field sits at 570 characters — the corpus outlier fence, more than the
+  // target's own width over again. The target moves the centre; the cap catches a runaway. Putting
+  // a cap ON the centre is the error the first section.body bound made. See BOUNDS.
+  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a detail of about 60 words that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { ${howToJson}"promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"} }.`;
   return `${common}Produce a READINESS SCORECARD — a weighted, single-axis self-assessment that diagnoses where this prospect stands on their journey toward the outcome "${programme}" delivers. Genuinely diagnostic, never a disguised pitch.
 

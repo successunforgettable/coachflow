@@ -2010,3 +2010,225 @@ handoff existing.
 
 **Deliberately not scoped here.** It is a product question — what a campaign's free next step *is* —
 and it sits upstream of anything the renderer, the publisher or the generator can fix.
+
+---
+---
+
+# CHECKLIST — prompt fix at the SHIPPING TARGET (60 words). Caps re-derived, both held. 2026-08-26
+
+**Nothing committed. TS baseline 34. Suites green: 547 across the ten Node-5/gate files**
+(`leadMagnetBounds` 38 → 44). Twenty rows generated across three targets on service 233, **zero
+production writes**.
+
+## What shipped locally — the count, and nothing else
+
+`userPromptFor("checklist")`: **`one-to-two-sentence detail` → `detail of about 60 words`.** The
+surrounding clause is byte-identical. Six tests hold the line, including one asserting the slot
+between *"plus a"* and *"that makes it doable today"* carries a length and nothing else.
+
+## 🔴 TWO READINGS OF THIS CHANGE WERE OFFERED BEFORE IT WAS MEASURED. BOTH ARE RETIRED.
+
+Recorded because both were argued confidently and both were wrong, in opposite directions.
+
+| the claim | who made it | what the run showed |
+|---|---|---|
+| *"the two-sentence count pulls against the 80/20 bar; removing it frees the fill-in templates"* | Arfeen | ❌ **Fill-in-template items went DOWN**, 55/61 → 51/61 at a target of 70, and 46/61 at 60 on the same title. The bar was never the constraint |
+| *"a reconciliation, not a reduction — it will not measurably shorten anything"* | CC | ❌ **It LENGTHENED.** Median detail 477 → 523 characters at a target of 70 |
+
+## ✅ THE REASON TO KEEP IT IS THE SPREAD. That is the whole case.
+
+Same title (4324), one clause different, everything else held:
+
+| | old clause | target 70 | **target 60** |
+|---|---:|---:|---:|
+| `item.detail` median | 477 c / 73 w | 523 c / 83 w | **441 c / 69 w** |
+| **`item.detail` IQR** | **126 c** | **69 c** | **38 c** |
+| body words (median) | 1,164 | 1,309 | **1,144** |
+
+**The spread collapses by a factor of three while the centre returns to where it started.** That is
+what an instruction the model can meet looks like against one it can only ignore. **Predictability is
+the gain — not length, and not the bar.** Write it up that way and do not let either retired reading
+back in.
+
+## ✅ THE OVERSHOOT RATIO HELD, AND IT PREDICTED THE LANDING
+
+| asked | produced | over |
+|---:|---:|---:|
+| guide 200 w | 227 w | +13.5% |
+| checklist 70 w | 83 w | +18.6% |
+| **checklist 60 w** | **72 w** (both titles, n=119) | **+20%** |
+
+60 was chosen to land the centre near 73 words, where old-clause output sat. **It landed at 72.**
+
+📌 **STANDING: this generator lands 15-20% above any stated word target. Set a target BELOW the
+intended centre.**
+
+## 🔑 THE SECOND TITLE IS THE STRONGEST EVIDENCE IN THIS THREAD — the beat comes from the CASCADE, not the title
+
+All four checklist-inferring titles on service 233 are **tab-variants of one deck**, so a different
+theme is not obtainable here. What varies is **how much the title hands the generator**:
+
+- **4324 (long tab)** — *"The 3 Reasons Senior Directors Get Auto-Rejected When They Apply Outside
+  Their Industry — and the Exact CV Repositioning Fix That Gets Callbacks Within 2 Weeks."* States
+  the domain, the mechanism's territory, the fix and the window.
+- **4352 (short tab)** — *"The 3 Auto-Rejection Reasons Call."* States that three reasons exist.
+  Nothing about what they are, what domain they live in, or what fixes them.
+
+### Root-cause opener read — 9/10, and the split is the finding
+
+| title | opener names why previous attempts failed |
+|---|---|
+| 4324 | **5/5** |
+| 4352 | **4/5** — row 1 opens on evidence-gathering (timestamp your last three rejections to prove automated screening) and defers the mechanism to later items |
+
+🔑 **READ THE 4/5, NOT THE 5/5. The 4/5 is the finding and the 5/5 cannot tell us anything.**
+
+4324 states the mechanism's territory in the title, so its 5/5 is compatible with the generator
+simply reading the beat off the title. **4352 states only that three reasons exist** — no domain, no
+mechanism, no fix — **and the sector-membership diagnosis still arrived in 4 of 5 rows.** It is
+therefore **not** being read off the title. **It is coming from the cascade context**, which is
+identical for both. That is evidence of ROBUSTNESS in the beat itself, and it closes a weakness
+flagged in the previous report rather than merely passing a check.
+
+⚠️ **Two limits travel with it and must not be dropped.** 4352 still names a symptom
+("auto-rejection"); a title naming no symptom at all does not exist in this deck. And **only the
+TITLE varied — service, ICP, offer and mechanism are identical across all twenty rows**, so this
+tests the title's contribution, not the cascade's.
+
+## 📌 STANDING RULE — THE ROUNDING STEP SCALES WITH THE VALUE
+
+**Round a derived cap UP to the nearest TEN below 1,000, and to the nearest HUNDRED at or above
+1,000.** Up, so nothing sitting at the fence is trimmed by a rounding artefact.
+
+**Why it is a rule and not a footnote:** the guide rounded a fence of 2,714.5 to the nearest hundred,
+moving it 3.7%. Applying a hundred to a fence of 118.5 moves it 93% and converts a measured cap into
+a decoration. **A rounding step that is a large fraction of the value silently relocates the cap off
+the distribution it was derived from.** This applies to every cap derived anywhere in this codebase.
+
+## ✅ BONUS MODE MEASURED AT THE TARGET — the mode gap was the CLAUSE, not the mode
+
+`applyBodyBounds` takes a **format, not a mode**, so one cap governs both. Every bonus item in
+existence was old-clause output, and it carried the widest spread of any corpus — **IQR 171.8, p90
+660, max 743** — which is where the 20-25% legacy trim rate came from. **Five rows were regenerated
+from the two ORIGINAL bonus briefs** (rows 36 and 33 — same title, same description, same obstacle),
+so only the clause differs.
+
+**Prediction stated before the run, and all four parts held:**
+
+| predicted | measured |
+|---|---|
+| tail collapses, IQR ~172 → 50-70 | ✅ **IQR 171.8 → 52.0** |
+| centre barely moves, ~420-460 c, no rise | ✅ **420 → 414 c**; 71.5 → 70.5 words |
+| trim rate falls from ~20% to 0-5% | ✅ **1/54 = 1.9%** at the shipped cap |
+| the cap does not need to move | ✅ **580 → 570**, one rounding step |
+
+🔑 **The legacy 20-25% trim rate was a property of the ABANDONED CLAUSE, not of bonus mode.** Same
+briefs, same mode, clause swapped: **25% → 1.9%.** The gap that held the caps back is closed.
+
+### Do the modes sit differently? No — and the axis that DOES vary is not one a schema can express
+
+| | median | IQR |
+|---|---:|---:|
+| bonus @60 | 70.5 w / 414 c | 11.5 w / 52 c |
+| lead magnet @60 | 72.0 w / 448 c | 11.0 w / 53 c |
+
+**In words — the unit the target is stated in — the two modes are 1.5 words apart with identical
+spread.** The 34-character gap is a words-per-character artefact, not a difference in what the field
+does.
+
+📌 **Brief-to-brief variation is ~3x the mode gap:** within bonus, row 36 medians **407 c** and row 33
+**501 c** — 94 characters apart, against 34 between the modes. **So `applyBodyBounds` does NOT need a
+mode parameter.** Mode is not the axis of variation, and the axis that is — the individual brief —
+is not something a per-mode schema split could address. Recorded so nobody builds that split later
+believing this run implied it.
+
+## ✅ THE CAPS — BUILT AND LANDED, derived across the FULL corpus at the shipping target, both modes
+
+**173 items across 15 bodies**, every one generated at the shipping target: 119 lead-magnet across
+two titles, 54 bonus across two briefs. **The legacy bonus rows, the target-70 arm and the old-clause
+arm are all excluded** — caps are not derived from output at a target being abandoned. Legacy is
+shown as a retro check only.
+
+| field | proposed | derivation | retro over 173 |
+|---|---:|---|---|
+| `item.detail` | **570** | upper fence **563.5** (Q1 411.0 · Q3 472.0 · IQR 61.0) | **2/173 — 1.2%** |
+| `item.label` | **120** | upper fence **119.0** (Q1 64.0 · Q3 86.0 · IQR 22.0) | **1/173 — 0.6%** |
+| `promise` | **320** | rule 1 — `common`'s own "max two sentences" | 0/15 |
+| `items` | **minItems 7, maxItems 15** | rule 1 — the prompt's own range | 0/15 |
+| `nextStep` | **uncapped** | unchanged — it carries the bridge | — |
+
+Per corpus at those caps — `detail` 0/61 · 1/58 · 1/54, and **5/20 on the legacy old-clause rows**;
+`label` 1/61 · 0/58 · 0/54 · 0/20.
+
+📌 **The trim rate is LOW (1.2%) because the generation-side lever is doing the work, and that is the
+design.** A working target tightens the distribution, which pulls the fence in close to the data and
+leaves few genuine outliers. **A cap trimming little is only a problem when the distribution is wide
+and the cap is above it** — here IQR is 61 characters. Compare the numbers this replaced: 900/100
+derived from bonus-only legacy data trimmed **0 of 20** across an IQR of 171.8 while permitting 1.8x
+the largest body ever produced.
+
+Worst case ≈ 15 x (120 + 570) + 320 ≈ **10,670 c ≈ ~1,600 words**, against a largest observed body of
+1,459. **~1.10x.**
+
+**Verified through the SHIPPED code, not through the derivation script** — `applyBodyBounds` re-run
+over all 15 stored bodies reproduces the derivation exactly: **detail 2/173 (1.2%) · label 1/173
+(0.6%) · array 0 · promise 0**, and — the check that stopped step 3 — **0 details severed
+mid-sentence.** `items[].detail` uses the block-safe trim, which falls back to the sentence cut in
+practice because 0 of 173 details carry a newline and the renderer emits the field as one paragraph.
+
+📌 The BOUNDS hold-out note is replaced by the landed derivation, and the tests that asserted the
+hold-out now assert the caps. Gates at the commit: **TS 34, 550 green across ten files.**
+
+## ⚠️ WATCHED, NOT CLOSED — the population-claim family
+
+| | items | population claims | numeric population claims |
+|---|---:|---:|---:|
+| old clause | 61 | 3 | 0 |
+| target 70 | 61 | **6** | **1** — *"Most Directors in this position find 20-35 before they stop counting"* |
+| target 60 | 119 | 3 | **0** |
+
+**Bonus mode at the target: 54 items, 2 flagged, and BOTH are detector false positives.** Read in
+full, they are *"the most common beginner mistake is opening Ads Manager"* and *"the single most
+damaging thing beginners do is edit the campaign within the first 48-72 hours"* — **"most" as a
+superlative, not as a population quantifier.** Genuine count: **0 population claims, 0 numeric.**
+🔑 Same lesson the compliance work paid for: **a flagged span is not evidence of which rule fired.
+Grade a hit by reading it.**
+
+At the shipping target the rate is its lowest of the three and no numeric claim appeared. The
+target-70 run is the outlier. **All arms carried `NO_RESEARCH_STATISTIC_FABRICATION_RULE` in the
+system prompt.**
+
+🔴 **This stays OPEN and watched, not closed.** It is the **second time a length change has moved
+something in the invented-figure family**, and n per cell is around 60 items on one service. 🔗 It is
+the shape banked as the validator blind spot — a quantifier plus a group noun matching neither fixed
+list — so nothing downstream would catch it. **Any future length or shape edit in any node reports
+this family alongside its word counts.**
+
+## 📌 Also measured, reported without a conclusion
+
+**Fill-in-template rate does not move cleanly with the target.** On title 4324: 90% (old clause) →
+84% (70) → **75% (60)** — monotone down. But title 4352 at the same 60-word target returns **86%**.
+Bonus mode at the same target returns **36/54, 67%**, the lowest of any arm — but on two briefs whose
+legacy items measured 16/20.
+
+**Title and brief variance is at least as large as the target effect**, so nothing here is
+attributable at this n.
+
+# 🔴 STANDING — DO NOT TIGHTEN THE CHECKLIST LENGTH TARGET FURTHER WITHOUT MEASURING FILL-IN RATE.
+
+**It is the 80/20 bar's ONLY direct measurement**, it is the bar this format exists to serve, and no
+test, gate or word count detects its loss. The trend on the one title measured at all three settings
+is **monotone down — 90% → 84% → 75%**. That may be title noise. It may be the target squeezing out
+the templates that make an item usable. **At the current setting it is open, not closed, and the next
+tightening is the run that has to answer it.**
+
+## 📌 BANKED, not chased
+
+1. **`howToUse` is uncapped on all three static formats** while its prompt asks for "2-4 sentences";
+   both production rows measure **481 characters**. Cross-format — it touches guide and toolkit too.
+2. **Instruction competition runs BOTH WAYS, and repetition count matters, not only position.** On
+   the guide a **narrower, LATER** instruction overrode a broader earlier one. On the checklist a
+   **broader instruction stated THREE TIMES** overrode a narrower one stated once — and the winner
+   was the earlier, vaguer one. 🔗 The overlap audit must count how many times a shape is stated, not
+   only where each statement sits. **An instruction stated once is at risk from any instruction
+   stated more often, wherever it sits in the prompt.**

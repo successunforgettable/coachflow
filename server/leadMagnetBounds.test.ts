@@ -16,8 +16,8 @@ const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).joi
 const long = (chars: number) => "Sentence one is here. ".repeat(Math.ceil(chars / 22)).slice(0, chars);
 
 describe("BOUNDS", () => {
-  it("declares a bound set for every format it bounds", () => {
-    for (const f of ["guide", "toolkit", "quiz"]) expect(BOUNDS).toHaveProperty(f);
+  it("declares a bound set for every format", () => {
+    for (const f of ["guide", "checklist", "toolkit", "quiz"]) expect(BOUNDS).toHaveProperty(f);
   });
   it("carries the derived numbers", () => {
     expect(BOUNDS.guide.sections.maxItems).toBe(6);
@@ -30,11 +30,14 @@ describe("BOUNDS", () => {
     expect(BOUNDS.toolkit.tools.content).toBe(4000);
   });
 
-  it("declares NO checklist bounds — held out pending its own evidence", () => {
-    // Every item of a two-body production sample exceeded the proposed detail cap. A cap the
-    // output has never once agreed with is not evidence of a long output; it is an unmeasured
-    // cap, and it does not ride along on a guide result.
-    expect(BOUNDS).not.toHaveProperty("checklist");
+  it("carries the checklist numbers, derived at the shipping target across both modes", () => {
+    // 173 items, 15 bodies, all at the shipping length target: 119 lead-magnet across two titles
+    // and 54 bonus across two briefs. Fences 563.5 and 119.0, rounded UP to the nearest ten —
+    // below 1,000 the step is ten, at or above it the step is a hundred, so rounding never
+    // relocates a cap off the distribution it came from.
+    expect(BOUNDS.checklist.items.detail).toBe(570);
+    expect(BOUNDS.checklist.items.label).toBe(120);
+    expect(BOUNDS.checklist.promise).toBe(320);
   });
 });
 
@@ -93,9 +96,25 @@ describe("applyBodyBounds — guide", () => {
 });
 
 describe("applyBodyBounds — checklist and toolkit", () => {
-  it("leaves a checklist EXACTLY as it arrived and reports no repairs", () => {
+  it("trims a checklist to 15 items and caps label, detail and promise", () => {
     const b: any = { format: "checklist", title: "t", promise: long(900),
       items: Array.from({ length: 20 }, () => ({ label: words(40), detail: long(900) })),
+      nextStep: { heading: "h", body: "b", ctaLabel: "c" } };
+    const { body, repairs } = applyBodyBounds(b, "checklist");
+    expect(body.items).toHaveLength(BOUNDS.checklist.items.maxItems);
+    for (const it of body.items) {
+      expect(it.label.length).toBeLessThanOrEqual(BOUNDS.checklist.items.label);
+      expect(it.detail.length).toBeLessThanOrEqual(BOUNDS.checklist.items.detail);
+    }
+    expect(body.promise.length).toBeLessThanOrEqual(BOUNDS.checklist.promise);
+    expect(repairs.length).toBeGreaterThan(0);
+  });
+
+  it("leaves a checklist inside the bounds EXACTLY as it arrived", () => {
+    // The cap sits at the corpus outlier fence, so ordinary output must pass through untouched.
+    // 173 items across 15 bodies at the shipping target trimmed 2 — this is that, as a test.
+    const b: any = { format: "checklist", title: "t", promise: "p",
+      items: Array.from({ length: 12 }, () => ({ label: "Run the audit on your CV headline", detail: long(440) })),
       nextStep: { heading: "h", body: "b", ctaLabel: "c" } };
     const before = JSON.parse(JSON.stringify(b));
     const { body, repairs } = applyBodyBounds(b, "checklist");
@@ -104,11 +123,19 @@ describe("applyBodyBounds — checklist and toolkit", () => {
   });
 
   it("does NOT fall through to the quiz branch when the format is checklist", () => {
-    // The quiz branch is the catch-all `else`. Removing the checklist branch without making quiz
-    // explicit would silently route checklists into it.
-    const b: any = { format: "checklist", title: "t", promise: long(900), items: [], nextStep: {} };
+    // The quiz branch is the catch-all `else`. Quiz caps no arrays by design, so a checklist
+    // routed into it would keep all 20 items. Item trimming is what distinguishes the branches.
+    const b: any = { format: "checklist", title: "t", promise: "p",
+      items: Array.from({ length: 20 }, () => ({ label: "l", detail: "d" })), nextStep: {} };
     const { body } = applyBodyBounds(b, "checklist");
-    expect(body.promise.length).toBe(900);
+    expect(body.items).toHaveLength(15);
+  });
+
+  it("nextStep stays uncapped on checklist, as on every other format", () => {
+    const b: any = { format: "checklist", title: "t", promise: "p", items: [{ label: "l", detail: "d" }],
+      nextStep: { heading: "h", body: long(2000), ctaLabel: "c" } };
+    const { body } = applyBodyBounds(b, "checklist");
+    expect(body.nextStep.body.length).toBe(2000);
   });
 
   it("trims toolkit tools to 4 and caps content, the field carrying most compliance noise", () => {
@@ -201,12 +228,14 @@ describe("schemaFor carries the bounds so the model is guided at generation", ()
     expect(s.properties.sections.items.properties.body.maxLength).toBe(2800);
     expect(s.properties.nextStep.properties.body.maxLength).toBeUndefined();
   });
-  it("checklist carries NO bounds — held out of this change", () => {
+  it("checklist", () => {
     const s: any = schemaFor("checklist").json_schema.schema;
-    expect(s.properties.items.minItems).toBeUndefined();
-    expect(s.properties.items.maxItems).toBeUndefined();
-    expect(s.properties.items.items.properties.detail.maxLength).toBeUndefined();
-    expect(s.properties.items.items.properties.label.maxLength).toBeUndefined();
+    expect(s.properties.items.minItems).toBe(7);
+    expect(s.properties.items.maxItems).toBe(15);
+    expect(s.properties.items.items.properties.detail.maxLength).toBe(570);
+    expect(s.properties.items.items.properties.label.maxLength).toBe(120);
+    expect(s.properties.promise.maxLength).toBe(320);
+    expect(s.properties.nextStep.properties.body.maxLength).toBeUndefined();
   });
   it("quiz mirrors the existing validator", () => {
     const s: any = schemaFor("quiz").json_schema.schema;
@@ -372,5 +401,83 @@ describe("the body generator inherits the shared numeric rule", () => {
     const withMethod = userPromptFor("guide", { niche:"n", audience:"a", outcome:"o", programme:"p", hasMethod:true, methodDetail:"M" } as any);
     expect(withMethod).toContain("Treat the method above as source material to teach from");
     expect(withMethod).not.toMatch(/figure|statistic/i);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE CHECKLIST DETAIL LENGTH — a false instruction removed, not a new one added.
+//
+// The format line asked for a "one-to-two-sentence detail". Measured over every checklist body
+// that exists (20 items, 2 bodies), only 4 of 20 were within it: median 3.5 sentences, minimum
+// 309 characters, median 420. That is not drift. Three instructions ABOVE the format line state
+// what the detail must contain — the system prompt's 80/20 bar and its "real fill-in-the-blank
+// content", and `common`'s "real fill-in content, real swipe copy" — and 16 of the 20 details
+// carry a quoted fill-in template. A template plus its stop condition does not fit in two
+// sentences, so the count could never be satisfied while obeying the bar. The thrice-stated
+// instruction won and the once-stated count lost.
+//
+// The fix is the COUNT ONLY, and the number is set from this generator's MEASURED OVERSHOOT rather
+// than from a quartile. Asked for 200 words the guide produces 227; asked for 70 the checklist
+// produced 83 — both 15-20% over. 60 is therefore the target that lands the centre near 73 words,
+// where lead-magnet output sat under the old clause.
+//
+// ⚠️ THE GAIN IS PREDICTABILITY, NOT LENGTH, and the two readings that were offered for it are
+// both retired by measurement. It does not free the 80/20 bar: fill-in-template items went DOWN
+// 55/61 to 51/61 when the count was removed. It is not length-neutral either: at 70 the median
+// detail ran 477 -> 523 characters, longer, not equal. What the target actually buys is SPREAD —
+// IQR 126 -> 69 characters — which is the difference between an instruction the model can meet and
+// one it can only ignore.
+//
+// ⚠️ The clause keeps its existing wording. Adding shape words to a length instruction is a
+// silent edit to the three that already state the shape, which is the failure that cost the
+// guide its root-cause opener. These tests exist to hold that line.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("the checklist detail states a length the output can actually meet", () => {
+  const ctx = { niche: "n", audience: "a", outcome: "o", programme: "prog" } as any;
+
+  for (const mode of ["lead_magnet", "bonus"] as const) {
+    it(`states a word target for the detail in ${mode} mode`, () => {
+      expect(userPromptFor("checklist", ctx, mode)).toMatch(/about 60 words/i);
+    });
+
+    it(`no longer states a sentence count for the detail in ${mode} mode`, () => {
+      expect(userPromptFor("checklist", ctx, mode)).not.toMatch(/one-to-two-sentence/i);
+    });
+  }
+
+  it("changes the COUNT and nothing else — the surrounding clause is untouched", () => {
+    const p = userPromptFor("checklist", ctx);
+    expect(p).toContain("each a short actionable label plus a ");
+    expect(p).toContain(" that makes it doable today. Every item is something they DO, not something they learn.");
+  });
+
+  it("adds NO shape words to the length clause", () => {
+    // The whole point: the slot between "plus a" and "that makes it doable today" carries a
+    // length and nothing else. Anything describing WHAT the detail contains belongs upstream,
+    // where it is already stated three times.
+    const p = userPromptFor("checklist", ctx);
+    const slot = p.split("each a short actionable label plus a ")[1].split(" that makes it doable today")[0];
+    expect(slot).toBe("detail of about 60 words");
+  });
+
+  it("the shape the detail must carry is still stated UPSTREAM, where it always was", () => {
+    // If a future change moves these into the format line, the length clause stops being a
+    // length clause and the competition starts again.
+    expect(systemPromptFor("lead_magnet")).toContain("real fill-in-the-blank content");
+    expect(userPromptFor("checklist", ctx)).toContain("real fill-in content, real swipe copy");
+    expect(userPromptFor("checklist", ctx)).toContain("Every item is something they DO");
+  });
+
+  it("the array bound is the prompt's own range, promoted rather than invented", () => {
+    expect(userPromptFor("checklist", ctx)).toContain("7-15 concrete action items");
+    expect(BOUNDS.checklist.items.minItems).toBe(7);
+    expect(BOUNDS.checklist.items.maxItems).toBe(15);
+  });
+
+  it("the detail cap sits ABOVE the prompt target — it trims outliers, it is not a second target", () => {
+    // 60 words is roughly 380 characters at the measured character-per-word rate of this corpus.
+    // The cap must sit clear of that, or it becomes the centre and truncates half the output —
+    // the error that put the first section.body cap on the median.
+    expect(BOUNDS.checklist.items.detail).toBeGreaterThan(380 * 1.4);
   });
 });
