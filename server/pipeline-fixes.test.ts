@@ -4170,3 +4170,111 @@ describe("LP_CAMPAIGN_FRAMING covers every campaign type", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STALE PROPAGATION — one implementation, two callers.
+//
+// THE BUG: the kit's selection pointer moves through TWO paths. The UI re-crown
+// (`campaignKits.updateSelection`) marked every populated downstream node stale; `autoSelectBest`,
+// which every generator and every cascade step calls, wrote the same pointer and marked nothing.
+// Two representations of "the selection changed" and only one of them told anything downstream.
+// Measured on production: 3 stale rows in the whole table, and 50 of 68 kits carry an
+// upstream/downstream pair that would have been marked had the generator path ever marked one.
+//
+// THE FIX is an EXTRACTION, not a second copy. A second copy would be the fifth instance of the
+// exact drift this closes — two representations of one fact, allowed to diverge.
+//
+// ⚠️ THE PARITY TEST IS THE ONE THAT MATTERS. The behaviour tests below repair this instance; the
+// parity test stops the CLASS recurring, by pinning that the stale write exists in exactly one
+// place. Everything else here is a repair. That one is a guard.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("stale propagation — autoSelectBest and the UI re-crown must not diverge", () => {
+  const KIT = 41;
+  // A kit with every pointer populated — the shape that makes downstream marking possible at all.
+  const fullKit = {
+    id: KIT, selectedOfferId: 1, selectedMechanismId: 2, selectedHvcoId: 3, selectedHeadlineId: 4,
+    selectedAdCopyId: 5, selectedLandingPageId: 6, selectedEmailSequenceId: 7,
+    selectedWhatsAppSequenceId: 8, selectedAdCreativeBatchId: "b9",
+  };
+  const fakeDb = (kit: any) => {
+    const ops: any[] = [];
+    const rows = (v: any): any => ({ where: () => rows(v), limit: () => Promise.resolve(v), then: (r: any) => Promise.resolve(v).then(r) });
+    return {
+      ops,
+      select: () => ({ from: () => rows([kit]) }),
+      insert: () => ({ values: (v: any) => ({ onDuplicateKeyUpdate: () => { ops.push({ op: "upsert", ...v }); return Promise.resolve(); } }) }),
+      delete: () => ({ where: () => { ops.push({ op: "delete" }); return Promise.resolve(); } }),
+    };
+  };
+  const marked = (ops: any[]) => ops.filter(o => o.op === "upsert").map(o => o.nodeType).sort();
+
+  it("FRESH CASCADE marks nothing — a NULL pointer becoming a value is not a re-crown", async () => {
+    // The guard that makes this change safe to ship. Every cascade step writes NULL -> id, so a
+    // first run must mark nothing at all. If this ever fails, the cascade has started warning
+    // about its own output.
+    const { markDownstreamStale } = await import("./routers/campaignKits");
+    const db = fakeDb(fullKit);
+    const out = await markDownstreamStale(db as any, KIT, "selectedOfferId", null, 99);
+    expect(out).toEqual([]);
+    expect(db.ops).toHaveLength(0);
+  });
+
+  it("an unchanged pointer marks nothing — rewriting the same value is not a re-crown", async () => {
+    const { markDownstreamStale } = await import("./routers/campaignKits");
+    const db = fakeDb(fullKit);
+    const out = await markDownstreamStale(db as any, KIT, "selectedOfferId", 7, 7);
+    expect(out).toEqual([]);
+    expect(db.ops).toHaveLength(0);
+  });
+
+  it("a RE-CROWN marks every populated downstream node and clears the changed node", async () => {
+    const { markDownstreamStale } = await import("./routers/campaignKits");
+    const db = fakeDb(fullKit);
+    const out = await markDownstreamStale(db as any, KIT, "selectedMechanismId", 2, 22);
+    expect(out.sort()).toEqual(
+      ["adCopy", "adCreatives", "emailSequence", "freeOptIn", "headlines", "landingPage", "whatsappSequence"].sort(),
+    );
+    expect(marked(db.ops)).toEqual(out.sort());
+    expect(db.ops.filter(o => o.op === "upsert").every(o => o.status === "stale" && o.campaignKitId === KIT)).toBe(true);
+    expect(db.ops.filter(o => o.op === "delete")).toHaveLength(1);
+  });
+
+  it("an UNPOPULATED downstream node is not marked — staleness describes real assets only", async () => {
+    const { markDownstreamStale } = await import("./routers/campaignKits");
+    const db = fakeDb({ ...fullKit, selectedEmailSequenceId: null, selectedWhatsAppSequenceId: null, selectedAdCreativeBatchId: null });
+    const out = await markDownstreamStale(db as any, KIT, "selectedLandingPageId", 6, 66);
+    expect(out).toEqual([]);
+  });
+
+  it("an unknown field marks nothing rather than throwing into the cascade", async () => {
+    const { markDownstreamStale } = await import("./routers/campaignKits");
+    const db = fakeDb(fullKit);
+    expect(await markDownstreamStale(db as any, KIT, "selectedLandingPageAngle", "a", "b")).toEqual([]);
+    expect(await markDownstreamStale(db as any, KIT, "campaignType", "x", "y")).toEqual([]);
+  });
+
+  it("a database failure is swallowed — stale marking never breaks the write that triggered it", async () => {
+    const { markDownstreamStale } = await import("./routers/campaignKits");
+    const boom = { select: () => { throw new Error("db gone"); } };
+    await expect(markDownstreamStale(boom as any, KIT, "selectedOfferId", 1, 2)).resolves.toEqual([]);
+  });
+
+  it("PARITY — the stale write exists in exactly ONE place, so the two paths cannot drift again", async () => {
+    // This is the guard, not the repair. The bug was two representations of one fact; a second
+    // inlined copy of this write would recreate it, silently, and no behaviour test would notice
+    // because both copies would be correct on the day they were written.
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./routers/campaignKits.ts", import.meta.url), "utf8");
+    // The POINTER-MOVE path now has exactly one implementation, reached by both of its callers:
+    // the definition, the UI re-crown, and autoSelectBest.
+    expect(src.match(/markDownstreamStale\(/g) ?? []).toHaveLength(3);
+    // Four stale writes remain in the file: TWO are the helper (the insert value and its ON
+    // DUPLICATE update). The other TWO are `markTweakStale`, a THIRD copy of this logic found
+    // while extracting, whose own comment reads "Same logic as re-crown". It has a different
+    // trigger (an explicit client call after a tweak, no old/new comparison) and it does NOT
+    // clear stale on the tweaked node, so folding it in would change a shipped client mutation's
+    // behaviour. It is REPORTED AND TRACKED, not fixed here. This number is the guard: a fifth
+    // copy fails this test.
+    expect(src.match(/status:\s*"stale"/g) ?? []).toHaveLength(4);
+  });
+});

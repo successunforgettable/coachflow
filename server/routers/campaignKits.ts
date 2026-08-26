@@ -62,6 +62,66 @@ const STALE_NODE_TO_FIELD: Record<string, string> = Object.fromEntries(
 );
 
 /**
+ * Mark every populated DOWNSTREAM node stale after a kit's selection pointer moved, and clear
+ * stale on the node that just changed.
+ *
+ * ⚠️ THIS EXISTS BECAUSE THE POINTER MOVES THROUGH TWO PATHS AND ONLY ONE OF THEM USED TO SAY SO.
+ * `updateSelection` (the UI re-crown) marked staleness; `autoSelectBest` — which every generator
+ * and every cascade step calls — wrote the same pointer and marked nothing. Two representations of
+ * "the selection changed", one of them silent, which is the drift shape this subsystem has now
+ * produced five times. It is EXTRACTED rather than copied for exactly that reason: a second copy
+ * would be the sixth.
+ *
+ * Measured on production before the fix: 3 stale rows in the entire table, every one of them from
+ * the UI path, while 50 of 68 kits carried an upstream/downstream pair the generator path would
+ * have marked.
+ *
+ * 🔑 A FRESH CASCADE MARKS NOTHING, and that is what makes this safe to ship rather than a change
+ * of behaviour for every run. Each cascade step writes NULL -> id, so `oldValue == null` short-
+ * circuits before any write. Only a genuine RE-CROWN over an existing kit marks anything.
+ *
+ * Never throws: a failure here must not break the pointer write that triggered it.
+ *
+ * @returns the node types marked stale (empty when this was not a re-crown)
+ */
+export async function markDownstreamStale(
+  dbc: any,
+  kitId: number,
+  changedField: string,
+  oldValue: unknown,
+  newValue: unknown,
+): Promise<string[]> {
+  try {
+    const changedNode = STALE_FIELD_TO_NODE[changedField];
+    // Not a tracked selection field, or not a re-crown: nothing downstream has gone stale.
+    if (!changedNode || oldValue == null || oldValue === newValue) return [];
+
+    const [freshKit] = await dbc.select().from(campaignKits).where(eq(campaignKits.id, kitId)).limit(1);
+    if (!freshKit) return [];
+
+    // Only nodes that actually HAVE an asset can be stale. An unpopulated node is not out of date;
+    // it does not exist.
+    const staleNodes: string[] = [];
+    for (const dsNode of STALE_NODE_DOWNSTREAM[changedNode] ?? []) {
+      const dsField = STALE_NODE_TO_FIELD[dsNode];
+      if (dsField && (freshKit as Record<string, unknown>)[dsField] != null) staleNodes.push(dsNode);
+    }
+    for (const nodeType of staleNodes) {
+      await dbc.insert(nodeStatuses).values({ campaignKitId: kitId, nodeType, status: "stale" })
+        .onDuplicateKeyUpdate({ set: { status: "stale", updatedAt: new Date() } });
+    }
+    // The changed node was just crowned fresh — clear any stale mark it carried.
+    await dbc.delete(nodeStatuses).where(
+      and(eq(nodeStatuses.campaignKitId, kitId), eq(nodeStatuses.nodeType, changedNode)),
+    );
+    return staleNodes;
+  } catch (staleErr) {
+    console.warn("[markDownstreamStale] stale propagation failed:", staleErr instanceof Error ? staleErr.message : staleErr);
+    return [];
+  }
+}
+
+/**
  * Find-or-create the cascade's kit. THE ONLY creation path — autoSelectBest delegates here.
  *
  * 🔴 F2. campaignType was threaded through every generator in memory but never persisted,
@@ -177,11 +237,21 @@ export async function autoSelectBest(
   const kitId = await ensureCampaignKit(userId, icpId, campaignType);
   if (kitId == null) return;
 
+  // The pointer's value BEFORE the write — the only thing that distinguishes a first crown from a
+  // re-crown, and it is unreadable after the update.
+  const [priorKit] = await db.select().from(campaignKits).where(eq(campaignKits.id, kitId)).limit(1);
+  const priorValue = priorKit ? (priorKit as Record<string, unknown>)[field] : null;
+
   // Update the specific selection field
   await db
     .update(campaignKits)
     .set({ [field]: itemId, updatedAt: new Date() } as any)
     .where(eq(campaignKits.id, kitId));
+
+  // Downstream nodes built against the OLD selection are now out of date, and until this call the
+  // generator path said nothing. A first crown (priorValue == null) marks nothing, so every fresh
+  // cascade behaves exactly as it did.
+  await markDownstreamStale(db, kitId, field, priorValue, itemId);
 
   // Check completeness
   const [updated] = await db
@@ -425,48 +495,18 @@ export const campaignKitsRouter = router({
       // another), every DOWNSTREAM step that currently has a non-null
       // selected*Id gets marked stale in nodeStatuses. This fires for BOTH
       // the Trail and the wizard — one truth, both surfaces.
-      const FIELD_TO_NODE = STALE_FIELD_TO_NODE;
-      const NODE_DOWNSTREAM = STALE_NODE_DOWNSTREAM;
-      const NODE_TO_FIELD = STALE_NODE_TO_FIELD;
-      try {
-        // Identify which node was changed
+      // Stale propagation — the SAME helper the generator path calls. Behaviour is unchanged for
+      // this caller; what changed is that it is no longer the only caller that does it.
+      {
         const changedField = Object.keys(fields).find(k =>
           k.startsWith("selected") && (fields as any)[k] != null && k !== "selectedLandingPageAngle" && k !== "campaignType",
         );
         if (changedField) {
-          const changedNode = FIELD_TO_NODE[changedField];
-          const oldValue = (kit as Record<string, unknown>)[changedField];
-          const newValue = (fields as any)[changedField];
-          // Only on a RE-CROWN (old was non-null, new differs)
-          if (changedNode && oldValue != null && oldValue !== newValue) {
-            const downstream = NODE_DOWNSTREAM[changedNode] ?? [];
-            // Read the UPDATED kit (already fetched above as `updated`)
-            const [freshKit] = await db.select().from(campaignKits).where(eq(campaignKits.id, input.kitId)).limit(1);
-            const staleNodes: string[] = [];
-            for (const dsNode of downstream) {
-              const dsField = NODE_TO_FIELD[dsNode];
-              if (dsField && (freshKit as Record<string, unknown>)[dsField] != null) {
-                staleNodes.push(dsNode);
-              }
-            }
-            // Upsert stale rows — ON DUPLICATE KEY UPDATE status='stale'
-            for (const nodeType of staleNodes) {
-              await db.insert(nodeStatuses).values({
-                campaignKitId: input.kitId,
-                nodeType,
-                status: "stale",
-              }).onDuplicateKeyUpdate({ set: { status: "stale", updatedAt: new Date() } });
-            }
-            // Clear stale on the CHANGED node itself (it was just crowned fresh)
-            if (changedNode) {
-              await db.delete(nodeStatuses).where(
-                and(eq(nodeStatuses.campaignKitId, input.kitId), eq(nodeStatuses.nodeType, changedNode)),
-              );
-            }
-          }
+          await markDownstreamStale(
+            db, input.kitId, changedField,
+            (kit as Record<string, unknown>)[changedField], (fields as any)[changedField],
+          );
         }
-      } catch (staleErr) {
-        console.warn("[updateSelection] stale propagation failed:", staleErr instanceof Error ? staleErr.message : staleErr);
       }
 
       // Fetch updated row and check completeness
