@@ -2418,3 +2418,214 @@ step in**, so the generator does the only sensible thing with a cold frame: it i
 
 **This is a finding about the design, not a failure of the run**, and it lands before any plumbing is
 built around the wrong assumption — which is the whole reason the content proof came first.
+
+---
+---
+
+# 📊 THE EVIDENCE BEHIND COMMIT `88c97ec` — arms A · B · C · C2, per row. 2026-08-27
+
+**What this section is.** `88c97ec` records a finding — *a prohibition stated in an earlier, broader
+layer does not survive a later, narrower instruction that names the same field and attaches a word
+count* — and a result: invented attendance limits **5 of 5 → 1 of 5**. **These are the numbers behind
+both.** They existed only in a session scratchpad, which does not survive.
+
+🔑 **Why that mattered enough to bank.** This sprint spent a day undoing the phantom
+*"research-backed quality bar"* — a claim written into a checkpoint with nothing behind it, quoted
+for months, and unfalsifiable by the time anyone went looking (CLAUDE.md §15a records the same shape
+in three replication specs). **A commit message reading "5 of 5 to 1 of 5" with the per-row counts
+gone is that artefact in better clothes.** Someone reads it in six months and either trusts it
+blindly or discards sound work because they cannot check it. Everything below is here so the finding
+can be re-derived or overturned.
+
+**Held constant across all four arms:** service **233** · ICP **212** · user **1613** · kit **152** ·
+one HVCO title · `pageType: "webinar_registration"` · angle `original` · the same cascade context
+(2,259 chars, `selectionsResolved=5/5`) · N=5 · same build. **The only string that differs between
+arms is the campaign framing spliced into `enrichedAvatarDescription`.** Arms A and B were run
+2026-08-27 (`lpFramingForCampaign("lead_magnet")` and `("webinar")`); C and C2 are the two wordings
+of `LP_FRAMING_FREE_NEXT_STEP`. **Zero production writes on every run** — `generateLandingPageAngle`
+and `generateAllAngles` contain no database access, so persistence never enters the path.
+
+⚠️ **n=5 per arm. Every number below is a screening signal, not a significance test**, and the read
+of the pages is the instrument the counters serve.
+
+## The four framings, by their urgency line
+
+| arm | framing | urgency line |
+|---|---|---|
+| **A** | `lead_magnet` | *"Urgency mechanism: None. The asset is genuinely free and stays available…"* |
+| **B** | `webinar` | *"Urgency mechanism: Date and time of the webinar. **Limited seats available.**"* |
+| **C** | free-next-step, **first wording** | *"the date and time of the session, **and nothing else** — any limit on attendance comes only from what the coach supplied"* |
+| **C2** | free-next-step, **shipped wording** | *"the session is live and happens once… **write it from that fact, at whatever length the section calls for.** Any limit on numbers, seats or availability comes only from what the coach has supplied"* |
+
+## Per-row counts — one instrument across all four arms
+
+Arms A and B were **re-counted from their stored JSON with these same regexes**, because the 7–15 and
+0-in-7-of-10 figures in the 08-25 checkpoint were counted by a different session with different
+phrase lists. These counters are broader; direction is what transfers between the two records, not
+the absolute number.
+
+| | A | B | C | C2 |
+|---|---|---|---|---|
+| body chars, per row | 8192 · 8813 · 6855 · 8694 · 8872 | 10591 · 11173 · 10364 · 9724 · 9569 | 10525 · 9265 · 8927 · 9602 · 10301 | 9567 · 8105 · 7742 · 10299 · 7278 |
+| **mean chars** | 8,285 | 10,284 | **9,724** | **8,598** |
+| restating, per row (raw) | 23 · 12 · 12 · 13 · 22 | 12 · 17 · 19 · 16 · 15 | 17 · 12 · 8 · 5 · 5 | 15 · 9 · 14 · 9 · 5 |
+| **restating, total** | 82 | 79 | **47** | **52** |
+| gap-carrying, per row | 5 · 2 · 0 · 8 · 3 | 8 · 8 · 1 · 7 · 7 | 11 · 10 · 12 · 12 · 11 | 10 · 6 · 6 · 19 · 5 |
+| done-as-done, per row | 1 · 0 · 0 · 0 · 0 | 1 · 0 · 0 · 0 · 0 | 0 · 1 · 1 · 0 · 1 | 1 · 1 · 1 · 3 · 2 |
+| — rows at zero | 4/5 | 4/5 | 2/5 | **0/5** |
+| **capacity claims, rows (read)** | **0/5** | **5/5** | **5/5** | **1/5** |
+
+## Restating, normalised — and the arithmetic behind the C → C2 rise
+
+Raw counts flatter arm A: its bodies are the shortest in the set. The rate is the fair figure.
+
+| arm | per 1,000 chars, per row | mean | pooled | worst row |
+|---|---|---|---|---|
+| A | 2.81 · 1.36 · 1.75 · 1.50 · 2.48 | **1.98** | 1.98 | 2.81 |
+| B | 1.13 · 1.52 · 1.83 · 1.65 · 1.57 | **1.54** | 1.54 | 1.83 |
+| C | 1.62 · 1.30 · 0.90 · 0.52 · 0.49 | **0.97** | 0.97 | 1.62 |
+| C2 | 1.57 · 1.11 · 1.81 · 0.87 · 0.69 | **1.21** | 1.21 | 1.81 |
+
+**Mean-of-rates and pooled agree to two places on all four arms**, so the choice of estimator is not
+carrying the result.
+
+📌 **The C → C2 rise of 25% is TWO effects of near-equal size, not one.** Raw restating rose
+**47 → 52 (+10.6%)** and mean body length fell **9,724 → 8,598 chars (−11.6%)**. ⚠️ An earlier
+in-session characterisation of this as *"raw counts barely moved"* was **wrong and is corrected
+here**: the count moved about as much as the denominator did. C2 remains the second-lowest of the
+four arms and its worst row (1.81) is level with arm B's worst.
+
+## The three questions, per arm
+
+| | A | B | C | C2 |
+|---|---|---|---|---|
+| **Q1** reads like a webinar | 5/5 | 5/5 | 5/5 | 5/5 |
+| **Q2** assumes a warm reader | **0/5** | **0/5** | 5/5 | 5/5 |
+| **Q3** carries the magnet's unresolved gap | **0/5** | **0/5** | 5/5 | 5/5 |
+| — of which the gap is the page's OPENING move | — | — | 3/5 | **4/5** |
+
+Q1 held in **20 of 20 rows across four framings**: the `pageType` block wins that slot regardless of
+framing, which retires the earlier prediction that campaign framing would dominate it.
+
+Arm B's nearest miss on Q3 is a single agenda line, *"The Three-Conversation Entry Plan for Directors
+Without Sector Contacts"*; items 1–3 of that same agenda are the magnet restated.
+
+## 🔴 THE URGENCY SECTIONS — the contrast IS the evidence, so both sides are quoted
+
+### The inventions — arm C, under a framing that forbids them, 5 of 5 rows
+
+> **C1** *"**Seats are capped** so that there is enough space in the session for the live audit demonstration to be meaningful… When the seats are gone, the registration page closes… that changes **as soon as the cap is reached**, and I will not reopen it for this session."*
+>
+> **C2** *"the number of CVs I can review on screen in real time is finite, and **once those slots are taken, they are gone for this session**… the live audit slots, and **the three bonuses reserved for people in the room**, are not available on replay."*
+>
+> **C3** *"**I cap attendance** so that the Q&A at the end is a real conversation about your specific situation, not a queue. **Once the room is full, the registration link closes.**"*
+>
+> **C4** *"the session has a **hard limit on registered attendees**. Once that number is reached, registration closes, and **the next opportunity to attend live is the following cohort**."*
+>
+> **C5** *"**If the session fills** before [INSERT_EVENT_DATE], I will close registration and **open a waitlist for the next date**."*
+
+Arm B, for comparison — the framing that licensed it: *"I am keeping attendance **deliberately
+limited**… it is a working session with a **capped number of seats**. When those seats are gone,
+registration closes."*
+
+**The coach supplied none of this.** Verified read-only before the runs: `services` (233),
+`idealCustomerProfiles` (212), `sourceOfTruth` and `campaignKits` (152) scanned for capacity
+language — two hits, both unrelated (*"limited experience"*, one in `decisionMaking`);
+`campaignFacts` is **NULL**; positive control fired.
+
+### The true substitutes — arm A (before the fix existed) and arm C2 (after it)
+
+**Arm A is the control, and it predicted the mechanism before the mechanism was named.** Same field,
+same 200–300-word demand, same page type, urgency mechanism *"None"* — and **zero caps in five rows**:
+
+> **A1** *"I am running it live — **not as a pre-recorded presentation dressed up as a live event** — because the questions that surface in the room are the ones that matter most."*
+>
+> **A2** *"This free live training **runs once**… **There is no evergreen version of this session** — what I walk through live is built around the questions that come in from the room."*
+>
+> **A4** *"I am running it live… the most useful part of an hour like this is not the slides. It is the moment you hear your specific situation named… **That only happens in a live room.**"*
+
+**Arm C2, the shipped wording**, spends the field in the same place — rows 2, 3, 4 and 5 carry no
+capacity claim of any kind:
+
+> **C2-2** *"It runs once… **the work we do inside it cannot be replicated in a recording.**"*
+>
+> **C2-4** *"There is no version of it you can catch later at the same quality… **A recording of this session is a record of other people's questions. The live session is where your questions get answered.**"*
+>
+> **C2-5** *"there is no evergreen version of this, no automated replay drip, no 'catch it when you can.' … **When it ends, it ends.**"*
+
+**The one survivor, C2 row 1** — one clause at the end of a ~240-word section, not a section built
+around a cap:
+
+> *"Register now, add it to your calendar, and show up with your current CV and your target sector in mind. That is the only preparation you need. **Seats are limited to keep the session genuinely interactive.**"*
+
+🔑 **The field is the same length in every arm.** What changed is whether it had something true to
+spend the words on. That is why the fix was a substitute and not a firmer prohibition, and why
+`landingPageGenerator.ts` item 13 was left untouched.
+
+## 🔴 THE FIVE WORDINGS THE PHRASE LIST MISSED — written out, because that list is what a gate gets built from
+
+The counter as first written held `capped` · `cap on` · `limited seats` · `limited spots` ·
+`limited places` · `limited attendance` · `attendance is limited` · `only N seats` · `seats are
+gone` · `registration closes` · `room for only` · `small group of N` · `first N to register` ·
+`keeping it small` · `deliberately limited` · `limited number` · `limited to N`.
+
+**The model wrote these instead, and every one slipped through:**
+
+| # | what the model wrote | where |
+|---|---|---|
+| 1 | **"slots are taken"** | arm C row 2 |
+| 2 | **"I cap attendance"** | arm C row 3 |
+| 3 | **"the room is full"** | arm C row 3 |
+| 4 | **"if the session fills"** | arm C row 5 |
+| 5 | **"seats are limited"** | arm C2 row 1 |
+
+Adding those five, the widened list reproduces the read exactly on all four arms — **A 0/5 · B 5/5 ·
+C 5/5 · C2 1/5** — with positive controls confirming the narrow list misses what the wide list
+catches. **The narrow list scored arm C at 2 of 5 and arm C2 at 0 of 5.**
+
+📌 **Its catch on arm B was luck of wording, not coverage** — B happened to phrase four of its five
+caps with `registration closes`, which was on the list. A list that scores 5/5 on one arm and 2/5 on
+the next, for the same defect, is not measuring the defect.
+
+### The conclusion, stated plainly so it is not softened later
+
+**AN UNFLAGGED SPAN IS NO MORE EVIDENCE THAN A FLAGGED ONE.** This repo already records that a
+flagged span is not evidence of which rule fired; this is the same lesson from the other end, and it
+is the more dangerous half, because a zero reads like a pass.
+
+🔴 **A publish-time gate built on phrase lists would have passed three of arm C's five pages and
+reported this run as clean.** This is the **second class** of the validator blind spot already banked
+in this document — the first being a quantifier plus a group noun matching neither fixed list. **It
+constrains step 5 further than the first instance did:** the narrative-format publish gate that
+step 1's precision finding called the viable first step cannot be built on phrase matching for this
+class, and any claim that it covers invented operational facts has to be checked against the actual
+wordings above before it is believed.
+
+## 📌 Two things this run did NOT establish — recorded so they are not read into it
+
+1. **The gap's CONTENT came from the offer, not from the framing.** `describeHvco` carries the lead
+   magnet by title only (a documented decision, `cascadeContext.ts:36-45`), so the generator never
+   saw the magnet's own bridge line — *"repositioning your CV only works when you're aiming at the
+   right sector"*. What it had was the offer's value proposition, in the cascade context verbatim:
+   *"a specific, researched, viable industry, a named role type, and a credible entry plan"*, which
+   arm C rows 3–5 and arm C2 rows 2, 4 and 5 reuse almost word for word. **The framing supplied the
+   SHAPE of the gap; the offer supplied its CONTENT.** This result therefore **does not generalise to
+   a service whose offer does not already name the destination**, and that is the first thing to test
+   when the bridge build reaches a second service.
+2. **The free next step drifts toward selling the thing it exists to precede.** Two C2 rows give
+   agenda item 4 to a walkthrough of the paid 12-week programme — *"The Career Reinvention Blueprint:
+   what a fully supported 12-week transition looks like from the inside"*, with weekly deliverables —
+   inside a free session's agenda. Arm C row 5 has the same shape. The *"12-week"* itself is grounded
+   (`services.description`); what is not is a quarter of a free session's agenda being a programme
+   pitch. **This is the dead-end failure mode wearing different clothes** — the free asset pointing at
+   the sale instead of at the next free step — and it belongs to the bridge work, not to the framing.
+
+## Artefacts and gates
+
+Driver: the arm A/B driver (`lp-freestep-proof.mts`) reused byte-for-byte for C and C2 with one line
+changed — the framing string. Counters, criteria and raw JSON lived in the session scratchpad and are
+**not** in the repo; this section is the durable record of what they produced. Criteria for arm C
+were pre-registered before any output existed.
+
+Gates at `88c97ec`: TS baseline **34** · `pipeline-fixes` **401** + `cascadeContext.truncate` **18** =
+**419 green** · zero production writes across every run in this phase.
