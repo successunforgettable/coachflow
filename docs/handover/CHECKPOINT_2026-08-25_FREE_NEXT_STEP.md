@@ -287,6 +287,31 @@ stays at step 3 and is republished after. **It must not cite the coach-triggered
 it.** That path is the reason the guardrail change is small; it is not evidence that the sequencing
 works.
 
+### (c) THE COACH PATH HAS ITS OWN ORDERING PROBLEM — smaller, human, and silent
+
+Reading the pointer's target fresh at magnet-publish time is the right design — one field, one
+meaning, the pointer records WHICH page and never whether it is live. **But it puts a sequence in a
+coach's hands: the free-event page must be PUBLISHED before the magnet is republished.**
+
+Get it the wrong way round and nothing fails. The pointer is set, the target has no `publicUrl`
+yet, the bridge resolves to nothing, and the magnet republishes **with the honest text card** —
+which is exactly what it renders when no page is linked at all. **The magnet looks finished and
+quietly links nowhere**, and the two states are indistinguishable on the page.
+
+This is not the cascade's ordering problem — it is milder, and it is recoverable by republishing
+again. It is worse in one respect: **a human can get it wrong at any time, and nothing tells them.**
+
+**The mitigation shipped with the build rather than being left to the UI:**
+`hvco.republishDeliverable` **reports which of the three bridge states it rendered** —
+`linked` · `target-unpublished` · `no-pointer` — instead of returning success three ways. Only one
+of the three is actionable, and it is the one that would otherwise be invisible:
+
+> *"Republished, but your free event page is not published yet — the magnet shows the next step as
+> text with no button until it is."*
+
+📌 `target-unpublished` is the state to surface in any UI built over this, and the reason it earns
+that is precisely that it is indistinguishable from success on the artefact itself.
+
 📌 On the bridge itself: `nextStepUrl` already exists as a render-time seam in `leadMagnetRenderer.ts`
 and **nothing populates it**. The deliverable HTML is baked into Cloudflare KV at publish, so
 render-time resolution is not available — but `publishLeadMagnet({hvcoId})` uses **deterministic
