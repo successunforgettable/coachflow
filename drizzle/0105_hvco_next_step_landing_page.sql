@@ -25,6 +25,48 @@
 -- Additive and nullable with NO BACKFILL, so every existing row stays valid and resolves exactly as
 -- it does today — outcome "no-pointer", the tier-3 text card, which is the behaviour of 100% of
 -- production rows right now.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+-- 🔴 THIS MIGRATION IS TWO STATEMENTS AND MySQL DDL IS NOT TRANSACTIONAL. A PARTIAL APPLICATION IS
+--    POSSIBLE, AND IT WAS OBSERVED — NOT PREDICTED.
+--
+-- On the 2026-08-27 local rehearsal the second statement failed (the table rebuild revalidates
+-- hvcoTitles' EXISTING userId FK, and the rehearsal copy had no `users` table). The first statement
+-- had already committed. The result was the half-applied state: COLUMN CREATED, FOREIGN KEY MISSING
+-- — and re-running the file then fails on `Duplicate column name 'nextStepLandingPageId'`, so the
+-- obvious recovery is blocked too.
+--
+-- AFTER APPLYING, VERIFY BOTH LANDED. Neither alone is success:
+--
+--   SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_TYPE
+--     FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'hvcoTitles'
+--      AND COLUMN_NAME = 'nextStepLandingPageId';
+--   -- expect exactly one row: int, IS_NULLABLE = YES
+--
+--   SELECT rc.CONSTRAINT_NAME, rc.DELETE_RULE, kcu.REFERENCED_TABLE_NAME
+--     FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+--     JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+--       ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+--      AND kcu.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
+--    WHERE rc.CONSTRAINT_SCHEMA = DATABASE() AND kcu.TABLE_NAME = 'hvcoTitles'
+--      AND kcu.COLUMN_NAME = 'nextStepLandingPageId';
+--   -- expect exactly one row: DELETE_RULE = SET NULL, REFERENCED_TABLE_NAME = landingPages
+--
+-- IF ONLY THE COLUMN LANDED: do NOT re-run this file. Run the second ALTER on its own (the
+-- ADD CONSTRAINT block below), having first fixed whatever made it fail. DO NOT PUSH THE CODE in
+-- that state: the column is enough to stop ERROR 1054, so the application will run and look healthy
+-- while a deleted landing page leaves a DANGLING pointer instead of being nulled — the exact silent
+-- wrong-bridge failure this design exists to refuse.
+--
+-- IF ONLY THE CONSTRAINT LANDED: impossible — it references the column.
+--
+-- PRE-FLIGHT, because the rebuild revalidates hvcoTitles' three EXISTING foreign keys
+-- (userId → users, serviceId → services, campaignId → campaigns) across all rows. A single orphan
+-- aborts the ALTER partway. Measured read-only on production 2026-08-28: campaignId 0 non-null /
+-- 0 orphans · serviceId 6,689 non-null / 0 orphans · userId 6,689 non-null / 0 orphans. Re-run that
+-- count on the day rather than trusting this line.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 ALTER TABLE `hvcoTitles`
   ADD COLUMN `nextStepLandingPageId` int NULL;
