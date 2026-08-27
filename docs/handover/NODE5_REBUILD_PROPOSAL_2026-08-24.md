@@ -2232,3 +2232,189 @@ tightening is the run that has to answer it.**
    was the earlier, vaguer one. 🔗 The overlap audit must count how many times a shape is stated, not
    only where each statement sits. **An instruction stated once is at risk from any instruction
    stated more often, wherever it sits in the prompt.**
+
+---
+
+# ✅ DECIDED — the free next step is GENERATED, not captured. 2026-08-27
+
+Tier 1 is native generation: a lead-magnet campaign also produces a free-event landing page on the
+same service, using the existing landing-page machinery and its existing free page types, and the
+magnet's `nextStepUrl` resolves to that page's `publicUrl`. Tier 2 (a coach's own existing
+destination) survives only as an escape hatch and is **not part of this build**. Tier 3 stays the
+floor.
+
+## 🔑 THE ARGUMENT THAT SETTLED IT — generation does not escape operator capture. It CHANGES THE QUESTION.
+
+This was the strongest reason and it should be quoted rather than paraphrased.
+
+A generated webinar/event page **cannot publish without operator input**: `operatorFields.ts:456-457`
+gives `webinar_registration` the tokens `[INSERT_EVENT_DATE] [INSERT_EVENT_TIME]
+[INSERT_EVENT_TIMEZONE]`, and `runLandingPagePublish` carries a hard gate that throws on any
+surviving `[INSERT_*]` (`landingPagePublisher.ts:182-187`). So Tier 1 is generation **plus** a
+capture moment, not generation instead of one.
+
+**That is not a defeat of the decision — it is the case for it.** Capture-at-publish and generation
+both ask the coach a question. The difference is which question:
+
+| path | the question | can the coach answer it? |
+|---|---|---|
+| Tier 2 — capture | *"Paste the URL of your free next step"* | 🔴 **No.** 1 of 23 users has even a `bookingUrl`; `videoUrl` and `checkoutUrl` are zero. The URL does not exist because the thing does not exist |
+| Tier 1 — generation | *"What is your free event — webinar, training, session — and when is it?"* | ✅ **Yes.** Answerable **before they have built anything.** ZAP then builds the thing the answer describes |
+
+**One of those questions a coach cannot answer. The other they can answer before they have built
+anything.** Capture asks for a destination the coach does not have and returns tier 3 with extra
+steps; generation asks for facts they already hold and produces the destination.
+
+📌 The answer has a home already: `campaignKits.campaignFacts`, a JSON column typed
+`{ eventSchedule?, price? }`, captured upfront and applied deterministically to a freshly-generated
+LP via `factsToTokenAnswers` (`orchestration.ts:303, 626-630`). **Nothing new is needed to hold it.**
+And the path is proven, not theoretical: **15 webinar/event pages are published on production
+today** (11 webinar, 4 event, across 12 services).
+
+## Re-measured 2026-08-27, and the case holds
+
+`users` 23 · `bookingUrl` **1** · `videoUrl` **0** · `checkoutUrl` **0** — unchanged from the prior
+trace. `landingPages` 92 rows / 38 published. **Services with a magnet body: 2. Services with a
+published webinar/event page: 12. Overlap: 0.** Still zero on a re-measure.
+
+📌 **`landingPages` is ALREADY one-to-many per service** — 11 services carry more than one page and 5
+carry more than one published page. The single-destination assumption is **not** in that table. It
+lives entirely in `campaignKits.selectedLandingPageId`, one nullable `int`, read in **33 places
+across 14 files** including Push to GHL, the Meta publish script and five V2 client components.
+
+## Build order — the trigger goes LAST, and the content proof comes before the plumbing
+
+Four of the five pieces live outside `server/_core/orchestration.ts`; only the automatic trigger
+needs that guarded file, so it is built last, once everything it fires is proven.
+
+**And the content question outranks all of the plumbing:** does a generated webinar page RESOLVE the
+root-cause loop the magnet opens, or merely restate it? Wiring the cascade trigger before that is
+known would be plumbing to a destination that may not hold. **Prove the content first.**
+
+## 📌 BANKED, not chased — `markTweakStale` is a third copy, and it is contained
+
+Found by the parity test on its first run, before the stale fix was committed (`85bcc8b`).
+`campaignKits.ts:577-591`, comment *"Same logic as re-crown but triggered explicitly by the client
+after a successful tweak."*
+
+**Its two differences from the shared helper look DELIBERATE rather than accidental**, and that is
+why it was not folded in:
+
+1. **No old/new comparison — it marks unconditionally.** Correct for its trigger: the tweak has
+   already happened, so there is no "was this a re-crown" question to ask.
+2. **It does not clear stale on the tweaked node.** This may also be intended; nothing read so far
+   settles it.
+
+Folding it in would change a **shipped client mutation** on an assumption about (2). The parity
+guard pins the class at **three copies** — a fourth implementation fails the test — so it is
+contained rather than open. **Whether copy three's differences are right is its own small question,
+for whenever we are next in that file.**
+
+## ✅ PAGE TYPE DECIDED — `webinar_registration`, and the reason is structural
+
+`PAGETYPE_REQUIRED_TOKENS` (`operatorFields.ts:455-460`):
+
+| page type | hard-hold tokens |
+|---|---|
+| **`webinar_registration`** | date · time · timezone — **no price token at all** |
+| `event_registration` | date · **venue** · **price** |
+
+**A page type that structurally CANNOT display a price beats one that can and must be told not to.**
+Choosing `event_registration` routes every free next step through the price question and depends on
+the FREE sentinel to say "this is free". Webinar never raises the question.
+
+**THE COST, STATED PLAINLY: three new questions in the intake, for campaigns that today ask none.**
+Verbatim from the registry: *"When's your event — what date?"* · *"What time does it start?"* ·
+*"Which timezone is that in?"* They are cheap and answerable **before the coach has built
+anything** — which is the same argument that chose generation over capture — but they are three,
+not zero. That is the price and it is real.
+
+`NA_SENTINEL.FREE` **does** clear `[INSERT_PRICE]` cleanly (proven by running it: prose substituted
+with "free", `price.amount = "__FREE__"` written structurally, zero leftover tokens), so
+`event_registration` remains viable — it is simply the worse default.
+
+📌 **BANKED — the FREE normalisation is anchored and misses a natural answer.**
+`operatorFields.ts:300` matches `^(free|no charge|no cost|complimentary|£0|$0|0)$`. So `free`,
+`no charge`, `£0`, `0` and `complimentary` all reach the sentinel — **`it's free` does not.** The
+question is worded *"a set amount, free, or by application?"*, to which *"it's free"* is a natural
+answer. It does not block publish (the token still clears) but `price.amount` becomes the literal
+string, `classifyPrice` never sees FREE, **the free template variant is not selected**, and the
+prose renders *"price it's free"*. One-line anchor change, its own small question.
+
+# 🔴 CONTENT PROOF — the free next step needs its OWN framing. Neither existing frame fits. 2026-08-27
+
+Two arms x 5 rows, `pageType: "webinar_registration"`, service 233, **zero writes** — the landing-page
+generation core (`generateLandingPageAngle` / `generateAllAngles`) has no DB access at all, so the
+proof needed no authorisation. Arms differ in ONE string: the campaign framing spliced into
+`enrichedAvatarDescription`. A = `lpFramingForCampaign("lead_magnet")` (what the code does today),
+B = `lpFramingForCampaign("webinar")` (what the build would need).
+
+## ❌ THE PREDICTION WAS WRONG, and it is worth recording why
+
+Predicted: the `lead_magnet` framing (*"Urgency mechanism: None… no deadline, no countdown"*, *"CTA
+language: Get the free guide / Download free"*) would override the page-type instruction, and arm A
+would read like a second lead magnet.
+
+**It did not. Arm A produced a genuine webinar page in 5 of 5 rows** — *"Join me live on
+[INSERT_EVENT_DATE]"*, CTA **"Save Your Seat"**, urgency built entirely on the live session. The
+`pageType` block won the slot, not the campaign framing. **The slot competition ran the opposite way
+to the guide-prompt case**, which is a caution against treating "the narrower, later instruction
+wins" as a rule rather than an observation.
+
+## The three questions, answered
+
+**1. Does arm A read like a second lead magnet? NO.** It reads like a webinar. Prediction retired.
+
+**2. Does arm B read like a webinar? YES**, marginally more strongly — it adds seat-cap scarcity arm
+A lacks. ⚠️ **And that scarcity is INVENTED**: *"I am keeping attendance deliberately limited… a
+capped number of seats. When those seats are gone, registration closes."* No coach supplied a seat
+cap. The `webinar` framing's *"Limited seats available"* licensed an operational claim about the
+coach's own event. Same fabrication family as the invented statistics — **banked**.
+
+**3. 🔴 DOES EITHER ASSUME A COLD READER? BOTH DO, DECISIVELY. This is the finding.**
+
+Measured across all 10 rows: phrases restating what the magnet already delivered (insider language,
+sector-membership, jargon, auto-rejection, CV repositioning) appear **7-15 times per row, in every
+row**. Phrases carrying the magnet's unresolved gap forward appear **0 times in 7 of 10 rows**.
+
+The agendas are the plainest evidence. Arm A's curriculum:
+
+> 1. *Why capable Directors get auto-rejected cross-sector*
+> 2. *The three linguistic signals that mark you as an outsider*
+> 3. *The Sector Translation Audit — line-by-line repositioning live*
+> 4. *The callback-generating repositioning sequence*
+
+**That is the magnet's table of contents.** The magnet is titled *"The 3 Reasons Senior Directors Get
+Auto-Rejected… and the Exact CV Repositioning Fix That Gets Callbacks Within 2 Weeks"*, and its item 1
+is the *'Insider Language' Scan*. Arm A's subheadline promises *"the exact **three reasons** Directors
+… get auto-rejected before a human being ever reads their name — and the CV repositioning method that
+starts getting callbacks **within two weeks**"* — the magnet's own promise, returned to a reader who
+has just finished working through it.
+
+Arm B is the same shape: *"the method that deconstructs why your CV is being read as a
+sector-membership document rather than a leadership evidence file"* — against the magnet's promise
+*"reads as transferable leadership evidence — not as a sector-membership badge"*.
+
+**What NEITHER arm picks up is the gap the magnet's own bridge names and leaves open:**
+
+> *"Repositioning your CV for a new sector only works when you're **aiming at the right sector**."*
+
+The reader finishes the magnet with the language fixed and **no destination**. Nothing in either page
+starts there. Arm B gets closest — one agenda item reads *"The Three-Conversation Entry Plan for
+Directors Without Sector Contacts"* — but items 1-3 are still the magnet restated.
+
+## 🔑 THE CONCLUSION — a new framing, not a reuse
+
+Both `lead_magnet` and `webinar` framings in `campaignFraming.ts` are written for **a stranger
+arriving from an ad**. `webinar` says *"Copy must give a compelling reason to attend live"* and says
+nothing about what the reader already knows. **Neither frame has a concept of a reader who is one
+step in**, so the generator does the only sensible thing with a cold frame: it introduces the problem.
+
+> **NEW ITEM PROPOSED:** a campaign-framing entry for the post-magnet free next step
+> **Purpose:** every existing entry in `LP_CAMPAIGN_FRAMING` addresses a cold reader. A page that
+> converts someone who has ALREADY read the magnet and already knows the root cause needs framing
+> that takes the diagnosis as understood and starts from the unresolved gap. No existing entry can
+> express that, and reusing one produces a page that restates the magnet — measured, 10 of 10 rows.
+
+**This is a finding about the design, not a failure of the run**, and it lands before any plumbing is
+built around the wrong assumption — which is the whole reason the content proof came first.

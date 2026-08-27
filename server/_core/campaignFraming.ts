@@ -157,6 +157,48 @@ Urgency mechanism: The real capacity of the room and the fixed event date. Both 
 CTA language: Reserve your seat / Register now / Save my spot`,
 };
 
+/**
+ * FREE NEXT STEP AFTER A LEAD MAGNET — a framing, deliberately NOT a campaign type.
+ *
+ * 🔑 Why it is a standalone constant and not an eighth key in `LP_CAMPAIGN_FRAMING`.
+ * `CampaignType` is the seven-value `campaignKits.campaignType` DB enum, and this map is typed
+ * `Record<CampaignType, string>` precisely so the two cannot drift. An eighth key is therefore a
+ * compile error, and `pipeline-fixes.test.ts` additionally pins the key set at seven and equal to
+ * `CAMPAIGN_TO_PAGE_TYPE`. Both are working as designed: this is NOT a campaign a coach picks at
+ * intake. It is the framing for a page GENERATED INSIDE a `lead_magnet` campaign as that magnet's
+ * free next step — one campaign, two pages. Widening the enum to express it would need a migration
+ * and would put a value in the intake chip list that nobody should ever choose.
+ *
+ * It is passed as an OVERRIDE at the generation call site rather than resolved from the kit's
+ * campaign type, which is the campaign-framing override the Node 5 bridge build already needs
+ * (`docs/handover/CHECKPOINT_2026-08-25_FREE_NEXT_STEP.md` §6 item 2). Nothing reads it yet.
+ *
+ * Wording supplied verbatim; the only change is the house four-line layout every entry above uses
+ * — the four labels (`CAMPAIGN TYPE:` / `Framing:` / `Urgency mechanism:` / `CTA language:`) were
+ * already in the supplied text, so the line breaks replace separators rather than adding anything.
+ *
+ * 🔴 THE URGENCY LINE IS LONGER THAN ITS SIBLINGS ABOVE ON PURPOSE. DO NOT TRIM IT TO MATCH THEM.
+ * Its first wording was *"the date and time of the session, and nothing else — any limit on
+ * attendance comes only from what the coach supplied."* Measured over five live rows, that produced
+ * an invented attendance cap in FIVE OF FIVE — a capped room, a following cohort, a waitlist for a
+ * next date, reserved live-audit slots. Not two instructions competing: a CONTRADICTION WITH A WORD
+ * COUNT ATTACHED. `landingPageGenerator.ts` numbered item 13 asks for 200-300 words in a field
+ * called Scarcity / Urgency; a date and a time are ten of them; the prohibition named a shape and
+ * left the other ~240 words with nothing true to spend on, so the model supplied a fact nobody gave
+ * it. The count wins because it is the only instruction that CAN be satisfied.
+ *
+ * The control is arm A of the same proof: the `lead_magnet` framing says *"Urgency mechanism:
+ * None"*, produced ZERO caps, and filled the identical field with *"I am running it once"* and
+ * *"there is no evergreen version"* — true of any live session, and enough to occupy the space.
+ * So the line now states the TRUE scarcity positively and grants the length explicitly. It is the
+ * sprint's own rule (CLAUDE.md §14): positive directive, never prohibition — a prohibition names
+ * the shape and leaves the space empty.
+ */
+export const LP_FRAMING_FREE_NEXT_STEP = `CAMPAIGN TYPE: Free Next Step After a Lead Magnet
+Framing: The reader has already worked through the free asset. They arrive knowing the problem, holding the diagnosis, and having already applied the first fix. Write to someone one step in. Name what they have done as done, and open on what is unresolved because they did it — the gap the asset leaves behind. The live session's job is to carry them past that gap. Where the asset ends, this page begins.
+Urgency mechanism: the session is live and happens once, at the stated date and time — being there means being there then, and that is the whole of the scarcity. Write it from that fact, at whatever length the section calls for. Any limit on numbers, seats or availability comes only from what the coach has supplied.
+CTA language: Save my seat / Join the session / Register for the session`;
+
 /** Framing for one campaign type, with the shared default for an unknown/absent value. */
 export function lpFramingForCampaign(campaignType?: string | null): string {
   const type = (campaignType ?? DEFAULT_CAMPAIGN_TYPE) as CampaignType;
