@@ -42,6 +42,17 @@ export type RunLandingPagePublishInput = {
   // The canonical registry union — importing it (not re-listing the styles) means adding a
   // template never drifts this signature out of sync (webinar_rajsekar_coaching, etc.).
   styleMode: LpStyleMode;
+  /**
+   * The coach's own event facts, DECLARED by the caller rather than derived here.
+   *
+   * They live on `campaignKits.campaignFacts`, and the LP row carries `serviceId` but no `icpId` —
+   * so deriving them would mean hopping serviceId → first ICP for that service → kit, and that
+   * middle hop is a `.limit(1)` on a loose join: right with one ICP, silently wrong with several.
+   * The same reasoning that put the magnet→page pointer on `hvcoTitles` instead of on the kit.
+   *
+   * Omitted by every existing caller, so the columns stay NULL and behaviour is unchanged.
+   */
+  eventFacts?: { date?: string | null; time?: string | null; timezone?: string | null } | null;
 };
 
 export type RunLandingPagePublishResult = {
@@ -220,9 +231,27 @@ export async function runLandingPagePublish(
   const publicUrl = `https://zapcampaigns.com/p/${slug}`;
 
   // 8. Persist publish state on the LP row.
+  //
+  // `renderedBuild` records WHICH BUILD baked this HTML (0106). The markup is frozen in KV from
+  // here until something republishes it, while the renderer keeps moving — without the stamp that
+  // gap is invisible, which is how a republish came to carry 10582b9's markdown rewrite alongside
+  // the one-line change it was actually testing. NULL when no build identifier is available, which
+  // is the honest value rather than a guess — see `_core/buildStamp.ts`.
+  //
+  // The event facts are recorded rather than only substituted into the markup, so anything that
+  // has to READ the date later — the deferred expiry decision above all — is not reduced to
+  // grepping HTML. Stored as the coach supplied them; normalising is the expiry decision's job.
+  const { currentBuildSha } = await import("./_core/buildStamp");
+  const es = input.eventFacts ?? {};
   await db
     .update(landingPages)
-    .set({ publicSlug: slug, publicUrl, publishedStyle: styleMode })
+    .set({
+      publicSlug: slug, publicUrl, publishedStyle: styleMode,
+      renderedBuild: currentBuildSha(),
+      ...(es.date ? { eventDate: String(es.date).slice(0, 64) } : {}),
+      ...(es.time ? { eventTime: String(es.time).slice(0, 64) } : {}),
+      ...(es.timezone ? { eventTimezone: String(es.timezone).slice(0, 64) } : {}),
+    })
     .where(eq(landingPages.id, lp.id));
 
   return { publicUrl, slug };

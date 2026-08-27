@@ -145,8 +145,9 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
       coachLogoUrl,
     });
     await writeKvPage(namespaceId, deliverableSlug, quizHtml);
+    const { currentBuildSha: quizBuildSha } = await import("./_core/buildStamp");
     await db.update(hvcoTitles)
-      .set({ magnetHtmlUrl: quizUrl, magnetPdfUrl: null })
+      .set({ magnetHtmlUrl: quizUrl, magnetPdfUrl: null, renderedBuild: quizBuildSha() })
       .where(eq(hvcoTitles.id, input.hvcoId));
     console.log(`[leadMagnetPublisher] published QUIZ hvco ${input.hvcoId}: ${quizUrl} (one page, no PDF) bridge=${bridge.outcome}`);
     return { optInUrl: quizUrl, deliverableUrl: quizUrl, pdfUrl: "", bridge: bridge.outcome, nextStepUrl: bridge.url };
@@ -189,8 +190,12 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
   const optInUrl = `${BASE}/p/${optInSlug}`;
 
   // 4. persist deliverable + PDF URLs on the row (magnetHtmlUrl = the content).
+  const { currentBuildSha } = await import("./_core/buildStamp");
   await db.update(hvcoTitles)
-    .set({ magnetHtmlUrl: deliverableUrl, magnetPdfUrl: pdfUrl || null })
+    // `renderedBuild` records which build baked this HTML (0106). The magnet's pages are frozen in
+    // KV from here; without the stamp a later republish silently carries every renderer change
+    // made in between. NULL when no build identifier is available — honest, not a guess.
+    .set({ magnetHtmlUrl: deliverableUrl, magnetPdfUrl: pdfUrl || null, renderedBuild: currentBuildSha() })
     .where(eq(hvcoTitles.id, input.hvcoId));
 
   console.log(`[leadMagnetPublisher] published hvco ${input.hvcoId}: optin=${optInUrl} deliverable=${deliverableUrl} pdf=${pdfUrl ? "yes" : "none"}`);

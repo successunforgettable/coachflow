@@ -593,6 +593,18 @@ export const landingPages = mysqlTable("landingPages", {
   // D4: Cloudflare Workers public URL
   publicSlug: varchar("publicSlug", { length: 255 }).unique(),
   publicUrl: varchar("publicUrl", { length: 500 }),
+  // WHICH BUILD RENDERED THE PUBLISHED HTML (migration 0106, ⚠️ NOT YET APPLIED). A page's markup is
+  // baked into Cloudflare KV at publish and never re-rendered until something republishes it, while
+  // the renderer keeps moving — so without this the drift is invisible. NULL means unknown age,
+  // which is the honest value for every row that predates the stamp.
+  renderedBuild: varchar("renderedBuild", { length: 40 }),
+  // The coach's own event facts, recorded rather than only substituted into the HTML. Stored as the
+  // words they typed ("March 14th", "2pm", "GMT") — normalising them here would invent a parse
+  // nobody has designed. Needed the moment anything has to READ the date, which the deferred
+  // expiry decision will.
+  eventDate: varchar("eventDate", { length: 64 }),
+  eventTime: varchar("eventTime", { length: 64 }),
+  eventTimezone: varchar("eventTimezone", { length: 64 }),
   // The 5 legacy render-only styles (executive/energetic/clinical/warm/bold) are kept in
   // the TS enum as a SUPERSET so the legacy renderTemplate path still type-checks, but they
   // are intentionally NOT in migration 0085's prod target — they must never persist as a
@@ -686,7 +698,10 @@ export const bonuses = mysqlTable("bonuses", {
   format: varchar("format", { length: 50 }).notNull(), // checklist | template | script | sop | swipe | cheatsheet
   assetBody: json("assetBody"), // Layer 2: LeadMagnetBody for the hosted PDF
   magnetHtmlUrl: varchar("magnetHtmlUrl", { length: 500 }), // Layer 2
-  magnetPdfUrl: varchar("magnetPdfUrl", { length: 500 }), // Layer 2
+  magnetPdfUrl: varchar("magnetPdfUrl", { length: 500 }),
+  // 📌 `bonuses` ALSO publishes HTML into Cloudflare KV and is NOT stamped in 0106. Same drift
+  // exposure as landingPages and hvcoTitles; deliberately out of scope for this pass rather than
+  // widened silently, because the migration declares two tables and the schema must match it.
   source: mysqlEnum("source", ["generated", "imported"]).default("generated").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -803,6 +818,9 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   // by accident. `set null` because this is a live pointer, not provenance: a deleted page must
   // drop the magnet to the honest text card, never leave it pointing at a row that is gone.
   nextStepLandingPageId: int("nextStepLandingPageId").references(() => landingPages.id, { onDelete: "set null" }),
+  // Which build rendered the published deliverable + opt-in HTML (0106, ⚠️ NOT YET APPLIED).
+  // Same reason as landingPages.renderedBuild — these pages are baked into KV at publish.
+  renderedBuild: varchar("renderedBuild", { length: 40 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
