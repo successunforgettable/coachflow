@@ -4382,6 +4382,35 @@ describe("free next step — the crown is suppressible, and suppressing it suppr
   });
 });
 
+describe("the landing-page quota counter increments ONCE per page", () => {
+  // 🔴 IT USED TO INCREMENT TWICE. A manual `landingPageGeneratedCount + 1` sat beside
+  // `incrementQuotaCount("landingPages")`, and the helper resolves — via quotaLimits.ts — to THE
+  // SAME `users` column. Net +2 per page, against a trial ceiling of 2: a trial coach's FIRST
+  // landing page spent their entire allowance.
+  //
+  // MEASURED on a local production copy, not inferred from the diff: unfixed, one real generation
+  // moved the counter 0 → 2 while creating one page; fixed, the same driver moved it by 1.
+  it("quotaLimits maps landingPages to the same column the manual write used — the collision", async () => {
+    const { getQuotaCountField } = await import("./quotaLimits");
+    expect(getQuotaCountField("landingPages")).toBe("landingPageGeneratedCount");
+  });
+
+  it("the generator writes that column through the HELPER ONLY — never by hand", async () => {
+    const { readFileSync } = await import("node:fs");
+    const raw = readFileSync(new URL("./landingPageGenerator.ts", import.meta.url), "utf8");
+    // ⚠️ STRIP COMMENTS BEFORE MATCHING. Three assertions in this sprint have now counted PROSE
+    // instead of code — the `autoSelectBest` parity check, the `markDownstreamStale` reachability
+    // check, and this one, which matched `incrementQuotaCount("landingPages")` inside the very
+    // comment explaining the fix. Documentation that names a symbol is the documentation working;
+    // a source guard that cannot tell code from a comment about code is the guard failing.
+    const src = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    // No hand-rolled write to the column.
+    expect(/\.set\(\s*\{\s*landingPageGeneratedCount/.test(src)).toBe(false);
+    // The canonical helper: imported once, awaited once.
+    expect(src.match(/await incrementQuotaCount\(/g) ?? []).toHaveLength(1);
+  });
+});
+
 describe("free next step — the campaign framing is overridable, and single-sourced", () => {
   it("NO OVERRIDE is byte-identical to today, for ALL SEVEN campaign types", async () => {
     // The byte-unchanged pin for the framing half. Every existing caller passes no override.

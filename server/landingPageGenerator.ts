@@ -1150,8 +1150,26 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
   const insertResult: any = await db.insert(landingPages).values((__g.kept[0] ?? __row));
   const landingPageId = insertResult[0].insertId;
 
-  // Quota tracking — both wizard and orchestrator paths increment consistently
-  await db.update(users).set({ landingPageGeneratedCount: user.landingPageGeneratedCount + 1 }).where(eq(users.id, input.userId));
+  // Quota tracking — both wizard and orchestrator paths increment consistently.
+  //
+  // 🔴 THIS USED TO INCREMENT TWICE, AND EVERY LANDING PAGE COUNTED AS TWO. A manual
+  // `landingPageGeneratedCount + 1` stood here, and `incrementQuotaCount("landingPages")` resolves
+  // — via `quotaLimits.ts` — to THE SAME `users` column. The manual write used a stale read taken
+  // before generation; the helper then re-selected and added one more. Net +2 per page.
+  //
+  // MEASURED, NOT INFERRED, because the source read alone would not have been enough: a real
+  // generation on a local production copy moved the counter from 0 to 2 while creating exactly one
+  // page. The trial ceiling is 2, so a trial coach's FIRST landing page consumed their entire
+  // allowance.
+  //
+  // The manual write is the one removed. `incrementQuotaCount` is the canonical helper every other
+  // generator uses, it owns the column mapping, and it also emits the product event — reimplementing
+  // half of it here is what let the two drift into agreement about the column and disagreement about
+  // the count.
+  //
+  // ⚠️ FIX-FORWARD ONLY. No counter repair and no backfill: every row is pre-launch test data and
+  // the clean-slate wipe before launch clears them. Repairing counters would mean guessing how many
+  // of each user's historical generations went through this path.
   await incrementQuotaCount(input.userId, "landingPages");
 
   // Auto-score + autoSelectBest — non-blocking
