@@ -7,7 +7,93 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 NODE 4 (UNIQUE METHOD) IS SHIPPED, LIVE AND PROVEN. NEXT NODE IS THE LEAD MAGNET.
+# 👉 NODE 5 (LEAD MAGNET) IS SHIPPED, DEPLOYED AND EXERCISED ON PRODUCTION — 2026-08-28
+
+**`origin/railway-build` = `2cb6491`. Railway SUCCESS. Migration 0105 APPLIED.** Fifteen commits
+went out in one push, the first production deploy since `f5be0b0`. **NEXT: the cascade trigger for
+the free-event page — scoped, not started, and it needs the `orchestration.ts` guardrail lifted.**
+
+### What shipped
+
+The Node 5 rebuild: the mechanism reaching the body instead of its name, size bounds that trim
+outliers rather than the median, the statistic-rule import, the checklist target, tier 3 of the
+destination chain, the stale-marking extraction, the free-next-step framing, the crown/framing
+seams, and the explicit magnet→page pointer (0105).
+
+### 🔑 THE THREE FINDINGS FROM THE REHEARSAL — a local MySQL copy, 2026-08-27
+
+Standing up a throwaway local database and running against it cost about an hour and no model
+spend, and it paid for itself three times:
+
+1. **THE DEPLOY HAZARD REPRODUCED ITSELF, RATHER THAN BEING ASSERTED.** Running the new code
+   against a database without 0105 failed with **`ERROR 1054 Unknown column
+   'nextStepLandingPageId'`** — and not only on the new path. `hvcoTitles` is read with a bare
+   `db.select()` at **15 of its 22 call sites**, and a bare select emits every column declared in
+   `schema.ts`. **The migration must lead the deploy.** Proven from the other side too: the exact
+   column list the old build emits still returned rows after 0105 was applied, so the database can
+   safely run one column ahead of the code.
+2. **0105 IS TWO STATEMENTS AND MySQL DDL IS NOT TRANSACTIONAL.** The rehearsal produced the
+   half-applied state — **column created, foreign key missing** — and re-running the file then
+   fails on `Duplicate column name`. 🔴 **The half-applied state is the dangerous one:** the column
+   alone stops `ERROR 1054`, so the app starts and looks healthy while `ON DELETE SET NULL` is
+   absent and a deleted page leaves a DANGLING pointer. Recorded in the migration header with the
+   two verification queries and the recovery.
+3. **FOREIGN KEYS FORCED A TABLE THE COPY WAS MEANT TO EXCLUDE.** The ALTER rebuilds `hvcoTitles`
+   and revalidates its three existing FKs, so `users` had to exist. Resolved by **structure-only
+   dump + 18 synthetic rows** (real ids, `openId` masked, zero email / name / booking_url) rather
+   than by copying user data.
+
+📌 Also from the rehearsal: `ON DELETE SET NULL` **observed acting** — a real landing page deleted,
+the pointer nulled rather than left dangling — which the declaration-pinned test cannot reach.
+
+### ✅ THE TWO LIVE EXERCISES — after the deploy, on production
+
+- **Stale marking (`85bcc8b`) fired for real.** Kit 147 / service 220 (outside the protected set):
+  seven downstream nodes marked, the changed node's own mark cleared, `icp` correctly untouched
+  because it is not downstream. Table-wide 81→85 rows, 3→10 stale. First time this code has run
+  outside a fake `db`.
+- **A magnet republished through the real tRPC procedure.** `hvco.republishDeliverable` on hvco
+  5686: `bridge: no-pointer` (the expected pass — nothing on production carries a pointer), URL
+  **byte-identical** so slug determinism holds, and on the live page the dead `href="#"` became a
+  text card and the script's `c.href = view` — **the CTA that sent readers back to the magnet they
+  had just been given** — is gone.
+
+📌 **Deploy verification is a BYTES check, not a panel check.** A green Railway panel says a build
+succeeded. What proves the right code is running is behaviour: `hvco.republishDeliverable` returned
+**405** (exists, is a mutation) where a nonexistent path returns **404**.
+
+### 🔴 RESIDUAL 11 — IT GENERALISES WELL BEYOND THIS NODE, SO READ IT EVEN IF NODE 5 IS NOT YOUR TOPIC
+
+**A REPUBLISH RE-RENDERS WITH THE CURRENT RENDERER, SO IT CARRIES FORWARD EVERY RENDERER CHANGE MADE
+SINCE THAT PAGE WAS LAST PUBLISHED — NOT ONLY THE CHANGE BEING TESTED.**
+
+Found by diffing the republished page rather than trusting the intended diff. Republishing 5686
+grew the deliverable 17,152 → 21,310 bytes and converted its `<pre>` blocks into structured
+markdown. **None of that was in this push.** It came from `10582b9`, confirmed an ancestor of the
+previously deployed `f5be0b0`. The page's HTML had been **baked into Cloudflare KV at its last
+publish**, long before `10582b9` deployed, so the republish surfaced everything accumulated in
+between.
+
+**Why it matters generally:** hosted artefacts are frozen at publish, while the renderer keeps
+moving. The gap between them is invisible until something forces a re-render, and then it arrives
+all at once. **Any republish sweep applies every accumulated change to every page simultaneously.**
+Diff a republished page against its live predecessor before believing you know what changed.
+
+### 🔴 OPEN — 38 published landing pages and 2 magnet bodies sit at UNKNOWN RENDER AGES
+
+The direct consequence of residual 11. Nobody knows how far behind the current renderer those live
+pages are, because nothing records which renderer version baked them. **Before launch this resolves
+one of two ways, and both are decisions rather than defaults:** republish them once, deliberately,
+with the diff reviewed — or accept explicitly that live pages are stale renders and say so.
+**Doing nothing is choosing the second without admitting it.**
+
+📌 **The 10 stale marks now on production are NOT an open item.** Every row in that database is
+pre-launch test data and a clean-slate wipe is planned before launch, which clears them. Nobody is
+owed a decision about them.
+
+---
+
+# 👉 NODE 4 (UNIQUE METHOD) IS SHIPPED, LIVE AND PROVEN — superseded by Node 5 above
 
 ### STATE AT SHUTDOWN — 2026-08-21
 
