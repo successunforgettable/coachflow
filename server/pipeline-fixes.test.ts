@@ -4278,3 +4278,168 @@ describe("stale propagation — autoSelectBest and the UI re-crown must not dive
     expect(src.match(/status:\s*"stale"/g) ?? []).toHaveLength(4);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE FREE-NEXT-STEP BRIDGE — plumbing only. Both new paths are UNIT-PROVEN AND
+// NEVER EXERCISED IN A RUN.
+//
+// A lead-magnet campaign is to produce a SECOND landing page — the free event the magnet bridges
+// to — on the same service. Two things stood in the way, both in `runLandingPageGeneration`:
+//
+//   1. it ends by crowning the page into the kit UNCONDITIONALLY, so a second page silently
+//      repoints `campaignKits.selectedLandingPageId` and orphans the magnet's own opt-in page.
+//      That pointer has 33 readers across 14 files.
+//   2. it DERIVES the campaign framing from the kit and accepts no override, and every existing
+//      framing addresses a stranger arriving from an ad — measured, 10 of 10 rows.
+//
+// ⚠️ THE INTENT LIVES ON `runLandingPageGeneration`, NOT ON `autoSelectBest`. Only the caller
+// knows whether it is producing the kit's primary page or an additional artefact; `autoSelectBest`
+// is called by every generator and cannot be taught to tell the difference without every one of
+// them growing the same flag.
+//
+// 🔴 NEITHER PATH HAS A CALLER. The cascade trigger is deliberately last, because it edits
+// `_core/orchestration.ts`, which is under a standing do-not-touch for this build. These tests
+// drive both paths directly. No production row, no cascade step and no coach path reaches either.
+// Same wording as the `coachMethods` branch of the Node 5 resolver: designed for, never depended
+// on, and proven only by unit test.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("free next step — the crown is suppressible, and suppressing it suppresses four things", () => {
+  const USER = 1613, ICP = 212, LP_ID = 9001;
+  const spyDeps = () => {
+    const calls: any[][] = [];
+    return { calls, autoSelectBest: async (...args: any[]) => { calls.push(args); } };
+  };
+
+  it("DEFAULT crowns — the byte-unchanged pin for every caller that exists today", async () => {
+    // The guard that makes this change safe to ship. All four existing call sites pass no
+    // pageRole, so they must reach `autoSelectBest` with exactly today's arguments. If this
+    // fails, a shipped path has changed behaviour.
+    const { crownIfPrimary } = await import("./landingPageGenerator");
+    const d = spyDeps();
+    expect(await crownIfPrimary(d, "primary", USER, ICP, LP_ID)).toBe("crowned");
+    expect(d.calls).toEqual([[USER, ICP, "selectedLandingPageId", LP_ID]]);
+  });
+
+  it("ADDITIONAL does not crown — the kit pointer is left where it was", async () => {
+    const { crownIfPrimary } = await import("./landingPageGenerator");
+    const d = spyDeps();
+    expect(await crownIfPrimary(d, "additional", USER, ICP, LP_ID)).toBe("skipped-additional");
+    expect(d.calls).toEqual([]);
+  });
+
+  it("NO ICP never crowns, under EITHER role — today's `if (icp?.id)` guard survives intact", async () => {
+    // Pinned under both roles because the guard is pre-existing behaviour on the primary path and
+    // must not be quietly relocated behind the new one. Note the returned reason differs: the
+    // role is checked FIRST, because a deliberate decision is worth recording over an incidental
+    // absence. `!icpId` rather than `icpId == null` reproduces `if (icp?.id)` exactly, including
+    // its treatment of 0.
+    const { crownIfPrimary } = await import("./landingPageGenerator");
+    for (const role of ["primary", "additional"] as const) {
+      for (const missing of [undefined, 0]) {
+        const d = spyDeps();
+        await crownIfPrimary(d, role, USER, missing as any, LP_ID);
+        expect(d.calls).toEqual([]);
+      }
+    }
+    const d = spyDeps();
+    expect(await crownIfPrimary(d, "primary", USER, undefined, LP_ID)).toBe("skipped-no-icp");
+  });
+
+  it("EXECUTABLE DOCUMENTATION — suppressing the crown necessarily suppresses stale marking, and that is CORRECT", async () => {
+    // 🔑 READ THIS BEFORE FILING A BUG. A future reader sees staleness not firing on a landing-page
+    // generation and reasonably suspects a regression of the extraction committed in 85bcc8b.
+    // It is not one. `markDownstreamStale` is reached ONLY through `autoSelectBest` — this file
+    // holds no direct reference to it, asserted below — so not crowning cannot mark anything.
+    // And it SHOULD NOT: an additional artefact reselects nothing, so no downstream asset is
+    // built against a superseded choice. Stale marking answers "the selection moved"; here it
+    // did not move.
+    const { crownIfPrimary } = await import("./landingPageGenerator");
+    const d = spyDeps();
+    await crownIfPrimary(d, "additional", USER, ICP, LP_ID);
+    expect(d.calls).toEqual([]);
+
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./landingPageGenerator.ts", import.meta.url), "utf8");
+    // The CALL form and the IMPORT form — no code path in this file reaches it directly. The name
+    // does appear in `crownIfPrimary`'s docblock, which is this documentation working rather than
+    // a leak, so the assertion counts code and not prose.
+    expect(src.match(/markDownstreamStale\(/g) ?? []).toHaveLength(0);
+    expect(src.match(/\bimport\b[^\n]*markDownstreamStale/g) ?? []).toHaveLength(0);
+  });
+
+  it("SOURCE PARITY — the crown decision has exactly one implementation and cannot be routed around", async () => {
+    // The guard, not the repair. An inlined second `autoSelectBest` call on this path would
+    // reinstate the clobber silently, and no behaviour test above would notice because both call
+    // sites would be correct on the day they were written.
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./landingPageGenerator.ts", import.meta.url), "utf8");
+    // Exactly ONE call site, and it is the guarded one inside `crownIfPrimary`. Counting the
+    // CALL form rather than the bare word deliberately: the word also appears in the dynamic
+    // import that binds it, in the deps type, and in two comments, none of which can clobber a
+    // kit. A second call anywhere in this file fails this test.
+    expect(src.match(/autoSelectBest\(/g) ?? []).toHaveLength(1);
+    expect(/export async function crownIfPrimary[\s\S]*?deps\.autoSelectBest\(/.test(src)).toBe(true);
+  });
+});
+
+describe("free next step — the campaign framing is overridable, and single-sourced", () => {
+  it("NO OVERRIDE is byte-identical to today, for ALL SEVEN campaign types", async () => {
+    // The byte-unchanged pin for the framing half. Every existing caller passes no override.
+    const { resolveLpFraming } = await import("./landingPageGenerator");
+    const { lpFramingForCampaign } = await import("./_core/campaignFraming");
+    for (const t of ["webinar", "challenge", "course_launch", "product_launch",
+                     "discovery_call", "lead_magnet", "in_person_event"]) {
+      expect(resolveLpFraming(t)).toBe(lpFramingForCampaign(t));
+      expect(resolveLpFraming(t, undefined)).toBe(lpFramingForCampaign(t));
+    }
+    // The unknown/absent path keeps the shared default too.
+    expect(resolveLpFraming("not_a_type")).toBe(lpFramingForCampaign("not_a_type"));
+  });
+
+  it("AN OVERRIDE WINS, and is passed through exactly as supplied", async () => {
+    const { resolveLpFraming } = await import("./landingPageGenerator");
+    const { LP_FRAMING_FREE_NEXT_STEP } = await import("./_core/campaignFraming");
+    expect(resolveLpFraming("lead_magnet", LP_FRAMING_FREE_NEXT_STEP)).toBe(LP_FRAMING_FREE_NEXT_STEP);
+    // Not trimmed, not normalised — whatever the call site supplies is what the prompt gets.
+    expect(resolveLpFraming("webinar", "  x  ")).toBe("  x  ");
+  });
+
+  it("AN EMPTY OR BLANK OVERRIDE FALLS BACK — `trim()`, never `??`", async () => {
+    // 🔑 Why this is a test and not a preference. With `??`, an empty-string override is a
+    // PRESENT value, so the framing block would be deleted from the prompt entirely rather than
+    // falling back — the page would generate against no campaign framing at all and nothing
+    // would say so. A blank override is an absent one.
+    const { resolveLpFraming } = await import("./landingPageGenerator");
+    const { lpFramingForCampaign } = await import("./_core/campaignFraming");
+    for (const blank of ["", "   ", "\n", "\t\n "]) {
+      expect(resolveLpFraming("webinar", blank)).toBe(lpFramingForCampaign("webinar"));
+    }
+  });
+
+  it("SINGLE-SOURCED — the landing-page framing is never inlined on the landing-page path", async () => {
+    // Needle built by concatenation so this test file does not contain the literal it forbids.
+    const NEEDLE = "CAMPAIGN" + " TYPE:";
+    const { readFileSync } = await import("node:fs");
+    const gen = readFileSync(new URL("./landingPageGenerator.ts", import.meta.url), "utf8");
+    const framing = readFileSync(new URL("./_core/campaignFraming.ts", import.meta.url), "utf8");
+    // The generator inlines none. A caller hand-writing a framing rather than importing one from
+    // `_core/campaignFraming` is the drift class this repo keeps closing.
+    expect(gen.split(NEEDLE).length - 1).toBe(0);
+    expect(framing.split(NEEDLE).length - 1).toBeGreaterThan(0);
+    // Each landing-page framing symbol is DECLARED exactly once, repo-wide.
+    expect(framing.match(/export const LP_CAMPAIGN_FRAMING\b/g) ?? []).toHaveLength(1);
+    expect(framing.match(/export const LP_FRAMING_FREE_NEXT_STEP\b/g) ?? []).toHaveLength(1);
+
+    // ⚠️ THIS GUARD IS DELIBERATELY SCOPED TO THE LANDING-PAGE PATH, NOT REPO-WIDE, AND THE
+    // REASON IS A FINDING RATHER THAN A CONCESSION. `adCopyGenerator.ts`,
+    // `emailSequenceGenerator.ts` and `whatsappSequenceGenerator.ts` each hold their OWN
+    // `campaignTypeContextMap` carrying byte-identical framing prose — three more copies of the
+    // thing `_core/campaignFraming.ts` was created to single-source. Worse, email and WhatsApp
+    // carry FOUR of the seven campaign types and are typed `Record<string, string>`, so an
+    // incomplete map is not a compile error there: exactly the 4-of-7 drift that produced a FREE
+    // discovery-call page framed as "Enrolment is the decision point", still live in two
+    // generators. REPORTED AND TRACKED, not fixed here — it is three generators' worth of work
+    // and belongs in its own pass. A repo-wide needle assertion would fail today, and writing a
+    // guard that cannot pass is worse than writing none.
+  });
+});

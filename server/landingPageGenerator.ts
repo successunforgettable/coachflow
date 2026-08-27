@@ -850,6 +850,92 @@ export async function generateAllAngles(
   return { original, godfather, free, dollar };
 }
 
+// ─── The free-next-step seams — both UNIT-PROVEN, NEVER EXERCISED IN A RUN ───
+/**
+ * Is this generation producing the kit's PRIMARY landing page, or an ADDITIONAL artefact?
+ *
+ * A lead-magnet campaign is to produce a second landing page — the free event the magnet bridges
+ * to — on the same service. `landingPages` is already one-to-many per service; the
+ * single-destination assumption lives entirely in `campaignKits.selectedLandingPageId`.
+ */
+export type LandingPageRole = "primary" | "additional";
+
+export type CrownOutcome = "crowned" | "skipped-additional" | "skipped-no-icp";
+
+/**
+ * The crown decision, extracted so it is REACHABLE BY A TEST. `runLandingPageGeneration` does
+ * eight database round-trips and four LLM calls, so the conditional cannot otherwise be exercised
+ * without an integration harness; the dependency is injected for the same reason.
+ *
+ * 🔴 THE INTENT LIVES HERE, NOT ON `autoSelectBest`. Only the caller knows which kind of page it
+ * is producing. `autoSelectBest` is called by every generator in the cascade and cannot be taught
+ * the difference without all of them growing the same flag.
+ *
+ * ⚠️ SUPPRESSING THE CROWN SUPPRESSES FOUR THINGS, NOT ONE. `autoSelectBest` performs, in order:
+ *   1. `ensureCampaignKit` — CREATES the kit when absent;
+ *   2. the `selectedLandingPageId` pointer write — the clobber this exists to prevent, on a
+ *      pointer with 33 readers across 14 files including Push to GHL and the Meta publish script;
+ *   3. `markDownstreamStale` (the extraction committed in 85bcc8b);
+ *   4. the kit COMPLETENESS check, which flips `status` draft → complete.
+ *
+ * (3) is CORRECT to suppress and is pinned by an executable-documentation test: an additional
+ * artefact reselects nothing, so no downstream asset is built against a superseded choice. Stale
+ * marking answers "the selection moved"; on this path it did not move. Do not read its silence
+ * here as a regression of 85bcc8b.
+ *
+ * 🔴 (4) IS A CONSTRAINT ON THE TRIGGER, AND IT IS THE ONE THAT CAN BITE. A kit whose ONLY landing
+ * page is the free-event page would never flip to `complete`, because nothing else would ever
+ * crown one. In the designed flow the magnet's own opt-in page crowns first, so the kit already
+ * carries the pointer and completeness has already been evaluated by a crowning step. Whoever
+ * scopes the cascade trigger owns this: the free-event page must never be a kit's first or only
+ * landing page. The same constraint is recorded in the handover, in the same words.
+ *
+ * (1) is likewise safe only because the kit exists by then — the magnet campaign's own kit.
+ */
+export async function crownIfPrimary(
+  deps: { autoSelectBest: (userId: number, icpId: number, field: string, itemId: number) => Promise<void> },
+  pageRole: LandingPageRole,
+  userId: number,
+  icpId: number | undefined,
+  landingPageId: number,
+): Promise<CrownOutcome> {
+  // Role first, deliberately: a deliberate decision is worth recording over an incidental absence.
+  if (pageRole === "additional") {
+    // The ONLY new log line in this change. The crown path stays byte-identical including stdout;
+    // this branch has no caller today, so logging it changes nothing that exists — and it means
+    // the first time the trigger fires there is EVIDENCE the suppression worked rather than
+    // silence. This sprint has already met one defect that was invisible precisely because a path
+    // did something and recorded nothing.
+    console.log(
+      `[landingPage] crown SKIPPED (pageRole=additional) landingPageId=${landingPageId} ` +
+      `userId=${userId} icpId=${icpId ?? "none"} — kit pointer, stale marking and completeness all left untouched`,
+    );
+    return "skipped-additional";
+  }
+  // `!icpId` rather than `icpId == null`, reproducing the previous `if (icp?.id)` exactly,
+  // including its treatment of 0.
+  if (!icpId) return "skipped-no-icp";
+  await deps.autoSelectBest(userId, icpId, "selectedLandingPageId", landingPageId);
+  return "crowned";
+}
+
+/**
+ * The campaign framing for this page: the caller's override when it supplies one, otherwise
+ * derived from the kit's campaign type exactly as before.
+ *
+ * ⚠️ `trim()`, NEVER `??`. Under nullish coalescing an empty-string override is a PRESENT value,
+ * so the framing block would be deleted from the prompt entirely rather than falling back — the
+ * page would generate against no campaign framing at all and nothing would say so. A blank
+ * override is an absent one. A non-blank one passes through exactly as supplied.
+ *
+ * 📌 The override does NOT touch offer suppression. `describeOffer`'s free-vs-paid behaviour comes
+ * from `getCascadeContext`, which derives campaign type from the kit itself — so a free-event page
+ * still gets the kit's `lead_magnet` → free treatment and no price reaches it.
+ */
+export function resolveLpFraming(campaignType: string, override?: string): string {
+  return override?.trim() ? override : lpFramingForCampaign(campaignType);
+}
+
 // ─── Auto Mode Phase B1 — runLandingPageGeneration ──────────────────────────
 // Gen-core for the landing-page node. Callable directly by:
 //   - landingPages.generate (sync tRPC mutation) — wrapped with quota check, returns full row
@@ -870,6 +956,18 @@ export async function runLandingPageGeneration(input: {
   avatarDescription?: string;
   pageType?: LpPageType;
   onProgress?: (completed: number, total: number) => Promise<void>;
+  /**
+   * Whether this generation owns the kit's landing-page pointer. Defaults to `"primary"`, which
+   * is today's behaviour exactly, so every existing caller is unchanged. See `crownIfPrimary`
+   * for what `"additional"` suppresses — it is four things, not one. NO CALLER PASSES THIS YET.
+   */
+  pageRole?: LandingPageRole;
+  /**
+   * Campaign framing to use instead of the one derived from the kit's campaign type. Pass a
+   * framing exported from `_core/campaignFraming` — never a hand-written string; a source guard
+   * in `pipeline-fixes.test.ts` pins that this file inlines none. NO CALLER PASSES THIS YET.
+   */
+  campaignFraming?: string;
 }): Promise<{ landingPageId: number }> {
   const { getDb } = await import("./db");
   const { landingPages, services, users, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
@@ -956,7 +1054,10 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
   // generated against "Enrolment is the decision point … CTA language: Enrol now", directly
   // contradicting the `discovery_call_booking` block in PAGETYPE_PROMPTS above. The shared map is
   // typed `Record<CampaignType, string>`, so an incomplete map is now a compile error.
-  const campaignTypeContext = lpFramingForCampaign(campaignType);
+  // …and the caller may override it outright, for a page whose reader is not a stranger arriving
+  // from an ad. Every entry in the map addresses a cold reader; measured over ten rows, reusing
+  // one for a magnet's free next step produces a page that restates the magnet.
+  const campaignTypeContext = resolveLpFraming(campaignType, input.campaignFraming);
 
   // Social proof
   const socialProof = {
@@ -1058,7 +1159,11 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
     const originalContent = JSON.stringify(allAngles.original);
     const s = await scoreItem({ content: originalContent, nodeType: "landingPages", formulaType: "original" });
     await db.update(landingPages).set({ selectionScore: String(s) } as any).where(eq(landingPages.id, landingPageId));
-    if (icp?.id) await autoSelectBest(input.userId, icp.id, "selectedLandingPageId", landingPageId);
+    // The crown decision is `crownIfPrimary`'s, and it is this file's ONLY call site for
+    // `autoSelectBest` — pinned by a source-parity test, because an inlined second call would
+    // reinstate the clobber silently. It does not swallow; this existing catch keeps error
+    // behaviour identical.
+    await crownIfPrimary({ autoSelectBest }, input.pageRole ?? "primary", input.userId, icp?.id, landingPageId);
   } catch (e) { console.warn("[auto-select] landingPages failed:", e); }
 
   return { landingPageId };

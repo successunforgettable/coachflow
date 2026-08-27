@@ -1219,6 +1219,37 @@ exactly one field.
 
 **Not scoped, not started. Recorded because the sprint has now hit it seven times.**
 
+## 🔑 THE RUNNING RECORD IS TWO FAMILIES, NOT ONE — they need different cures, so count them apart
+
+Updated 2026-08-27. Everything above this line is family 1. Family 2 was being logged in the same
+breath, and it should not be: one is a generator writing something it was never given, the other is
+a fact stored twice and allowed to diverge. **A tier system fixes the first and does nothing for the
+second; an extraction fixes the second and does nothing for the first.**
+
+| family | what it is | the cure | count |
+|---|---|---|---|
+| **1 · Fabrication** | the generator supplies a fact nobody gave it | tier the inputs, degrade honestly, say less | **8** |
+| **2 · Single-source drift** | one truth with copies that diverge silently | extract to one implementation; make an incomplete copy a COMPILE error | **4 sites, enumerated below** |
+
+**Family 1, eight:** the seven in the table above, plus the **invented attendance limit** measured
+five-of-five under a framing that forbade it (see the arm C / C2 evidence section, and `88c97ec`).
+
+**Family 2, enumerated so the count is checkable rather than quoted:**
+
+1. **`autoSelectBest` marked nothing** while the UI re-crown marked every downstream node — two
+   representations of "the selection changed", one of them silent. Closed by extraction, `85bcc8b`.
+2. **`markTweakStale`** — a third copy of the stale-marking logic, its own comment reading *"Same
+   logic as re-crown"*. Contained rather than closed: the parity test pins the class at three
+   copies, so a fourth fails a test.
+3. **`PROOF_COMPOSITIONAL_CEILING_RULE`** — defined in `copywritingRules.ts` and **pasted into no
+   prompt anywhere**. Reads as covered because it is present in the file. Open.
+4. **The campaign-framing map — `_core/campaignFraming.ts` plus THREE more copies.** Its own pass
+   below. Open, and the only one of the four with a live wrong-output consequence.
+
+⚠️ **The count is stated as 4 SITES, not as a running total of copies.** Entry 4 is three copies of
+one map; count copies individually and the family is 6. The enumeration is the checkable part — a
+bare total is the artefact this document exists to stop.
+
 ---
 
 # NEXT — STEP 3 IS NOW THE PRIORITY
@@ -2291,6 +2322,32 @@ needs that guarded file, so it is built last, once everything it fires is proven
 root-cause loop the magnet opens, or merely restate it? Wiring the cascade trigger before that is
 known would be plumbing to a destination that may not hold. **Prove the content first.**
 
+### 🔴 A CONSTRAINT THE TRIGGER OWNS — the free-event page must never be a kit's first or only landing page
+
+Found while building the no-clobber path, and recorded here as well as in `crownIfPrimary`'s
+docblock, in the same words, because whoever scopes the trigger will read this file rather than the
+docblock of one they may never open.
+
+**Suppressing the crown suppresses FOUR things, not one.** `autoSelectBest` performs, in order:
+
+1. `ensureCampaignKit` — **CREATES the kit** when absent;
+2. the `selectedLandingPageId` pointer write — the clobber the flag exists to prevent, on a pointer
+   with **33 readers across 14 files** including Push to GHL and the Meta publish script;
+3. **`markDownstreamStale`** (the extraction committed in `85bcc8b`);
+4. the kit **COMPLETENESS check**, which flips `status` draft → complete.
+
+**(3) is correct to suppress**, and is pinned by an executable-documentation test: an additional
+artefact reselects nothing, so no downstream asset is built against a superseded choice. Stale
+marking answers *"the selection moved"*; on this path it did not move. **Do not read its silence
+there as a regression of `85bcc8b`.**
+
+🔴 **(4) IS THE ONE THAT CAN BITE.** A kit whose **only** landing page is the free-event page would
+**never flip to `complete`**, because nothing else would ever crown one. In the designed flow the
+magnet's own opt-in page crowns first, so the kit already carries the pointer and completeness has
+already been evaluated by a crowning step. **The trigger owns this: the free-event page must never
+be a kit's first or only landing page.** (1) is likewise safe only because the kit exists by then —
+the magnet campaign's own kit.
+
 ## 📌 BANKED, not chased — `markTweakStale` is a third copy, and it is contained
 
 Found by the parity test on its first run, before the stale fix was committed (`85bcc8b`).
@@ -2629,3 +2686,71 @@ were pre-registered before any output existed.
 
 Gates at `88c97ec`: TS baseline **34** · `pipeline-fixes` **401** + `cascadeContext.truncate` **18** =
 **419 green** · zero production writes across every run in this phase.
+
+---
+---
+
+# 🔴 ITS OWN PASS — THE CAMPAIGN-FRAMING MAP EXISTS FOUR TIMES, AND TWO COPIES ARE WRONG TODAY
+
+**This is a wrong-output defect, not a tidying job. Read the consequence before the mechanism.**
+
+## The consequence, live on production right now
+
+**A coach running a `discovery_call`, `lead_magnet` or `in_person_event` campaign gets emails and
+WhatsApp messages framed as a paid course launch** — *"Transformation journey… **Enrolment is the
+decision point**… Urgency mechanism: **Enrolment deadline. Cohort size is limited.** CTA language:
+**Enrol now** / Join the programme / Claim your place before [date]"* — for a campaign where
+**nothing is being enrolled in and nothing is for sale.**
+
+That is not a hypothetical. **It is the same defect, in the same words, that was already found and
+fixed once on the landing page.** `_core/campaignFraming.ts` exists *because* the landing-page map
+carried four of seven campaign types and generated a FREE discovery-call page against *"Enrolment is
+the decision point / CTA language: Enrol now"*. The fix was applied to the landing page and to
+nothing else. **Two generators still carry the original.**
+
+## The mechanism — four copies of one map, and the type is what separates them
+
+Found 2026-08-27 while scoping a source guard for the free-next-step framing override. The guard as
+first written asserted the framing prose lived in exactly one file; **it failed immediately**, which
+is how this surfaced.
+
+| file | key set | typed | status |
+|---|---|---|---|
+| **`_core/campaignFraming.ts`** | **7 of 7** | **`Record<CampaignType, string>`** | ✅ the single source, and the only one that cannot silently regress |
+| `adCopyGenerator.ts` (`campaignTypeContextMap`) | 7 of 7 | `Record<string, string>` | 🟡 complete today, **unprotected** — nothing makes an omission fail |
+| `emailSequenceGenerator.ts` (`campaignTypeContextMap`) | 🔴 **4 of 7** | `Record<string, string>` | 🔴 **wrong output today** |
+| `whatsappSequenceGenerator.ts` (`campaignTypeContextMap`) | 🔴 **4 of 7** | `Record<string, string>` | 🔴 **wrong output today** |
+
+The three copies carry **byte-identical prose** for the keys they share. The missing three in email
+and WhatsApp are exactly the three the landing-page fix added: **`discovery_call`, `lead_magnet`,
+`in_person_event`** — the FREE campaign types, which are the overwhelming majority of ZAP's traffic.
+
+🔑 **`Record<string, string>` is the whole defect.** Under `Record<CampaignType, string>` an
+incomplete map is a **compile error**; under `Record<string, string>` it is a lookup that misses and
+falls through to whatever the default is. **The type-level completeness was the actual fix on the
+landing page** — the three missing entries were only the symptom that happened to be visible.
+
+⚠️ **Verify the fallback before writing the fix.** The consequence above assumes these maps fall
+through to `course_launch` the way the landing page's did. That is the shape, and the prose quoted
+above is what `course_launch` says in all four copies — **but the fallback expression in each of the
+three files has NOT been read.** Read all three before quoting a consequence at anyone.
+
+## The shape of the pass, not a design
+
+**Import, do not re-derive** — the same instruction `GUARANTEE_CLAIMS_RULE` carries. `_core/
+campaignFraming.ts` already exports `LP_CAMPAIGN_FRAMING` and `lpFramingForCampaign`, and the prose
+is already shared, so this is deletion plus an import in three files.
+
+**One question has to be answered first, and it is a product question:** the map is currently named
+for the LANDING PAGE (`LP_CAMPAIGN_FRAMING`), and an email's framing needs are not a page's — *"CTA
+language: Save your seat"* is right for both, *"the page runs with no deadline"* is page vocabulary.
+**Whether the four surfaces genuinely share one framing, or share a spine with per-surface CTA
+lines, decides whether this is one constant or a small structure.** Do not answer it by inference.
+
+⚠️ **Three generators, all of them shipped copy paths, none of them touched since 07-29.** It travels
+alone, it needs its own before/after on real output, and it does not belong in a Node 5 sprint.
+
+📌 **The landing-page guard is deliberately scoped and says so in its own test comment.** A
+repo-wide assertion would fail today, and **a guard that cannot pass is worse than no guard** — it
+gets deleted by the next person rather than fixed. The scoped guard pins that the landing-page path
+inlines no framing; widening it to the repo is a deliverable OF this pass, not a prerequisite for it.
