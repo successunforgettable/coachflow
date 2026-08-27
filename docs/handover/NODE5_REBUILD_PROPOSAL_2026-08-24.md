@@ -1228,11 +1228,69 @@ second; an extraction fixes the second and does nothing for the first.**
 
 | family | what it is | the cure | count |
 |---|---|---|---|
-| **1 · Fabrication** | the generator supplies a fact nobody gave it | tier the inputs, degrade honestly, say less | **8** |
-| **2 · Single-source drift** | one truth with copies that diverge silently | extract to one implementation; make an incomplete copy a COMPILE error | **4 sites, enumerated below** |
+| **1 · Fabrication** | the generator supplies a fact nobody gave it | tier the inputs, degrade honestly, say less | **11 surfaces / 5 kinds — enumerated below. NOT 8** |
+| **2 · Single-source drift** | one truth with copies that diverge silently | extract to one implementation; make an incomplete copy a COMPILE error | **4 sites / 6 copies — enumerated below** |
 
-**Family 1, eight:** the seven in the table above, plus the **invented attendance limit** measured
-five-of-five under a framing that forbade it (see the arm C / C2 evidence section, and `88c97ec`).
+### 🔴 "EIGHT" DID NOT SURVIVE BEING ENUMERATED, AND IT WAS NEVER CHALLENGED
+
+Corrected 2026-08-27. The figure had been carried unchallenged for three checkpoints, **which is
+what made it worth checking rather than what made it safe.** Enumerating it found three things:
+
+1. 🔴 **There were TWO different lists of "eight", sharing only about four members.** The table
+   above holds one seven; `CHECKPOINT_2026-08-25_FREE_NEXT_STEP.md` §5 holds a different eight —
+   it carries the invented city, the population claim and the `tools[].content` benchmarks, which
+   the table omits, and omits the mechanism fallback, the `"the method"` floor and the
+   mechanism-description statistic, which the table carries. **Two lists reaching the same total by
+   different routes is not corroboration.**
+2. 🔴 **The 08-25 list appears to count one instance twice.** *"the invented population claim
+   (Most Directors in this position find 20-35)"* and *"the invented numeric thresholds in checklist
+   details"* — the only numeric checklist claim anywhere in the record is that same 20-35 sentence
+   (population-claim table, target-70 arm). No second instance was found.
+3. 🔴 **The table's own row 7 conflates two findings.** It reads *"Node 5 titles (step 1) — invented
+   benchmark percentages"*; the step-1 audit's benchmark figures were in `tools[].content`, while
+   the `title` hits were `unearned_authority` (*"48 Hours for Consultants"*), a different class.
+
+**Every instance below carries where it was observed and what the evidence is.** One is recorded
+here for the first time (11); the rest are already in this document or in a dated handover.
+
+| # | surface | what was invented | evidence |
+|---|---|---|---|
+| 1 | Node 5 mechanism resolution | `services.uniqueMechanismSuggestion` used as the default — an LLM invention from Node 1, laundered in as evidence | Q1, and `heroMechanismsGenerator.ts:190-192` refusing that same field |
+| 2 | Node 5 mechanism floor | the literal string `"the method"` standing in for a method | `leadMagnetContentGenerator.ts:180` |
+| 3 | `heroMechanisms.mechanismDescription` | a `The before:` / `The after:` vignette closing on an invented quoted outcome | vignette scan pass 4 — **114 of 1,095 rows, 10.4%** |
+| 4 | `heroMechanisms.mechanismDescription` | an invented statistic (`N%`) | same scan — **94 of 1,095 rows, 8.6%** |
+| 5 | guide `sections[].body` | a fabricated person placed at REAL named organisations | arm C original run, 1 of 5 rows |
+| 6 | guide `sections[].body` | invented "how bad it is" figures — `94%` ×2, `23%`, `80%` | arm C re-run, 3 of 5 rows |
+| 7 | toolkit `tools[].content` | invented benchmark figures — `1.5%`, `0.8%`, `20%`, `25%`, `80%` | step-1 production audit residue |
+| 8 | guide `nextStep.body` | *"puts you ahead of **90%** of senior managers"* — in the one field left uncapped | step-3 build proof, 1 row |
+| 9 | checklist `items[].detail` | a population claim carrying a number — *"Most Directors in this position find **20-35**"* | population-claim table, target-70 arm, 1 of 61 items |
+| 10 | landing page `scarcityUrgency` | an attendance limit — a capped room, taken slots, a hard limit, a following cohort, a waitlist | arm C, **5 of 5 rows**, under a framing that forbade it |
+| 11 | landing page `scarcityUrgency` · `timeSavingBenefit` | 🆕 **RECORDED HERE FOR THE FIRST TIME** — invented session logistics: *"runs for 75 minutes"*, *"ninety minutes"*, a *"ten minute"* pre-session worksheet, a *"final twenty minutes"* for Q&A | arm C 5/5 rows → arm C2 3/5. Not closed by the framing fix |
+| — | ad copy · HVCO | the invented city | **EARLIER SPRINT, FIXED** — A7, `server/lib/locationSweep.ts`. Listed for the class, excluded from the count |
+
+**So the enumeration supports ELEVEN live surfaces, not eight**, and the drift is upward because two
+were never on either list (8 and 11) while one list double-counted and the other conflated.
+
+### The same unit problem the drift family has — state the unit or the number means nothing
+
+Six of the eleven are *some kind of invented number*. **Group by KIND and the family is FIVE:**
+
+| kind | instances |
+|---|---|
+| invented statistic or benchmark figure | 4 · 6 · 7 · 8 · 9 |
+| invented operational fact about a real event | 10 · 11 |
+| invented person, testimony or quoted outcome | 3 · 5 |
+| invention laundered in as evidence | 1 |
+| a placeholder standing in for the thing itself | 2 |
+
+**Eleven surfaces, five kinds. "Eight" reconciles with neither**, and could not have been checked
+against either without the enumeration, because the total travelled without its members.
+
+📌 **The two units are not interchangeable and they answer different questions.** Surfaces tell you
+where to look; kinds tell you how many cures are needed. **The cure count is the useful one:** a
+source-boundedness rule aimed at numbers addresses the four largest instances at once, which is
+already what the `NO_RESEARCH_STATISTIC_FABRICATION_RULE` import was for — and instances 10 and 11
+say that rule does not reach operational facts about an event, only figures about a population.
 
 **Family 2, enumerated so the count is checkable rather than quoted:**
 
