@@ -72,11 +72,16 @@ describe("publishLeadMagnet — UNCHANGED behaviour after extraction (regression
     expect(writeKvPage).toHaveBeenCalledWith("NS_ID", "acme-co-get-7", "<html>OPTIN</html>");
     // ensureKvNamespace called exactly ONCE (the extraction reuses the existing namespaceId — no extra call).
     expect(ensureKvNamespace).toHaveBeenCalledTimes(1);
-    // Returned URL shape unchanged.
+    // Returned URL shape unchanged. The two bridge fields are ADDITIVE — this fixture's row carries
+    // no `nextStepLandingPageId`, which is the state of every production row today, so the bridge
+    // reports "no-pointer" and no destination is baked. Asserted rather than omitted: it pins that
+    // adding the bridge did not change what an unpaired magnet publishes.
     expect(res).toEqual({
       optInUrl: "https://zapcampaigns.com/p/acme-co-get-7",
       deliverableUrl: "https://zapcampaigns.com/p/acme-co-magnet-7",
       pdfUrl: "https://cdn.example/lead-magnets/42/7.pdf",
+      bridge: "no-pointer",
+      nextStepUrl: null,
     });
   });
 });

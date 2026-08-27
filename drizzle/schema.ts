@@ -795,6 +795,14 @@ export const hvcoTitles = mysqlTable("hvcoTitles", {
   // for the selected title of a lead_magnet_download campaign, alongside assetBody.
   magnetHtmlUrl: varchar("magnetHtmlUrl", { length: 500 }),
   magnetPdfUrl: varchar("magnetPdfUrl", { length: 500 }),
+  // The free next step this magnet bridges to — an EXPLICIT pointer to a specific landing page
+  // (migration 0105, ⚠️ NOT YET APPLIED — see the file header for the deploy-ordering constraint).
+  // Per-magnet rather than per-kit because the free-event page answers the gap THAT magnet leaves
+  // behind: a content decision, not a chronological one. A kit-level pointer would force
+  // `publishLeadMagnet({hvcoId})` through serviceId -> first ICP -> kit, and that middle hop pairs
+  // by accident. `set null` because this is a live pointer, not provenance: a deleted page must
+  // drop the magnet to the honest text card, never leave it pointing at a row that is gone.
+  nextStepLandingPageId: int("nextStepLandingPageId").references(() => landingPages.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

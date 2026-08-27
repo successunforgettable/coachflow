@@ -16,6 +16,8 @@ import { enforceQuota, incrementQuotaCount } from "../lib/quotaEnforcement";
 import { checkCompliance } from "../lib/complianceChecker";
 import { scoreItem } from "../lib/selectionScorer";
 import { autoSelectBest } from "./campaignKits";
+import { LP_FRAMING_FREE_NEXT_STEP } from "../_core/campaignFraming";
+import { additionalPageRefusalReason } from "../_core/nextStepBridge";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
@@ -259,6 +261,22 @@ const generateLandingPageSchema = z.object({
     "lead_magnet_download",
     "event_registration",
   ]).optional().default("sales_page"),
+  /**
+   * Whether this page owns the kit's landing-page pointer. Defaults to `"primary"` — today's
+   * behaviour exactly, so every existing caller is unchanged. `"additional"` is the free-next-step
+   * page: it does not crown, and it REQUIRES `nextStepForHvcoId`.
+   */
+  pageRole: z.enum(["primary", "additional"]).optional(),
+  /**
+   * Which lead magnet this page is the free next step FOR. Required when `pageRole` is
+   * `"additional"`, and the pairing is never inferred — see `_core/nextStepBridge.ts`.
+   */
+  nextStepForHvcoId: z.number().optional(),
+  // 🔴 THERE IS DELIBERATELY NO `campaignFraming` INPUT HERE. `runLandingPageGeneration` accepts a
+  // framing string server-to-server, but exposing that to a client would put arbitrary text
+  // straight into an LLM prompt, and would let a caller hand-write a framing rather than import
+  // one — the drift this design refuses. The ROLE is what crosses the boundary; the router maps it
+  // to `LP_FRAMING_FREE_NEXT_STEP` itself.
 });
 
 const updateActiveAngleSchema = z.object({
@@ -492,6 +510,43 @@ export const landingPagesRouter = router({
         }
       }
 
+      // ── The free-next-step page. Everything in this block is inert on the primary path. ──
+      const isAdditional = input.pageRole === "additional";
+      if (isAdditional) {
+        // The pairing is DECLARED, never derived. Inferring the magnet from the kit's or the
+        // service's currently-selected one is right with one magnet and silently wrong with
+        // several — the same pair-by-accident failure the pointer's placement already refuses.
+        if (!input.nextStepForHvcoId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A free-next-step page must name the lead magnet it is the next step for (nextStepForHvcoId).",
+          });
+        }
+        const [magnet] = await db.select({ id: hvcoTitles.id })
+          .from(hvcoTitles)
+          .where(and(eq(hvcoTitles.id, input.nextStepForHvcoId), eq(hvcoTitles.userId, ctx.user.id)))
+          .limit(1);
+        if (!magnet) throw new TRPCError({ code: "NOT_FOUND", message: "Lead magnet not found." });
+
+        // 🔴 THE COMPLETENESS CONSTRAINT. An additional page does not crown, which also skips the
+        // kit completeness check — so a kit whose ONLY landing page were this one would never flip
+        // draft → complete. Enforced server-side because a guarantee a caller can bypass is not
+        // one, and the eventual automatic trigger is a caller too. `validateCascadePrereqs` above
+        // does NOT cover this: it requires offer/mechanism/hvco/headlines/adCopy, not a page.
+        const [icpRow] = await db.select({ id: idealCustomerProfiles.id })
+          .from(idealCustomerProfiles)
+          .where(eq(idealCustomerProfiles.serviceId, input.serviceId))
+          .limit(1);
+        const [kit] = icpRow
+          ? await db.select({ selectedLandingPageId: campaignKits.selectedLandingPageId })
+              .from(campaignKits)
+              .where(and(eq(campaignKits.userId, ctx.user.id), eq(campaignKits.icpId, icpRow.id)))
+              .limit(1)
+          : [undefined];
+        const refusal = additionalPageRefusalReason(kit);
+        if (refusal) throw new TRPCError({ code: "PRECONDITION_FAILED", message: refusal });
+      }
+
       const { landingPageId } = await runLandingPageGeneration({
         userId: ctx.user.id,
         serviceId: input.serviceId,
@@ -499,8 +554,19 @@ export const landingPagesRouter = router({
         avatarName: input.avatarName,
         avatarDescription: input.avatarDescription,
         pageType: input.pageType,
+        pageRole: input.pageRole,
+        // The framing is resolved HERE, from the role, and never accepted from the client.
+        campaignFraming: isAdditional ? LP_FRAMING_FREE_NEXT_STEP : undefined,
         // No onProgress on sync path — tRPC sync mutation doesn't poll a job.
       });
+
+      // The pairing, written from the caller's explicit input. Owner-scoped in the predicate as
+      // well as checked above, so the write cannot outrun the check.
+      if (isAdditional && input.nextStepForHvcoId) {
+        await db.update(hvcoTitles)
+          .set({ nextStepLandingPageId: landingPageId })
+          .where(and(eq(hvcoTitles.id, input.nextStepForHvcoId), eq(hvcoTitles.userId, ctx.user.id)));
+      }
 
       const [newPage] = await db.select().from(landingPages).where(eq(landingPages.id, landingPageId)).limit(1);
       const [service] = await db.select().from(services).where(eq(services.id, input.serviceId)).limit(1);

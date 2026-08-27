@@ -184,6 +184,61 @@ export const hvcoRouter = router({
     }),
 
   /**
+   * Re-publish a published lead magnet's delivery surfaces, so the bridge picks up a free-next-step
+   * page that was created after the magnet went out.
+   *
+   * 🔑 SAFE TO RE-RUN, AND THAT IS STRUCTURAL. `publishLeadMagnet` derives its slugs
+   * deterministically (`{base}-magnet-{id}` / `{base}-get-{id}`), so a republish overwrites the
+   * same Cloudflare KV keys and the same DB columns — the coach's live URL does not change and
+   * nothing already handed out breaks.
+   *
+   * 🔴 IT REPORTS WHICH OF THE THREE BRIDGE STATES IT RENDERED, rather than returning success three
+   * ways. "Pointer set but the target is not published yet" renders IDENTICALLY to having no
+   * pointer — the honest text card — so a success message would tell a coach their magnet is
+   * finished while it quietly links nowhere. `target-unpublished` is the actionable one: the page
+   * exists, the pairing is recorded, and it needs publishing.
+   *
+   * Guide / checklist / toolkit. Quiz keeps `approveQuiz`, which already republishes it.
+   */
+  republishDeliverable: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [row] = await db.select().from(hvcoTitles)
+        .where(and(eq(hvcoTitles.id, input.id), eq(hvcoTitles.userId, ctx.user.id))).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Lead magnet not found" });
+      if (row.assetBody == null) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This lead magnet has no content to publish." });
+      }
+      // A republish, not a first publish — the caller is refreshing something already live.
+      if (!row.magnetHtmlUrl) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This lead magnet has not been published yet." });
+      }
+
+      const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+      const result = await publishLeadMagnet({ hvcoId: input.id });
+      if (!result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Republish failed" });
+
+      // The three outcomes, named for the caller rather than flattened into `success: true`.
+      const message =
+        result.bridge === "linked"
+          ? "Republished. The next-step button now points at your free event page."
+          : result.bridge === "target-unpublished"
+            ? "Republished, but your free event page is not published yet — the magnet shows the next step as text with no button until it is."
+            : "Republished. No free event page is linked to this magnet, so the next step shows as text with no button.";
+
+      console.log(`[hvco.republishDeliverable] hvco ${input.id} bridge=${result.bridge} nextStepUrl=${result.nextStepUrl ?? "none"}`);
+      return {
+        magnetHtmlUrl: result.deliverableUrl,
+        optInUrl: result.optInUrl,
+        bridge: result.bridge,
+        nextStepUrl: result.nextStepUrl,
+        message,
+      };
+    }),
+
+  /**
    * Regenerate a quiz's scorecard from the same campaign context. Replaces the
    * assetBody and returns the quiz to UNPUBLISHED (review required) — never
    * silently live. Owner-scoped. Does not publish.

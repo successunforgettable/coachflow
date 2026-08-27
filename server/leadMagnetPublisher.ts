@@ -17,12 +17,13 @@
  * null on any failure and leaves the row unpublished (re-publishable).
  */
 import { getDb } from "./db";
-import { hvcoTitles, services } from "../drizzle/schema";
+import { hvcoTitles, services, landingPages } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import type { LeadMagnetBody } from "./leadMagnetContentGenerator";
 import { renderDeliverableHtml, renderOptInHtml, renderQuizPage } from "./leadMagnetRenderer";
 import { storagePut } from "./storage";
 import { getCoachLogoUrl } from "./lib/coachLogo";
+import { resolveNextStep, type BridgeOutcome } from "./_core/nextStepBridge";
 
 const BASE = "https://zapcampaigns.com";
 
@@ -34,6 +35,15 @@ export type PublishLeadMagnetResult = {
   optInUrl: string;
   deliverableUrl: string;
   pdfUrl: string;
+  /**
+   * Which of the three bridge states this publish rendered. Reported rather than collapsed into
+   * success, because "pointer set but you have not published the free-event page yet" renders
+   * IDENTICALLY to having no pointer at all — the honest text card — and a coach can sit in it
+   * indefinitely with a magnet that looks finished and quietly links nowhere.
+   */
+  bridge: BridgeOutcome;
+  /** The destination actually baked in, or null for both non-linked outcomes. */
+  nextStepUrl: string | null;
 };
 
 /**
@@ -45,9 +55,9 @@ export type PublishLeadMagnetResult = {
  */
 export async function publishDeliverableBody(
   body: LeadMagnetBody,
-  opts: { userId: number; slug: string; storageKey: string; coachLogoUrl: string | null; namespaceId?: string },
+  opts: { userId: number; slug: string; storageKey: string; coachLogoUrl: string | null; namespaceId?: string; nextStepUrl?: string | null },
 ): Promise<{ deliverableUrl: string; pdfUrl: string } | null> {
-  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl: opts.coachLogoUrl });
+  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl: opts.coachLogoUrl, nextStepUrl: opts.nextStepUrl });
   if (!deliverableHtml) return null;
   const { ensureKvNamespace, writeKvPage, renderPdfFromUrl } = await import("./lib/cloudflare");
   const namespaceId = opts.namespaceId ?? (await ensureKvNamespace());
@@ -98,6 +108,18 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     if (svc?.name) base = slugify(svc.name);
     if (svc?.tQuote) testimonial = { quote: svc.tQuote, name: svc.tName ?? "", title: svc.tTitle ?? "" };
   }
+  // ── THE BRIDGE. Resolve the magnet's free next step from its EXPLICIT pointer.
+  // Publication state is read FRESH here rather than mirrored onto the pointer: one field, one
+  // meaning — the pointer records WHICH page, never whether it is live yet. Both non-linked
+  // outcomes resolve to null, so the renderers fall through to the tier-3 text card unchanged.
+  let nextStepPage: { publicUrl: string | null } | null = null;
+  if (hvco.nextStepLandingPageId) {
+    const [lp] = await db.select({ publicUrl: landingPages.publicUrl })
+      .from(landingPages).where(eq(landingPages.id, hvco.nextStepLandingPageId)).limit(1);
+    nextStepPage = lp ?? null;
+  }
+  const bridge = resolveNextStep(hvco.nextStepLandingPageId, nextStepPage);
+
   const deliverableSlug = `${base}-magnet-${input.hvcoId}`;
   const optInSlug = `${base}-get-${input.hvcoId}`;
 
@@ -118,6 +140,7 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
       privacyPolicyUrl: `${BASE}/privacy`,
       apiBase: BASE,
       pageUrl: quizUrl,
+      nextStepUrl: bridge.url,
       testimonial,
       coachLogoUrl,
     });
@@ -125,8 +148,8 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     await db.update(hvcoTitles)
       .set({ magnetHtmlUrl: quizUrl, magnetPdfUrl: null })
       .where(eq(hvcoTitles.id, input.hvcoId));
-    console.log(`[leadMagnetPublisher] published QUIZ hvco ${input.hvcoId}: ${quizUrl} (one page, no PDF)`);
-    return { optInUrl: quizUrl, deliverableUrl: quizUrl, pdfUrl: "" };
+    console.log(`[leadMagnetPublisher] published QUIZ hvco ${input.hvcoId}: ${quizUrl} (one page, no PDF) bridge=${bridge.outcome}`);
+    return { optInUrl: quizUrl, deliverableUrl: quizUrl, pdfUrl: "", bridge: bridge.outcome, nextStepUrl: bridge.url };
   }
 
   // ── static formats (guide / checklist / toolkit): deliverable + opt-in + PDF ──
@@ -138,6 +161,7 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     storageKey: `lead-magnets/${hvco.userId}/${input.hvcoId}.pdf`,
     coachLogoUrl,
     namespaceId,
+    nextStepUrl: bridge.url,
   });
   if (!published) {
     console.log(`[leadMagnetPublisher] format "${(body as any)?.format}" not deliverable this sprint (hvco ${input.hvcoId}) — skipped`);
@@ -157,6 +181,7 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     privacyPolicyUrl: `${BASE}/privacy`,
     apiBase: BASE,
     nextStep: body.nextStep,
+    nextStepUrl: bridge.url,
     testimonial,
     coachLogoUrl,
   });
@@ -169,5 +194,5 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     .where(eq(hvcoTitles.id, input.hvcoId));
 
   console.log(`[leadMagnetPublisher] published hvco ${input.hvcoId}: optin=${optInUrl} deliverable=${deliverableUrl} pdf=${pdfUrl ? "yes" : "none"}`);
-  return { optInUrl, deliverableUrl, pdfUrl };
+  return { optInUrl, deliverableUrl, pdfUrl, bridge: bridge.outcome, nextStepUrl: bridge.url };
 }
