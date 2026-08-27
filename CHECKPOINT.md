@@ -7,6 +7,113 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
+# 👉 STATE AT BREAK — 2026-08-28. THE TRIGGER IS BUILT AND TESTED, NOT DEPLOYED.
+
+**Branch `railway-build`. Working tree CLEAN. `origin/railway-build` = `2cb6491` (deployed).
+Local HEAD is ahead by five commits, NONE pushed. Migration 0106 is WRITTEN AND NOT APPLIED.**
+
+### 👉 THE NEXT ACTION IS ONE THING
+
+**Implement decision 1 below — resolve the three optional webinar tokens at their source — then
+propose the verification and deploy sequence.** Nothing else is pending.
+
+### The five unpushed commits
+
+| SHA | what |
+|---|---|
+| `2684a81` | docs — Node 5 deploy banked, the three rehearsal findings, residual 11 |
+| `2fc366b` | 🔴 **fix** — every landing page counted as TWO against quota. Live bug, fixed forward |
+| `824a4d9` | docs — §6a(c), the coach path's own silent ordering problem |
+| `294d795` | **0106** — `renderedBuild` stamp + event facts recorded. Migration NOT applied |
+| `c5b3024` | **the trigger** — the cascade builds the magnet's free-event page |
+
+### What is BUILT and COMMITTED (local only)
+
+- **The double-count fix.** Two statements incremented the same `users` column; a real generation
+  on a local copy moved the counter **0 → 2 for one page**, and **1 for one page** after. Trial
+  ceiling is 2, so a trial coach's first page spent their whole allowance. Fix-forward, no backfill.
+- **The trigger** — one guarded block in `orchestration.ts` `case "landingPage"`, gated on
+  `lead_magnet`. **This is the only thing the do-not-touch guardrail was lifted for; it stands for
+  everything else in that file.**
+- **Quota suppression** for `pageRole: "additional"` — the free-event page is machinery, not an
+  asset the coach asked for.
+- **The readiness widening** (outside the guarded file) — `freeStepQuestions` / `freeStepReady`
+  returned as their own list, so `ready` is unaffected and the three questions never block.
+- **The renderer stamp and event facts**, both publishers.
+
+### What is WRITTEN BUT NOT APPLIED
+
+🔴 **Migration 0106 is not applied to production. 0097–0105 are applied.**
+**The migration LEADS the deploy** — both tables are read with bare `db.select()`, so shipping the
+schema first fails with `ERROR 1054` across the board. 0105 proved this in rehearsal.
+
+🔴 **`BUILD_SHA` is not set, so `renderedBuild` writes NULL.** There is no git variable in the
+Railway environment at all — checked. See decision 2.
+
+### What was TESTED, and how
+
+**604 green across 12 files · TS 34.** Tests 1–4 and 6 are units. Tests 5 and 7 ran against a
+**local MySQL copy of production** (masked `users`: structure-only + 18 synthetic rows, zero email
+/ name / booking_url; the four PII tables excluded).
+
+- **TEST 5 — the first full cascade run any of these commits has ever had. 7/7.** Two pages
+  created · quota moved by **one** · the kit's pointer stayed on the **primary** page · the magnet
+  points at the free-event page · the bridge resolves `target-unpublished`.
+- **TEST 7 — the ordering window. 4/4.** The pairing survives a failed publish; the magnet renders
+  the honest text card; publishing the page later flips the bridge to `linked` **without the
+  pointer being rewritten**.
+- 📌 **No Cloudflare credentials exist locally**, so nothing could publish — which is why the local
+  run could not touch production KV, and also why the `linked` state and the KV write still need a
+  live run.
+
+### 🔴 OPEN FINDING FROM TEST 5 — the three questions are NECESSARY BUT NOT SUFFICIENT
+
+```
+[orchestration.freeNextStep] skipped for kit 152:
+  Landing page has 1 unfilled placeholder: [INSERT_REPLAY_AVAILABILITY]
+```
+
+**The publish gate throws on ANY surviving `[INSERT_*]`**, while
+`PAGETYPE_REQUIRED_TOKENS.webinar_registration` covers only **date · time · timezone**. The webinar
+prompt's placeholder ALLOW-LIST additionally permits **`[INSERT_EVENT_NAME]`,
+`[INSERT_HOST_NAME]` and `[INSERT_REPLAY_AVAILABILITY]`**.
+
+**So a coach can answer all three questions and the page still fails to publish.** The failure is
+safe — caught, pointer kept, magnet keeps the text card, self-heals on the next run — but the
+free-event page will frequently not publish. No unit test could have found this; only the cascade
+run did.
+
+### ✅ THREE DECISIONS — TAKEN IN CONVERSATION, RECORDED HERE BECAUSE THEY EXISTED NOWHERE ON DISK
+
+**1 · OPTIONAL TOKENS — FIX THE SOURCE, NOT THE GATE.**
+**Keep the publish gate strict. Add no prohibition. Do NOT neutralise unfilled placeholders.**
+`LP_FRAMING_FREE_NEXT_STEP` already asserts the session **is live and happens once**, so replay
+availability is not an open question on this page type. For each of the three optional tokens, in
+this order: **if we already hold the fact, substitute it; if the framing already answers it, write
+from that fact; only what fails both becomes a question for the coach.** Measure across **at least
+five rows**.
+📌 A prohibition would name the shape and leave the space empty — the seat-cap lesson. A
+neutraliser would delete the gate's only signal.
+
+**2 · `BUILD_SHA` IS SET AS PART OF THE DEPLOY, NOT SEPARATELY** — changing a service variable
+triggers a redeploy, so setting it on its own would spend a deploy to no purpose.
+
+**3 · INTAKE COPY — FINAL, SHIP EXACTLY AS WRITTEN:**
+
+> Planning to run a live session for the people who download this? Give me the date, time and
+> timezone and I'll build the registration page — your guide will send readers straight to it.
+>
+> No date yet? Skip this. Your guide still ends with an invitation, it just won't have a link.
+
+### Carried, unchanged
+
+The ordering problem stays **unproven** and the coach-triggered path is **not** cited as covering
+it. The completeness guard **never fires on the happy path** — an unfired guard is untested. The
+**expiry question is deferred**: a page advertising a date that has passed is worse than no page;
+0106 records the date so the eventual degraded state can read it.
+
+---
+
 # 👉 NODE 5 (LEAD MAGNET) IS SHIPPED, DEPLOYED AND EXERCISED ON PRODUCTION — 2026-08-28
 
 **`origin/railway-build` = `2cb6491`. Railway SUCCESS. Migration 0105 APPLIED.** Fifteen commits
