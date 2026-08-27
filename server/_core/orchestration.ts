@@ -70,7 +70,7 @@ import { enqueueBonusPdfJob } from "../bonusPdfGenerator";
 // three are the same fact about a campaign and used to drift apart. Re-exported here so every
 // existing importer (`routers/campaignKits.ts`, and this file's own steps) is untouched.
 export { CAMPAIGN_TO_PAGE_TYPE, pageTypeForCampaign } from "./campaignFraming";
-import { pageTypeForCampaign } from "./campaignFraming";
+import { pageTypeForCampaign, LP_FRAMING_FREE_NEXT_STEP } from "./campaignFraming";
 
 /**
  * Which WhatsApp sequence shape fits a campaign. Only campaigns that actually HAVE an event
@@ -738,6 +738,125 @@ export async function runOrchestrationStep(
         await db.delete(nodeStatuses).where(and(eq(nodeStatuses.campaignKitId, kit.id), eq(nodeStatuses.nodeType, "landingPage")));
         if (!lpPublished) {
           await db.insert(nodeStatuses).values({ campaignKitId: kit.id, nodeType: "landingPage", status: "needs_publish" });
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────────────────────────────────
+      // THE FREE NEXT STEP — a SECOND landing page, for lead-magnet campaigns only.
+      //
+      // 🔴 THIS IS THE ONE BLOCK THE orchestration.ts DO-NOT-TOUCH GUARDRAIL WAS LIFTED FOR. The
+      // lift is narrow and specific: this block, gated on `lead_magnet`, nothing else in this file.
+      //
+      // WHY IT LIVES INSIDE THE landingPage CASE RATHER THAN AS A NEW STEP. Every entry in
+      // ORCHESTRATION_STEPS carries a `kitField` — the campaignKits.selected*Id column the
+      // orchestrator checks to decide whether the step is done. The free-event page deliberately
+      // has NO such column: it is an additional artefact and must never take the kit's landing-page
+      // pointer, which is the entire point of `pageRole: "additional"`. A new step would need a kit
+      // field invented for it, reintroducing the clobber the no-clobber flag exists to prevent.
+      // The step table's shape rejects this work; the case block accepts it.
+      //
+      // 🔴 THE SKIP PATH IS THE LOAD-BEARING PART. Without all three of date, time and timezone
+      // supplied by the coach, NOTHING IS GENERATED. Not a page with placeholders, not a page held
+      // for review — nothing. The magnet keeps the honest text card, which already ships, is
+      // already live, and is the state of every magnet on production today. A `webinar_registration`
+      // page cannot publish without those tokens, and in Auto Mode nobody is there to answer: a
+      // field that demands a value with nothing true to put in it is precisely how the generator
+      // came to invent a seat cap in five rows out of five. The three questions are asked OPTIONALLY
+      // at intake (campaignKits.getCampaignFactsReadiness → freeStepQuestions) and never block.
+      //
+      // ⚠️ ORDERING — CARRIED AS UNPROVEN, NOT SOLVED. The magnet publishes at step 3; this runs at
+      // step 6. So between them the magnet is live pointing at nothing. That is not a broken state:
+      // it renders the honest text card, verified on a live page 2026-08-28. If this step never
+      // completes, the magnet sits exactly as every production magnet sits today, and the next run
+      // self-heals. It cannot be worse than the status quo — but it has never been exercised, and
+      // the coach-triggered path does NOT cover it (that path runs entirely after the cascade, so
+      // its republish is trivially second and the question never arises).
+      // ─────────────────────────────────────────────────────────────────────────────────────────
+      if (input.campaignType === "lead_magnet" && kit?.id) {
+        const es = ((kit.campaignFacts as any)?.eventSchedule ?? {}) as { date?: string; time?: string; timezone?: string };
+        const { hasAllEventFacts } = await import("./nextStepBridge");
+        const haveAllThree = hasAllEventFacts(kit.campaignFacts as any);
+        const magnetId = kit.selectedHvcoId;
+        if (!haveAllThree || !magnetId) {
+          console.log(
+            `[orchestration.freeNextStep] SKIPPED for kit ${kit.id} — ` +
+              `${!magnetId ? "no selected magnet" : "coach did not supply date/time/timezone"}. ` +
+              `The magnet keeps the honest text card; nothing generated, nothing invented.`,
+          );
+        } else {
+          try {
+            await progress(`Building the free session page your guide points to…`);
+            const { landingPageId: freeStepPageId } = await runLandingPageGeneration({
+              userId: input.userId,
+              serviceId: input.serviceId,
+              pageType: "webinar_registration",
+              // Does not crown, does not mark stale, does not consume quota.
+              pageRole: "additional",
+              // The framing is resolved here, server-side, and never accepted from a caller.
+              campaignFraming: LP_FRAMING_FREE_NEXT_STEP,
+            });
+
+            // Deterministic token substitution from the coach's OWN facts — a resolver, never a
+            // generator prompt. Applied to all four angles so whichever renders is complete.
+            const factAnswers = factsToTokenAnswers(kit.campaignFacts);
+            if (factAnswers.length > 0) {
+              const { applyOperatorAnswer } = await import("../lib/templates/operatorFields");
+              const [fp] = await db.select().from(landingPages).where(eq(landingPages.id, freeStepPageId)).limit(1);
+              if (fp) {
+                const patch: Record<string, unknown> = {};
+                for (const col of ["originalAngle", "godfatherAngle", "freeAngle", "dollarAngle"] as const) {
+                  let angle: any = (fp as any)[col];
+                  if (!angle) continue;
+                  for (const fa of factAnswers) angle = applyOperatorAnswer(angle, fa.token, fa.value).content;
+                  patch[col] = angle;
+                }
+                if (Object.keys(patch).length > 0) {
+                  await db.update(landingPages).set(patch as any).where(eq(landingPages.id, freeStepPageId));
+                }
+              }
+            }
+
+            // ── THE PAIRING IS RECORDED HERE, BEFORE ANY PUBLISH ──
+            // One field, one meaning: the pointer records WHICH page, never whether it is live.
+            // Writing it only on a successful publish would conflate the two and lose the pairing
+            // whenever publishing fails — after which nothing would ever reconnect them. Recorded
+            // now, the bridge resolves `target-unpublished` (the honest text card) until the page
+            // goes live, and becomes `linked` with NO pointer rewrite the moment it does.
+            await db.update(hvcoTitles)
+              .set({ nextStepLandingPageId: freeStepPageId })
+              .where(and(eq(hvcoTitles.id, magnetId), eq(hvcoTitles.userId, input.userId)));
+
+            const freeStepStyle = styleForPageType("webinar_registration");
+            if (!freeStepStyle) {
+              console.log(`[orchestration.freeNextStep] no template for webinar_registration — page ${freeStepPageId} left unpublished; magnet keeps the text card`);
+            } else {
+              const { publicUrl: freeStepUrl } = await runLandingPagePublish({
+                userId: input.userId,
+                landingPageId: freeStepPageId,
+                styleMode: freeStepStyle,
+                // Declared, not derived — the publisher has no icpId to reach the kit with.
+                eventFacts: { date: es.date, time: es.time, timezone: es.timezone },
+              });
+
+              // Republish so the bridge resolves. Deterministic slugs — same KV keys, same URL.
+              // ⚠️ This re-renders the magnet with the CURRENT renderer, so it carries forward every
+              // renderer change since it was last published. Within one cascade run that is zero
+              // (step 3 published it minutes ago on this same build); on a RESUMED run whose step 3
+              // predates a later deploy it is not. `renderedBuild` (0106) is what makes that visible.
+              const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+              const rp = await publishLeadMagnet({ hvcoId: magnetId });
+              console.log(
+                `[orchestration.freeNextStep] page ${freeStepPageId} published ${freeStepUrl}; ` +
+                  `magnet ${magnetId} republished, bridge=${rp?.bridge ?? "publish-failed"}`,
+              );
+            }
+          } catch (fsErr) {
+            // Never throws into the cascade. A failed free-event page leaves the magnet exactly as
+            // it is today — live, with the honest text card — and the next run retries.
+            console.warn(
+              `[orchestration.freeNextStep] skipped for kit ${kit.id}: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`,
+            );
+          }
         }
       }
 

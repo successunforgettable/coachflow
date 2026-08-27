@@ -79,3 +79,36 @@ export function additionalPageRefusalReason(
   }
   return null;
 }
+
+/**
+ * Has the coach supplied ALL THREE of date, time and timezone?
+ *
+ * 🔴 THE SKIP PATH'S WHOLE CONDITION, EXTRACTED SO IT IS REACHABLE BY A TEST. The free-event page
+ * is `webinar_registration`, which cannot publish without these three tokens. They are asked
+ * OPTIONALLY at intake and never block the cascade — so when they are absent the answer is to
+ * generate NOTHING, not to generate a page with placeholders and hope.
+ *
+ * ⚠️ ALL THREE OR NONE, deliberately. Two of three is not "mostly ready": the publish gate throws
+ * on any surviving `[INSERT_*]`, so a partially-answered page fails at publish having already spent
+ * four LLM calls, and leaves an orphaned unpublished row behind. And there is nothing true to fill
+ * the third with — in Auto Mode nobody is there to ask, and a field that demands a value with
+ * nothing true to put in it is exactly how the generator came to invent an attendance cap in five
+ * rows out of five.
+ */
+export function hasAllEventFacts(
+  campaignFacts?: { eventSchedule?: { date?: string | null; time?: string | null; timezone?: string | null } | null } | null,
+): boolean {
+  const es = campaignFacts?.eventSchedule;
+  return !!(es?.date?.trim() && es?.time?.trim() && es?.timezone?.trim());
+}
+
+/**
+ * Does a page of this role consume the coach's landing-page quota?
+ *
+ * Only a page the coach actually asked for. The free-event page is machinery the lead magnet needs
+ * — never surfaced in a picker, never chosen — and the trial ceiling is 2, so charging it would
+ * spend a trial coach's entire allowance on plumbing they never saw, on their first campaign.
+ */
+export function consumesLandingPageQuota(pageRole?: "primary" | "additional"): boolean {
+  return (pageRole ?? "primary") === "primary";
+}

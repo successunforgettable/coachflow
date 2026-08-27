@@ -1170,7 +1170,22 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
   // ⚠️ FIX-FORWARD ONLY. No counter repair and no backfill: every row is pre-launch test data and
   // the clean-slate wipe before launch clears them. Repairing counters would mean guessing how many
   // of each user's historical generations went through this path.
-  await incrementQuotaCount(input.userId, "landingPages");
+  //
+  // 🔴 AN ADDITIONAL PAGE DOES NOT CONSUME THE COACH'S QUOTA. The free-event page is machinery the
+  // lead magnet needs, not an asset the coach asked for — they never saw it in a picker and never
+  // chose it. Charging it would spend a trial coach's ENTIRE allowance (limit 2) on plumbing that
+  // is invisible to them, on their first campaign. Suppressed on the `pageRole` signal, which is
+  // the only thing that knows what kind of page this is.
+  //
+  // This suppresses the single write to `users.landingPageGeneratedCount` and the product event
+  // `incrementQuotaCount` emits. NO OTHER COUNTER MOVES: there is no per-node quota table, and
+  // `quotaLimits.ts` maps "landingPages" to that one column and nothing else.
+  const { consumesLandingPageQuota } = await import("./_core/nextStepBridge");
+  if (consumesLandingPageQuota(input.pageRole)) {
+    await incrementQuotaCount(input.userId, "landingPages");
+  } else {
+    console.log(`[landingPage] quota NOT incremented (pageRole=additional) landingPageId=${landingPageId} — machinery, not a coach-requested asset`);
+  }
 
   // Auto-score + autoSelectBest — non-blocking
   try {

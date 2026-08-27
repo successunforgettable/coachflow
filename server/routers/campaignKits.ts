@@ -392,7 +392,33 @@ export const campaignKitsRouter = router({
       const bookingUrl = await getCoachBookingUrl(kit.userId);
       const questions = deriveOperatorQuestions(pageType, facts, { bookingUrl });
       const answered = deriveAnsweredOperatorFields(pageType, facts, { bookingUrl });
-      return { kitId: kit.id, campaignType: kit.campaignType, pageType, ready: questions.length === 0, remaining: questions.length, questions, answered };
+
+      // ── THE FREE NEXT STEP'S THREE FACTS — asked for a LEAD-MAGNET campaign, and OPTIONAL ──
+      //
+      // A lead-magnet campaign now also produces a free-event page for the magnet to bridge to,
+      // and that page is `webinar_registration`, which cannot publish without date, time and
+      // timezone. But `PAGETYPE_REQUIRED_TOKENS.lead_magnet_download` is `[]` — the magnet's own
+      // opt-in page needs none of them — so nothing was asking.
+      //
+      // 🔴 OPTIONAL, NEVER REQUIRED, AND NEVER GENERATED. They are returned as their own list, not
+      // merged into `questions`, so `ready` is unaffected and a coach who skips them is not
+      // blocked. In Auto Mode nobody is there to answer, and a field that demands a value with
+      // nothing true to put in it is exactly how the generator came to invent a seat cap in five
+      // rows out of five. Skip them and the free-event page is not generated at all; the magnet
+      // keeps the honest text card, which already ships and is already live.
+      const freeStepTokens = ["[INSERT_EVENT_DATE]", "[INSERT_EVENT_TIME]", "[INSERT_EVENT_TIMEZONE]"];
+      const freeStepQuestions = kit.campaignType === "lead_magnet"
+        ? deriveOperatorQuestions("webinar_registration", facts, { bookingUrl })
+            .filter((q: { token: string }) => freeStepTokens.includes(q.token))
+        : [];
+      const freeStepReady = kit.campaignType === "lead_magnet" && freeStepQuestions.length === 0;
+
+      return {
+        kitId: kit.id, campaignType: kit.campaignType, pageType,
+        ready: questions.length === 0, remaining: questions.length, questions, answered,
+        // Optional extras — the caller renders them as a skippable ask, never as a gate.
+        freeStepQuestions, freeStepReady,
+      };
     }),
 
   answerCampaignFact: protectedProcedure
@@ -423,7 +449,20 @@ export const campaignKitsRouter = router({
       const bookingUrl = coachColumn?.column === "bookingUrl" ? coachColumn.value : await getCoachBookingUrl(kit.userId);
       const questions = deriveOperatorQuestions(pageType, facts, { bookingUrl });
       const answered = deriveAnsweredOperatorFields(pageType, facts, { bookingUrl });
-      return { kitId: kit.id, campaignType: kit.campaignType, pageType, ready: questions.length === 0, remaining: questions.length, questions, answered };
+      // Same free-next-step extras as getCampaignFactsReadiness — this mutation returns the UPDATED
+      // readiness, so the two shapes must agree or the caller's state goes stale on the field that
+      // decides whether the free-event page can be generated at all.
+      const freeStepTokens = ["[INSERT_EVENT_DATE]", "[INSERT_EVENT_TIME]", "[INSERT_EVENT_TIMEZONE]"];
+      const freeStepQuestions = kit.campaignType === "lead_magnet"
+        ? deriveOperatorQuestions("webinar_registration", facts, { bookingUrl })
+            .filter((q: { token: string }) => freeStepTokens.includes(q.token))
+        : [];
+      const freeStepReady = kit.campaignType === "lead_magnet" && freeStepQuestions.length === 0;
+      return {
+        kitId: kit.id, campaignType: kit.campaignType, pageType,
+        ready: questions.length === 0, remaining: questions.length, questions, answered,
+        freeStepQuestions, freeStepReady,
+      };
     }),
 
   /**
