@@ -260,3 +260,36 @@ cannot be reached. Both pass review, both look complete, neither does anything.
 
 📌 **Cheap detection:** for every value a server hands to "the caller", grep the client for its
 name. **Zero hits is the whole bug.** That single command would have caught all three instances.
+
+## 15e. THE BRIEF IS NOT THE RATIONALE FOR THE BRIEF (STANDING LAW — locked 2026-08-29)
+
+**A brief written to explain a test to the tester is not the brief production will see. Separate the
+instruction from the reasoning for the instruction BEFORE anything is sent.**
+
+**The instance.** To test whether the generator drifts B2B, this brief was supplied for a new
+service: *"a relationship coach who helps individual people repair how they communicate with their
+partner. One person, spending their own money, on their own relationship. No business, no clients,
+nothing to sell to anyone."*
+
+Sentences one and two are the niche. **Sentences three and four are the rationale** — Arfeen
+explaining to CC why the niche is B2C. Sent verbatim into the product they become **priming**: the
+generator is told the answer the experiment is trying to discover. A B2C result then proves much
+less than it appears to, because the input contained its own conclusion.
+
+### The rule
+
+> **Before sending any brief, prompt or fixture into the product, strip every sentence that exists
+> to explain the test rather than to describe the thing.** Ask of each sentence: *would the real
+> user have written this?* If not, it is rationale, and it contaminates the result.
+
+📌 **Why it is easy to miss:** the rationale is the most useful part of the message *to the person
+receiving the instruction*, and the least legitimate part *of the input*. Its usefulness is exactly
+what smuggles it through.
+
+📌 **Related to §15c and §15d.** §15c is a check that cannot fail. §15d is a feature nothing reaches.
+§15e is **an input that contains its own expected output** — the test is real, the harness is real,
+and the result is still worthless. All three produce confident green.
+
+📌 **The clean form of the brief above**, for the re-run:
+*"I'm a relationship coach. I help people who keep having the same argument with their partner learn
+how to talk to each other again."* — niche only, no framing in either direction.
