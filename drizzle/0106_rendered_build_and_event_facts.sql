@@ -10,10 +10,20 @@
 -- THE DEPLOY. (0105 proved this the hard way: the failure was reproduced in rehearsal before it
 -- could happen live.)
 --
--- ⚠️ FOUR STATEMENTS, AND MySQL DDL IS NOT TRANSACTIONAL — 0105's lesson applied. The ADD COLUMNs
--- are grouped into ONE ALTER PER TABLE to keep the count as low as possible, and there is NO
--- FOREIGN KEY here, so the table rebuild revalidates nothing and the orphan class that could abort
--- 0105 partway cannot arise. Verify each column after applying; see the block at the end.
+-- ⚠️ TWO STATEMENTS ADDING FIVE COLUMNS, AND MySQL DDL IS NOT TRANSACTIONAL — 0105's lesson
+-- applied. Read the count carefully, because this header is what you will be reading while
+-- recovering a half-applied migration: it is exactly TWO `ALTER TABLE` statements —
+--   1. `landingPages`  ADD renderedBuild, eventDate, eventTime, eventTimezone   (4 columns)
+--   2. `hvcoTitles`    ADD renderedBuild                                        (1 column)
+-- The ADD COLUMNs are grouped into ONE ALTER PER TABLE to keep the statement count as low as
+-- possible, so the only half-applied state reachable is "table 1 done, table 2 not" (or the
+-- reverse). There is NO FOREIGN KEY here, so the table rebuild revalidates nothing and the orphan
+-- class that could abort 0105 partway cannot arise. Verify each column after applying; see the
+-- block at the end.
+--
+-- (Corrected 2026-08-28: this line read "FOUR STATEMENTS", which counted the ADD COLUMNs rather
+-- than the statements and contradicted "ONE ALTER PER TABLE" three lines below it. Harmless on a
+-- clean apply; misleading in exactly the situation the header exists for.)
 --
 -- ── WHY renderedBuild ─────────────────────────────────────────────────────────────────────────
 -- A published page's HTML is BAKED INTO CLOUDFLARE KV at publish and never re-rendered until
