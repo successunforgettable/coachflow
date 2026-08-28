@@ -410,6 +410,14 @@ export const campaignKitsRouter = router({
       const freeStepQuestions = kit.campaignType === "lead_magnet"
         ? deriveOperatorQuestions("webinar_registration", facts, { bookingUrl })
             .filter((q: { token: string }) => freeStepTokens.includes(q.token))
+            // The ask that introduces these calls it a "live session". The registry's own wording
+            // for [INSERT_EVENT_DATE] says "your event", which is correct for an in-person
+            // `event_registration` page and WRONG here — a coach running a Sunday evening group
+            // call is running a session, and the two words must not drift apart inside one
+            // exchange. Reworded HERE, in the free-step context, rather than in the registry, so
+            // the in-person path keeps "event" where "event" is the right word.
+            .map((q: { token: string; question: string }) =>
+              q.token === "[INSERT_EVENT_DATE]" ? { ...q, question: "When's your session — what date?" } : q)
         : [];
       const freeStepReady = kit.campaignType === "lead_magnet" && freeStepQuestions.length === 0;
 
@@ -456,6 +464,14 @@ export const campaignKitsRouter = router({
       const freeStepQuestions = kit.campaignType === "lead_magnet"
         ? deriveOperatorQuestions("webinar_registration", facts, { bookingUrl })
             .filter((q: { token: string }) => freeStepTokens.includes(q.token))
+            // The ask that introduces these calls it a "live session". The registry's own wording
+            // for [INSERT_EVENT_DATE] says "your event", which is correct for an in-person
+            // `event_registration` page and WRONG here — a coach running a Sunday evening group
+            // call is running a session, and the two words must not drift apart inside one
+            // exchange. Reworded HERE, in the free-step context, rather than in the registry, so
+            // the in-person path keeps "event" where "event" is the right word.
+            .map((q: { token: string; question: string }) =>
+              q.token === "[INSERT_EVENT_DATE]" ? { ...q, question: "When's your session — what date?" } : q)
         : [];
       const freeStepReady = kit.campaignType === "lead_magnet" && freeStepQuestions.length === 0;
       return {

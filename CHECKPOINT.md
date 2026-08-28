@@ -230,6 +230,266 @@ mechanical and belong in a test that fails on regression.
 prompt site first**: no amount of new rule text or sharper detectors reaches a generator that
 imports neither. Annotated in STATE.md so the reframing is not lost.
 
+### 🔵 OPEN QUESTION — THE COACH WHO NEVER NAMED THEIR SERVICE (opened 2026-08-28, NOT solved)
+
+**Product call, not a mechanism call — logged for Arfeen, deliberately not decided here.**
+
+Found while choosing a Stage D target: service **262** (the intended kit-177 target) has an **empty
+name**, so `[INSERT_EVENT_NAME]`'s auto-fill source (`services.name`) has no fact to use.
+
+**What happens today, and it is the DESIGNED behaviour, not an accident:** the auto-fill resolver
+substitutes only when it holds a fact. No name → the token is **left in place** → the publish gate
+throws → the free-event page does not publish → the magnet keeps its honest text card, the failure
+is logged, and the next run self-heals. Nothing is invented and nothing ships with a hole. **The
+open question is whether "correct and silent" is good enough here, or whether it should become a
+question at intake.**
+
+#### 🔑 THE NUMBERS REFRAME THIS — measured on production 2026-08-28
+
+| | |
+|---|---|
+| unnamed services | **33 of 126** |
+| …owned by **arfeen@arfeenkhan.com** (scratch/test) | **32** |
+| …owned by a **real coach** (`binitay09@…`, user 11787) | **1** |
+| coaches with any unnamed service | **2 of 18** |
+| services feeding landing pages that are unnamed | 17 of 65 — again almost all Arfeen's |
+
+**So this is very nearly a test-data artifact, not coach behaviour.** One real coach, one service.
+That argues strongly against adding an intake question — a new question for every coach to cover a
+single row is the wrong trade, and §"seat cap" says an unnecessary field invites invention.
+
+#### 🔴 BUT THE REAL FINDING IS A VALIDATION HOLE, NOT A DESIGN GAP
+
+**`services.name` is declared `NOT NULL` with no default.** So the schema already asserts that a
+service MUST have a name — these rows are **empty strings satisfying `NOT NULL` while defeating its
+intent**. Nobody decided to allow unnamed services; something is letting `''` through where a value
+is required.
+
+**That makes the likely correct fix a validation one, not an intake one** — reject/trim empty at the
+write path, so the question never needs asking. Cheaper than a new intake step and it fixes the
+class rather than one token's symptom.
+
+📌 **Wider than the token.** `service.name` is also passed as `productName` and as the FIRST argument
+to `generateAllAngles`, so an empty name degrades **all** generated copy for that service, not just
+`[INSERT_EVENT_NAME]`. The token is merely where it becomes visible, because the token is the only
+part the publish gate can see.
+
+📌 **Low urgency, and here is the honest reason:** `[INSERT_EVENT_NAME]` was emitted in **0 of 24**
+production webinar pages and **0 of 5** Stage A generations — the model writes the event
+descriptively rather than reaching for the token. So the degraded path is real but rarely reached.
+**Not a Stage D blocker; it is why Stage D moved OFF service 262 rather than why it stalled.**
+
+**NOT DECIDED. Three options, for Arfeen: (a) validation at the write path — reject empty names;
+(b) an intake question; (c) leave the honest degrade as-is. Recommendation on the evidence: (a).**
+
+### ✅ PRE-LAUNCH DECISION — UNROUTE THE SUPERSEDED V1 GENERATOR SURFACES (decided 2026-08-28)
+
+**Found via the Creatomate key rotation. The instance is small; what it exposed is not.**
+
+#### The instance
+
+`client/src/pages/DemoVideo.tsx` is a **V1** page — `client/src/pages/` is read-only per architectural
+invariant 5 — and it is **still routed at `/demo-video`** (`client/src/App.tsx:153`). It calls a
+**live** tRPC router (`demoVideos.generateDemoVideo` / `checkStatus`), which constructs the
+Creatomate client as `new Creatomate.Client(process.env.CREATOMATE_API_KEY!)` — **a non-null
+assertion, not a guard**. Verified live: `/demo-video` returns **HTTP 200** and the route string is
+present in the deployed client bundle (`/app/dist/public/assets/index-BacK9AJw.js`).
+
+So an unset key would not have failed safely: a logged-in coach reaching that page and clicking
+generate passes `undefined` into the SDK. **`demoVideos` has 0 rows on production** — it has never
+been exercised — but "never used" is not "not reachable".
+
+#### 🔴 THE ACTUAL FINDING — the instance is one of FIFTY-TWO
+
+Parsed from `client/src/App.tsx` on 2026-08-28:
+
+| | count |
+|---|---|
+| routes parsed | **67** |
+| pointing at **V1** `./pages/` | **52** |
+| pointing at **V2** `./v2/` | **10** |
+
+**Many of the 52 are legitimate** — `login`, `signup`, `/terms`, `/privacy`, `/pricing`, the public
+landing page — V1 is simply the only implementation. **The concerning subset is the old GENERATOR
+surfaces that V2 has since replaced**, each still routed and still wired to live routers:
+
+`/generators/icp` · `/ad-copy` · `/ad-creatives` · `/generators/email` · `/generators/whatsapp` ·
+`/generators/landing-page` · `/landing-pages` · `/offers` · `/hvco-titles` · `/hero-mechanisms` ·
+`/headlines` · `/video-creator` · `/demo-video` · `/source-of-truth` · `/campaigns/:id/builder`
+
+**Why this matters before launch, and it is not tidiness:** invariant 5 says V1 is never touched for
+development. That has been read as "V1 is inert". **It is not inert — it is unmaintained AND live.**
+Every one of those routes is a second, older UI onto the same production routers, receiving none of
+the guards, gates and compliance work of the last three months. A coach who lands on one (a stale
+bookmark, a link in an old email, a guessed URL) gets the pre-hardening product.
+
+#### ✅ THE DECISION (Arfeen, 2026-08-28) — a default, not an open question
+
+**Unroute the ~13 superseded GENERATOR surfaces before launch. Keep the V1 pages that exist ONLY in
+V1.**
+
+**UNROUTE — 13 families** (V2 supersedes each; the `:param` detail routes go with their parent):
+`/generators/icp` · `/ad-copy` (+`/:adSetId`) · `/ad-creatives` · `/generators/email` ·
+`/generators/whatsapp` · `/generators/landing-page` + `/landing-pages` (+`/:id`) ·
+`/offers` + `/generators/offers` (+`/:id`) · `/hvco-titles` (+`/new`, `/:hvcoSetId`) ·
+`/hero-mechanisms` (+`/new`, `/:mechanismSetId`) · `/headlines` (+`/new`, `/:id`) ·
+`/source-of-truth` · `/video-creator` (+ script/video detail) · `/demo-video`
+
+**KEEP — V1 is the only implementation:** `/` (public landing page) · `/login` · `/signup` ·
+`/forgot-password` · `/reset-password` · `/manus-oauth/callback` · `/terms` · `/privacy` ·
+`/pricing`
+
+**STILL NEEDS A CALL, listed so they are not silently swept in:** `/dashboard` · `/services`
+(+`/:id`) · `/campaigns` (+ detail/builder/icp) · `/analytics` · `/settings` (+`/integrations`) ·
+`/videos` · `/video-credits` · `/meta/campaigns` · `/meta/alerts` · `/onboarding` ·
+`/getting-started` · `/home`
+
+🔑 **REMOVING A ROUTE IS NOT TOUCHING V1 FOR DEVELOPMENT — invariant 5 survives intact.** The
+invariant forbids *developing* in `client/src/pages/`; deleting a `<Route>` line in `App.tsx` changes
+no V1 file. The pages stay exactly as they are, they simply stop answering. That distinction is what
+makes this shippable without reopening V1.
+
+#### 📌 R3b — the Creatomate replacement is LOWER STAKES than assumed
+
+**The real video path does not use Creatomate.** `videos.generate` checks `isRemotionConfigured()`
+first and uses **Remotion Lambda** instead — `server/routers/videos.ts:613`, *"If Remotion Lambda is
+configured, use it instead of Creatomate"*. All four required variables are present on the running
+production process, so that branch is **true** in production. Creatomate is the fallback that is
+never taken.
+
+What still touches Creatomate is only: `demoVideos.*` (reachable, never used — 0 rows) and
+`videos.getLatestByServiceId` (uses the Creatomate REST API, but **no client code calls it**).
+
+📌 `videos` table: 13 rows, most recent **2026-04-28** — four months stale.
+
+⚠️ **"R3b" is Arfeen's roadmap reference and does not appear anywhere in this repo** — searched.
+Recorded here rather than annotated against an item, so the link is not invented.
+
+### 🔴 STAGE D BLOCKER — THE THREE EVENT QUESTIONS ARE NEVER ASKED (found 2026-08-29, pass one)
+
+**The trigger's precondition cannot be satisfied by a coach, because the UI does not ask for it.**
+
+Found by walking the real interface with Playwright for the first time. Chain of evidence, all
+verified, none inferred:
+
+1. **The server computes them.** `campaignKits.getCampaignFactsReadiness` and `answerCampaignFact`
+   both return `freeStepQuestions` / `freeStepReady` — the three event tokens, deliberately kept as
+   a SEPARATE list so `ready` is unaffected and they never block
+   (`server/routers/campaignKits.ts:408-421`).
+2. **The server's own comment states the contract:** *"Optional extras — the caller renders them as
+   a skippable ask, never as a gate."*
+3. 🔴 **No caller renders them.** `grep -rn "freeStep" client/src` returns **nothing**.
+   `V2Trail.tsx:1620` fetches the readiness and loops `fr.questions` — the MAIN list only
+   (`fr.ready`, `fr.questions`, `fr.remaining`). The free-step half is fetched and dropped.
+4. 🔴 **The approved intake copy was never shipped.** Decision 3 said "INTAKE COPY — FINAL, SHIP
+   EXACTLY AS WRITTEN". The string "Planning to run a live session" exists in **`CHECKPOINT.md` and
+   nowhere else in the repo** — not in `client/`, not in `server/`.
+
+**Consequence:** `campaignFacts.eventSchedule` can never be populated through the normal coach flow,
+so `hasAllEventFacts` is never true, so the free-event page is never built. The server-side trigger
+is complete and correct; **the intake that feeds it was never built.**
+
+📌 **This independently explains the production numbers** — 3 lead-magnet kits, **zero** with event
+facts. Not a coincidence and not coach behaviour: nobody was ever asked.
+
+📌 **It also explains why the manual browser run wrote nothing.** Arfeen could not have answered
+three questions the interface never presents.
+
+**Stage D is blocked until the client renders `freeStepQuestions` with the approved copy.** That is
+a build task, not a test problem. It is the honest reason the trigger has never run end to end.
+
+### 🔴 PRE-LAUNCH — THE ONBOARDING OVERLAY IS A PRODUCT BUG, NOT A NICETY (found 2026-08-29)
+
+On `/v2-dashboard`, an overlay ("Your AI Profile is Ready! How do you want to continue?") renders
+over the dashboard with two options and no other exit.
+
+🔴 **An account with 40 campaigns (11 in progress, 29 completed) is still being asked how it wants
+to get started** — and the primary `+ New Campaign` action **renders enabled but is unclickable
+behind it.** Playwright's log is the proof: *"element is visible, enabled and stable … `<div
+V2Dashboard.tsx:176>` intercepts pointer events."* A returning coach's first click is dead.
+
+🔑 **The missing dialog role, the absent escape hatch and the swallowed clicks are ONE DEFECT SEEN
+THREE WAYS.** The overlay is built as a **bare `div`**, so it gets none of the behaviour a real
+dialog gets for free:
+
+| symptom | what a real dialog would have given |
+|---|---|
+| `Escape` does nothing | dismissal, free |
+| no X, no click-outside | a documented escape hatch |
+| clicks swallowed by the backdrop | correct focus trapping + inert background |
+| `[role=dialog]` query returns **nothing** while it is plainly on screen | screen-reader announcement |
+
+**Fix the container, not the three symptoms** — a real dialog primitive resolves all four at once.
+
+📌 **"Guide Me Step by Step" has never been walked.** Pass one deliberately took "Jump to Tool
+Library" (navigation, not a creating flow) to keep its create-nothing guarantee. **The guided path
+is owed its own exercise** — it may create on the way through, which is exactly why it needs one.
+
+### 🔴 B2C VIOLATION IN REAL PRODUCTION OUTPUT — magnet 5686 (found 2026-08-29)
+
+**Confirmed real generator output, not fixture text.** Surfaced because it was reused as harness
+copy in a screenshot and Arfeen recognised the shape.
+
+```
+hvcoTitles id 5686 · user 1 · service 262 · kit 177 · created 2026-07-09
+"The 5-Line Cold Email Swipe File That Booked a $6,000 Branding Client in 11 Days
+ — Plus the Exact Behance Portfolio Mistake That Was Killing Every Reply Before That"
+```
+
+**Why it violates §"ZAP IS B2C ONLY. NEVER B2B" (CHECKPOINT.md:702):** cold-email prospecting, a
+Behance portfolio, and booking a branding *client*. The reader is a freelance designer selling TO
+BUSINESSES. That is B2B outbound, which is precisely the shape the Lead Magnet node exists to
+prevent. On Arfeen's own account, so no customer received it — but the generator produced it.
+
+⚠️ **DO NOT TRUST A KEYWORD SCAN HERE, AND THIS IS THE USEFUL PART.** A regex over titles for
+`cold email|B2B|SaaS|LinkedIn|freelanc|retainer|…` returns **642 of 6689** rows — and reading the
+samples shows it is mostly WRONG. Titles about a LinkedIn profile for a **mid-career pivot** are
+B2C: an individual buying career coaching, where LinkedIn is a consumer-context tool, not a selling
+channel. **The distinction is who the reader is selling to, which no keyword can see.** Any real
+audit is per-row judgement. **642 is not a violation count and must not be quoted as one.**
+
+**Open, not scoped:** how often does the generator drift B2B, and is it driven by the ICP, the
+service description, or the magnet prompt? 5686's kit (177 / ICP 239) is the one worked example.
+
+### 🔵 THE TIMEZONE-DEPENDENT TEST — recorded, NOT fixed (2026-08-29)
+
+`server/_core/orchestrationFacts.test.ts` → *"close event (≤7 days) → 3"* **passes under `TZ=UTC`
+and fails under `TZ=IST` after 18:30 UTC.** Verified both ways in-session.
+
+**Cause.** `resolveSequenceLength` (`orchestration.ts:162`) compares a **calendar date pinned to
+midnight UTC** against a **wall-clock instant**:
+`days = (Date.parse(`${isoDate}T00:00:00Z`) - Date.now()) / 86_400_000`.
+The test's `inDays(7)` timestamp normalises through the LOCAL calendar date, so at +05:30 anything
+past 18:30 UTC rolls to the next local day, adds ~1, and crosses the `days <= 7` boundary → 5.
+
+🔑 **This is §15c seen from the other side.** §15c is a check that cannot fail. This is a check that
+**can fail for a reason unrelated to what it tests** — same family, opposite symptom, same cost: it
+teaches the reader that a green suite means nothing in particular. Production runs UTC so nothing is
+broken today; leaving it means someone loses an hour to it later.
+
+**NOT FIXED — it lives in `orchestration.ts`, which is do-not-touch.** Two candidate fixes when it
+is picked up: pin the test's clock, or compare date-to-date instead of date-to-instant. The second
+also removes a real (narrow) mixing bug rather than just quieting the test.
+
+### 📋 PRE-LAUNCH LIST — RANKED (opened 2026-08-28, re-ranked 2026-08-29)
+
+**Ranked, not listed. #1 is the only one that violates a FOUNDATIONAL rule; the rest leave something
+untidy or unreachable.**
+
+| # | item | why it ranks here | state |
+|---|---|---|---|
+| **1** | 🔴 **B2C drift in generator output** — magnet 5686 is B2B outbound (cold email, Behance, booking a branding client) | **Violates "ZAP IS B2C ONLY. NEVER B2B" (:702) — a foundational rule, not a tidiness issue. One PROVEN instance in real production output.** The audit is **per-row judgement, not a scan**: a keyword regex returns 642/6689 and is mostly wrong (LinkedIn-for-a-career-pivot is B2C). No number can be quoted until rows are read. | **1 confirmed instance**, extent unknown |
+| **2** | **The free-step ask** — `freeStepQuestions` rendered in `V2Trail` with the approved copy | the trigger has no input without it; built locally, **NOT deployed** | **built**, unpushed |
+| **3** | **Unroute the 13 superseded V1 generator surfaces** | old UIs onto live routers, none of the last three months' guards | **decided**, not built |
+| **4** | **`services.name` write-path validation** | column is `NOT NULL` yet empty strings pass | **recommended (a)**, undecided |
+| **5** | **Onboarding overlay** — rebuild as a real dialog primitive | blocks `+ New Campaign` for returning coaches; one container fix resolves Escape, focus trap, a11y and swallowed clicks | **found 2026-08-29** |
+| **6** | **Walk "Guide Me Step by Step"** | never exercised; may create on the way through | **owed** |
+| **7** | **Render-drift run for magnet 5686** | deliberate isolated republish; served state already captured | **deferred by design** |
+| **8** | **Timezone-dependent test** (`orchestration.ts`) | passes in UTC, fails in IST past 18:30; production is UTC so nothing is broken | **recorded, not fixed** |
+
+📌 Items 1 and 4 are both "quietly wrong in production and nobody was looking". Item 7 is the
+opposite — a known change deliberately held back. Do not merge them into one sprint.
+
 ### Carried, unchanged
 
 The ordering problem stays **unproven** and the coach-triggered path is **not** cited as covering

@@ -222,3 +222,41 @@ green.
 📌 **The corollary for test suites:** `fabricationValidator.test.ts` at 23/23 green while the gate
 was blind is the same shape — the suite asserted only the strings the regexes were already written
 against, so it could not fail on a phrasing nobody had thought of.
+
+## 15d. MACHINERY WITH NO CALLER (STANDING LAW — locked 2026-08-29)
+
+**Machinery is not done when it is correct. It is done when something reaches it.**
+
+Three instances of one shape, every one found by accident rather than by looking:
+
+1. **The pointer, the framings and `nextStepForHvcoId` shipped with no caller** — correct code,
+   reviewed, tested, unreachable.
+2. **`autoFillFrom`** — declared on the operator-token registry, read by nothing. Two tokens were
+   documented "never asked of the coach, filled server-side", were duly SKIPPED by the question
+   deriver, and were then never filled by anything.
+3. **The trigger shipped with no input** (2026-08-29). `campaignKits.getCampaignFactsReadiness`
+   returned `freeStepQuestions` carrying the comment *"the caller renders them as a skippable ask,
+   never as a gate"* — and **no caller rendered them**. `grep -rn "freeStep" client/src` returned
+   nothing. So `campaignFacts.eventSchedule` could never be filled by a coach, `hasAllEventFacts`
+   was never true, and the free-event page could never be built. **Production had already proved it
+   and nobody had read it that way: three lead-magnet kits, zero with event facts.** The approved
+   intake copy existed only in `CHECKPOINT.md` — never in `client/`, never in `server/`.
+
+### The rule
+
+> **For anything a coach must supply, NAME THE SCREEN IT APPEARS ON before the work is called
+> complete.** Not the endpoint, not the field, not the type — the screen, and the moment in the
+> flow where the coach sees it.
+>
+> **A server endpoint returning a value is not a user being asked a question.**
+
+📌 **Why this recurs here specifically.** The server half is satisfying to build and easy to test:
+types, unit tests, a clean return value. The client half is where a value has to become a question
+on a screen. And the server's own comment describing what "the caller" should do reads convincingly
+like the work is finished — **that comment is a request, not an implementation.**
+
+📌 **Related to but distinct from §15c.** §15c is a check that cannot fail; §15d is a feature that
+cannot be reached. Both pass review, both look complete, neither does anything.
+
+📌 **Cheap detection:** for every value a server hands to "the caller", grep the client for its
+name. **Zero hits is the whole bug.** That single command would have caught all three instances.
