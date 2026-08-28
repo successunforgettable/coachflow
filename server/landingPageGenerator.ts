@@ -1,4 +1,5 @@
-import { lpFramingForCampaign } from "./_core/campaignFraming";
+import { lpFramingForCampaign, LP_FRAMING_FREE_NEXT_STEP, FREE_NEXT_STEP_REPLAY_TEXT } from "./_core/campaignFraming";
+import { resolveAutoFillTokens, substituteCopyToken } from "./lib/templates/operatorFields";
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, GUARANTEE_CLAIMS_RULE, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
@@ -1123,6 +1124,40 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
     dollar: allAnglesRaw.dollar as LandingPageContent,
   };
 
+  // ── TOKEN RESOLUTION AT THE SOURCE — before the row is ever written ──────────────────────────
+  // The publish gate throws on ANY surviving `[INSERT_*]`, and that is the guard working: it stays
+  // strict and is not touched here. But three tokens in the webinar allow-list could never be
+  // answered, so a coach could supply date, time AND timezone and the page would still refuse to
+  // publish (Test 5, kit 152: "1 unfilled placeholder: [INSERT_REPLAY_AVAILABILITY]").
+  //
+  // Resolved HERE rather than after the insert, so a page is never STORED holding a token nothing
+  // will ever fill. No prohibition is added to any prompt (naming a shape leaves the space empty —
+  // the seat-cap lesson) and nothing is neutralised to an empty string (that ships a hole and tells
+  // nobody). Each token is resolved from a fact, or left alone for the gate to catch.
+  const __autoFilled = resolveAutoFillTokens(allAngles, {
+    // ⚠️ THE REGISTRY'S DECLARED HOST SOURCE IS RIGHT IN INTENT AND WRONG IN PRACTICE.
+    // `autoFillFrom: "coachName"` points at `users.coach_name` — set for 1 of 23 production
+    // coaches (4%), measured 2026-08-28. `users.name` is set for 23 of 23 (100%). So coach_name
+    // WINS when present (it is the name the coach deliberately chose to be known by) and
+    // users.name is the fallback that makes the fill actually land.
+    coachName: (user.coachName ?? "").trim() || (user.name ?? "").trim(),
+    serviceName: service.name,
+    // leadMagnetName is deliberately NOT supplied: [INSERT_LEAD_MAGNET_NAME] is absent from the
+    // webinar allow-list so it cannot reach this page, and fetching it would add a read for a
+    // token no measurement has ever seen here. Unsupplied → the token survives → the gate catches
+    // it, which is the honest outcome rather than a guessed one.
+  });
+
+  // The framing answers the replay slot, so the page can write from a fact instead of deferring to
+  // an operator who does not exist in Auto Mode. Scoped to the free-next-step framing ON PURPOSE:
+  // on a coach-driven webinar page the coach IS asked ("Will there be a replay?"), and pre-empting
+  // that answer would take a real choice away. See FREE_NEXT_STEP_REPLAY_TEXT for why the text
+  // restates live-and-once and never claims the session is unrecorded.
+  const __isFreeNextStep = input.campaignFraming === LP_FRAMING_FREE_NEXT_STEP;
+  const allAnglesResolved = __isFreeNextStep
+    ? substituteCopyToken(__autoFilled.content, "[INSERT_REPLAY_AVAILABILITY]", FREE_NEXT_STEP_REPLAY_TEXT)
+    : __autoFilled.content;
+
   const __row = {
     userId: input.userId,
     serviceId: input.serviceId,
@@ -1131,10 +1166,10 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
     productDescription: service.description || "",
     avatarName,
     avatarDescription,
-    originalAngle: allAngles.original,
-    godfatherAngle: allAngles.godfather,
-    freeAngle: allAngles.free,
-    dollarAngle: allAngles.dollar,
+    originalAngle: allAnglesResolved.original,
+    godfatherAngle: allAnglesResolved.godfather,
+    freeAngle: allAnglesResolved.free,
+    dollarAngle: allAnglesResolved.dollar,
     // `as const` because extracting the row into a variable loses the contextual typing the
     // inline .values({...}) used to supply — without it the literal widens to `string` and
     // no longer satisfies the column's enum.

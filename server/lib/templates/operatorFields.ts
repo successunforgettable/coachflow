@@ -393,6 +393,50 @@ export function applyOperatorAnswer(
   return { content: next, coachColumn, resolution };
 }
 
+/** The facts ZAP ALREADY HOLDS, keyed by the registry's own `autoFillFrom` values. */
+export interface AutoFillFacts {
+  coachName?: string | null;
+  serviceName?: string | null;
+  leadMagnetName?: string | null;
+}
+
+/**
+ * Fill every `category: "auto-fill"` token from data ZAP already holds.
+ *
+ * 🔴 WHY THIS EXISTS. `autoFillFrom` has been DECLARED on the registry since Batch A and read by
+ * NOTHING — a dead field. `[INSERT_HOST_NAME]` and `[INSERT_EVENT_NAME]` are documented as
+ * "never asked of the coach — filled server-side", `deriveOperatorQuestions` duly skips them
+ * (`spec.category === "auto-fill"` → continue), and then no code ever filled them. So they were
+ * never asked AND never answered, and survived all the way to the publish gate, which throws on
+ * any surviving `[INSERT_*]`. Measured on production 2026-08-28: `[INSERT_HOST_NAME]` survives on
+ * 5 of 24 `webinar_registration` pages, `[INSERT_EVENT_NAME]` on 0 of 24.
+ *
+ * An ABSENT fact leaves the token in place ON PURPOSE. Substituting an empty string would blank
+ * the copy and delete the gate's only signal that something is missing — the page would publish
+ * with a hole in it and tell nobody. A surviving token is a caught failure; a silent hole is not.
+ */
+export function resolveAutoFillTokens<T>(content: T, facts: AutoFillFacts): { content: T; filled: string[] } {
+  let next = content;
+  const filled: string[] = [];
+  for (const spec of Object.values(OPERATOR_TOKEN_REGISTRY)) {
+    if (spec.category !== "auto-fill" || !spec.autoFillFrom) continue;
+    const value = clean(facts[spec.autoFillFrom]);
+    if (!value) continue;
+    next = substituteTokenDeep(next, spec.token, value);
+    filled.push(spec.token);
+  }
+  return { content: next, filled };
+}
+
+/**
+ * Substitute ONE copy token with text the caller has derived from a fact it holds. Deliberately
+ * thin: the only way to replace a token with something other than a registry `skipText`, so every
+ * such substitution is a visible call rather than an ad-hoc `String.replace` scattered upstream.
+ */
+export function substituteCopyToken<T>(content: T, token: string, text: string): T {
+  return substituteTokenDeep(content, token, text);
+}
+
 /**
  * Apply a SKIP to a nudge/copy-only token — substitute the token with its graceful `skipText` (a hedge
  * or removal, never a fabricated specific) so the page can still publish. Only valid for non-hard-hold

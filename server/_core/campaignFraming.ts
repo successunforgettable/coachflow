@@ -197,7 +197,24 @@ CTA language: Reserve your seat / Register now / Save my spot`,
 export const LP_FRAMING_FREE_NEXT_STEP = `CAMPAIGN TYPE: Free Next Step After a Lead Magnet
 Framing: The reader has already worked through the free asset. They arrive knowing the problem, holding the diagnosis, and having already applied the first fix. Write to someone one step in. Name what they have done as done, and open on what is unresolved because they did it — the gap the asset leaves behind. The live session's job is to carry them past that gap. Where the asset ends, this page begins.
 Urgency mechanism: the session is live and happens once, at the stated date and time — being there means being there then, and that is the whole of the scarcity. Write it from that fact, at whatever length the section calls for. Any limit on numbers, seats or availability comes only from what the coach has supplied.
+How to name the session and the host: refer to the session by what it IS — the live session, this session — described from the framing above; a proper event name is supplied as a literal when one is held, so there is nothing to defer. The host's name is likewise supplied as a literal when held. Build the attendance case from the live-and-once fact: what happens at the stated date and time, and what being present at it is worth.
 CTA language: Save my seat / Join the session / Register for the session`;
+
+/**
+ * The replay slot on a free-next-step page, written from the framing's OWN assertion.
+ *
+ * 🔑 SCOPE, AND WHY IT IS THIS NARROW. `LP_FRAMING_FREE_NEXT_STEP` asserts the session "is live and
+ * happens once, at the stated date and time". It does NOT say whether the session is recorded, and
+ * live-and-once does not entail it. So this text restates the framing's claim EXACTLY and stops —
+ * it never says "no replay", "live only", or "this will not be recorded", because ZAP does not hold
+ * that fact and the coach was never asked for it. (The line that does contrast a recording with the
+ * room — "being there beats any recording" — belongs to the IN-PERSON EVENT framing below, a
+ * different campaign type with a different claim. It is not available to this page.)
+ *
+ * Sentence-shaped, matching the registry `skipText` convention: the token sits where a standalone
+ * statement about the session goes, not mid-phrase.
+ */
+export const FREE_NEXT_STEP_REPLAY_TEXT = "This session runs live, once, at the stated date and time.";
 
 /** Framing for one campaign type, with the shared default for an unknown/absent value. */
 export function lpFramingForCampaign(campaignType?: string | null): string {
