@@ -54,7 +54,7 @@ pnpm install --frozen-lockfile                  # must pass
 
 - **Frontend:** React 19, Tailwind 4, shadcn/ui, Vite
 - **Backend:** Express 4, tRPC 11, Drizzle ORM
-- **DB:** MySQL/TiDB on Railway
+- **DB:** **MySQL Community Server 9.4.0** on Railway — `@@version_comment` = `MySQL Community Server - GPL`. **NOT TiDB.** (Corrected 2026-08-28. The old line read "MySQL/TiDB"; a Stage B target guard that checked for TiDB to identify production could therefore never fire — see §15c.) ⚠️ Local Homebrew MySQL reports the **same** `VERSION()` string, `9.4.0`, so **VERSION() does not distinguish local from production.** `@@version_comment` does: production `MySQL Community Server - GPL` vs local `Homebrew`.
 - **AI:** Anthropic Claude API (Sonnet for generation)
 - **Storage/media:** Cloudinary, Remotion Lambda (us-east-1)
 - **Integrations:** Stripe (live mode), Meta Ads API, GoHighLevel marketplace OAuth (workflows.readonly + locations/customValues.write scopes)
@@ -187,3 +187,38 @@ read results. Startup load is trivial by comparison (CLAUDE.md + MEMORY.md ≈ 1
 
 **Unrelated and unchanged: teardown still outranks the artifact read.** That rule is about prod
 safety, not context, and stands exactly as written in STATE.md TRAPS.
+
+## 15c. VERIFICATION THAT CANNOT FAIL (STANDING LAW — locked 2026-08-28)
+
+**A check that cannot fail proves nothing, and is worse than no check, because it reads as
+coverage.** Three instances of this exact shape are now on record:
+
+1. **The inert TiDB guard check.** A Stage B guard aborted if the target reported TiDB, to stop a
+   migration hitting production. Production is **MySQL Community Server**, so that check could
+   never fire. It sat in a guard that was otherwise correct and looked like a fourth layer of
+   safety. It was decoration. (Stage A's guard carried the same dead check.)
+2. **The completeness guard that never fires on the happy path.** Recorded as "an unfired guard is
+   untested" — satisfied by construction, so it demonstrated nothing about the case it existed for.
+3. **The statistic-rule proof run that could not detect its own subject.**
+   `NO_RESEARCH_STATISTIC_FABRICATION_RULE` was reported missing from Node 5 on the strength of a
+   pass that had no way to observe the rule's presence — and the rule had in fact been wired that
+   same sprint by `ed3ea41`.
+
+### The test — apply it to EVERY new guard, gate, proof run or assertion
+
+> **State what result would make it fire. Then confirm that result is reachable.**
+> **If it is not reachable, the check is decoration — delete it or fix it. Do not ship it.**
+
+In practice that means running the **negative control**: feed the guard the thing it is supposed to
+reject and watch it reject. Both 2026-08-28 stage guards were exercised this way and it is what
+caught the TiDB error — the guard was pointed at production, aborted, and the abort was *correct*
+for a reason nobody had predicted.
+
+📌 **Related but distinct from §15a.** §15a is about judging against the wrong *source* (a spec that
+misreads its own PNG; a generated row read back as framing). §15c is about a check that has no
+*reachable failure*. A §15a gate passes against a lie; a §15c gate cannot fail at all. Both read as
+green.
+
+📌 **The corollary for test suites:** `fabricationValidator.test.ts` at 23/23 green while the gate
+was blind is the same shape — the suite asserted only the strings the regexes were already written
+against, so it could not fail on a phrasing nobody had thought of.

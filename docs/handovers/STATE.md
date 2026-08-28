@@ -124,6 +124,27 @@ claim propagates. `checkOutput` is wired into concept, landing-page, LP-publishe
 ad-copy and the Meta gate only. Offer, lead-magnet, email, WhatsApp and bonus generators are also
 unguarded.
 
+🔑 **REFRAMED 2026-08-28 — (a) IS A WIRING PROBLEM, AND IT NEEDS A WIRING MAP.**
+P1 has been scoped as a DETECTION problem: sharper regexes, wider validator coverage, real phrasings
+as regression tests. All of that is still true and still needed — **and none of it reaches a
+generator that imports no rules at all.** Measured across every export of `copywritingRules.ts`:
+
+- **`server/bonusGenerator.ts` imports NOTHING from `copywritingRules.ts`** while running a real
+  prompt (`BONUS_SYSTEM`, line 130) on coach-facing deliverable content — no banned words, no
+  register standard, no fabrication rules.
+- **`server/hvcoGenerator.ts`** carries `BANNED_COPYWRITING_WORDS` + `REGISTER_STANDARD` and **none
+  of the fabrication rules**, and it names the lead magnet.
+
+**So the first deliverable of this item is a WIRING MAP — generators down one axis, rules across the
+other — not new rule text.** A missing cell must be visible, not inferred. `ed3ea41` ("inherit
+NO_RESEARCH_STATISTIC_FABRICATION_RULE — **a missing import, not a new rule**") is the proof that
+this class is real, is cheap to fix once seen, and is invisible until something compares prompt
+sites against each other. The map belongs in a test that fails when a new generator lands unwired.
+
+📌 Distinct from the "declared but read by nobody" class (a rule that exists and is inert —
+`PROOF_COMPOSITIONAL_CEILING_RULE`, and `autoFillFrom` before 2026-08-28). Here the rule is live,
+correct and enforced everywhere else. Full note in `CHECKPOINT.md`, "THE SECOND CLASS".
+
 **(b) The `of my` exemption opened a false negative.** `STAT_SELF_DESCRIPTIVE` was added to kill the
 *"80% of my week"* false positive; it also exempts **`94% of my clients`**, which passes while
 `87% of consultants` blocks. Same class: `TESTIMONIAL_RE` never matches a bare first name

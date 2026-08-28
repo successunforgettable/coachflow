@@ -95,8 +95,70 @@ five rows**.
 📌 A prohibition would name the shape and leave the space empty — the seat-cap lesson. A
 neutraliser would delete the gate's only signal.
 
-**2 · `BUILD_SHA` IS SET AS PART OF THE DEPLOY, NOT SEPARATELY** — changing a service variable
-triggers a redeploy, so setting it on its own would spend a deploy to no purpose.
+🔴 **CORRECTION — 2026-08-28, DO NOT RE-INTRODUCE THE OLD BRIEF'S REPLAY PREMISE.**
+The brief that set this work up said `LP_FRAMING_FREE_NEXT_STEP`'s "strongest line contrasts a
+recording with the live session". **It does not, and it never did.** That line was a GENERATED ROW
+from the A/B — model output, read back as if it were source. The framing's own text was never
+checked against it.
+
+**What the framing actually asserts:** *"the session is live and happens once, at the stated date
+and time"*. That is all. **Live-and-once does NOT entail no-replay** — a session can happen once and
+still be recorded. ZAP does not hold the replay fact and the coach was never asked for it.
+
+**So the substituted text restates the framing's claim and STOPS:**
+> "This session runs live, once, at the stated date and time."
+
+It never says "no replay", "live only", or "will not be recorded". A unit test in
+`server/_core/freeNextStepTokens.test.ts` pins that it never starts saying them, and a second test
+pins that the framing still makes the live-and-once claim the text is derived from — so if the
+framing is ever reworded, the pairing fails loudly instead of drifting.
+
+📌 **The line the old brief was remembering is real, but belongs to a DIFFERENT campaign type** —
+"being there beats any recording" is the IN-PERSON EVENT framing (`campaignFraming.ts`, the
+`in_person_event` entry). It is not available to this page and must not be borrowed for it.
+
+📌 **This is §15a's lesson in a new place.** §15a says a frozen PNG outranks spec prose. The same
+rule applies one level up: **a generated OUTPUT never outranks the source it was generated from.**
+An A/B row is evidence about the model, not about the framing.
+
+**2 · 🔴 RETIRED 2026-08-28 — `BUILD_SHA` MUST STAY UNSET. SETTING IT WOULD MAKE THE STAMP LIE.**
+
+The original decision said set `BUILD_SHA` as part of the deploy, on the premise — recorded in this
+file — that *"there is no git variable in the Railway environment at all — checked."* **That premise
+is false.** Read from the RUNNING APP PROCESS (`/proc/33/environ` of `node dist/index.js`, not an
+SSH session's environment, which can differ):
+
+```
+app_RAILWAY_GIT_COMMIT_SHA = 6edb654083969768c05ec66750479857c454cdbe   ← exactly HEAD
+app_BUILD_SHA              = (absent)
+app_SOURCE_COMMIT          = (absent)
+```
+
+📌 Likely origin of the wrong note: **Railway's variables panel does not list auto-injected
+`RAILWAY_*` variables**, so checking there shows nothing while the process has them.
+
+**THE REASON IT MUST STAY UNSET IS NOT "it is unnecessary". IT IS THAT SETTING IT BREAKS THE
+COLUMN.** `buildStamp.ts` resolves in this order:
+
+```
+process.env.BUILD_SHA ?? process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.SOURCE_COMMIT
+```
+
+`BUILD_SHA` is **preferred**. A hand-set value is therefore **frozen at the moment it was typed and
+authoritative from then on** — it does not follow HEAD, and it silently outranks the variable that
+does. On the very next deploy, `renderedBuild` would stamp every newly published page with the
+**previous** build's SHA, and go on doing so for every deploy after that, until someone remembered
+to retype it.
+
+**A stamp that reports the wrong build is worse than no stamp**, because `renderedBuild` exists for
+exactly one question — *which build baked this page, and how stale is it?* — and it would answer
+that question confidently and wrongly. The NULL it replaces is honest ("unknown age"); a stale SHA
+is not. The whole point of the column is defeated by the variable that was meant to switch it on.
+
+**Railway's `RAILWAY_GIT_COMMIT_SHA` tracks HEAD automatically, per deploy, with nothing to
+remember.** It is the correct source and it is already wired as the fallback. Leave `BUILD_SHA`
+unset. If it is ever set for some other reason, it must be reset on **every** deploy or the column
+starts lying.
 
 **3 · INTAKE COPY — FINAL, SHIP EXACTLY AS WRITTEN:**
 
@@ -104,6 +166,69 @@ triggers a redeploy, so setting it on its own would spend a deploy to no purpose
 > timezone and I'll build the registration page — your guide will send readers straight to it.
 >
 > No date yet? Skip this. Your guide still ends with an invitation, it just won't have a link.
+
+### 🔵 BACKLOG — CONFIGURATION THAT IS DECLARED BUT READ BY NO CODE (opened 2026-08-28)
+
+**Wants its OWN sweep across the codebase. Not being chased now.** Logged while the instances are
+in hand, because each was found by accident rather than by looking.
+
+**Why this is a class and not three bugs.** A declared-and-unread setting is invisible in exactly
+the way a missing one is not: it reads as deliberate, it survives review, tests that assert it
+EXISTS still pass, and nothing anywhere fails. The token case below cost a whole failure mode — a
+coach could answer every question asked of them and the page still would not publish.
+
+**CONFIRMED DEAD — 0 readers, verified by repo-wide grep 2026-08-28:**
+
+| what | where | evidence |
+|---|---|---|
+| `autoFillFrom` | `server/lib/templates/operatorFields.ts` | declared on the registry type + 3 token entries; **read by nothing**. `[INSERT_HOST_NAME]` / `[INSERT_EVENT_NAME]` were documented "never asked of the coach — filled server-side", were duly skipped by `deriveOperatorQuestions`, and were never filled. **Now implemented** — this is the worked example, kept here as the specimen. |
+| `PROOF_COMPOSITIONAL_CEILING_RULE` | `server/_core/copywritingRules.ts:386` | exported; appears in exactly ONE other file and only inside a COMMENT (`_core/validator.ts:396`). Pasted into no prompt. **Still dead.** |
+
+**⚠️ THE THIRD CANDIDATE DID NOT HOLD — and the reason matters more than the miss.**
+`NO_RESEARCH_STATISTIC_FABRICATION_RULE` was logged as "never imported by Node 5". It **is**
+imported: `server/leadMagnetContentGenerator.ts:18`, appended to the system prompt at `:327`, with
+`leadMagnetBounds.test.ts:387` asserting it is there.
+
+🔑 **It is wired because WE WIRED IT, THIS SPRINT — `ed3ea41`, "inherit
+NO_RESEARCH_STATISTIC_FABRICATION_RULE — a missing import, not a new rule" (already on origin).**
+So the candidate was a **FIXED instance cited as evidence of a live class**. That is a specific trap
+worth naming: a defect you closed yourself is the easiest thing in the world to re-report, because
+the memory of finding it is far more vivid than the memory of fixing it. **Check the git log before
+logging a class from an instance.**
+
+**COUNT: TWO confirmed dead-config instances, not three.**
+
+---
+
+### 🔵 THE SECOND CLASS — A PROMPT SITE MISSING RULES THAT ALREADY EXIST
+
+**This is the bigger of the two, and it is NOT the same problem.** Class 1 is a setting nothing
+reads — the rule text exists and is inert. Class 2 is a rule that is live, correct and enforced
+*everywhere else*, and simply **absent at one prompt site**. Nothing fails, nothing is declared, and
+the only way to see it is to compare prompt sites against each other. `ed3ea41` was exactly this
+class — which is why it was fixable in one import and no new rule text.
+
+Measured across every export of `copywritingRules.ts`, 2026-08-28:
+
+- 🔴 **`server/bonusGenerator.ts` imports NOTHING from `copywritingRules.ts` at all** — while
+  running a real LLM prompt (`BONUS_SYSTEM`, line 130). No banned words, no register standard, no
+  fabrication rules, on **coach-facing deliverable content**. **The biggest single gap found.**
+- `server/hvcoGenerator.ts` imports `BANNED_COPYWRITING_WORDS` + `REGISTER_STANDARD` and **none of
+  the fabrication rules** — and it names the lead magnet.
+
+**The sweep is therefore TWO passes, not one:**
+1. every exported rule/config → is it read by anything other than a comment or a test?
+2. **every LLM prompt site → which rules does it import, and which does it silently lack?**
+
+Pass 2 is the one that produces a **WIRING MAP** — generators down one axis, rules across the other,
+so a missing cell is visible instead of inferred. Neither pass is safe to eyeball; both are
+mechanical and belong in a test that fails on regression.
+
+📌 **This reframes the largest remaining piece of work.** See `docs/handovers/STATE.md` queue item
+**P1** — its cause (a) already lists unguarded generators, but it was scoped as a DETECTION problem
+(better regexes, more validator coverage). It is now known to need a **wiring map across every
+prompt site first**: no amount of new rule text or sharper detectors reaches a generator that
+imports neither. Annotated in STATE.md so the reframing is not lost.
 
 ### Carried, unchanged
 
