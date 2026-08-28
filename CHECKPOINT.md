@@ -7,7 +7,127 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
+# 👉 STATE AT BREAK — 2026-08-29. THE ASK IS LIVE; STAGE D IS NOT CLOSED.
+
+**Branch `railway-build`. Working tree clean. `origin/railway-build` == local HEAD == `246ffb8`.
+Nothing unpushed. Migrations 0097–0106 ALL APPLIED to production.**
+
+## WHAT IS DEPLOYED
+
+`246ffb8` — *"ask the three event questions — the trigger had no input"*. Verified by running bytes,
+not the deploy panel: the approved copy and `freeStepQuestions` were **absent** from the deployed
+client bundle before the push and **present** after (`/app/dist/public/assets/index-Bzht74Bv.js`),
+`"When's your session"` ×2 in the server bundle, and the container's own
+`RAILWAY_GIT_COMMIT_SHA` == HEAD.
+
+**Migration 0106 applied 2026-08-28** (2 ALTERs, 5 nullable columns, verified; `stamped=0`, no
+backfill). `BUILD_SHA` stays UNSET — see retired decision 2; setting it would make the stamp lie.
+
+## WHAT PASS TWO PROVED, AND WHERE IT STOPPED
+
+✅ **The ask renders live in the real cascade.** Kit **222**, trail at 5 of 11, immediately after the
+Lead Magnet locked. Order confirmed on screen: ask → *"When's your session — what date?"* → date
+control → *"No date yet? Skip this…"* → **[Skip]**. Screenshot `47-freestep-ask-LIVE.png`.
+
+🔴 **It stopped filling the date.** The control is a native `<input type="date">` and needs
+`2026-10-14`; the driver sent `"14 October 2026"`. **A harness bug, not a product bug.**
+
+🔴 **THE SIX READS WERE NOT OBTAINED.** No page published, no stamp written, no KV key created.
+**Stage D is NOT closed.**
+
+## 🔴 THE RELOAD DEFECT — introduced 2026-08-29, NOT FIXED
+
+`runManualLoop` skips completed nodes at **`V2Trail.tsx:1675`** (`if (kit[stepDef.field] != null)
+continue;`) **before** reaching the ask at **:2019**. The ask therefore fires **at a moment** — the
+instant `hvco` completes — and resume never returns to that moment.
+
+**Consequence:** a coach who reloads while the ask is on screen loses it permanently. The three
+questions can never be asked again for that kit and the free-event page becomes impossible for it.
+**Proven live**: kit 222 hit exactly this.
+
+📌 The **conversational intake has the same shape of defect** — reloading `/trail/new` mid-intake
+restarts at "0 of 11" and abandons an orphan service.
+
+## 🔴 THE B2C READ IS CONTAMINATED — see CLAUDE.md §15e
+
+The brief sent included its own rationale (*"No business, no clients, nothing to sell to anyone"*),
+which **primed the generator toward the answer the experiment was testing for**. The output was
+emphatically B2C — ICP 288 *"Individual in a struggling romantic relationship … self-funding their
+own coaching"*, twelve magnet titles all addressed to a person in their own relationship, zero
+outbound framing — **but this does not clear the generator.** The uncontaminated re-run is the test
+that counts.
+
+## HELD — DO NOT DELETE
+
+🔴 **THE RESTORE POINT MUST NOT BE DELETED. STAGE D HAS NOT CLOSED.** Four tables, dumped before any
+write and **verified by replay** into a throwaway instance (row counts AND content fingerprints
+identical, with a comparison that requires 4 lines on each side so it cannot pass on empty output):
+
+| table | rows | fingerprint |
+|---|---|---|
+| `hvcoTitles` | 6689 | `205fe0dd…` |
+| `nodeStatuses` | 85 | `18cdf3a6…` |
+| `campaignKits` | 68 | `fca19d7f…` |
+| `landingPages` | 92 | `fbe210b1…` |
+
+**BASELINE FOR THE SIX READS** (captured before any Stage D write):
+`landingPages` 92 rows / **max id 236** / 38 published · `hvcoTitles` 6689 · `nodeStatuses` **85
+rows, ids 94–186** (imported 66, stale 10, needs_publish 8, dismissed 1) · `campaignKits` 68 ·
+**Cloudflare KV namespace `dfb6bc40747d471086075865d815ecd0`, 72 keys** (3 `magnet-*`, 69 other).
+A fresh cascade should ADD its own nodeStatuses rows and mark NOTHING stale — if `stale` moves above
+10 that is re-crown behaviour leaking into a first run.
+
+## 🔴 TODAY'S DEBRIS — goes with the pre-launch wipe
+
+| what | state |
+|---|---|
+| **kit 222** | `campaignFacts` **NULL and now UNFILLABLE through the UI** (the reload defect) |
+| **service 314** | orphan — created, **unnamed**, no kit, no ICP; abandoned by the intake reload |
+| **service 315** | kit 222's service, **unnamed** — the intake writes `description` but never `name` |
+
+📌 Both new services being unnamed **confirms pre-launch item #4 is CURRENT behaviour, not legacy
+data.**
+
+---
+
+# 👉 NEXT ACTION — ARFEEN'S INSTRUCTION, 2026-08-29, VERBATIM AND NOT YET ACTED ON
+
+**Recorded here because it was given in conversation and exists nowhere else.**
+
+> **Fix the reload defect as a STATE CONDITION, not a placement.** The ask currently fires at a
+> moment — the instant the magnet node completes — and resume skips completed nodes, so that moment
+> never returns. **Moving it elsewhere in the loop reproduces the same fragility somewhere else.** It
+> must fire on a **condition**: lead-magnet campaign · server returning free-step questions · facts
+> still missing.
+>
+> **The upfront intake has the same defect and the same treatment applies, but SCOPE IS NOT TO BE
+> WIDENED NOW.**
+>
+> Then **redeploy**, verifying strings **absent-before and present-after** plus the container commit
+> equal to HEAD.
+>
+> Then **ONE run, not two**, using this brief and nothing more:
+> **"I'm a relationship coach. I help people who keep having the same argument with their partner
+> learn how to talk to each other again."**
+> That single run delivers the uncontaminated B2C read and the six reads together.
+>
+> Report: **the six reads against baseline**; **the B2C read as its own section with titles quoted
+> verbatim and NO verdict from CC**; and **a screenshot of the ask surviving a deliberate mid-flow
+> reload** — that last one is the proof the fix works and **the one that matters most**.
+>
+> **Abort conditions unchanged:** a NULL stamp, the booking-URL token, or any write to services
+> 272–277 / 285 → stop and report BEFORE reverting anything.
+
+📌 Harness notes for that run: the date control is a native `<input type="date">` (`2026-10-14`),
+the campaign-type chip is **"Lead magnet"**, the path chip is **"I'll pick as we go"** (the ask lives
+in `runManualLoop`), and dealable nodes need **"Show me options"** then **"Lock it in →"**.
+
+---
+
 # 👉 STATE AT BREAK — 2026-08-28. THE TRIGGER IS BUILT AND TESTED, NOT DEPLOYED.
+
+**⚠️ SUPERSEDED by the 2026-08-29 block above — kept for the decision record.**
+
 
 **Branch `railway-build`. Working tree CLEAN. `origin/railway-build` = `2cb6491` (deployed).
 Local HEAD is ahead by five commits, NONE pushed. Migration 0106 is WRITTEN AND NOT APPLIED.**
@@ -471,6 +591,58 @@ broken today; leaving it means someone loses an hour to it later.
 is picked up: pin the test's clock, or compare date-to-date instead of date-to-instant. The second
 also removes a real (narrow) mixing bug rather than just quieting the test.
 
+### 🔴 AUTO MODE CAPTURES NO OPERATOR FACTS — MEASURED, NOT DESCRIBED (2026-08-29)
+
+**It is a hole under the flagship path, not a lead-magnet gap.**
+
+`getCampaignFactsReadiness` is called at `V2Trail.tsx:1642` (upfront facts) and `:2021` (the
+free-step ask). **Both are inside `runManualLoop`. `runAutoLoop` (1189–1600) calls it nowhere.**
+So Auto Mode captures NO operator facts of any kind — not date/venue/price, not the three event
+questions.
+
+**Which page types require operator facts to publish** (`PAGETYPE_REQUIRED_TOKENS`):
+
+| page type | required before publish | reachable in Auto Mode? |
+|---|---|---|
+| `webinar_registration` | DATE · TIME · TIMEZONE | yes |
+| `event_registration` | DATE · VENUE · PRICE | yes |
+| `sales_page` | PRICE | yes |
+| `discovery_call_booking` | BOOKING_URL *(a coach column, not an ask)* | yes |
+| `lead_magnet_download` | **none** | yes |
+
+`CAMPAIGN_TO_PAGE_TYPE` maps all seven campaign types onto these five, and Auto Mode runs the same
+`landingPage` step. **So Auto Mode can produce all five, and four of the five need facts it never
+collects.**
+
+**What happens today: it GENERATES A PAGE THAT THEN CANNOT PUBLISH.** Not a failure, not a silent
+skip — the generation succeeds and the asset is saved, then `unansweredRequiredOperatorFields` (or
+the `[INSERT_*]` token gate) throws at publish. The coach gets an asset that is a dead end.
+
+📌 **Production is consistent with this, though it does not prove it alone.** Published rate by page
+type: `discovery_call_booking` **5/5 (100%)** and `lead_magnet_download` **2/2 (100%)** — the two
+that need no content fact from the coach. Against `sales_page` **16/51 (31%)**,
+`event_registration` **4/10 (40%)**, `webinar_registration` **11/24 (46%)** — the three that do.
+⚠️ Correlation only: a page can be unpublished for ordinary reasons (draft, superseded). It is
+suggestive, not a proof, and must not be quoted as one.
+
+**NOT FIXED — a second placement decision and another deploy.** Auto Mode has no natural pause
+point, which is precisely why it was never done.
+
+### 🔴 THE FREE-STEP ASK IS LOST ON RELOAD — a defect in the 2026-08-29 implementation
+
+`runManualLoop` skips completed nodes (`if (kit[stepDef.field] != null) continue;`, line 1675)
+**before** reaching the ask at 2019. So if a coach reloads while the ask is on screen, the loop
+resumes past `hvco`, the ask never fires again, and **the three questions can never be asked for
+that kit** — the free-event page becomes permanently impossible for it.
+
+Proven live: pass two hit exactly this. The ask rendered, the run was interrupted, and reloading
+`/trail/222` resumed past it. **Kit 222's `campaignFacts` is NULL and cannot now be filled through
+the UI.**
+
+📌 Also observed: **the conversational intake does not survive a reload either** — reloading
+`/trail/new` mid-intake restarts at "0 of 11" and leaves an **orphan service** behind (service 314,
+unnamed, no kit, no ICP).
+
 ### 📋 PRE-LAUNCH LIST — RANKED (opened 2026-08-28, re-ranked 2026-08-29)
 
 **Ranked, not listed. #1 is the only one that violates a FOUNDATIONAL rule; the rest leave something
@@ -480,6 +652,8 @@ untidy or unreachable.**
 |---|---|---|---|
 | **1** | 🔴 **B2C drift in generator output** — magnet 5686 is B2B outbound (cold email, Behance, booking a branding client) | **Violates "ZAP IS B2C ONLY. NEVER B2B" (:702) — a foundational rule, not a tidiness issue. One PROVEN instance in real production output.** The audit is **per-row judgement, not a scan**: a keyword regex returns 642/6689 and is mostly wrong (LinkedIn-for-a-career-pivot is B2C). No number can be quoted until rows are read. | **1 confirmed instance**, extent unknown |
 | **2** | **The free-step ask** — `freeStepQuestions` rendered in `V2Trail` with the approved copy | the trigger has no input without it; built locally, **NOT deployed** | **built**, unpushed |
+| **2b** | 🔴 **Auto Mode captures no operator facts** — 4 of 5 page types need facts it never asks for; generates pages that cannot publish | **hole under the flagship path**, measured 2026-08-29 | **not fixed** |
+| **2c** | 🔴 **Free-step ask lost on reload** — completed-node skip runs before the ask | defect in the 2026-08-29 implementation; kit 222 is permanently unfillable | **not fixed** |
 | **3** | **Unroute the 13 superseded V1 generator surfaces** | old UIs onto live routers, none of the last three months' guards | **decided**, not built |
 | **4** | **`services.name` write-path validation** | column is `NOT NULL` yet empty strings pass | **recommended (a)**, undecided |
 | **5** | **Onboarding overlay** — rebuild as a real dialog primitive | blocks `+ New Campaign` for returning coaches; one container fix resolves Escape, focus trap, a11y and swallowed clicks | **found 2026-08-29** |
