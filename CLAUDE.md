@@ -327,3 +327,78 @@ check that cannot fail; this is **a check that cannot mean anything** — and bo
 📌 **Applies to every count, fingerprint, row total, byte size, KV key count and quota figure**, and
 to a restore point's own verification counts. If a number is going to be subtracted from, it gets
 re-measured first.
+
+## 15g. AN INSTRUCTION THAT CANNOT BE SATISFIED IS A DEFECT IN THE INSTRUCTION (STANDING LAW — locked 2026-08-29)
+
+**When an instruction's own conditions contradict each other, STOP AND SAY SO. Do not quietly pick
+the reading that lets the work continue, and do not invent a workaround that satisfies the words
+while defeating the purpose.**
+
+**The instance.** The brief for the reload fix said *"nothing committed, deployed or pushed until I
+have seen both screenshots and said go"* — where the two screenshots were the ask DEAD on the
+shipped build and the ask LIVE after the fix. **The second one cannot exist until the fix is
+deployed, and deploying required the approval that the second screenshot was gating.** The two
+conditions could not both hold. CC stopped, delivered everything that did not depend on the
+contradiction, stated the conflict in plain terms and recommended a resolution rather than choosing
+one silently.
+
+📌 **Arfeen's ruling, recorded verbatim in substance:** *"that is my error, not something you should
+have worked around. An instruction that cannot be satisfied is a defect in the instruction, and the
+right response is the one you gave, which is to stop and say so."*
+
+### The rule
+
+> **Do every part of the work that does not depend on the contradiction. Then name the conflict,
+> say which readings are possible, recommend one, and WAIT.**
+>
+> Never resolve a contradiction in the brief by silent choice. Both branches look like obedience
+> from the inside, and only one of them is.
+
+📌 **Why the temptation is strong:** picking a reading feels like initiative, and the reading that
+lets work proceed always feels like the generous one. But an unflagged choice hides the fact that a
+decision was made at all — the report then describes work done under an assumption the reader never
+agreed to, and never learns was made.
+
+📌 **Distinct from ordinary ambiguity.** An ambiguous instruction has several satisfiable readings;
+make the routine judgement call and say which one you took. A CONTRADICTORY instruction has none.
+That is not a judgement call, it is a blocker, and it is the one case where stopping with work
+undelivered is correct.
+
+## 15h. A DEPLOY MARKER MUST BE PROVEN TO DIFFER BETWEEN THE TWO BUILDS (STANDING LAW — locked 2026-08-29)
+
+**Before trusting any string as proof that a deploy landed, COUNT IT IN BOTH BUILDS AND SHOW THE
+COUNTS DIFFER. A marker present in the old build proves nothing about the new one.**
+
+**The instance.** The house method is "grep the deployed bundle for the changed strings, absent
+before and present after". For the 2026-08-28 deploy the markers were the approved ask copy and
+`freeStepQuestions` — genuinely new then, and correct. **Reused unchanged for the 2026-08-29 reload
+fix they would have reported SUCCESS AGAINST BOTH BUILDS**, because that copy had shipped the day
+before and the fix added no new user-visible text at all: it was purely structural.
+
+The markers actually used were found by minifying the fixed build and diffing against the live
+bundle, then counted in both:
+
+| marker | deployed `246ffb8` | fixed build |
+|---|---|---|
+| `freeStepQuestions.length===0` | 0 | 1 |
+| `selectedHvcoId!=null&&` | 0 | 1 |
+| `selectedLandingPageId==null` | 0 | 1 |
+| old shape `freeStepQuestions.length>0){` | 1 | 0 |
+
+Three appear and one disappears — and the disappearing marker is the stronger half, because a
+partial or cached deploy can add bytes without removing the old shape.
+
+### The rule
+
+> **Derive the marker from the actual diff of the two built artefacts, never from the intent of the
+> change. Count it in the OLD build and in the NEW build before the deploy, and only trust it once
+> the two counts differ. Prefer having at least one marker that must DISAPPEAR.**
+
+📌 **A structural change may add no new strings whatsoever.** When the fix is a moved call, a
+reordered guard or an inverted condition, the minified artefact is the only place a marker can come
+from. Reaching for the copy strings out of habit is exactly how a green verification gets produced
+for a build that never shipped.
+
+📌 **Same family as §15c and §15f.** §15c: a check that cannot fail. §15f: a comparison against a
+stale baseline. §15h: **a marker that cannot distinguish.** All three return confident green while
+measuring nothing.
