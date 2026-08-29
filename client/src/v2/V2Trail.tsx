@@ -1670,7 +1670,120 @@ export default function V2Trail() {
       } catch (e) { console.warn("[trail] upfront facts capture failed (non-fatal):", e); setFactsMode(null); }
     }
 
+    // ── FREE NEXT STEP — the three event questions ────────────────────────────────────────────
+    // A STATE CONDITION, NOT A PLACEMENT. This is the fix for the reload defect of 2026-08-29.
+    //
+    // WHAT WAS WRONG. The ask used to sit at the TAIL of the `hvco` iteration, so it fired at a
+    // MOMENT — the single instant the magnet locked. The loop's first act on every node is
+    // `if (kit[stepDef.field] != null) continue`, and skipping a completed node skips everything
+    // attached to it. After a reload the magnet is already complete, that iteration is skipped,
+    // and the moment never returns. The three questions could never be asked again for that kit
+    // and its free-event page became impossible to build. Kit 222 proved it live, and the dead
+    // screen was captured against 246ffb8 before this was written.
+    //
+    // WHY NOT SIMPLY MOVE IT. Any other placement reproduces the same fragility somewhere else:
+    // it would fire at a different moment and be swallowed by a different resume. The ask must
+    // not be attached to a step at all. It is offered a chance on EVERY node and decides for
+    // itself, so it survives reload, survives resume, and survives anyone reordering AUTO_STEPS.
+    //
+    // THE CONDITION — cheapest first, so the server is only asked when it could matter:
+    //   1. the magnet exists. The approved copy says "the people who download THIS"; before the
+    //      magnet is chosen "this" refers to nothing. This is what stops it firing too early.
+    //   2. the landing page is not built yet. The facts must exist BEFORE the landingPage step,
+    //      which is where the cascade trigger reads them; once that page exists the ask is moot.
+    //      This is what closes the window.
+    //   3. it has not already been resolved in this run, or it re-fires on every remaining node.
+    //   4. the server still returns outstanding free-step questions. The server alone owns whether
+    //      this campaign has a free next step at all and whether the facts are still missing —
+    //      NEVER inferred from campaignType on the client.
+    //
+    // 📌 A SKIP RECORDS NOTHING, SO A COACH WHO SKIPS AND THEN RELOADS IS ASKED AGAIN. Deliberate.
+    // Arfeen's decision of 2026-08-29, recorded with its reasoning and not merely its outcome: a
+    // coach who skipped and reloaded still has not given us the facts, and the system still could
+    // use them, so asking again is honest. Recording the skip would be RECORDING AN ABSENCE AS A
+    // DECISION — exactly what this node refuses to do everywhere else, the same instinct that
+    // stops the generator inventing a seat cap. It is bounded by condition 2, and this is
+    // pre-launch. Adding a column now would freeze a design nobody has made: "not yet" and
+    // "never" are different answers and we have not decided whether that difference matters.
+    // DEFERRED PRODUCT QUESTION, NOT A DEFECT.
+    //
+    // NEVER A GATE. Wrapped in try/catch, and nothing here touches `ready`, `fr.questions`, or the
+    // loop's control flow. A throw, a skip, or a half-answer all fall through identically — the
+    // coach lands in exactly the same place, minus the free-event page. Nothing is generated to
+    // fill an unanswered question: a skip records NOTHING, so the magnet keeps the honest text
+    // card.
+    let freeStepResolved = false;
+    const maybeAskFreeStep = async () => {
+      if (freeStepResolved || cancelled.current) return;
+      if (kit.selectedHvcoId == null) return;         // 1 — "this" has no referent yet
+      if (kit.selectedLandingPageId != null) return;  // 2 — the window has closed
+      try {
+        let fr = await utils.campaignKits.getCampaignFactsReadiness.fetch({ kitId });
+        if (!Array.isArray(fr.freeStepQuestions) || fr.freeStepQuestions.length === 0) return;
+        // Latched BEFORE the first await on the coach. Without this, a later pass of the loop
+        // could open a duplicate ask while the first one is still waiting for an answer.
+        freeStepResolved = true;
+        const intro = addLive({ type: "zappy-bubble", mood: "idle", text: FREE_STEP_ASK });
+        await persistMsgs([intro]);
+        let guard = 0;
+        let skipped = false;
+        while (!skipped && Array.isArray(fr.freeStepQuestions) && fr.freeStepQuestions.length > 0 && guard++ < 6) {
+          if (cancelled.current) return;
+          const q = fr.freeStepQuestions[0] as { token: string; question: string; category: string; inputType?: "text" | "date" | "time" | "venue" | "price"; naBranches: { sentinel: string; label: string }[] };
+          const qb = addLive({ type: "zappy-bubble", mood: "idle", text: q.question });
+          await persistMsgs([qb]);
+          const inputType = q.inputType ?? "text";
+          let structuredMsgId: string | null = null;
+          // "Skip" is offered on EVERY question, including the structured ones. The event
+          // date/time/timezone tokens carry no N/A branch of their own, so without this the
+          // structured control would have no way out and the "skippable" promise would be
+          // false for exactly the questions it matters on.
+          collapsePreviousChips();
+          if (inputType !== "text") {
+            const si = addLive({ type: "structured-input", operatorInput: { token: q.token, inputType, naBranches: q.naBranches } });
+            structuredMsgId = si.id;
+          }
+          // The way out sits AT the decision point, not before it. Offering "No date yet? Skip
+          // this" before the coach has seen what is being asked hands them an exit from a
+          // question they have not read yet. It rides with the Skip control, on the FIRST
+          // question only — by the second the coach has already given a date, so repeating
+          // "No date yet?" would be answering a question they have visibly moved past.
+          if (guard === 1) {
+            const hint = addLive({ type: "zappy-bubble", mood: "idle", text: FREE_STEP_SKIP_HINT });
+            await persistMsgs([hint]);
+          }
+          const cr = addLive({ type: "chip-row", chips: [...q.naBranches.map(b => b.label), "Skip"] });
+          activeChips.current = { msgId: cr.id, step: "hvco" };
+          setFactsMode({ token: q.token, inputType, naBranches: q.naBranches });
+          const ans = await waitForFactAnswer();
+          setFactsMode(null);
+          if (structuredMsgId) removeLive(structuredMsgId);
+          if (cancelled.current) return;
+          if (ans === "__SKIP__") { skipped = true; break; }
+          fr = await answerCampaignFact.mutateAsync({ kitId, token: q.token, answer: ans });
+        }
+        const ack = addLive({
+          type: "zappy-bubble",
+          mood: skipped ? "idle" : "celebrating",
+          text: skipped ? FREE_STEP_ACK_SKIPPED : FREE_STEP_ACK_ANSWERED,
+        });
+        await persistMsgs([ack]);
+      } catch (e) {
+        // Non-fatal by construction. The free-event page is an extra; the campaign is not.
+        console.warn("[trail] free-next-step ask failed (non-fatal):", e);
+        setFactsMode(null);
+      }
+    };
+
     for (const stepDef of AUTO_STEPS) {
+      if (cancelled.current) return;
+      // Condition-driven, and deliberately BEFORE the completed-node skip on the next line —
+      // that skip is precisely what used to swallow this ask on every resume.
+      await maybeAskFreeStep();
+      // Re-checked because the ask is now a FUNCTION. Its internal `if (cancelled.current) return`
+      // statements used to return from runManualLoop itself and abort the cascade; inside an arrow
+      // they only exit the ask. Without this line a cancelled run would carry on and build the
+      // next node. Behaviour restored exactly, not approximately.
       if (cancelled.current) return;
       if (kit[stepDef.field] != null) continue;
 
@@ -1997,82 +2110,6 @@ export default function V2Trail() {
         const insightText = await buildInsight(kit, stepDef.milestone.insight);
         if (insightText) { const insight = addLive({ type: "zappy-bubble", mood: "idle", text: insightText }); toPersist.push(insight); }
         await persistMsgs(toPersist);
-      }
-
-      // ── FREE NEXT STEP — the three event questions ────────────────────────────────────────────
-      // WHERE, AND WHY HERE. Immediately after the Lead Magnet is locked, and nowhere else.
-      //   · The approved copy says "the people who download **this**". Before the magnet exists,
-      //     "this" refers to nothing — asked upfront with the other campaign facts (the Phase 1
-      //     block above) the sentence is literally incoherent. That is what settles it.
-      //   · The facts must exist BEFORE the `landingPage` step, because that is where the cascade
-      //     trigger reads `hasAllEventFacts`. Asking here leaves headlines and adCopy as slack, so
-      //     there is no race with the step that consumes it.
-      //   · Asking AT the landingPage node would interrupt the build of the very thing it feeds.
-      // This placement was previously ASSUMED rather than decided, which is how it came to be
-      // computed server-side and never rendered. It is written down now.
-      //
-      // NEVER A GATE. Wrapped in try/catch, and nothing here touches `ready`, `fr.questions`, or
-      // the loop's control flow. A throw, a skip, or a half-answer all fall through to the next
-      // node identically — the coach lands in exactly the same place, minus the free-event page.
-      // Nothing is generated to fill an unanswered question: a skip records NOTHING, so the magnet
-      // keeps the honest text card.
-      if (stepDef.step === "hvco" && !cancelled.current) {
-        try {
-          let fr = await utils.campaignKits.getCampaignFactsReadiness.fetch({ kitId });
-          // Render ONLY on what the server actually returned. Never inferred from campaignType on
-          // the client — the server owns whether this campaign has a free next step at all.
-          if (Array.isArray(fr.freeStepQuestions) && fr.freeStepQuestions.length > 0) {
-            const intro = addLive({ type: "zappy-bubble", mood: "idle", text: FREE_STEP_ASK });
-            await persistMsgs([intro]);
-            let guard = 0;
-            let skipped = false;
-            while (!skipped && Array.isArray(fr.freeStepQuestions) && fr.freeStepQuestions.length > 0 && guard++ < 6) {
-              if (cancelled.current) return;
-              const q = fr.freeStepQuestions[0] as { token: string; question: string; category: string; inputType?: "text" | "date" | "time" | "venue" | "price"; naBranches: { sentinel: string; label: string }[] };
-              const qb = addLive({ type: "zappy-bubble", mood: "idle", text: q.question });
-              await persistMsgs([qb]);
-              const inputType = q.inputType ?? "text";
-              let structuredMsgId: string | null = null;
-              // "Skip" is offered on EVERY question, including the structured ones. The event
-              // date/time/timezone tokens carry no N/A branch of their own, so without this the
-              // structured control would have no way out and the "skippable" promise would be
-              // false for exactly the questions it matters on.
-              collapsePreviousChips();
-              if (inputType !== "text") {
-                const si = addLive({ type: "structured-input", operatorInput: { token: q.token, inputType, naBranches: q.naBranches } });
-                structuredMsgId = si.id;
-              }
-              // The way out sits AT the decision point, not before it. Offering "No date yet? Skip
-              // this" before the coach has seen what is being asked hands them an exit from a
-              // question they have not read yet. It rides with the Skip control, on the FIRST
-              // question only — by the second the coach has already given a date, so repeating
-              // "No date yet?" would be answering a question they have visibly moved past.
-              if (guard === 1) {
-                const hint = addLive({ type: "zappy-bubble", mood: "idle", text: FREE_STEP_SKIP_HINT });
-                await persistMsgs([hint]);
-              }
-              const cr = addLive({ type: "chip-row", chips: [...q.naBranches.map(b => b.label), "Skip"] });
-              activeChips.current = { msgId: cr.id, step: "hvco" };
-              setFactsMode({ token: q.token, inputType, naBranches: q.naBranches });
-              const ans = await waitForFactAnswer();
-              setFactsMode(null);
-              if (structuredMsgId) removeLive(structuredMsgId);
-              if (cancelled.current) return;
-              if (ans === "__SKIP__") { skipped = true; break; }
-              fr = await answerCampaignFact.mutateAsync({ kitId, token: q.token, answer: ans });
-            }
-            const ack = addLive({
-              type: "zappy-bubble",
-              mood: skipped ? "idle" : "celebrating",
-              text: skipped ? FREE_STEP_ACK_SKIPPED : FREE_STEP_ACK_ANSWERED,
-            });
-            await persistMsgs([ack]);
-          }
-        } catch (e) {
-          // Non-fatal by construction. The free-event page is an extra; the campaign is not.
-          console.warn("[trail] free-next-step ask failed (non-fatal):", e);
-          setFactsMode(null);
-        }
       }
     }
 
