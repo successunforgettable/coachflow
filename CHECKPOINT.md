@@ -7,7 +7,212 @@
 
 ## 0. NEXT ACTION — read this before anything else
 
-# 👉 STATE AT BREAK — 2026-08-29. THE ASK IS LIVE; STAGE D IS NOT CLOSED.
+# 👉 STATE AT BREAK — 2026-08-29 (evening). **STAGE D IS CLOSED.**
+
+**Branch `railway-build`. Working tree clean. `origin/railway-build` == local HEAD == `8011d62`,
+deployed and live. Migrations 0097–0106 applied. THE RESTORE POINT HAS BEEN DELETED** — Stage D
+closed on Arfeen's word, all four dumps removed, no other copy exists.
+
+## WHAT SHIPPED
+
+`8011d62` — the reload defect fixed as a STATE CONDITION. The ask is no longer attached to any step:
+it is offered a chance on every node and gates on magnet-exists → landing-page-not-built →
+not-already-resolved-this-run → server-still-returns-questions. Verified by markers PROVEN to differ
+between the two builds (§15h), plus the container's own commit read from inside the container.
+
+**PROOF, judged on the live date control and the exact-match Skip chip — never on the question text,
+which persists in chat history and reads identically on a dead screen:**
+
+| | 246ffb8 (before) | 8011d62 (after) |
+|---|---|---|
+| kit 222, same URL | date ctl 0 · Skip 0 | date ctl 1 · Skip 1 |
+| kit 223, **after a deliberate mid-flow reload** | — | date ctl 1 · Skip 1 |
+
+Kit 222 — recorded as "NULL and now UNFILLABLE through the UI" — is answerable again.
+
+## THE SIX READS — deltas against a baseline MEASURED AT 17:37 that day, never read from this file (§15f)
+
+| read | baseline 17:37 | after | delta |
+|---|---|---|---|
+| `landingPages` rows / maxid / published / stamped | 92 / 236 / 38 / 0 | 94 / 240 / 40 / 2 | +2 / +4 / +2 / +2 |
+| `hvcoTitles` | 6749 | 6809 | +60 |
+| `campaignKits` | 69 (max 222) | 70 (max 223) | +1 |
+| `nodeStatuses` | 85, ids 94–186 | 86, ids 94–187 | +1 |
+| `nodeStatuses` stale | 10 | 11 | +1 ⚠️ see below |
+| Cloudflare KV | 73 (4 magnet / 69 other) | 78 (6 magnet / 72 other) | +5 |
+
+📌 **The printed baseline in the older block below had ALREADY DRIFTED** (`hvcoTitles` 6689→6749,
+`campaignKits` 68→69, KV 72→73). Comparing against it would have credited this run with sixty titles
+and a kit it did not create. This is what §15f exists for.
+
+🔴 **THE MAX-ID GAP IS UNEXPLAINED AND STAYS UNEXPLAINED.** `landingPages` max id moved +4 while
+surviving rows moved +2. Two page ids were consumed without surviving rows. **Do not construct an
+explanation for this** — it is recorded as an open observation, on Arfeen's explicit instruction.
+
+## WHAT THE CASCADE PRODUCED
+
+```
+kit 223  campaignFacts = {"eventSchedule":{"date":"October 14, 2026","time":"7:30 pm","timezone":"IST"}}
+LP 239   lead_magnet_download   published /p/campaign-239   build 8011d62aff…
+LP 240   webinar_registration   published /p/campaign-240   build 8011d62aff…  date/time/tz carried
+BRIDGE   hvco 7233 → landing page 240
+```
+
+First lead-magnet kit in production history with event facts. Abort conditions all clear: stamp NOT
+null, zero booking-URL tokens on any new page, no protected service touched (new service is 316).
+
+## ✅ THE B2C READ PASSES — AND IT RE-POINTS PRE-LAUNCH ITEM 1
+
+**Arfeen's read, recorded as the conclusion:** sixty titles, every one addressed to a person in their
+own marriage, nothing sold to a business. With a clean brief and no priming the generator produces
+what the product is for.
+
+🔑 **THEREFORE: the July cold-email magnet was NOT baseline generator behaviour. The B2C drift is
+UPSTREAM — in the ICP or the service description — NOT in the magnet generator.** Pre-launch item 1
+should be investigated there, not at the generator.
+
+📌 **THE B2C JUDGEMENT WAS MADE ON 40 OF 60 TITLES — a two-thirds sample, not the full set.** CC's
+listing was truncated by its own `head -40` and Arfeen read what he was shown. **The conclusion
+stands** — the gate run below covers all 60 and the shape did not change across the remaining 20 —
+but the record says what it was actually made on. Arfeen's correction, recorded at his instruction.
+
+# 🔴 THREE FINDINGS FROM THAT SAME OUTPUT — ALL RANK ABOVE PRE-LAUNCH ITEM 1. RECORDED, NOT FIXED.
+
+## FINDING 1 — the anti-fabrication rule NEVER REACHES THE TITLE GENERATOR. ANSWERED.
+
+Invented specifics reached published titles: *"…Alive Since 2019"* (#5), *"…Who Did What in 2021"*
+(#27), *"What 200 Repetitions Trained Both Your Nervous Systems…"* (#36). The coach supplied none of
+these.
+
+**`server/hvcoGenerator.ts` imports EXACTLY TWO rules — `BANNED_COPYWRITING_WORDS` and
+`REGISTER_STANDARD` (line 2). It does NOT import `NO_RESEARCH_STATISTIC_FABRICATION_RULE`, nor
+`NO_DATE_FABRICATION_RULE`, nor `GUARANTEE_CLAIMS_RULE`, nor `META_COMPLIANCE_NOTES`.**
+
+The rule DOES reach: `leadMagnetContentGenerator.ts` (the body), `emailSequenceGenerator.ts`,
+`whatsappSequenceGenerator.ts`, `landingPageGenerator.ts`. **So: body yes, title no.**
+
+🔴 **AND THE TITLE PROMPT ACTIVELY DEMANDS THE SHAPE.** `hvcoGenerator.ts:133`: *"every title
+contains at least one of: a specific number, a specific timeframe, a named enemy or obstacle, or an
+insider term from the niche."* The generator is instructed to produce specifics with no rule saying
+where a specific may come from. The dates are not drift — they are the prompt working as written.
+
+📌 This is the first real signal on the statistic rule imported into Node 5 that could never be
+proven to work. It works where it is wired and is absent where it is not.
+
+### 🔴 THE FIX IS NOT THE IMPORT. Arfeen's ruling, 2026-08-29.
+
+**Adding `NO_RESEARCH_STATISTIC_FABRICATION_RULE` to this prompt would put a PROHIBITION beside a
+REQUIREMENT, and we have already measured that fight. THE REQUIREMENT WINS, because it is the only
+one of the two that can be satisfied.** The prompt demands a specific number, a specific timeframe,
+a named enemy or an insider term. A model that cannot find a true one still has to produce
+something, so it produces "2019".
+
+> **The fix is a SUBSTITUTE, not a ban: state WHERE A LEGITIMATE SPECIFIC MAY COME FROM — the
+> coach's own mechanism, the ICP's own language, the offer — so the demand can be met TRUTHFULLY.**
+
+📌 **This is the FOURTH instance of the seat-cap law** — *a field or instruction that demands a value
+with nothing true to put in it is how the generator came to invent a seat cap in five rows out of
+five.* The three prior instances: the seat cap itself; the three event tokens, which is why they are
+returned as optional and never generated (`campaignKits.ts:406`); and the operator tokens skipped by
+the deriver. **It is the SECOND time the law has decided a fix rather than merely explained a
+defect** — the first being the decision to leave the event questions unasked rather than fill them.
+A law that picks the remedy, not just the diagnosis, has earned its place.
+
+## FINDING 2 — THE COMPLIANCE GATE PASSES ALL OF IT. THIS IS A GATE FINDING, NOT A COPY FINDING.
+
+All 60 titles run through `checkComplianceAxis` at `role: "short"`:
+
+```
+titles checked: 60
+total hits: 2   BLOCKING (tier-1): 0   tier-2: 2
+titles with a tier-1 hit: 0
+```
+
+**Enforcement is TIER-1-ONLY, so every one of the 60 ships.**
+
+The four Meta Personal-Attributes examples — each asserting the reader is married, to a man, in a
+failing relationship — produced **ZERO hits of any tier**:
+
+- #20 *"Stop Pre-Editing Every Sentence You Say to Your Husband: A One-Page Reset Protocol"*
+- #21 *"The Sunday Night Audit You Keep Failing: Why 'We Went Quiet' Is Not the Same as Resolved"*
+- #31 *"The List of Things You've Stopped Saying: Why It Keeps Growing and One Way to Stop It"*
+- #39 *"The Managed-Information Marriage: When Your Husband Becomes the Person You Edit Yourself Around"*
+
+The only two hits were tier-2 `register_diagnostic_address` on #11 and #47 — advisory, non-blocking,
+and not the personal-attribute shape at all. The three invented-date titles also produced zero hits.
+
+📌 §15c: `fabricationValidator.test.ts` at 23/23 green while the gate was blind is the same shape.
+The suite asserts the strings the regexes were written against, so it cannot fail on a shape nobody
+thought of. **The gate has no reachable failure for second-person diagnosis in a short field.**
+
+## FINDING 3 — CONSULTANT REGISTER IS CASCADE-WIDE, NOT NODE 4's ALONE.
+
+*"Defensive Position Loading"*, *"Pre-Consented Signal"*, *"Conditioned Loop Diagnosis"*,
+*"Escalation Sequence PDF"* — from a generator whose system prompt already carries
+`REGISTER_STANDARD`. The same defect is already banked against Node 4. **Recorded as evidence the
+register problem belongs to the cascade, not to one node** — and note that `REGISTER_STANDARD` being
+present did not prevent it, so this is not a wiring gap like Finding 1.
+
+# 🔴 PRE-LAUNCH LIST RE-RANKED — 2026-08-29, Arfeen
+
+**#1 is now THE COMPLIANCE GATE'S BLINDNESS TO SECOND-PERSON DIAGNOSIS (Finding 2). It moves ABOVE
+B2C drift.**
+
+The reasoning, recorded because the ranking is not obvious from severity alone:
+
+- **B2C drift produces WRONG-AUDIENCE ASSETS ON PRE-LAUNCH TEST DATA.** It is visible, it is
+  embarrassing, and it costs nothing yet — nobody is running those assets.
+- **A gate that passes sixty titles with ZERO blocking hits — including four textbook Meta
+  Personal-Attributes claims — produces POLICY VIOLATIONS ON LIVE COACH AD ACCOUNTS**, in the
+  niches Meta polices hardest (relationships, health, money). The cost lands on the coach's account,
+  not ours.
+- **It CANNOT BE FOUND BY INSPECTION, because the gate reports green.** B2C drift is obvious to
+  anyone reading the output; this is invisible by construction. That is what moves it to #1.
+- 📌 **Enforcement is TIER-1 ONLY**, so even a hit the gate *does* detect at tier 2 does not block.
+  Fixing detection alone would not be enough — the enforcement tier is part of the defect.
+
+**#2 is now the B2C drift (pre-launch item 1 as was), re-pointed UPSTREAM to the ICP / service
+description by this run's clean-brief result — NOT at the magnet generator.**
+
+# 🔴 THE AUDIT HAS THREE CLASSES NOW, NOT TWO — and the class determines the remedy
+
+Recorded 2026-08-29 because it decides what the cascade-wide copy standard actually has to produce.
+
+| class | what it is | example | remedy |
+|---|---|---|---|
+| **1. Configuration nothing reads** | declared, wired to nothing | `autoFillFrom`; the pointer and framings with no caller (§15d) | **DELETE or CONNECT** |
+| **2. Prompt sites missing rules that exist** | the rule is real, this site never got it | `hvcoGenerator.ts` lacks the fabrication rule (Finding 1) | **WIRE IT** — but see Finding 1: only with a substitute, never a bare prohibition |
+| **3. Rules present and INEFFECTIVE** | the rule is wired, and does not work | `REGISTER_STANDARD` **is** in `hvcoGenerator.ts:133` and did not stop "Defensive Position Loading" (Finding 3) | **REWRITE THE RULE** |
+
+📌 **Only class 2 is fixed by wiring.** Class 1 is deletion or connection; class 3 is a rewrite, and
+no amount of auditing imports will surface it — a class-3 defect looks perfectly wired. **Finding 3
+is the first confirmed class-3 instance**, which is why the register problem cannot be closed by the
+same sweep that closes Finding 1.
+
+# TWO CORRECTIONS TO THE RECORD
+
+1. 🔴 **THE `BUILD_SHA` PREDICTION IS FALSIFIED.** The older block states `BUILD_SHA` is unset so
+   `renderedBuild` writes NULL. **Both new pages carry the full SHA `8011d62aff4f…`.** The stamp
+   sources its value elsewhere. Consequences: the drift audit
+   (`SELECT renderedBuild, COUNT(*) … GROUP BY 1`) is answerable TODAY rather than from the next
+   deploy onward, and **the case for leaving `BUILD_SHA` unset is STRENGTHENED, not weakened** —
+   setting it could only introduce a second, competing source for a value already being written
+   correctly.
+
+2. ⚠️ **THE STALE ROW IS THE HARNESS'S, NOT THE PRODUCT'S.** `nodeStatuses` id 187 — kit 223, node
+   **adCopy**, status **stale**. CC's driver clicked stale "Use this one" cards in the chat
+   scrollback, which RE-PICKED them ("New pick!"), and adCopy is exactly the node it re-picked; the
+   rebuild prompt that followed was abandoned by a reload. **High confidence, NOT certainty. To be
+   settled on the next clean run, NOT banked as a defect.** The older block's note — that stale
+   rising above 10 on a first run indicates re-crown behaviour leaking in — must not be applied to
+   this row.
+
+---
+
+# 👉 STATE AT BREAK — 2026-08-29 (midday). THE ASK IS LIVE; STAGE D IS NOT CLOSED.
+
+**⚠️ SUPERSEDED by the evening block above — Stage D IS now closed. Kept for the decision record.
+Its printed baseline and its `BUILD_SHA` prediction are both known-stale; see above.**
 
 **Branch `railway-build`. Working tree clean on tracked files (~338 untracked screenshots/notes).
 `origin/railway-build` == `246ffb8` == what is DEPLOYED. Migrations 0097–0106 ALL APPLIED to
