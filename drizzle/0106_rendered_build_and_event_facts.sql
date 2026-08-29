@@ -1,7 +1,14 @@
 -- 0106 — the renderer stamp, and the event facts we already hold.
 --
--- 🔴 NOT APPLIED. 0097-0105 are applied to production; THIS ONE IS NOT, and applying it needs
--- Arfeen's explicit word. A file under drizzle/ is not an applied migration.
+-- ✅ APPLIED to production, and VERIFIED 2026-08-29 by reading INFORMATION_SCHEMA directly: all
+-- FIVE columns exist and every one is nullable — `landingPages`.renderedBuild / eventDate /
+-- eventTime / eventTimezone, and `hvcoTitles`.renderedBuild. Both ALTERs landed. `stamped = 0`,
+-- i.e. no backfill, exactly as designed. Migrations 0097-0106 are ALL applied. DO NOT RE-APPLY
+-- THIS FILE; re-running it fails on `Duplicate column name`.
+--
+-- (Header corrected 2026-08-29 — same reason as the matching note in 0105: it previously read
+-- "🔴 NOT APPLIED", an assertion that outlived its truth in the file read during recovery. The
+-- deploy-ordering constraint below is satisfied history, not pending work.)
 --
 -- ⚠️ SAME DEPLOY-ORDERING CONSTRAINT AS 0105, FOR THE SAME REASON. `landingPages` and `hvcoTitles`
 -- are both read with bare `db.select()` calls, and a bare select emits every column declared in

@@ -1,7 +1,16 @@
 -- 0105 — the magnet's free-next-step destination, as an EXPLICIT pointer to a specific page.
 --
--- 🔴 NOT APPLIED. Migrations 0097-0104 are applied to production; THIS ONE IS NOT, and applying it
--- needs Arfeen's explicit word. Committing a file under drizzle/ is not applying it.
+-- ✅ APPLIED to production, and VERIFIED 2026-08-29 by reading INFORMATION_SCHEMA directly:
+-- `nextStepLandingPageId` exists and is nullable, AND the foreign key landed with
+-- DELETE_RULE = SET NULL referencing `landingPages`. BOTH statements are in — this file did NOT
+-- land in the half-applied state its own warning below describes. Migrations 0097-0106 are ALL
+-- applied. DO NOT RE-APPLY THIS FILE; re-running it fails on `Duplicate column name`.
+--
+-- (Header corrected 2026-08-29. It previously read "🔴 NOT APPLIED. … THIS ONE IS NOT". That was
+-- true when written and false from the moment the migration ran — and it sat at the top of the
+-- file someone opens WHILE RECOVERING A HALF-APPLIED MIGRATION, the one situation where a
+-- confident wrong statement does the most damage. Everything below remains accurate as the record
+-- of WHY this file is shaped as it is; it is history now, not pending work.)
 --
 -- ⚠️ HARD ORDERING CONSTRAINT — READ BEFORE THE NEXT PUSH. `hvcoTitles` is read with a bare
 -- `db.select().from(hvcoTitles)` in 15 of its 22 call sites, and a bare select emits every column

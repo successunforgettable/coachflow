@@ -9,8 +9,16 @@
 
 # 👉 STATE AT BREAK — 2026-08-29. THE ASK IS LIVE; STAGE D IS NOT CLOSED.
 
-**Branch `railway-build`. Working tree clean. `origin/railway-build` == local HEAD == `246ffb8`.
-Nothing unpushed. Migrations 0097–0106 ALL APPLIED to production.**
+**Branch `railway-build`. Working tree clean on tracked files (~338 untracked screenshots/notes).
+`origin/railway-build` == `246ffb8` == what is DEPLOYED. Migrations 0097–0106 ALL APPLIED to
+production, re-verified against INFORMATION_SCHEMA on 2026-08-29.**
+
+⚠️ **Corrected 2026-08-29: this block originally read "`origin/railway-build` == local HEAD …
+Nothing unpushed."** True when written, false minutes later — the two docs commits that CREATED
+this very block (`e315bdd`, `4eb3854`) are themselves unpushed. Docs-only, so deployed code still
+equals local code, but the line asserted a git state it could not have observed at the time it was
+written. **Read the ahead/behind count from git, never from this file:**
+`git rev-list --left-right --count origin/railway-build...HEAD`.
 
 ## WHAT IS DEPLOYED
 
