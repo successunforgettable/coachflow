@@ -293,3 +293,37 @@ and the result is still worthless. All three produce confident green.
 📌 **The clean form of the brief above**, for the re-run:
 *"I'm a relationship coach. I help people who keep having the same argument with their partner learn
 how to talk to each other again."* — niche only, no framing in either direction.
+
+## 15f. A BASELINE IS MEASURED, NEVER READ (STANDING LAW — locked 2026-08-29)
+
+**Take the baseline at the moment of the run. Numbers printed in a document are history, not a
+reference.**
+
+**The instance.** CHECKPOINT.md carried a baseline for the six reads captured before any Stage D
+write: `hvcoTitles` 6689 · `campaignKits` 68 · `landingPages` 92 / max id 236 / 38 published ·
+`nodeStatuses` 85, ids 94–186. On 2026-08-29 the live numbers were **6749** and **69** — moved by
+sixty magnet titles and one kit from the previous day's aborted run. Two of the six reads compared
+against the printed figures would have shown a **surplus of 60 and 1** and been read as the new
+run's own output. The two that had genuinely not moved would have looked equally trustworthy, which
+is what makes the whole comparison unsafe rather than half-safe.
+
+### The rule
+
+> **Measure the baseline immediately before the run, from the source. Report deltas against those
+> measured numbers, and SAY IN THE REPORT that they were measured at run time.**
+>
+> A document may record what a baseline *was*, for the decision record. It is never the thing a
+> delta is computed against.
+
+📌 **Why it is easy to miss:** the printed baseline is right there, it was measured carefully, and
+it was correct when written. Nothing about reading it feels like a shortcut — it feels like using
+the evidence. The staleness is invisible precisely because the document looks rigorous.
+
+📌 **Same family as §15c.** A comparison against a stale baseline is a check whose result cannot be
+trusted in either direction: a delta that matches proves nothing (the baseline may have drifted to
+meet it) and a delta that misses proves nothing (the drift may be the whole difference). §15c is a
+check that cannot fail; this is **a check that cannot mean anything** — and both read as rigour.
+
+📌 **Applies to every count, fingerprint, row total, byte size, KV key count and quota figure**, and
+to a restore point's own verification counts. If a number is going to be subtracted from, it gets
+re-measured first.
