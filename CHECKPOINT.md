@@ -5,6 +5,1465 @@
 
 ---
 
+📌 **REFERENCE HYGIENE, applied to this file 2026-08-31 (Arfeen).** Every cross-file citation in
+today's blocks and in CLAUDE.md §15i–§15j names a **file plus a symbol** (function, constant, or
+named block) rather than a line number. **Line numbers in cross-file references rot silently — the
+next edit above them makes the pointer wrong and nothing complains.** Twenty-two such pointers were
+converted. **No line number was judged to earn its place**: every site had a nameable symbol, and
+where one did not (`sanitizePlaceholder`'s call site) the enclosing procedure names it
+unambiguously. **Historical blocks below this point were left as written** — rewriting a past record
+to fix its pointers would falsify the record; they are corrected as they are revisited.
+
+# 🔴🔴 THE CODEBASE ALREADY KNEW. THE CORRECTION NEVER TRAVELLED. (finding, 2026-08-31)
+
+**This is the finding that should change how corrections are handled here, and it is larger than
+the defect that exposed it.**
+
+| date | event |
+|---|---|
+| **2026-04-28** | `9905b0c` *"chore: remove silent-fallback dead code"* deletes **16 fallbacks** across `services.ts` and `landing.ts`, on the stated premise *"Under tool-use, Anthropic enforces required-field presence server-side via input_schema."* |
+| **2026-05-07 → 05-11** | A **four-day intermittent welcome-failure class** in production. |
+| **2026-05-11** | `_core/validator.ts` is written, and its header records the truth: *"Anthropic tool-use's descriptive-not-strict `input_schema` enforcement… the OpenAI-style `strict: true` flag is **ignored by Anthropic**."* |
+| **2026-08-31** | The April deletion is found. **It had sat on the false premise for four months, two weeks of which were AFTER the truth was written down in the same repo.** |
+
+> **NOBODY WAS WRONG TWICE.** The belief was corrected — at the cost of a four-day production
+> failure class — and **the correction simply never travelled back to the two files that had
+> already acted on it.**
+
+📌 `emailSequenceGenerator.ts`, in its validator-migration note restates the same truth a third time
+(*"Anthropic tool-use's `input_schema` is guidance not enforcement"*). **THREE places in the repo
+state the correct fact. TWO places state the false one. They have coexisted since May.**
+
+## 🔑 WHY THIS IS NOT A DISCIPLINE FAILURE
+
+The May work fixed **the surface that broke** — email-sequence shape — and fixed it well: a
+validator, retry-with-fail-context, and a written explanation. **What it did not do, and what
+nobody would naturally think to do, is ask WHERE ELSE THAT BELIEF HAD ALREADY BEEN ACTED ON.**
+
+The symptom (an `emails` field arriving as a string) shares nothing textually with the damage
+(deleted `?? ""` fallbacks in an unrelated router). **Grepping the symptom would never have found
+it. Only grepping THE BELIEF would.**
+
+## ✅ THE REMEDY — cheap, mechanical, and it would have worked
+
+> **WHEN A STATED BELIEF IS FOUND TO BE FALSE, GREP FOR THE BELIEF'S OWN PHRASING ACROSS THE
+> CODEBASE — NOT JUST FOR THE SYMPTOM THAT EXPOSED IT — AND CORRECT THE RECORD EVERYWHERE IT IS
+> ASSERTED.**
+
+**Proof it would have worked:** the sweep that found this ran
+`grep -riE "tool.use (enforc|guarant|validat)|guaranteed (string|present)|schema (enforc|guarant)"`
+and returned **all five sites in one command**. In May that would have cost one minute and found
+both damaged files.
+
+📌 **Beliefs are written in prose, so they are greppable — that is the whole opportunity.** A wrong
+belief leaves a textual fingerprint in comments and commit messages, and that fingerprint is far
+more findable than the behaviour it licensed. **Correct the prose everywhere, or the next person
+reuses the false reason — which is exactly what happened here.**
+
+📌 **And correct the REASON, not just the claim.** `services.ts`'s conclusion was RIGHT (those
+fallbacks were genuinely redundant) for a reason that was WRONG (`normalize` in `expandProfile`
+returns `''` for null/undefined — tool-use has nothing to do with it). **A right conclusion filed
+under a wrong reason is what gets reused.** Deleting the false claim is not enough; name the actual
+enforcer.
+
+---
+
+# ⚖️ CORRECTION — ARFEEN'S OWN BUNDLING RULE APPLIED AGAINST HIM (2026-08-31)
+
+**Arfeen's instruction was that any restored fallbacks go into the same commit as the name fix.**
+CC overruled it for sites 2–5.
+
+**Arfeen's ruling, recorded as CC's correction at his instruction:** *"You have overruled me
+correctly on the bundling. You are right that a chore bundled into a fix commit is the exact
+pattern that produced this defect, so my own law applies against me."*
+
+📌 **The reasoning:** `9905b0c` was a `chore:` — and that is precisely how 16 defences were deleted
+without anyone looking hard at the diff. **A reviewer reading "remove dead code" is not reading for
+a load-bearing default.** Repeating that packaging while fixing its consequences would have been the
+defect committing itself a second time.
+
+## WHAT GOES WHERE — SETTLED
+
+- ✅ **INTO the name-fix commit:** the three `?? ""` restorations in `landing.ts`, **and nothing
+  else.** They belong there because **a value arriving empty where the code assumes it cannot is the
+  SAME DEFECT as the blank name** — not because they were found at the same time.
+- ⏸️ **NOT in that commit, and not yet:** the comments at sites 2–5. **Leave the working code at
+  those sites completely alone.** Re-adding fallbacks that `normalize` already makes redundant would
+  be cargo-culting the correction.
+
+---
+# ⚖️ TWO CORRECTIONS TO THE RECORD — 2026-08-31, both Arfeen correcting himself
+
+## 1. `serviceName` STAYS IN `required`. Arfeen's regression concern does not apply on this path.
+
+**Arfeen's instruction was to remove it**, reasoning that a strict contract requiring a field the
+model may not produce could fail the whole enrichment call and take `description`,
+`targetCustomer` and `mainBenefit` down with it — three working fields risked for a fourth.
+
+**Recorded as CC's correction, at Arfeen's instruction:** *"You were right and I was wrong.
+Required never reaches the model, so the regression I was protecting against does not exist on this
+path, and matching the siblings was correct."*
+
+> **`strict` and `required` are STEERING on the Anthropic tool-use path, NOT ENFORCEMENT.**
+> `_core/llm.ts` translates `response_format.json_schema` into an Anthropic tool
+> (`toolName = json_schema.name`, `toolInputSchema = json_schema.schema`) and the response handler
+> **validates only that a `tool_use` block exists**. No per-field validation, no `required`
+> enforcement, and `strict: true` is read by nothing on that path.
+
+📌 An omitted field therefore arrives `undefined` and is skipped by the `needsX && filteredExpanded.X`
+guard — which is exactly why the siblings are written that way. **Consistency wins; the risk was
+not real here.** Promoted to a standing law: **CLAUDE.md §15i**.
+
+## 2. The cross-tab corrects Arfeen in the OTHER direction — increment one is the DOMINANT mitigation
+
+**Arfeen had called it "a mitigation that guarantees nothing."** Measured, that undersells it:
+
+> **It would have fixed 34 of 38. And July proves it alone: 26 services, ZERO enrichment failures,
+> ELEVEN blank names.**
+
+**Arfeen's ruling:** *"It is a mitigation, but it is the dominant one, and the four residual cases
+are a separate defect rather than the same one leaking."*
+
+📌 **That distinction is load-bearing for sequencing.** The 4 residual rows are enrichment FAILING
+(18.3% of all services). The 34 are `name` never having been in `updateFields`. **Two independent
+defects that happened to produce the same blank.** Increment one closes the larger one completely;
+tier-3 in increment two closes the other. Neither is a partial fix of the other.
+
+---
+# ⚠️ INCREMENT ONE IS A MITIGATION, NOT A FIX — built 2026-08-31, LOCAL ONLY, NOT COMMITTED
+
+**Built in `server/routers/services.ts`. TS baseline 34 (held). `pipeline-fixes.test.ts` 412/412.
+NOT staged, NOT committed, NOT pushed.**
+
+> 🔴 **THIS MUST NOT BE LOGGED AS CLOSING PRE-LAUNCH ITEM 1.** It lowers the rate of blank
+> `services.name`. It does not guarantee a non-blank name. **Two paths survive it.**
+
+## THE TWO SURVIVING PATHS — named, not summarised
+
+1. **`.min(1)` does not stop us writing blank.** Zod validates the INPUT; `sanitizePlaceholder`
+   runs AFTER it, inside `services.create`, and still converts `"new campaign"` → `""`. **The floor stops a
+   client sending blank; it does not stop the server writing blank.** The enrichment backfill is
+   the actual repair — the schema change is only a second layer.
+2. **Enrichment is swallowed at all four call sites, with no retry.**
+   `V2TrailIntake.tsx` in `runAutoInChat`, `runHasAssetsInChat` and `runManualInChat`, plus
+   `V2AutoModeIntakeConfirm.tsx` — every one is `catch { /* non-fatal */ }`.
+   **If enrichment fails, the name stays empty and nothing ever comes back for it.**
+
+📌 **Both survivors are exactly what Arfeen's tier-3 — "a guarded deterministic fallback, never
+blank" — closes. That is increment two, and this is the argument for it.**
+
+## 📊 HOW MUCH THIS ACTUALLY BUYS — measured, not projected (2026-08-31)
+
+Proxy: `painPoints` is an ALWAYS-overwrite enrichment field, so an empty one means enrichment never
+landed. ⚠️ Proxy limit: the three May rows may predate the column rather than have failed.
+
+| | n |
+|---|---|
+| services total | 131 |
+| enrichment landed | 107 |
+| **enrichment NEVER landed** | **24 — 18.3%** |
+
+**Cross-tab, and this is the number that matters:**
+
+| | name blank | name present |
+|---|---|---|
+| enrichment landed | **34** | 73 |
+| enrichment never landed | **4** | 20 |
+
+> **34 OF THE 38 BLANK NAMES HAD A SUCCESSFUL ENRICHMENT RUN AND WERE STILL LEFT BLANK** — because
+> `name` was absent from `updateFields`. **The backfill would have fixed 34 of 38 (89%).**
+> **The remaining 4 (11%) are the enrichment-failure residual, and increment one CANNOT help them.**
+
+By month — enrichment failure and blank name are largely INDEPENDENT defects:
+
+| month | services | enrichment missing | name blank |
+|---|---|---|---|
+| 2026-03 | 6 | 0 | 0 |
+| 2026-05 | 13 | 3 | 0 |
+| 2026-06 | 79 | 20 | 20 |
+| 2026-07 | 26 | **0** | **11** |
+| 2026-08 | 7 | 1 | 7 |
+
+📌 **July is the proof: 26 services, ZERO enrichment failures, ELEVEN blank names.** The blank name
+was never caused by enrichment failing. It was caused by `name` not being in the backfill list.
+
+---
+
+## ✅ THE VERIFICATION CONTROL — CORRECTED, AND IT FIRES (§15c)
+
+**The firing result:** a service row reaching `hvcoGenerator` with `name = ''`, rendering
+`Product: ` blank into the live title prompt.
+
+⚠️ **A GLOBAL blank-name count is the wrong control.** It is unchanged in a window where no service
+was created at all, **and that reads identically to success.** Scope it, and carry the denominator:
+
+```sql
+SELECT COUNT(*) AS created, SUM(TRIM(name) = '') AS blank
+FROM services WHERE id > <max services.id at deploy>;
+```
+
+> **Success is `blank = 0` WITH `created > 0`.**
+> **`created = 0` IS NOT A PASS — IT IS NO EVIDENCE.**
+
+✅ **NEGATIVE CONTROL, RUN AND PASSED:** against `id > 310` on the current build the query returns
+**`created = 8, blank = 7`.** The check demonstrably fires on the unfixed build, so it is not
+decoration.
+
+---
+
+# 🔴 NEW FINDING — **A SWALLOWED ERROR WITH NO LOGGING IS THE SAME FAMILY AS A CHECK THAT CANNOT FIRE**
+
+**Found while scoping the verification, and it is a finding in its own right.**
+
+Enrichment failure was **completely invisible**: all four client call sites swallow it, and there is
+**no central tRPC `onError` / `errorFormatter` anywhere in `server/`** (grepped). Only the DB-write
+branch logged. An LLM failure, a parse failure or a compliance rejection produced **no line
+anywhere.**
+
+> **CONSEQUENCE: `blank = 0` on the verification query could not distinguish THE BACKFILL WORKING
+> from ENRICHMENT NEVER RUNNING.** Both produce the same silence. **We would have shipped a fix and
+> then measured it with a check that cannot discriminate — the exact shape recorded twice already
+> this sprint.**
+
+📌 **The general form:** an unobservable failure path does not merely lose diagnostics — **it makes
+the effectiveness of any fix downstream of it unmeasurable.** §15c is a check that cannot fail;
+§15d is machinery nothing reaches; this is **a failure that leaves no trace, which silently
+converts every downstream check into one that cannot discriminate.**
+
+## WHAT WAS ADDED — LOGGING ONLY, BEHAVIOUR DELIBERATELY UNCHANGED
+
+- `[expandProfile] start serviceId=… userId=… needsName=… needsDescription=…`
+- `[expandProfile] done serviceId=… nameBackfilled=… serviceNameReturnedByModel=… nameLenAfter=…`
+- `[expandProfile] FAILED serviceId=… reason=compliance_rejected flagged=[…]`
+
+**Failure count = (start lines) − (done lines).** `nameBackfilled` answers the discrimination
+question directly.
+
+🔴 **The non-fatal client behaviour was NOT changed.** Making enrichment fatal would block service
+creation, and that is a bigger decision than this increment. — Arfeen, 2026-08-31
+
+⚠️ **Residual, stated:** an LLM-call or parse failure is COUNTED (start with no done) but its CAUSE
+is still not captured, because there is no central tRPC error logger. Named, not fixed.
+
+---
+
+# 🔑 `serviceName` STAYS IN `required` — the condition Arfeen set was tested and met
+
+**Arfeen's instruction:** take it out, *"and match them only if you can confirm an omitted field
+does not throw."* **Both halves checked:**
+
+1. **The three siblings ARE in `required`** — in fact all 13 properties are, with
+   `additionalProperties: false`.
+2. **An omitted field does NOT throw.** `_core/llm.ts` translates `response_format.json_schema`
+   into an **Anthropic tool** (`toolName = json_schema.name`, `toolInputSchema = json_schema.schema`)
+   and posts to `api.anthropic.com/v1/messages`. The response handler throws **only** when the
+   `tool_use` block is absent or its `input` is null. **There is NO per-field validation and NO
+   `required` enforcement anywhere in the path.** An omitted field arrives `undefined` — which is
+   precisely why the sibling guards are written `needsX && filteredExpanded.X`.
+
+**So the risk Arfeen was guarding against does not exist on this path, and consistency wins.**
+The backfill is guarded on presence regardless, exactly like its siblings.
+
+## 🔴 TWO SIDE-FINDINGS FROM THAT CHECK — recorded, NOT fixed
+
+1. **`strict: true` NEVER REACHES ANTHROPIC.** It is echoed into the normalized
+   `json_schema` object (the `normalizeOutputSchema` helper in `_core/llm.ts`) and read by nothing on the Anthropic path. **It is an
+   OpenAI concept sitting inert in a Claude codebase** — it reads as a hard guarantee and is not
+   one. §15c family.
+2. 🔴 **A COMMENT ASSERTS A GUARANTEE THE CODE DOES NOT PROVIDE**, and a safety net was deleted on
+   the strength of it. `services.ts` (above `expandedResult`):
+   *"Tool-use enforces every required field server-side at the LLM API level, so `expanded.X` … are
+   guaranteed strings here — the previous `|| ''` and chained-fallback patterns were dead code."*
+   **Nothing enforces it.** The `|| ''` fallbacks were removed because of a belief, not a mechanism.
+
+---
+
+# ✅ CONFIRMED, NO CHANGE — `serviceName` IS NOT ADDED TO `SERVICE_FILTER_FIELDS`
+
+**Arfeen's principle, recorded as standing guidance:**
+
+> **FILTER WHERE A REJECTION IS RECOVERABLE, NOT WHERE IT IS FATAL.**
+
+`filterRecord` throws on `REJECTED` and **service creation has nowhere to fall back to** — a false
+positive would break the intake outright. A non-compliant name is caught downstream **at the ad-copy
+gate, where rejection means regenerate.**
+
+📌 **Revisit ONLY when tier one lands and the name is the coach's own words** — filtering a coach's
+own typed text is a different question from filtering generated text, and must be decided on its
+own terms.
+
+---
+# 🔴🔴 `services.name` — THE COUNT WAS WRONG. **38 OF 131, NOT THREE.** (measured 2026-08-30)
+
+**This file recorded "THREE CONFIRMED INSTANCES: 314, 315, 317." Measured against production:**
+
+```
+services total                131
+blank name (NULL or TRIM='')   38   =  29.0%
+```
+
+| month | services created | blank name |
+|---|---|---|
+| 2026-03 | 6 | 0 |
+| 2026-05 | 13 | 0 |
+| 2026-06 | 79 | 20 |
+| 2026-07 | 26 | 11 |
+| **2026-08** | **7** | **7 — 100%** |
+
+**Present since June, worsening every month, and UNIVERSAL in August.**
+⚠️ **Protected service 285 is one of the 38** (`name_len = 0`). Any operation over this set must
+exclude it BY ID, explicitly — never by relying on a filter to miss it.
+
+## 📌 WHY THE OLD FIGURE WAS WRONG — AND IT IS THE §15f FAMILY
+
+> **"Three confirmed instances" was a count of WHAT SOMEONE HAPPENED TO NOTICE, never a measured
+> count.** 314, 315 and 317 were the three rows that passed under a reader's eye during other work.
+> Nobody ever ran `COUNT(*) WHERE TRIM(name) = ''`.
+
+**This is the same failure as the morning's ladder query, one day and one field apart.** There, a
+zero was read out of a query that could not discriminate. Here, a three was read out of anecdote.
+**Both were numbers that felt evidential and were not.**
+
+📌 **§15f says a baseline is measured, never read out of a document. This extends it: an INSTANCE
+COUNT is measured, never accumulated from observation.** A tally that grows by noticing is not a
+measurement — it has no denominator, and it always undercounts, because it can only ever contain
+what someone was already looking at. **The tell is a count with no denominator beside it.** "Three
+instances" had none; "38 of 131" does.
+
+---
+
+## 🔴 NEW INSTANCE — **A DEFENCE THAT CREATES THE DEFECT**
+
+`sanitizePlaceholder` (`server/routers/services.ts`), applied to four fields in the `services.create` insert:
+
+```js
+export const sanitizePlaceholder = (v: string | null | undefined): string =>
+  !v || !v.trim() || PLACEHOLDER_DEFAULTS.has(v.trim().toLowerCase()) ? "" : v;
+```
+
+Its own comment reads *"strip stale client placeholder strings so they never persist as real data."*
+**It does exactly that. It prevents bad data BY WRITING EMPTY DATA — and nothing downstream handles
+empty.** The blank that reaches the live title prompt as `Product: ` is not a coach omission and not
+a missing guard. **It is the output of a guard working as designed.**
+
+### 🔑 AND `name` IS THE ONLY SANITIZED FIELD WITH NO RECOVERY PATH
+
+Four fields go through the identical sanitizer in `services.create`. Three are backfilled by enrichment behind `needsDescription` / `needsTargetCustomer` / `needsMainBenefit`.
+
+> **`name` NEVER APPEARS IN `updateFields` AT ALL.** Its three siblings are emptied and refilled.
+> `name` is emptied and stays empty forever. **That asymmetry is the entire reason this field, and
+> only this field, reaches the prompt blank.**
+
+📌 A second prompt site renders it blank too: the enrichment prompt in `expandProfile` opens
+`- Name: ${service.name}`. **The blank name is therefore an input to the very generation that was
+supposed to repair the row.**
+
+📌 **`services.create` accepts what `services.update` refuses.** Line 11 `z.string().max(255)`
+against line 33 `z.string().min(1).max(255).optional()`. The floor exists in the codebase already;
+it was simply never put on the create path. **`NOT NULL` was never going to catch this: `''` is not
+`NULL`.**
+
+## 🔴 NEW INSTANCE — §15c SUBCLASS: **A PASSING TEST THAT LOCKS IN THE DEFECT**
+
+`server/pipeline-fixes.test.ts`, in its `sanitizePlaceholder` cases:
+
+```js
+    expect(sanitizePlaceholder("")).toBe("");
+    expect(sanitizePlaceholder("   ")).toBe("");
+```
+
+**Green, correct, and it asserts THE DEFECT.** It tests what the function returns and never whether
+the returned value is usable by anything downstream.
+
+> **This is a distinct subclass and it is worse than the ones already recorded.** §15c is a check
+> that CANNOT FAIL. This is a check that PASSES BECAUSE THE DEFECT IS PRESENT — it would go RED if
+> the bug were fixed. **A missing test leaves a gap. This kind actively defends the gap**, because
+> the next person to change the behaviour sees a failing suite and reverts.
+
+📌 **The detection question to carry:** for any test asserting a transformation's output, ask
+*"does anything downstream require that output to be non-empty / well-formed?"* If yes, the
+assertion belongs at the consumer, not only at the producer.
+
+---
+
+# ✅ THE DECIDED FIX — DEFER IS INCREMENT ONE, NOT THE WHOLE THING (Arfeen, 2026-08-30)
+
+**Arfeen's reasoning, recorded because it overrides CC's recommendation and the reason matters more
+than the choice:**
+
+> **"Defer makes the product name another generated field, and the finding of today is that
+> GENERATED FIELDS GROUND GENERATED FIELDS. Filling this blank with generated text is THE DISEASE
+> APPLIED TO THE CURE."**
+
+## THE FULL SHAPE — Node 4's `sourceTier` ladder, generalised. Never blank, always tagged.
+
+| tier | source |
+|---|---|
+| **1** | **the coach types the name** |
+| **2** | **derived from their own typed description**, if they skip |
+| **3** | **a guarded deterministic fallback** |
+
+**Never blank. Always tagged with which tier it came from.**
+
+> 📌 **THAT TAG IS THE POINT, NOT THE FALLBACK.** It tells the title prompt whether `Product:` is
+> **coach-stated or derived** — and that is precisely the distinction open item 1 turns on. The fix
+> to the blank and the fix to item 1 are the same mechanism.
+
+## SEQUENCED AS TWO INCREMENTS
+
+- **INCREMENT ONE — NOW.** `.min(1)` on the create schema to match update; `name` added to the
+  enrichment `updateFields` behind a `needsName` guard so it behaves like its three siblings.
+  **Stops the bleeding. Does not tag.**
+- **INCREMENT TWO — LATER**, when the intake is opened for pre-launch item 2b: **the tier-one ask
+  and the tier tag.** Not before; it needs a screen (§15d).
+
+---
+
+# 🔒 CLOSED, NOT DEFERRED — THE 38 EXISTING ROWS WILL NOT BE BACKFILLED (Arfeen, 2026-08-30)
+
+**Decision: CLOSED. Do not reopen. Reasons, recorded so the item is not re-proposed:**
+
+1. **They are dummy data covered by the pre-launch wipe.** A backfill means generating invented
+   names for rows already scheduled for deletion.
+2. **There is no stored source for a real name on those rows**, so a "repair" would be a generation
+   pass, not a data fix — the disease applied to the cure, at scale, on rows nobody will read.
+3. **Protected service 285 is one of the 38.**
+
+📌 The write-path fix stands on its own without any backfill: **the rows that matter to the copy
+standard are the ones generated from here on.** The measurable success condition is that the
+next month's blank-name rate is **0**, against August's **7 of 7**.
+
+---
+# ✅ PRE-LAUNCH ITEM 1 — THE AGREED FIX SHAPE (locked 2026-08-30, Arfeen). NOT BUILT.
+
+**Site:** `server/hvcoGenerator.ts`, `runHvcoGeneration`. **FOUR prompt sites, not one**, sharing
+two pieces of machinery — so two edits reach all four:
+
+| piece | line | reaches |
+|---|---|---|
+| `sharedSystem` — carries the mandatory-element demand | **133** | system message on all 4 calls |
+| `icpContext` — built once | **73–77** | interpolated at **141, 209, 268, 319** |
+| the four prompts | 136 long · 204 short · 263 power · 314 subheadlines | — |
+
+## 🔴 THE FINDING OF THE SESSION — LINE 74 IS THE ACTIVE HARM
+
+```js
+    'IDEAL CUSTOMER PROFILE — use this to make every title specific and targeted:',
+```
+
+…followed by `icp.pains`, `icp.goals`, `icp.implementationBarriers`.
+
+> **THE PROMPT HAS BEEN EXPLICITLY INSTRUCTING THE MODEL TO MINE THE ICP FOR TITLE SPECIFICS ALL
+> ALONG. Arfeen's ruling: this was never a risk we might introduce — IT IS THE DEFECT ITSELF.**
+
+📌 CHECKPOINT's standing warning that the fix "must NOT point at the ICP" reads as a hazard to
+avoid. **It is a description of what the code does today.** Those three fields are precisely the
+class-A set recorded above: craft inside a persona, a claim about the reader's life inside a title.
+**Line 74 changes in BOTH branches of the fix.**
+
+## 🔑 THE FOUR MANDATORY ELEMENTS DO NOT SOURCE EQUALLY
+
+| element | can the ladder source it? |
+|---|---|
+| a named enemy or obstacle | **YES, strongly.** `priorAttempts`: *"research online, watched YouTube videos, but it was too complex."* `hesitation`: *"their own limiting beliefs."* |
+| an insider term | **YES.** `successMoment` gives *"the mastermind"*, *"the systematic process"* in the coach's own register. |
+| a specific number | **NO.** Nothing in the ladder licenses "50% more deals." |
+| a specific timeframe | **NO.** |
+
+**The flat menu of four is therefore wrong in both branches.** Number and timeframe are the
+seat-cap shape — a slot demanding a value with nothing true to put in it. They are legitimate only
+when they describe **THE ASSET** (five steps in the guide, a 20-minute read), never **THE READER'S
+LIFE**. That distinction is generatable safely under the classification rule already recorded here:
+structure is craft; a claim about a real person is not.
+
+---
+
+## ⚖️ AMENDMENT 1 — REWRITE THE LIST, DO NOT COUNTERMAND IT (Arfeen)
+
+> **If line 133 still demands one of four elements while a later instruction forbids three of them,
+> THE DEMAND WINS. That is the seat-cap law, and it is how this defect exists in the first place.**
+
+**Replace the mandatory list inside each branch so that EVERY option offered is one the model can
+legitimately satisfy on that branch.** Do not add a prohibition beside the existing requirement —
+that is the exact failure mode already recorded for this item ("a prohibition beside a requirement
+loses, because the requirement is the only one satisfiable").
+
+📌 **§15g in its constructive form:** an instruction that cannot be satisfied is a defect in the
+instruction. A four-item menu of which three are forbidden IS such an instruction.
+
+## ⚖️ AMENDMENT 2 — GENERALISE LOCATION LOCK'S REASONING, NOT ITS TOKEN (Arfeen)
+
+`campaignTypeContext` (`in_person_event`, ~line 88) already contains the pattern:
+
+```
+LOCATION LOCK: you are NOT told the city or venue — if a title would name WHERE it is,
+write the literal token [INSERT_EVENT_VENUE]; never invent a city, venue, or "[City]" placeholder.
+```
+
+**The transferable part is: STATE WHAT IS NOT KNOWN, AND GIVE A CONCRETE ALTERNATIVE.**
+
+🔴 **DO NOT emit a placeholder token in a title.** A venue placeholder is completed by a person
+later; **a title with a hole in it just ships broken.** In the absent branch the concrete
+alternative is **the asset's own structure, which IS known at generation time** — format, part
+count, campaign type.
+
+## ⚖️ AMENDMENT 3 — §15c APPLIES TO THIS FIX, BEFORE IT IS WRITTEN (Arfeen)
+
+> **State the result that would make it fire, and confirm that result is BOTH REACHABLE AND
+> DETECTABLE. If nothing could make it fire, it is decoration and we will have added another one.**
+
+**The firing result:** a generated title asserting **a number, a timeframe, or a named obstacle
+about the reader's life**, on a run with an **empty ladder**.
+
+- **Reachable?** To be confirmed by running the absent branch and reading the titles — not asserted.
+- **Detectable?** ⚠️ **OPEN, AND IT IS THE WEAK POINT.** Nothing in the codebase identifies a
+  "specific" in a title or tests its traceability. The compliance gate is tier-1 keyword matching
+  and would not see it. **Until that exists, this fix ships on judgement, not on a number** — and
+  that must be stated in its report rather than implied away.
+
+---
+
+## 🔴 THE NO-LADDER CASE IS THE DEFAULT, NOT THE EDGE — and it decides the design
+
+**Every coach on the manual fork can NEVER reach `offerSharpen`, and 4 of the 5 ICPs carrying
+`groundingMeta` have `ladderAnswered: []`.** Until the branch fork is closed, most coaches arrive
+with nothing.
+
+> **Binding the demand to the ladder does NOTHING for them on its own.** Remove the ICP as a source,
+> add a source that is empty, and the requirement is still the only satisfiable instruction — so the
+> model invents, exactly as today. **A FIX THAT ONLY HELPS RUNS WITH LADDER ANSWERS IS NOT A FIX.**
+> — Arfeen, 2026-08-30
+
+## THE TWO BRANCHES — `describeMechanismText` / `sourceTier` generalised, not invented
+
+Selected on whether `readLadderAnswers(icp?.groundingMeta)` returns anything.
+**Already exported from `_core/groundingCorpus.ts`, NULL-tolerant, and the row is ALREADY IN MEMORY**
+— `runHvcoGeneration`'s ICP fetch selects the full row with no column projection, so `groundingMeta`
+is present. **No new query, no signature change.**
+
+- **LADDER PRESENT** — quote the answers verbatim, labelled as the coach's own observation, kept
+  SEPARATE from `icpContext`. Mandatory list rewritten to the two elements the ladder can source
+  (named enemy/obstacle, insider term), plus asset-structural number/timeframe.
+- **LADDER ABSENT** — state plainly that no first-hand account of this audience exists. Mandatory
+  list rewritten to asset-structural specifics only. `icpContext` remains as thinking material and
+  **loses line 74's instruction to mine it for title specifics.**
+
+⚠️ **CONSTRAINT:** `REGISTER_STANDARD` and `BANNED_COPYWRITING_WORDS` come from
+`_core/copywritingRules.ts`, which is **DO-NOT-TOUCH**. The fix composes around those imports and
+lives entirely inside `hvcoGenerator.ts`. `sharedSystem` is assembled locally at 133, so this works.
+
+---
+
+## 🧪 THE AGREED PROOF — DIRECT GENERATOR CALL, NO CASCADE, NO PRODUCTION WRITE (Arfeen)
+
+**No second cascade. No full-cascade spend.** Call the title generator directly, as the earlier
+proofs did:
+
+- **PRESENT branch → ICP 291**, which holds **the only real ladder answers in existence**.
+- **ABSENT branch → any ICP with `ladderAnswered: []`** (289, 290, 262, 264 all qualify).
+- **The product name is supplied IN THE HARNESS, never written to production** — this is what makes
+  the read clean.
+
+> 📌 **THE SAME RUN DELIVERS THE COACH-GROUNDED TITLE-QUALITY READ THAT SERVICE 318 CANNOT PROVIDE**,
+> because service 318's 55 titles were generated with `Product: ` blank.
+
+---
+# 🟢🟢 THE FIRST COACH-GROUNDED RUN — MEASURED 2026-08-30. **766 of 3,788 = 20.2%**
+
+**The zero is broken.** Arfeen ran the intake himself, took the AUTO fork, answered all four sharpen
+questions in his own words about the coach-training and mastermind business he actually runs, and
+let the full eleven-node cascade complete.
+
+```
+service 318 | ICP 291 | kit 225 | path = auto | type = lead_magnet | status = complete
+all nine auto-step fields filled · 55 hvcoTitles · 1 landing page · 0 jobs running
+```
+
+📌 **ICP 291 IS THE FIRST ICP IN THE PRODUCT'S HISTORY WITH LADDER ANSWERS.** `ladderAnswered` came
+back `['trigger','priorAttempts','hesitation','successMoment']` and the conditional `ladderAnswers`
+key was written for the first time since it was built (`1fe41ff`, 2026-07-27). It is also the first
+`auto` kit since **2026-07-09**.
+
+| | chars |
+|---|---|
+| `trigger` | 364 |
+| `priorAttempts` | 89 |
+| `hesitation` | 136 |
+| `successMoment` | 177 |
+| **TYPED TOTAL** | **766** |
+| generated | 3,022 |
+| **CORPUS** | **3,788** (sum of fields) · 3,808 (joined with `" \n"`) |
+| **FRACTION** | **766 of 3,788 = 20.2% · 4 of 11 populated fields** |
+
+⚠️ **THE SCRIPT REPORTED 774 / 20.4%. THE RECORDED NUMBER IS 766 / 20.2%, AND THE DIFFERENCE IS A
+DISCARDED FALSE POSITIVE.** The substring-containment test marked `category` — the single word
+`coaching`, 8 characters — as coach-typed, because that word happens to appear inside the 1,023
+characters Arfeen typed. **`category` is set by the LLM extractor via `extractionToFields`, not
+typed as a field.** A common word matching by chance is the known weakness of containment testing.
+The 8 characters were discarded. **Arfeen's ruling: "766 and 20.2% is the number we're using, and
+discarding those 8 characters was right."**
+
+---
+
+# 🔴 THE PROJECTION TABLE WAS WRONG, AND THE REASON OUTRANKS THE CORRECTION (2026-08-30)
+
+**The table below, recorded earlier in this file, projected 24.4% at ~150 typed characters per
+answer. Arfeen averaged 191.5 — MORE than that row assumed — and landed at 20.2%, BELOW it.**
+
+## Why: the table held the corpus fixed at 1,855 characters. IT IS NOT FIXED.
+
+| corpus field | service 316 (131-char brief) | service 318 (1,023-char brief) |
+|---|---|---|
+| `painPoints` | 664 | **991** |
+| `whyProblemExists` | 577 | **983** |
+| `uniqueMechanismSuggestion` | 325 | **518** |
+| `description` / `targetCustomer` / `mainBenefit` | 122 / 81 / 78 | **155 / 119 / 248** |
+
+**A 7.8× longer brief produced a 1.63× larger GENERATED corpus.**
+
+📌 **NOT caused by the ladder.** Those fields are written by the always-overwrite deep-research
+block at service creation — **before** the ladder is ever offered. The growth is caused by the brief
+alone. The ladder contributed only its own 766 characters.
+
+> ### 🔑 THE DENOMINATOR GROWS WITH THE INPUT.
+> **Typing more moves the numerator AND the denominator together, so the fraction rises far more
+> slowly than any fixed-corpus projection predicts.**
+>
+> **THE LADDER MOVES GROUNDING OFF ZERO. IT CANNOT MOVE IT PAST MINORITY ON ITS OWN.**
+
+That conclusion was previously a projection labelled as one. **It is now a measurement**, and it
+held at a brief nearly eight times longer than the run that produced the zero. Do not re-derive it
+from the old table; the table's assumption is the thing that was wrong.
+
+📌 **Family note.** This is not §15f — the baseline was measured correctly at run time. It is a
+**model whose held-constant term was a variable**. Recorded because the same shape will recur
+anywhere a fraction is projected by varying only the numerator.
+
+---
+
+# 🔑 WHAT THIS UNBLOCKS — PRE-LAUNCH ITEM 1 HAS A LEGITIMATE SOURCE FOR THE FIRST TIME (2026-08-30)
+
+**Item 1 (title-generator source-boundedness, `server/hvcoGenerator.ts`, in its `sharedSystem` string) was stuck on a real
+refutation, and THAT REFUTATION STILL STANDS:** the prompt demands "a specific number, a specific
+timeframe, a named enemy or an insider term" and there was no legitimate place to point it. **A
+prohibition beside a requirement loses, because the requirement is the only one satisfiable.** And
+pointing the demand at the ICP would make the fabrication MORE faithful, not less — the ICP is
+invented biography.
+
+**What changed: the ladder answers are a legitimate source.** Real client observation, in the
+coach's own voice, **separable from the generated fields** and **provably typed** (they arrive
+through `handleSendText`; no generator writes them; `readLadderAnswers` reads them alone).
+
+> ## THE FIX IS TO BIND THE PROMPT'S DEMAND FOR SPECIFICS TO THE LADDER ANSWERS SPECIFICALLY —
+> ## NOT TO THE CORPUS.
+
+📌 **THE CORPUS IS THE WRONG UNIT TO MEASURE AGAINST, and this is the part to carry forward.**
+80% of the corpus is machine-written; binding to it re-creates the inverted architecture recorded
+above (grounding generated copy against a generated reference). Bind to the typed subset only.
+
+> ### THE RIGHT QUESTION IS NOT "what fraction of the corpus did the coach type?"
+> ### IT IS **"what fraction of the SPECIFICS A TITLE ASSERTS can be traced to a coach-typed source?"**
+>
+> **That second number can be 100% while the corpus fraction stays at 20%.** They are different
+> measurements and only the second one is about whether the product lies.
+
+📌 This is the first item where the two halves recorded above — *provenance, and an intake that
+gives provenance something to be provenant about* — are both present at once. Node 4 is the model;
+this would be the second instance.
+
+---
+
+# 🔴 `services.name` EMPTY — FOURTH INSTANCE, FIRST ON THE AUTO BRANCH, AND IT CORRUPTED THIS RUN'S EVIDENCE
+
+**Service 318 `name` = `[]`, verbatim.** Confirmed instances at the time of writing: 314, 315, 317, 318.
+
+⚠️ **SUPERSEDED THE SAME DAY — THE REAL FIGURE IS 38 OF 131 (29%).** "Four instances" was a tally of
+what had been noticed, not a measured count; see the §15f-family entry above. The auto-branch point
+below still stands and is strengthened: **all 7 services created in August 2026 are blank, on both
+branches.**
+
+📌 **314/315/317 were all MANUAL. 318 IS AUTO. THE WRITE-PATH GAP IS NOT BRANCH-SPECIFIC** — it is
+not a defect in one intake branch and cannot be fixed by routing.
+
+## 🔴 THE CONSEQUENCE, STATED EXPLICITLY
+
+`services.name` renders inside the live title prompt as **`"Product: "`** — blank — and it did so
+**for the entire cascade, including all 55 `hvcoTitles` generated on this run.**
+
+> **THOSE 55 TITLES ARE NOT A FAIR SAMPLE AND MUST NOT BE USED AS THE FIRST COACH-GROUNDED COPY
+> QUALITY READ.** They were generated with a blank product name in the prompt. Any register or
+> specificity judgement taken from them measures the defect, not the grounding.
+
+## ✅ THE DECISION — Arfeen, 2026-08-30
+
+- **NO RE-RUN.** The measurement stands; only the copy-quality read off these titles is void.
+- **`services.name` write-path validation is PROMOTED TO NUMBER ONE on the pre-launch list, ABOVE
+  compliance-gate blindness.**
+
+📌 **The reason for the promotion is not severity in the usual sense.** It was ranked low as data
+untidiness. **It is now corrupting the copy standard's own evidence** — the first coach-grounded run
+this product has ever produced came back with unusable titles because of it. A defect that poisons
+the instrument you are using to judge everything else outranks a defect in the thing being judged.
+
+📌 Same family as the §15d entry above: **the standard's own instrument, compromised.** There the
+instrument was unwired; here it is fed a blank.
+
+---
+
+# 🔑 §15c EXTENDS TO MEASUREMENTS — MEASURE THE FIELD THAT IS WRITTEN UNCONDITIONALLY (locked 2026-08-30, Arfeen)
+
+**A count over a CONDITIONALLY-written field cannot distinguish "the condition was never met"
+from "the writer is absent." A zero on such a field is not evidence of anything.**
+
+**The instance.** The session baseline counted ICPs with
+`JSON_LENGTH(JSON_EXTRACT(groundingMeta,'$.ladderAnswers')) > 0` and reported **0**. The answer was
+true. The check was worthless, because `computeIcpProvenance` in `server/_core/icpGrounding.ts` writes that key **only
+when at least one answer is non-blank**:
+
+```js
+    ladderAnswered,
+    ...(ladderAnswered.length > 0 ? { ladderAnswers } : {}),
+```
+
+`ladderAnswered` is written **UNCONDITIONALLY**, on every provenance row. Its value on all five
+rows that carry `groundingMeta` is `[]` — an empty array, explicitly written. **That is real
+evidence: it says the provenance routine RAN and found no answers.** The absence of
+`ladderAnswers` said only that something was missing, and could not say what.
+
+### The rule
+
+> **Point the count at the field the writer always writes. Read the conditional field only to
+> learn WHAT was written, never to learn WHETHER anything was.**
+>
+> Before trusting any COUNT, ask: *is the column or key I am counting written on every path, or
+> only on the path I am hoping to detect?* If only the latter, the count is circular.
+
+📌 **CORRECTION TO ARFEEN'S OWN FRAMING, recorded at his instruction.** He put it as *"my baseline
+query asked for a key the writer has never written"* and then asked whether it was one bad query or
+a pattern. **That framing was wrong, and the difference matters.** The writer DOES write
+`ladderAnswers`, spelled exactly as queried; it has simply never had cause to. **The key name was
+correct. What was wrong was reading an ABSENCE as a MEASUREMENT.** Had the follow-up hunted a
+naming bug it would have been hunting the wrong defect entirely.
+
+📌 **The sweep it triggered came back clean — one bad ad-hoc query, NOT a pattern.** 29 JSON columns
+in the schema; exactly ONE `JSON_EXTRACT` in the whole codebase (`leadMagnetQuizReview.ts`,
+`$.format`, verified present on 4 of 4 rows that have `assetBody`); `campaignFacts` readers use
+`eventSchedule` and `price`, both confirmed against the 11 production rows that hold them;
+`readLadderAnswers` matches its writer. **The defect never propagated into the code.**
+⚠️ Separately noted: that quiz query filters `= 'quiz'` and **no production row holds that value**,
+so it returns zero rows today — data, not a naming bug, but a query that currently cannot fire.
+
+📌 **Family:** §15c a check that cannot fail · §15f a stale baseline · §15h a marker that cannot
+distinguish · **this: a COUNT that cannot discriminate.** All four return confident green.
+
+---
+
+# 🔴 §15d, FOURTH INSTANCE AND THE LARGEST — SIX OF SIX KEYS DEAD ON ARRIVAL (2026-08-30)
+
+**Every key written to the `groundingMeta` column is read by nothing.**
+
+| key | readers of the PERSISTED column |
+|---|---|
+| `hits` | none |
+| `overall` | none |
+| `version` | none |
+| `perSection` | none |
+| `corpusWords` | none |
+| `ladderAnswered` | none |
+
+**The ONLY code that reads the persisted column is `readLadderAnswers`** — and it reads
+`ladderAnswers`, **the one key that has never been written.** Its own doc comment states the
+boundary in `_core/groundingCorpus.ts`, on the `groundingMeta` field of `CoachCorpusInput`: *"The ICP row's groundingMeta — ONLY ladderAnswers is
+read from it."*
+
+**§15d screen test: THERE IS NO SCREEN.** `grep -rn "groundingMeta" client/src` returns **nothing**.
+No coach, and no operator, ever sees the grounding verdict.
+
+📌 **Every apparent reader reads the IN-MEMORY `provenance` object at generation time, not the
+column** — the `sharpenWithLadder` and `runIcpGeneration` log lines are `console.log`; the rest are one-off scripts
+under `server/scripts/`. `overall` reads `"partial"` on all five rows and **gates nothing, displays
+nothing, feeds no decision.**
+
+⚠️ **A false positive discarded, recorded so it is not re-found as a finding.** `grep '\.hits'`
+returns many live sites in `conceptGenerator.ts`, `bonusGenerator.ts`, `emailSequenceGenerator.ts`.
+Those are **validator-result hits, a different object**, and they do drive retries. Scoped to
+`provenance.hits` there is exactly one reader, and it is a script.
+
+## 🔑 WHY THIS OUTRANKS THE OTHER THREE INSTANCES
+
+**This is the copy standard's own instrument, built and left unwired.** The standard needs a way to
+say how grounded a given field is; `perSection` already computes exactly that, per field, and
+persists it. Nothing consumes it.
+
+> **THE MEASUREMENT HALF OF THE COPY STANDARD IS THEREFORE LIKELY A WIRING JOB, NOT A BUILD.**
+
+📌 Same shape as **B. THE PROVENANCE PATTERN ALREADY EXISTS ON ONE FIELD** recorded below —
+`sourceTier` proven in place and applied almost nowhere. Two instruments exist. Neither is read.
+
+---
+
+# 🔒 THE BRANCH FORK IS NOW CLOSED ON BOTH SIDES — the full statement of the built-twice finding (2026-08-30)
+
+**Both call sites are now pinned to a line, and the finding is complete:**
+
+| collector | call site | reachable on |
+|---|---|---|
+| **ICP sharpening ladder** — the coach's OWN WORDS | `offerSharpen()` at **`client/src/v2/V2TrailIntake.tsx`**, inside `runAutoInChat`. **One call site in the repo.** | **AUTO ONLY** |
+| **free-step event questions** — the coach's FACTS | `maybeAskFreeStep` defined in **`client/src/v2/V2Trail.tsx`**, called **exactly once**, inside `runManualLoop`. The auto loop — the `for (const stepDef of AUTO_STEPS)` that precedes it — never calls it. | **MANUAL ONLY** |
+
+> **NO COACH CAN REACH BOTH OPERATOR-FACT COLLECTORS IN ONE CAMPAIGN. Whichever fork they take,
+> they lose one of the two things the system needs.** That is the finding in full.
+
+📌 **Confirmed in production data, not only in code.** 7 `auto` kits have ever existed and the last
+is **kit 177, 2026-07-09** — eighteen days before `offerSharpen` was committed (`1fe41ff`,
+2026-07-27) and twenty-one before it deployed (2026-07-30). **Since the ladder shipped: 22 kits, 17
+`<NULL>`, 5 `manual`, ZERO `auto`.** The ladder has had no production traffic because the branch
+carrying it has had no production traffic.
+
+📌 **`maybeAskFreeStep` being absent from the auto loop is the CONFIRMED MECHANISM of pre-launch
+item 2b** ("Auto Mode captures no operator facts"). It is not a crash: `orchestration.ts`, at its `hasAllEventFacts` branch
+simply does not build the free-event bridge page when `hasAllEventFacts` is false.
+
+---
+
+# 📌 BASELINE FOR THE FIRST COACH-GROUNDED RUN — MEASURED 2026-08-30 16:14:12 UTC
+
+**Measured at the moment the run started, from production, not read from this file (§15f).**
+
+```
+services              max id   317
+idealCustomerProfiles max id   290
+campaignKits          max id   224
+ICPs with POPULATED ladderAnswers    0
+ICPs with NON-EMPTY ladderAnswered   0     ← the unconditional field; this is the real zero
+ICPs with groundingMeta              5  of 106
+auto kits ever                       7     (last: 2026-07-09)
+kits total                          71
+```
+
+**Arfeen takes the AUTO fork. Expected and NOT a defect: no `campaignFacts.eventSchedule`, and no
+free-event page.** That is the known auto-branch gap above, and it is to be reported as such in the
+post-run measurement rather than raised as a finding.
+
+Measurement script, written and negative-controlled before the run:
+**`.measure/measure-ladder-run.py`** — read-only, takes the baseline as arguments, stops with a
+named step rather than estimating. Three negative controls exercised on historical rows: the
+multi-run guard fired at Step 1; the absent-`ladderAnswers` stop fired at Step 3; and the corpus
+arithmetic reproduced service 316's per-field counts exactly (664/577/325/122/81/78/8 = **1,855**).
+
+⚠️ **The recorded "1,855 characters" is the SUM OF FIELD LENGTHS.** The corpus string the code
+actually builds joins with `" \n"`, adding 12 separator characters — **1,867**. Both are correct;
+they answer different questions. The script prints both so the post-run figure cannot be compared
+against the wrong one.
+
+---
+
+# 🔴🔴 THE TWO INTAKE CHANNELS SIT ON OPPOSITE BRANCHES — 2026-08-30
+
+**CONFIRMED IN CODE AND IN DATA. This is larger than the ladder and it explains two separate open
+findings with ONE cause.**
+
+| channel | where it lives | reachable on |
+|---|---|---|
+| **the ICP sharpening ladder** (the coach's OWN WORDS) | `offerSharpen()`, ONE call site, inside `runAutoInChat` | **AUTO path only** |
+| **campaign-facts capture** (the coach's FACTS — date, time, timezone) | inside `runManualLoop` | **MANUAL path only** |
+
+> **A coach who picks "I'll pick as we go" CAN GIVE FACTS BUT NEVER THEIR OWN WORDS.**
+> **A coach who picks "Build it all for me" CAN GIVE WORDS BUT NEVER FACTS.**
+> **WHICHEVER FORK THEY TAKE, THEY LOSE ONE OF THE TWO THINGS THE SYSTEM NEEDS.**
+
+**Confirmed on production 2026-08-30:** kit 224 was created `path=manual`; `offerSharpen` is never
+called on that branch; ICP 290 has `ladderAnswers = NONE`. The driver reached the ICP reveal and no
+sharpen offer existed to reach.
+
+## 📌 THIS IS A DIFFERENT SHAPE FROM THE FOUR ROUTING INSTANCES
+
+The four (free-step questions, provenance tagging, `REGISTER_STANDARD`, and the ladder as first
+observed) are **mechanisms that EXIST and GET SKIPPED** — present, correct, optional, unrouted.
+
+**This is a BRANCH THAT CANNOT REACH ONE AT ALL.** No amount of routing, prompting or defaulting
+fixes it from inside the branch, because the call site is not there. It is not a skipped mechanism;
+it is an absent one, per path.
+
+## 📌 IT COLLAPSES TWO FINDINGS INTO ONE CAUSE
+
+- **"Zero ICPs have ever had ladder answers"** — not because nobody clicked. **Because every coach
+  who took the manual fork was never offered it**, and the manual fork is the one the trail's own
+  chip wording invites.
+- **"Auto Mode collects no operator facts at all, so four of five page types generate assets that
+  can never publish"** (pre-launch item 2b) — **the same cut, the other side.**
+
+**One cause: the intake was built twice, once per branch, and each build got one half.**
+
+## 📌 ORDERING, READ NOT INFERRED — and it gates the next click
+
+`runAutoInChat`: ICP reveal → **`offerSharpen()`** → **`sharpenMutation` (ANSWERS PERSISTED HERE)** →
+`getOrCreateKit(path:"auto")` → "Building the rest now" → transcript flush →
+`navigate('/v2-dashboard/trail/{kitId}')` → V2Trail runs the remaining nine nodes.
+
+🔴 **There is NO confirmation step and NO exit between the sharpened profile and the build starting.
+Choosing "Build it all for me" COMMITS TO A FULL CASCADE WITH REAL SPEND.**
+
+✅ **But the ladder answers are written BEFORE the kit exists.** Closing the tab at the
+"Profile sharpened" reveal saves the measurement data and skips the cascade.
+
+## 🗑️ DEBRIS FROM THE ATTEMPT — pre-launch wipe covers it, DELETED NOTHING
+
+`service 317` (**`name` EMPTY — third confirmed instance of pre-launch item 4**) · `ICP 290`
+(no ladder answers) · `kit 224` (`path=manual`, offer 217 selected, mechanism NULL, hvco NULL) ·
+1 offer row · 0 hvcoTitles · **0 running jobs.** Stopped at node 3 of 11, inert.
+
+📌 **Unexplained and left that way: how the run became `path=manual` when the driver clicked no fork
+chip.** Recorded, not reasoned about.
+
+---
+
+# 🔑 THE RULE FAILED, AND THE RESHAPE IS BETTER THAN THE RULE — 2026-08-30, Arfeen
+
+**Arfeen's classification rule — *"asserted as fact about a real person must be sourced; craft or
+structure may be generated"* — FAILED when tested against real fields. The four breakages below are
+why. He recorded the failure and replaced it with a two-axis model that the breakages themselves
+produce.**
+
+## THE RESHAPE — two axes, not one rule
+
+> **PROVENANCE IS A PROPERTY OF THE FIELD.** How a value was obtained: typed, extracted, generated.
+> That is breakage class **B**, and **`sourceTier` already solves it** — per-row, on one field.
+>
+> **ASSERTABILITY IS A PROPERTY OF THE SURFACE** — what a generator produces, and WHO READS IT.
+
+**Classes A and D are THE SAME EVENT: a fact crossing out to a reader.** A is the crossing happening
+inside the cascade (persona detail lifted into a title); D is the crossing happening at publish
+(persona label surfaced to a customer). **No field tag can express either, because it is not a fact
+about the field** — the same value is safe in one destination and false in another.
+
+**Class C is DIFFERENT IN KIND: craft in FORM, assertion in EFFECT.** "The Conditioned Loop
+Interruption Protocol" is a name, and naming is craft — but publishing it asserts the coach has a
+named, distinct method. **Any rule keyed on HOW A FIELD LOOKS misclassifies C**, because C's surface
+form is exactly the form the rule reads as safe.
+
+## 📌 WHY THE WIRING MAP COULD NOT SURFACE THIS
+
+**The map knows GENERATORS and RULES. It has no notion of WHAT A GENERATOR'S OUTPUT IS ASSERTED TO,
+OR TO WHOM.** It can tell you `NO_RESEARCH_STATISTIC_FABRICATION_RULE` is absent from
+`hvcoGenerator`. It cannot tell you that `icp.pains` is safe as thinking material and false as a
+headline, because destination is not on either of its axes.
+
+> **THE STANDARD NEEDS THAT SECOND AXIS — surface and audience — and NOTHING IN THE CODEBASE HAS IT
+> TODAY EXCEPT `describeMechanismText`: one generator, varying one instruction, for one field.**
+
+That is the entire existing precedent for assertability, and it is the same function that is the
+entire existing precedent for provenance. **Both halves of the standard exist, in one function,
+applied once.**
+
+# 📌 §15e RESTATED — CC's formulation, recorded because Arfeen judged it sharper than his own
+
+> **Declining to author the input is NOT the rule. The rule is that the input comes from someone
+> with the ACTUAL KNOWLEDGE — and handing the authoring to someone else MOVES the fabrication
+> rather than removing it.**
+
+Established across two instances in one day: CC declined to answer the ladder (correct), then
+proposed Arfeen answer it for a practice he does not run (the same defect, one step out, and
+harder to see because the output would have been plausible).
+
+---
+
+# 🧭 THE CLASSIFICATION RULE, TESTED AGAINST THE ORIGIN MAP (2026-08-30)
+
+**The rule as given:** *anything asserted as fact about a real person must be sourced; anything that
+is craft or structure may be generated.* Tested field by field, not argued in the abstract.
+
+## ✅ WHERE IT HOLDS CLEANLY — must be sourced
+
+`testimonial1-3 Name / Title / Quote` · `pressFeatures` · `socialProofStat` · `totalCustomers` ·
+`averageRating` · `totalReviews` · `price` · `earlyBirdPrice` · `paymentPlan` · `guaranteeDuration` ·
+`guaranteeType` · `deliveryFormat` · `deliveryDuration` · `services.name` ·
+`campaignFacts.eventSchedule`
+
+## ✅ WHERE IT HOLDS CLEANLY — may be generated
+
+`hvcoTitles.title` · `headlines.headline` · `adCopy.*` · `landingPages` angle variants ·
+`offers.godfather/free/dollarAngle` · concept and script structures · `services.hvcoTopic`
+
+## 🔴 WHERE IT BREAKS — and it breaks in FOUR DISTINCT WAYS
+
+### A. Class depends on the DOWNSTREAM USE, not on the field
+`icp.pains` · `icp.goals` · `icp.implementationBarriers` · `icp.introduction` ·
+`services.painPoints` · `whyProblemExists` · `falseBeliefsVsRealReasons` · `failedSolutions` ·
+`hiddenReasons`
+
+**The same string is craft in a prompt and a claim in a headline.** "Things from 2019" is inert
+inside a persona and is a claim about the reader's marriage inside a title. **The rule classifies
+the string; the string's class CHANGES AS IT TRAVELS.** A field-level tag cannot express this — the
+tag would have to constrain WHAT DOWNSTREAM MAY DO WITH THE FIELD, not merely what the field is.
+
+### B. Class varies per INSTANCE, not per field
+`heroMechanisms.mechanismDescription` (extracted vs guarded_fallback) · `services.description` ·
+`targetCustomer` · `mainBenefit` (typed on the form path, generated on the conversational path)
+
+**These cannot be classified as fields at all.** The same column is sourced in one row and generated
+in the next. **This is precisely why `sourceTier` is PER-ROW — the classification is a SCHEMA
+decision before it is a policy decision.**
+
+### C. Craft that SMUGGLES a factual claim about the coach
+`heroMechanisms.mechanismName` · `services.uniqueMechanismSuggestion` · `riskReversal` · `bonuses`
+
+Naming a method looks like craft. **Publishing "The Conditioned Loop Interruption Protocol" asserts
+THE COACH HAS A NAMED, DISTINCT METHOD — a generated credential.** A generated `riskReversal` is a
+contractual claim; a generated `bonus` asserts a deliverable exists. **The rule misclassifies these
+if applied to surface form**, because they present as names and phrases rather than as assertions.
+
+### D. Class FLIPS at the publish boundary
+`avatarName` · `avatarTitle`
+
+"Claire", "Commercial Director" are legitimate persona labels internally and **a fabricated client
+the moment they surface to a reader.** Same value, same field, class determined by which side of
+the publish boundary it is on.
+
+## 🔑 THE DESIGN DECISION THIS EXPOSES
+
+**The rule is sound, and it cleanly classifies the fields the cascade does not run on.** The clean
+cases are the ones already typed by the coach (proof, price, testimonials) or already obviously
+craft (headlines, titles). **Every field in the breakage list is in the middle layer — GENERATED
+DESCRIPTIONS OF REAL PEOPLE AND REAL PRACTICES — and that middle layer is essentially 100% of what
+the cascade actually consumes.**
+
+> **THE RULE ASSUMES CLASS IS A PROPERTY OF THE FIELD. Three of the four breakage kinds show class
+> is a property of THE INSTANCE (B), THE USE (A), or THE BOUNDARY CROSSING (D) — not the field.**
+
+📌 That is the decision to take, and it is not a wording choice: **a per-field policy cannot express
+A, B or D.** `sourceTier` already solves B for one field. A and D have no precedent anywhere in the
+codebase.
+
+---
+
+# 🔴 §15e, SECOND INSTANCE IN ONE DAY — AND ARFEEN CAUGHT IT, NOT CC (2026-08-30)
+
+CC declined to answer the ladder itself, correctly: the fraction is set by whoever types, so CC
+typing sets the number it is measuring. **CC then proposed that ARFEEN answer the four questions
+"as a coach would" — and that carries THE SAME FLAW ONE STEP OUT.**
+
+**Arfeen's catch, recorded as his:** *"I do not run a relationship coaching practice, so answering
+those questions as that coach is still fabrication — plausible fabrication, which is worse."*
+
+📌 **PLAUSIBLE FABRICATION IS WORSE THAN OBVIOUS FABRICATION**, because it survives review. CC's own
+answers would have looked like a tester's answers; Arfeen's would have looked exactly like a
+coach's — and been just as invented. **The resolution is not a better author, it is a REAL
+PRACTICE**: he answers for the coach-training and mastermind business he actually runs.
+
+📌 **CC caught §15e once today and walked into it again in the same breath.** Declining to author
+the input is not the rule; the rule is that the input must come from someone with the actual
+knowledge. A tester who hands the authoring to someone else has moved the fabrication, not removed
+it.
+
+# 🔴 A PATTERN, NOT FOUR ITEMS — THE RIGHT MECHANISM, OPTIONAL, NOBODY ROUTED THROUGH IT (2026-08-30)
+
+Four instances, all found today, all the same shape:
+
+| mechanism | state |
+|---|---|
+| **the free-step event questions** | correct, returned by the server, **no caller rendered them** (§15d) |
+| **provenance tagging** (`sourceTier`) | correct, working, **1 field of ~30** |
+| **`REGISTER_STANDARD`** | wired into the title generator and **not preventing consultant register** |
+| **the ICP sharpening ladder** | built, offered, **used on ZERO ICPs ever created** |
+
+**In every case the mechanism is RIGHT, it is OPTIONAL, and nothing routes anyone through it.**
+
+📌 **This is a DESIGN-CULTURE observation, not a code defect — which is precisely why no wiring
+audit surfaced it.** Every one of these passes review: the code is correct, the tests are green, the
+import is present. What is missing is not correctness but ROUTING — a decision about who encounters
+the mechanism and when. A grep can find an absent import. Nothing greps for "built, correct, and
+never reached."
+
+📌 Distinct from §15d, which is about machinery with no caller at all. These have callers. **They
+have callers nobody takes.**
+
+# 🔑 NODE 4's ANSWER TO THE INTAKE QUESTION, READ PROPERLY (2026-08-30)
+
+**Node 4 does NOT ask the coach for everything.** It asks for **the ONE THING ONLY THE COACH CAN
+KNOW — how they actually work** — generates the rest, and **labels what it could not source**
+(`sourceTier`, and the downstream instruction that varies by it).
+
+> **THAT IS THE MODEL THE STANDARD FOLLOWS. The intake half is scoped as "THE FEW THINGS ONLY A
+> COACH CAN SUPPLY" — NOT as "more questions".**
+
+📌 This matters for scoping: the failure mode to avoid is answering "the corpus is empty" with a
+longer form. A longer form is more fields for a coach to abandon. Node 4 asks for one thing, gets
+it or does not, and is honest about which — and that is why its tier system works while everything
+around it does not.
+
+---
+
+# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-08-30 end of session
+
+**A fresh terminal with no memory of this session can restart from this block alone. Everything
+below was verified in-session against git, the filesystem and production — not recalled.**
+
+## 1. BRANCH AND BUILD STATE
+
+| | |
+|---|---|
+| branch | `railway-build` |
+| HEAD | **`b98c5655a93b649d85b6e72af2bfd136265a8148`** (`b98c565`) |
+| working tree | **NOT clean — `CHECKPOINT.md` is modified and UNCOMMITTED** (this block) |
+| other modified files | none |
+| ahead of `origin/railway-build` | **1 commit** (`b98c565`, docs-only) |
+| deployed build | **`8011d62`, status SUCCESS** |
+| deployed == HEAD? | **NO — HEAD is one commit ahead.** The only difference is `CHECKPOINT.md`. **Deployed CODE matches HEAD exactly**; nothing is waiting to ship |
+| migrations | **0097–0106 ALL APPLIED. NEVER RE-APPLY** |
+| TS baseline | 34 errors |
+
+## 2. WHAT IS SHIPPED AND CLOSED — Node 5 + the free-event trigger
+
+**STAGE D IS CLOSED.** Shipped at `8011d62`, verified by markers proven to differ between builds
+plus the container's own commit read from inside the container.
+
+Proof rows on production:
+
+```
+kit 223  campaignFacts = {"eventSchedule":{"date":"October 14, 2026","time":"7:30 pm","timezone":"IST"}}
+LP  239  lead_magnet_download   published /p/campaign-239   build 8011d62aff…
+LP  240  webinar_registration   published /p/campaign-240   build 8011d62aff…  date/time/tz carried
+BRIDGE   hvco 7233 → landing page 240
+kit 222  the reload-defect kit — ANSWERABLE AGAIN after the fix
+```
+
+First lead-magnet kit in production history carrying event facts.
+
+## 3. THE ONE OPEN MEASUREMENT — the ladder's typed fraction
+
+**Measured, relationship-coach run (service 316):** the coach typed **131 characters**;
+`buildCoachCorpus` contributed **0 of 1,855 characters** and **0 of 7 populated fields** from them.
+His meaning survives as paraphrase; his words do not, and words are what a grounding check compares.
+
+**The four sharpen questions have exactly ONE call site:**
+
+> `offerSharpen()` — called at **`client/src/v2/V2TrailIntake.tsx:474`**, inside `runAutoInChat`.
+
+⚠️ **PATH CORRECTION.** This was stated in conversation as `client/src/pages/v2/V2TrailIntake.tsx`.
+**That file does not exist**, and `client/src/pages/` is the V1 read-only tree (CLAUDE.md §5). The
+correct path is `client/src/v2/V2TrailIntake.tsx`.
+
+`runAutoInChat` is the **"Build it all for me" (auto) branch ONLY**. On the manual branch
+`offerSharpen` is never called. **No ICP row has ever had non-empty ladder answers** —
+`JSON_LENGTH(JSON_EXTRACT(groundingMeta,'$.ladderAnswers')) > 0` returns **0** across every ICP ever
+created.
+
+**ORDERING INSIDE `runAutoInChat`, read from source — this is why the measurement is possible:**
+
+```
+ICP generation → ICP reveal
+  → offerSharpen()                    ← the four questions
+  → sharpenMutation                   ← ★ LADDER ANSWERS PERSISTED HERE
+  → getOrCreateKit(path:"auto")       ← kit created only now
+  → "Foundation set. Building the rest now"
+  → transcript flush
+  → navigate('/v2-dashboard/trail/{kitId}')   ← V2Trail then builds the remaining 9 nodes
+```
+
+**The answers are written BEFORE the kit exists.** There is no confirmation step and no exit between
+the sharpened profile and the build starting.
+
+## 4. THE DECISION TAKEN — DO NOT RE-OPEN IT
+
+- ❌ **REJECTED:** racing the tab closed at "Profile sharpened" to save the data and skip the spend.
+- ❌ **REJECTED:** CC driving the browser a second time.
+- ✅ **CHOSEN:** **Arfeen runs the intake himself, takes the AUTO fork ("Build it all for me"),
+  answers the four sharpen questions in his own words, and lets the FULL ELEVEN-NODE CASCADE RUN TO
+  COMPLETION, accepting the spend** — because it produces **the first coach-grounded corpus this
+  product has ever had.**
+
+🔴 **THAT RUN HAS NOT HAPPENED YET.** It is the next action.
+
+## 5. THE MEASUREMENT PROMPT — run this when Arfeen confirms the run is finished
+
+**BEFORE the run — capture the baseline:**
+1. Highest `services.id`, highest `idealCustomerProfiles.id`, highest `campaignKits.id`.
+2. Count of ICPs with non-empty `ladderAnswers` (expected: **0**).
+
+**AFTER Arfeen confirms the run finished:**
+3. Identify the new `services` / `idealCustomerProfiles` / `campaignKits` rows above the baseline.
+4. **Print the four ladder answers VERBATIM**, each with its character count.
+5. Give the total `buildCoachCorpus` character count for the new service.
+6. **Report typed vs generated as TWO RAW NUMBERS AND a fraction** — never the percentage alone.
+7. **Enumerate every field feeding the corpus, ONE LINE EACH, marked `coach-typed` or `generated`.**
+
+🔴 **STOP RATHER THAN ESTIMATE.** If any step needs inference, stop and say which one. Report raw
+counts beside every fraction — the two briefs differ in length (131 vs 378 chars), which QUALIFIES
+the comparison and must be stated, not hidden inside a percentage.
+
+## 6. PRODUCTION LEFTOVERS FROM THE FAILED THIRD ATTEMPT — nothing deleted
+
+`service 317` (**`name` EMPTY**) · `ICP 290` (**no ladder answers**) · `kit 224`
+(`path=manual`, `type=lead_magnet`, offer 217 selected, mechanism NULL, hvco NULL) · 1 `offers` row ·
+0 `hvcoTitles` · **0 running jobs.** Stopped at node 3 of 11. **INERT. NOTHING WAS DELETED. The
+pre-launch wipe covers all of it.**
+
+📌 Unexplained and left that way: how that run came out `path=manual` when the driver clicked no fork
+chip.
+
+## 7. THREE COPY-QUALITY FINDINGS — RECORDED, NOT FIXED
+
+1. **Title-generator source-boundedness — `server/hvcoGenerator.ts:133`.** The prompt demands "a
+   specific number, a specific timeframe, a named enemy or an insider term" and says nothing about
+   where a legitimate specific may come from. **THE FIX IS A SUBSTITUTE, NOT AN IMPORT** — a
+   prohibition beside a requirement loses, because the requirement is the only one satisfiable.
+   ⚠️ **And the substitute must NOT point at the ICP** — that would make the fabrication more
+   faithful, not less.
+2. **Compliance gate blind to second-person diagnosis.** 60 titles → **0 tier-1 hits**, including
+   four textbook Meta Personal-Attributes claims. Enforcement is tier-1-only, so all 60 ship.
+3. **`REGISTER_STANDARD` wired and ineffective.** Present in `hvcoGenerator.ts:133`; did not prevent
+   "Defensive Position Loading" / "Conditioned Loop Diagnosis". The only confirmed class-3 defect.
+
+## 8. PRE-LAUNCH LIST IN RANK ORDER
+
+⚠️ **RE-RANKED 2026-08-30 — `services.name` write-path validation is now NUMBER ONE**, promoted
+above compliance-gate blindness by Arfeen's decision after service 318 came back with an empty
+`name` on the AUTO branch (fourth instance; 314/315/317 were manual). It rendered `"Product: "`
+blank through the live title prompt for all 55 `hvcoTitles` of the first coach-grounded run,
+voiding them as a copy-quality sample. **A defect that corrupts the instrument outranks a defect in
+what the instrument measures.** Full entry at the top of this file. The list below keeps its
+original numbering; read item 4 as item 0.
+
+1. **Compliance-gate blindness to second-person diagnosis** — produces policy violations on LIVE
+   coach ad accounts in the niches Meta polices hardest, and cannot be found by inspection because
+   the gate reports green.
+2. **B2C drift**, re-pointed **UPSTREAM to the ICP / service description** — NOT the magnet
+   generator, which the clean-brief run cleared.
+3. **The two intake channels sit on opposite branches** — ladder on auto only, campaign-facts on
+   manual only. Explains the zero ladder answers AND the Auto Mode fact gap with one cause.
+4. **`services.name` empty — THREE CONFIRMED INSTANCES: 314, 315, 317.** Renders inside the live
+   title prompt as `"Product: "`. A real prompt defect, not data untidiness.
+5. **`PROOF_COMPOSITIONAL_CEILING_RULE` wired nowhere — 0 of 40 prompt sites.** Delete or connect.
+
+⚠️ **CORRECTION — the landing-page double-increment is NOT on this list. It is FIXED AND SHIPPED.**
+Commit `2fc366b` *"fix(quota): every landing page counted as TWO — the counter is incremented once
+now"* is an **ancestor of HEAD** (verified with `git merge-base --is-ancestor`). It was cited in
+conversation as open at `server/landingPageGenerator.ts:1154-1155`; **those lines are free-next-step
+replay-token substitution, not a quota increment.** Do not re-open it.
+
+## 9. STANDING LAWS — full text in CLAUDE.md §15c–§15j
+
+- **§15c — a check that cannot fail.** State what result would make it fire; confirm that result is
+  reachable. Run the negative control.
+- **§15d — machinery with no caller.** Name the SCREEN a coach sees it on before calling it done.
+- **§15e — the brief is not the rationale for the brief.** *Declining to author the input is not the
+  rule — the rule is that the input comes from someone with the ACTUAL KNOWLEDGE, and handing the
+  authoring to someone else MOVES the fabrication rather than removing it.*
+- **§15f — a baseline is measured, never read** out of a document.
+- **§15g — an instruction that cannot be satisfied is a defect in the instruction.** Stop and say so.
+- **§15h — a deploy marker must be PROVEN to differ between the two builds** before it is trusted.
+- **§15j — a FREE RUNTIME CHECK IS NEVER DEAD CODE** (locked 2026-08-31). Stated stronger than §15i
+  because it requires nobody to check anything: keeping one costs nothing, removing one costs an
+  unbounded silent failure. `landingPageGenerator.ts:18` is the model — same false belief, kept the
+  defence anyway. **If you want an omission visible, LOG it AND default it; never default by crashing.**
+- **§15i — a guarantee that nothing enforces is worse than no guarantee** (locked 2026-08-31), because
+  defences get deleted on the strength of it, inside a commit that looks like a cleanup. Before
+  deleting a fallback, NAME THE LINE that enforces the guarantee and confirm it runs on the live path.
+- **THE SEAT-CAP LAW** — a field or instruction that demands a value with nothing true to put in it
+  is how the generator came to invent a seat cap in five rows out of five. Four instances; it has
+  now decided a fix twice.
+- **PROVENANCE IS A PROPERTY OF THE FIELD** (how a value was obtained — `sourceTier` solves it for
+  one field). **ASSERTABILITY IS A PROPERTY OF THE SURFACE** (what a generator produces and WHO
+  READS IT). No field tag can express assertability, because it is not a fact about the field.
+
+## 10. GUARDRAILS — VERBATIM, ALL IN FORCE
+
+- **Nothing commits, migrates, pushes or deletes without Arfeen's explicit word in the message
+  IMMEDIATELY BEFORE it.**
+- **Pushing `railway-build` is an INSTANT PRODUCTION DEPLOY.**
+- **Propose-first for anything that changes code or data.**
+- **Protected services 272–277 and 285 must NEVER be touched, nor the smoke coach's account.**
+- **Migrations 0097–0106 are applied and must NEVER be re-applied.**
+- **Stage named file paths only — NEVER `git add -A`.**
+- **Leave the ~340 untracked files alone** — old screenshots and notes.
+- 🔴 **`server/_core/orchestration.ts` is DO-NOT-TOUCH except for the one guarded block already
+  committed. THAT PERMISSION WAS FOR THAT BLOCK ONLY AND IS SPENT.**
+- **ABORT and report BEFORE reverting anything** if: a build stamp comes back NULL, the booking-URL
+  token appears on a free-event page, or anything writes to a protected service.
+- **The Stage D restore point was DELETED on 2026-08-30 with Arfeen's explicit word.** Stage D is
+  closed; there is no restore point and none is needed.
+
+---
+
+# 🔴🔴🔴 HEADLINE FINDING — 2026-08-30
+
+# **ZERO of 1,855 characters. ZERO of 7 populated fields.**
+
+**The coach typed 131 characters. NOT ONE OF THEM REACHES THE CORPUS THE SYSTEM CALLS HIS OWN
+WORDS.**
+
+**His MEANING survives as paraphrase. His WORDS do not. And words are what a grounding check
+compares.** That distinction is the whole finding: it is what makes the anti-fabrication validator
+**STRUCTURALLY INCAPABLE**, not merely weak. A better-tuned check, a wider regex, a stricter
+threshold — none of them help, because the thing being compared against was written by the same
+machine being checked.
+
+## CONSEQUENCE 1 — THE ANTI-FABRICATION ARCHITECTURE IS INVERTED
+
+It assumes **the coach supplies material and the system stays inside it**. On the default path the
+**coach supplies one sentence and the system supplies everything else**. Bounding generation to a
+generated corpus is a **NO-OP however well it is wired** — the boundary is drawn around the
+machine's own output, so the machine cannot cross it.
+
+## CONSEQUENCE 2 — PROVENANCE ALONE WOULD MAKE THE PRODUCT HONEST AND EMPTY
+
+Tag every field, vary the downstream instruction by tag — and run it against a corpus of **zero
+coach words** — and you get a cascade that **correctly refuses to say anything specific**. Perfectly
+honest. Useless.
+
+> **THE STANDARD HAS TWO HALVES AND THEY MUST MOVE TOGETHER: PROVENANCE, AND AN INTAKE THAT GIVES
+> PROVENANCE SOMETHING TO BE PROVENANT ABOUT.**
+
+📌 **Node 4 is the ONLY node that built both halves — and that is exactly why its tier system
+works.** `methodExtractor` asks the coach for their method AND `sourceTier` records what came back.
+Provenance without intake would have tagged everything `guarded_fallback` and produced a mechanism
+that asserts nothing. Every other node has neither half.
+
+## 📌 AUTO MODE DECLINES EVERY INTAKE BY DEFINITION
+
+Auto Mode has nobody present to answer a question, so it takes the generated branch at every fork.
+**AN AUTO MODE CAMPAIGN IS ENTIRELY GENERATED MATERIAL, ALWAYS — the typed fraction is ZERO BY
+CONSTRUCTION, not by accident.** This connects directly to the Auto Mode item already on the
+pre-launch list (collects no operator facts, so four of five page types generate assets that can
+never publish): **it is the same hole seen from the other side.** That item is about what Auto Mode
+fails to COLLECT; this is about what that leaves the validator STANDING ON.
+
+---
+
+# 📏 THE LADDER-ACCEPTED COMPARISON — NOT MEASURED, AND THE REASON MATTERS (2026-08-30)
+
+## 🔴 First result, and it was free: **ZERO ICPs in production have EVER had ladder answers.**
+
+```
+SELECT COUNT(*) ... WHERE JSON_LENGTH(JSON_EXTRACT(groundingMeta,'$.ladderAnswers')) > 0   →   0
+```
+
+Across every ICP ever created. **The one channel that puts verbatim coach words into the corpus has
+never once been used.** So there is no existing run to measure — the cheapest path was checked
+first and it is empty.
+
+## 🔴 Why CC did not then run one: THE MEASUREMENT WOULD HAVE BEEN AN ARTEFACT OF ITS OWN TESTER
+
+The ladder is four free-text questions. **Their answers are the ONLY typed content, so the fraction
+is determined ENTIRELY BY HOW MUCH THE ANSWERER TYPES.** CC answering them sets the number it is
+trying to measure. That is §15e in its purest form — **an input that contains its own result** — and
+the number would have been quotable, precise, and meaningless.
+
+**This is what would make the comparison unfair, and it is not a minor caveat — it is the whole
+measurement.**
+
+## The analytic bound instead — labelled a PROJECTION, not a measurement
+
+Corpus for service 316 is **1,855 generated characters**. The ladder adds 4 verbatim answers:
+
+| chars typed per answer | typed total | typed fraction of corpus |
+|---|---|---|
+| 40 (a terse phrase) | 160 | **7.9%** |
+| 100 (a sentence) | 400 | **17.7%** |
+| 150 (two sentences) | 600 | **24.4%** |
+| 300 (a full paragraph) | 1,200 | **39.3%** |
+
+**Even a coach writing a full paragraph per question leaves the corpus MAJORITY-GENERATED.** The
+ladder cannot fix the ratio on its own; it can only move it off zero. That is the structural point,
+and it holds at every assumption in the table.
+
+## The honest way to get the real number
+
+**Arfeen answers the four ladder questions himself, as a coach would.** He is a real coach and the
+product owner; his answers are genuine coach input, and CC's are not. Then CC measures. **Cost: one
+intake, no node loop.** Until then the fraction stays a projection and is labelled as one.
+
+**SPEND FOR THIS PIECE: ZERO LLM CALLS.** Two read-only SQL queries.
+
+---
+
+# 🔴🔴 TWO THINGS ABOVE EVERYTHING ELSE IN THIS FILE — recorded 2026-08-30
+
+## A. THE GROUNDING REFERENCE IS ITSELF GENERATED. Every source-bounded number in this sprint is weaker than it reads.
+
+`buildCoachCorpus` (`server/_core/groundingCorpus.ts:99-107`) assembles what the anti-fabrication
+validator treats as **THE COACH'S OWN WORDS** — the ground truth all grounding is measured against.
+It is built from `description`, `targetCustomer`, `mainBenefit`, `painPoints`, `whyProblemExists`,
+`uniqueMechanismSuggestion` and others.
+
+**`painPoints`, `whyProblemExists` and `uniqueMechanismSuggestion` sit in the ALWAYS-OVERWRITE
+deep-research block (`routers/services.ts:314`) — unconditionally machine-written. `description`,
+`targetCustomer` and `mainBenefit` are generated whenever the coach left them empty, which the
+conversational intake does on EVERY V2 campaign.**
+
+> 🔴 **CONSEQUENCE, PLAINLY: the anti-fabrication validator grounds generated copy against a corpus
+> that is itself generated. EVERY SOURCE-BOUNDED MEASUREMENT BANKED IN THIS SPRINT WAS TAKEN
+> AGAINST A REFERENCE THAT INCLUDES INVENTION. Those numbers are weaker than they read and MUST NOT
+> be cited as proof of grounding.**
+
+📌 **This is the DEEPEST instance of the family.** §15c is a check that cannot fail. §15f is a
+comparison against a stale baseline. §15h is a marker that cannot distinguish. **This is a check
+whose REFERENCE IS NOT REAL** — the logic is sound, the harness runs, the corpus is fetched, and the
+thing being compared against was written by the same machine being checked.
+
+## B. THE PROVENANCE PATTERN ALREADY EXISTS ON ONE FIELD. That is the design spine — generalise it, do not invent it.
+
+`heroMechanisms.sourceTier` records **HOW the mechanism was obtained** (`extracted` vs
+`guarded_fallback`), and `describeMechanismText` (`_core/cascadeContext.ts:408`) **VARIES THE
+DOWNSTREAM INSTRUCTION BY THAT TAG** — a fallback mechanism travels with *"composed from the
+audience profile rather than described by the practitioner — lean on the specifics of the audience,
+and assert nothing about how it was developed."*
+
+> **THE STANDARD IS NOT SOMETHING TO INVENT. IT IS NODE 4'S PROVENANCE PATTERN GENERALISED ACROSS
+> EVERY UPSTREAM FIELD: A TAG ON THE FIELD, AND A DOWNSTREAM INSTRUCTION THAT VARIES BY TAG.**
+
+📌 **Roughly ONE FIELD IN THIRTY carries it today.** The pattern is proven in place and applied
+almost nowhere. Not designed yet — recorded as the spine so the standard starts from the working
+example rather than a blank page.
+
+---
+
+# 📏 HOW MUCH OF THE "COACH CORPUS" THE COACH ACTUALLY TYPED — measured 2026-08-30, service 316
+
+**THE QUOTABLE FRACTION: 0 of 7 populated fields. 0 of 1,855 characters.**
+
+| corpus field | chars | origin |
+|---|---|---|
+| `painPoints` | 664 | always-generated (deep research) |
+| `whyProblemExists` | 577 | always-generated |
+| `uniqueMechanismSuggestion` | 325 | always-generated |
+| `description` | 122 | generated — a rewrite, not the coach's sentence |
+| `targetCustomer` | 81 | generated |
+| `mainBenefit` | 78 | generated |
+| `category` | 8 | ⚠️ origin unverified — the ONLY possible typed field |
+| `name`, `pressFeatures`, `socialProofStat`, 6 × testimonial fields | 0 | empty |
+| ladder answers | 0 | the sharpening ladder was DECLINED on this run |
+| imported text | 0 | blank-slate coach |
+
+**The coach typed 131 characters — one sentence — and NOT ONE OF THEM IS IN THE CORPUS.**
+`description` is a paraphrase of it: *"Relationship coaching that helps couples who keep having the
+same argument…"* against the coach's *"I help people who keep having the same argument with their
+partner…"*.
+
+📌 **Say it precisely: "zero typed characters" is NOT "zero coach signal".** The corpus is a
+machine's restatement of the coach's one sentence, with roughly 1,700 characters of machine
+invention layered on top. The coach's meaning survives; the coach's WORDS do not — and it is the
+words a grounding check compares against.
+
+### What would make this number wrong
+
+1. **`category` (8 chars) is unverified.** If typed, the fraction is 1 of 7 fields and 0.4% of
+   characters. It does not change the shape.
+2. **This measures ONE PATH** — a blank-slate coach through the conversational intake who declined
+   the ladder. A coach who fills the form, uploads assets, or answers the ladder has a very
+   different fraction. **The number is about this path, not about the product universally**, and
+   the conversational intake is the V2 default.
+3. **The ladder is the one channel that puts verbatim coach text into the corpus** (`readLadderAnswers`).
+   It was declined here — deliberately, to keep the B2C run to the brief. A run that accepted it
+   would score higher, and that is worth measuring before the standard is designed.
+4. **`coachBackground` is read by `buildCoachCorpus` and by its `hasProof` check but IS NOT A COLUMN
+   ON `services`.** If it resolves from some other input shape, typed text could enter there.
+   Unverified; recorded, not chased.
+5. Single service, single niche, not replicated.
+
+---
+
 ## 0. NEXT ACTION — read this before anything else
 
 # 👉 STATE AT BREAK — 2026-08-29 (evening). **STAGE D IS CLOSED.**
@@ -152,6 +1611,180 @@ thought of. **The gate has no reachable failure for second-person diagnosis in a
 `REGISTER_STANDARD`. The same defect is already banked against Node 4. **Recorded as evidence the
 register problem belongs to the cascade, not to one node** — and note that `REGISTER_STANDARD` being
 present did not prevent it, so this is not a wiring gap like Finding 1.
+
+# 🔴 THE COPY-QUALITY PIECE, REFRAMED — 2026-08-30
+
+## The instruction that was refuted, recorded as Arfeen's
+
+**Arfeen's instruction was to scope a substitute pointing the title generator at "the coach's own
+mechanism, the ICP's own language, or the offer". The scoping read REFUTED it and he recorded the
+refutation as his own:** *"pointing a substitute at the ICP's language would make the fabrication
+more faithful, not less."* The ICP is not a legitimate source to point at. Recorded here because an
+instruction that was overturned by the work it commissioned is worth more in the record than a
+clean one.
+
+## What the sixty titles actually showed
+
+- **The coach supplied ONE SENTENCE containing NO specifics.** Not one number, date, duration or
+  named day.
+- **Of 50 extracted specifics across 31 titles, ZERO trace to anything the coach typed.**
+- **The title generator invented 4 in 60** — "2021", "200 Repetitions", and "Four Minutes" twice.
+  Everything else it CARRIED FAITHFULLY from what it was handed. **That is good behaviour, and the
+  first read of this data — which called "2019", "Sunday", "five years ago" and "three things this
+  month" inventions — was WRONG**, because it judged against truncated fields instead of the full
+  upstream corpus. All four are verbatim in `ICP.pains`.
+- **The fabrication originates UPSTREAM — at the ICP and at `hvcoTopic`** — and the cascade then
+  LAUNDERS IT INTO CONSISTENCY. `hvcoTopic` invented "Under 90 Seconds" at intake; five titles then
+  carry it legitimately. Downstream faithfulness makes upstream invention harder to see, not easier.
+
+## 🔑 THE DISTINCTION THIS WORK HAS TO PRODUCE
+
+**The defect is NOT that the ICP invents. A persona is MEANT to be constructed — inventing "Claire"
+is the job.** Building a vivid imagined customer is how the ICP earns its place, and demanding it
+stop would break the node.
+
+**The defect is that NOTHING MARKS THE BOUNDARY BETWEEN PERSONA AND EVIDENCE.** No upstream field
+carries any signal that its content is illustrative. `ICP.pains` and `service.description` arrive at
+a downstream generator in exactly the same shape — a string in a prompt — so every downstream
+generator treats INVENTED BIOGRAPHY as MATERIAL IT MAY ASSERT TO A REAL READER. "Things from 2019"
+was a novelist's detail in a persona; by the time it reached a published title it was a claim about
+the reader's own marriage.
+
+> **THE STANDARD'S FIRST DELIVERABLE IS THEREFORE A CLASSIFICATION OF EVERY UPSTREAM FIELD THE
+> GENERATORS CONSUME: ASSERTABLE IN PUBLISHED COPY, or THINKING MATERIAL ONLY.**
+
+📌 **A wiring map cannot surface this, which is why it is recorded separately.** The map answers
+"does this rule reach this prompt". This asks "is this INPUT the kind of thing a rule could ever
+make safe" — and for an unmarked persona field the answer is no, however many rules are wired. A
+fully-wired generator fed illustrative material as though it were evidence still publishes
+fabrication.
+
+📌 Classification is a PRODUCT decision and Arfeen makes it against real fields, not in the
+abstract. The origin map comes first.
+
+# 🔴 THREE ITEMS RECORDED, NOT ACTED ON — 2026-08-30
+
+1. **TITLES ARE UNPROTECTED AT BOTH LAYERS.** `META_COMPLIANCE_NOTES` reaches headlines, ad copy,
+   landing pages, email and WhatsApp — **not `hvcoGenerator.ts`**. And the compliance gate has no
+   reachable failure for second-person diagnosis in a short field (Finding 2). **Titles are the only
+   coach-facing copy surface with neither the Meta rule in the prompt nor a gate check that can
+   fire — and that is exactly where the four Personal-Attributes examples came from.**
+
+2. **`PROOF_COMPOSITIONAL_CEILING_RULE` IS WIRED NOWHERE — 0 of 40 prompt sites.** Exported,
+   imported by nothing. Class 1: **delete or connect**, and the decision is which.
+
+3. **`service.name` IS EMPTY AND RENDERS INSIDE THE LIVE PROMPT AS "Product: ".** Confirmed on
+   service 316. **This promotes pre-launch item 4 from data untidiness to a REAL PROMPT DEFECT** —
+   a declared input arriving blank at generation time, on every campaign built by the current
+   intake.
+
+# 🧪 sourceOfTruth CONTAMINATION TEST — CRITERIA FIXED BEFORE THE RUN (2026-08-30)
+
+**The leak.** `hvcoGenerator.ts` fetches `sourceOfTruth` **by `userId` only, with no service
+scoping**, and injects it headed *"BRAND CONTEXT — this is the approved brand voice. All copy must
+be consistent with this."* On the kit-223 run that block described **a different business**:
+*"12-week 1:1 coaching for high-achieving women rediscovering authentic identity"*, *"Women aged
+35–52 who are accomplished professionals"*.
+
+🔴 **A FRESH CASCADE CANNOT TEST THIS.** Re-running the brief regenerates the ICP, and the ICP is
+the dominant input — any difference would be confounded beyond reading. **The controlled test holds
+service 316, ICP 289, mechanism 1256 and the prompt text CONSTANT and toggles ONLY `sotContext`.**
+
+**Stated in advance, so the test can fail:**
+
+| result | reading |
+|---|---|
+| Both arms show the same gendered/demographic framing | **NOT CAUSAL** — the framing comes from the ICP, and the SOT leak is a real bug with no measurable effect on this output |
+| Suppressed arm drops "women / wives / mum / husband" framing that the SOT arm carries | **CAUSAL** |
+| Differences appear but do not track the SOT's own content (age band, "high-achieving", "authentic identity", "12-week") | **NOT CAUSAL** — ordinary LLM variance |
+| Both arms differ from each other AND from the live run in unrelated ways | **INCONCLUSIVE** — variance dominates; needs more samples per arm |
+
+📌 The relationship niche is female-skewed in reality, so gendered language alone is NOT the signal.
+**The signal is SOT-SPECIFIC vocabulary** — the age band, "accomplished professionals",
+"high-achieving", "authentic self", a 12-week structure.
+
+---
+
+# 🧪 sourceOfTruth TEST — RESULT: **NOT CAUSAL** (2026-08-30)
+
+Controlled toggle, service 316 / ICP 289 / mechanism 1256 / prompt text all held constant, only
+`sotContext` varied. Two runs per arm, 20 titles each, `claude-sonnet-4-6`.
+
+**Pre-registered signal — SOT-specific vocabulary: `WITH_SOT 0/40` · `NO_SOT 0/40`.**
+
+Neither arm carried the age band, "high-achieving", "accomplished professionals", "authentic self",
+"12-week", or any other term unique to the other business. Both arms produced the same
+husband/couples framing — **which comes from the ICP, present in both arms.** By the criteria fixed
+before the run, this is the "NOT CAUSAL" cell.
+
+**The leak is real in code and inert in effect here.** `hvcoGenerator.ts` does fetch
+`sourceOfTruth` by `userId` with no service scoping, and it does inject it as "the approved brand
+voice". It remains a genuine cross-service bug. But the ICP is ~6,000 characters of specific
+first-person material against the SOT block's few hundred, and the ICP wins completely. **It is NOT
+the B2C drift mechanism** — that stays with the ICP.
+
+🔴 **QUALIFY THIS BEFORE IT HARDENS — Arfeen, 2026-08-30. The result is NOT CAUSAL AGAINST A RICH
+ICP. It is not "never causal".** Six thousand characters of specific first-person ICP against a few
+hundred of brand context is an unequal contest, and **a coach with a SPARSE ICP is a case we have
+not tested.** The finding is bounded to the condition it was run under. **The cross-service leak is
+a real bug regardless of this result** — `sourceOfTruth` fetched by `userId` with no service
+scoping, injected as "the approved brand voice", is wrong whether or not it currently shows up in
+the output.
+
+📌 **A near-miss worth recording.** The SOT's `idealCustomerAvatar` opens *"Her name is Claire…"* and
+ICP 289 opens *"Claire is a married mum…"*. CC flagged the shared proper noun as near-conclusive
+contamination — **then checked the mechanism and found NO ICP path reads `sourceOfTruth` at all**
+(`icpGenerate`, `icpEnrichment`, `routers/icps`, `routers/autoMode` — zero references in each). The
+name is a shared model prior, not a leak. **A striking coincidence is not a mechanism**, and the
+grep that would have falsified it cost one command.
+
+**Spend: 4 calls, 9,962 input + 1,921 output tokens, `claude-sonnet-4-6`.**
+
+# 🗺️ ORIGIN MAP — where every upstream field's CONTENT comes from (2026-08-30)
+
+**Origin only. NOT classified as assertable/illustrative — that is Arfeen's product decision, to be
+made against these real fields.**
+
+| field | origin | note |
+|---|---|---|
+| the coach's intake sentence | **TYPED** | the only unambiguously coach-authored text in the system |
+| `sourceOfTruth.*` (6 fields) | **TYPED** (form) | but scoped per USER, not per service — see the test above |
+| `services.name` | typed *if* the form was used | **EMPTY on conversational intake** — renders "Product: " |
+| `services.description` | **typed OR generated** | generated only when the coach left it empty — which the conversational intake always does |
+| `services.targetCustomer` | **typed OR generated** | same conditional |
+| `services.mainBenefit` | **typed OR generated** | same conditional |
+| `services.painPoints` | **ALWAYS GENERATED** | `services.ts:314` — "always overwrite deep-research fields" |
+| `services.whyProblemExists` | **ALWAYS GENERATED** | same block |
+| `services.falseBeliefsVsRealReasons`, `failedSolutions`, `hiddenReasons`, `riskReversal` | **ALWAYS GENERATED** | same block |
+| `services.avatarName`, `avatarTitle` | **ALWAYS GENERATED** | same block |
+| `services.uniqueMechanismSuggestion` | **ALWAYS GENERATED** | same block |
+| `services.hvcoTopic` | **ALWAYS GENERATED** | same block — **this is where "Under 90 Seconds" was invented** |
+| `services.coachBackground`, `pressFeatures`, `socialProofStat`, `testimonial*` | **TYPED** | genuine coach-supplied proof |
+| `idealCustomerProfiles.pains / goals / implementationBarriers / introduction` | **GENERATED** | source of "things from 2019", "Every Sunday evening", "five years of evidence" |
+| `heroMechanisms.mechanismDescription` | **EXTRACTED or GENERATED** | ⭐ **carries `sourceTier`** — see below |
+| `offers.*`, `hvcoTitles.*`, `headlines.*`, `adCopy.*`, `landingPages.*` | **GENERATED** | downstream nodes |
+
+## 🔴 THE TWO THINGS THIS MAP EXPOSES
+
+**1. `buildCoachCorpus` — the "coach's own words" used as GROUNDING TRUTH — CONTAINS MACHINE-WRITTEN
+FIELDS.** `groundingCorpus.ts:99-107` builds the corpus from `s.description`, `s.targetCustomer`,
+`s.mainBenefit`, **`s.painPoints`, `s.whyProblemExists`, `s.uniqueMechanismSuggestion`** and others.
+The last three are in the ALWAYS-GENERATED block; the first three are generated whenever the
+conversational intake is used, which is every V2 campaign. **So the anti-fabrication validator
+grounds generated copy against a corpus that is itself partly generated.** This is §15a inside the
+grounding system: the check is real, the harness is real, and the reference is machine-written.
+
+**2. THE MARKER ARFEEN WANTS ALREADY EXISTS — ON EXACTLY ONE FIELD.** `heroMechanisms.sourceTier`
+distinguishes `extracted` from `guarded_fallback`, and `describeMechanismText` **changes the
+downstream instruction based on it**: a `guarded_fallback` mechanism travels with *"composed from
+the audience profile rather than described by the practitioner — lean on the specifics of the
+audience, and assert nothing about how it was developed."*
+
+> **That is the persona/evidence boundary, already designed, already working, for one field out of
+> roughly thirty. The standard does not need to invent the mechanism — it needs to generalise the
+> one that exists.**
+
+---
 
 # 🔴 PRE-LAUNCH LIST RE-RANKED — 2026-08-29, Arfeen
 

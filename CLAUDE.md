@@ -402,3 +402,90 @@ for a build that never shipped.
 📌 **Same family as §15c and §15f.** §15c: a check that cannot fail. §15f: a comparison against a
 stale baseline. §15h: **a marker that cannot distinguish.** All three return confident green while
 measuring nothing.
+
+## 15i. A GUARANTEE THAT NOTHING ENFORCES IS WORSE THAN NO GUARANTEE (STANDING LAW — locked 2026-08-31)
+
+**Because defences get DELETED on the strength of it — inside a commit that looks like a cleanup.**
+
+**The instance.** `server/routers/services.ts` carried this comment above `expandedResult`:
+
+> *"Tool-use enforces every required field server-side at the LLM API level, so `expanded.X` and
+> `updateFields.X` are guaranteed strings here — the previous `|| ''` and chained-fallback patterns
+> were dead code (unreachable under tool-use enforcement). Direct reads are the post-migration
+> shape."*
+
+**Nothing enforces it.** `server/_core/llm.ts` translates `response_format.json_schema` into an
+**Anthropic tool** — `toolName = json_schema.name`, `toolInputSchema = json_schema.schema` — and
+posts to `api.anthropic.com/v1/messages`. The response handler throws **only** when the `tool_use`
+block is absent or its `input` is null. There is **no per-field validation and no `required`
+enforcement anywhere on the path**. `strict: true` is echoed into the normalised schema object at
+the `normalizeOutputSchema` helper in `_core/llm.ts` and **read by nothing on the Anthropic path** — it is an OpenAI concept sitting inert
+in a Claude codebase.
+
+> **`strict` and `required` are STEERING on the Anthropic tool-use path, not ENFORCEMENT.**
+
+**The fallbacks were removed because of a belief, not a mechanism.** The comment is confident,
+specific, technically-worded and wrong, and it reads as the output of someone who checked.
+
+### The test — apply it before deleting any fallback
+
+> **Before deleting a fallback because something upstream guarantees the value: NAME THE LINE THAT
+> ENFORCES THE GUARANTEE, AND CONFIRM THAT LINE RUNS ON THE LIVE PATH.**
+>
+> A schema keyword, a type, a `required` array or a comment is not an enforcing line. The enforcing
+> line is one that THROWS, REJECTS or SUBSTITUTES when the value is absent — and it must sit on the
+> path production actually takes, not on a path the library offers.
+
+📌 **DISTINCT FROM §15c, and worse.** §15c is a check that cannot fire: it **wastes effort** and
+leaves the code no weaker than before. **§15i REMOVES PROTECTION THAT WAS ALREADY THERE** — and it
+does so inside a diff that reads as a tidy-up, so review nods it through. A reviewer looking at
+"delete dead code" is not looking for a load-bearing default.
+
+📌 **The tell:** a comment explaining WHY a defence is unnecessary. A defence removed for a stated
+reason is exactly the case that needs the reason checked — nobody writes a justification for
+deleting something genuinely dead.
+
+📌 **Family:** §15c a check that cannot fail · §15d machinery nothing reaches · §15f a stale
+baseline · §15h a marker that cannot distinguish · **§15i a guarantee nothing enforces.** All read
+as rigour. Only this one leaves the code less defended than it found it.
+
+## 15j. A FREE RUNTIME CHECK IS NEVER DEAD CODE (STANDING LAW — locked 2026-08-31)
+
+**Stated deliberately STRONGER than §15i, because §15i still requires someone to go and check
+whether a guarantee is real. THIS ONE REQUIRES NOBODY TO CHECK ANYTHING.**
+
+> **The cost of KEEPING a free runtime check is nothing.**
+> **The cost of REMOVING one is an unbounded silent failure.**
+> **The asymmetry settles it without anyone having to establish whether the guarantee holds.**
+
+### The rule
+
+> **Do not delete a zero-cost runtime check, default, or fallback on the grounds that something
+> upstream makes it unreachable. Keep it. You do not need to win the argument about the guarantee —
+> the argument is not worth having, because the check costs nothing either way.**
+
+**A `?? ""`, a `typeof` test, a null guard, a clamp: these are not code that has to justify itself.
+Unreachable code that costs nothing is not a defect. A missing default that costs everything is.**
+
+## THE MODEL TO COPY — `server/landingPageGenerator.ts`, the comment above `LP_STRING_SCHEMA_FIELDS`
+
+Same false belief as the deletion commit, opposite decision:
+
+> *"…it is permanent and survives the planned Option B tool-use migration (tool-use enforces type at
+> the API level, but a no-cost runtime check is belt-and-braces — kept)."*
+
+**The author believed the guarantee, said so, and KEPT THE CHECK ANYWAY — explicitly because it cost
+nothing.** That reasoning was correct even though the belief inside it was false, and it is the only
+site in the codebase that came through the episode undamaged. **Copy this posture, not the
+reasoning that led to `9905b0c`.**
+
+📌 **Why this outranks §15i in practice.** §15i tells you to name the enforcing line before deleting
+a defence — sound, but it depends on someone doing the check, doing it correctly, and doing it
+against the live path. **§15j removes the dependency entirely: if the check is free, the question
+never has to be asked.** §15i is for when a defence has a real cost and the trade must be reasoned.
+§15j is for everything else, which is nearly all of it.
+
+📌 **The counter-argument, and why it loses.** "Dead code is clutter / it hides a real API bug we'd
+want to surface." A one-line `?? ""` is not clutter, and surfacing an upstream bug is what LOGGING
+is for — not what an unguarded crash in production is for. **If you want the omission visible, log
+it AND default it. Never default-by-crashing.**
