@@ -85,12 +85,21 @@ Return JSON exactly like this:
         adAngle: string;
       };
 
-      // Tool-use enforces every required field server-side; the previous
-      // `?? ""` fallbacks were unreachable under that enforcement.
+      // RESTORED 2026-08-31. The comment here previously read "Tool-use enforces every
+      // required field server-side; the previous `?? ""` fallbacks were unreachable under
+      // that enforcement." NOTHING ENFORCES THAT. `_core/llm.ts` translates json_schema
+      // into an Anthropic tool and the response handler validates only that a `tool_use`
+      // block exists — no per-field validation, and `strict: true` never reaches the API.
+      // `server/_core/validator.ts` recorded the same truth in its descriptive-not-strict
+      // header note on 2026-05-11, and that correction never travelled back to this file.
+      // Unlike services.ts, nothing normalises here: `parsed` is raw JSON.parse output and
+      // the cast above is a compile-time assertion that enforces nothing at runtime, so an
+      // omitted field returns `undefined` to the client while typed `string`.
+      // See CLAUDE.md, "15j. A FREE RUNTIME CHECK IS NEVER DEAD CODE".
       return {
-        headline: parsed.headline,
-        icpHook: parsed.icpHook,
-        adAngle: parsed.adAngle,
+        headline: parsed.headline ?? "",
+        icpHook: parsed.icpHook ?? "",
+        adAngle: parsed.adAngle ?? "",
       };
     }),
 });

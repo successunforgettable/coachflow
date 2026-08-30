@@ -8,7 +8,9 @@ import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter"
 import { BANNED_COPYWRITING_WORDS, BANNED_MECHANISM_NAMES } from "../_core/copywritingRules";
 
 const createServiceSchema = z.object({
-  name: z.string().max(255),
+  // `.min(1)` mirrors updateServiceSchema below. Its absence here is why create
+  // accepted what update refuses: `NOT NULL` rejects NULL, never the empty string.
+  name: z.string().min(1).max(255),
   category: z.enum(["coaching", "speaking", "consulting"]),
   description: z.string(),
   targetCustomer: z.string().max(500),
@@ -161,9 +163,23 @@ export const servicesRouter = router({
       // Treat placeholder values ("To be defined") as empty — same logic as frontend
       const isPlaceholder = (v: string | null | undefined) =>
         !v?.trim() || v.trim().toLowerCase() === 'to be defined';
+      const needsName = isPlaceholder(service.name);
       const needsDescription = isPlaceholder(service.description);
       const needsTargetCustomer = isPlaceholder(service.targetCustomer);
       const needsMainBenefit = isPlaceholder(service.mainBenefit);
+
+      // OBSERVABILITY. Every one of the four client call sites swallows a failure here
+      // (V2TrailIntake 439/544/992, V2AutoModeIntakeConfirm 303), and there is no central
+      // tRPC error logger, so a failed enrichment was previously INVISIBLE. Without this
+      // pair, `blank = 0` on the verification query cannot distinguish the name backfill
+      // WORKING from enrichment NEVER RUNNING — the same shape as a check that cannot fire.
+      // Failure count = (start lines) - (done lines). Logging only: the non-fatal client
+      // behaviour is deliberately unchanged.
+      console.log(
+        `[expandProfile] start serviceId=${input.serviceId} userId=${ctx.user.id} ` +
+        `needsName=${needsName} needsDescription=${needsDescription} ` +
+        `needsTargetCustomer=${needsTargetCustomer} needsMainBenefit=${needsMainBenefit}`,
+      );
 
       const prompt = `You are a world-class direct response copywriter and market researcher applying the Jobs-To-Be-Done framework.
 
@@ -183,6 +199,7 @@ JTBD FRAMEWORK — for each field, answer the question: what is this person real
 
 Return JSON with these exact fields:
 {
+  "serviceName": "A short, concrete name for this service as the coach would put it on a landing page — 2-5 words, niche-specific, no tagline and no colon. Not a slogan.",
   "description": "1-2 sentences. Name what this service does and who it's for using niche-specific language. Include a concrete outcome (number, timeframe, or named result). Must NOT be interchangeable with any other coaching service.",
   "targetCustomer": "Specific demographic and psychographic description. Name their job title or life situation, their current stuck state, and the specific thing they want — all in niche-specific language.",
   "mainBenefit": "The single functional outcome the customer hires this service to deliver. Must contain a concrete result — a number, a timeframe, or a named change in situation. Not a feeling. Not a journey.",
@@ -211,6 +228,7 @@ Return JSON with these exact fields:
             schema: {
               type: "object",
               properties: {
+                serviceName: { type: "string" },
                 description: { type: "string" },
                 targetCustomer: { type: "string" },
                 mainBenefit: { type: "string" },
@@ -226,6 +244,7 @@ Return JSON with these exact fields:
                 avatarTitle: { type: "string" },
               },
               required: [
+                "serviceName",
                 "description",
                 "targetCustomer",
                 "mainBenefit",
@@ -302,6 +321,10 @@ Return JSON with these exact fields:
       const SERVICE_FILTER_FIELDS = ["painPoints", "targetCustomer", "description", "mainBenefit", "falseBeliefsVsRealReasons", "failedSolutions", "hiddenReasons"];
       const { cleaned: cleanedServiceData, classification: serviceClassification, allFlaggedTerms: serviceFlaggedTerms } = filterRecord(expanded, SERVICE_FILTER_FIELDS);
       if (serviceClassification === "REJECTED") {
+        console.error(
+          `[expandProfile] FAILED serviceId=${input.serviceId} reason=compliance_rejected ` +
+          `flagged=[${serviceFlaggedTerms.join(",")}]`,
+        );
         throw new Error(`Generated service content contained prohibited language. Please regenerate. Flagged: ${serviceFlaggedTerms.join("; ")}`);
       }
       const filteredExpanded = { ...expanded, ...cleanedServiceData };
@@ -320,6 +343,7 @@ Return JSON with these exact fields:
         avatarName: trunc(filteredExpanded.avatarName, 100),
         avatarTitle: trunc(filteredExpanded.avatarTitle, 100),
         // Only overwrite user-visible fields if they were empty
+        ...(needsName && filteredExpanded.serviceName ? { name: trunc(filteredExpanded.serviceName, 255) } : {}),
         ...(needsDescription && filteredExpanded.description ? { description: trunc(filteredExpanded.description, 65535) } : {}),
         ...(needsTargetCustomer && filteredExpanded.targetCustomer ? { targetCustomer: trunc(filteredExpanded.targetCustomer, 65535) } : {}),
         ...(needsMainBenefit && filteredExpanded.mainBenefit ? { mainBenefit: trunc(filteredExpanded.mainBenefit, 65535) } : {}),
@@ -345,6 +369,13 @@ Return JSON with these exact fields:
         });
         throw dbErr;
       }
+
+      console.log(
+        `[expandProfile] done serviceId=${input.serviceId} ` +
+        `nameBackfilled=${needsName && !!filteredExpanded.serviceName} ` +
+        `serviceNameReturnedByModel=${!!filteredExpanded.serviceName} ` +
+        `nameLenAfter=${(updateFields.name ?? service.name ?? "").length}`,
+      );
 
       // Return the expanded fields so the review screen can display them.
       // Tool-use enforces every required field server-side at the LLM API
