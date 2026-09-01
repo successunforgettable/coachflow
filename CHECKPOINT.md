@@ -1,3 +1,413 @@
+# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-01
+### supersedes the 2026-08-31 block below, which is retained and marked, not deleted
+
+**A fresh terminal with no memory of this session can restart from this block alone. Every number
+below was MEASURED at write time (§15f), not recalled. The measurement is repeated at the foot of
+this block so it is the first AND last thing read.**
+
+---
+
+## 1. REPO STATE — measured 2026-09-01
+
+| | |
+|---|---|
+| branch | `railway-build` |
+| HEAD | **`298c6c6cb3cca55e1f635fdeb2afabc275a99834`** (`298c6c6`) |
+| `origin/railway-build` | **`8011d62aff4f41220529f73625e512bc87fd1ca8`** (`8011d62`) |
+| ahead / behind | **3 ahead, 0 behind** |
+| deployed | **`8011d62`** — **NOTHING FROM THIS SESSION OR THE LAST IS DEPLOYED** |
+| staged | **nothing (0 files)** |
+| TS baseline | **34** — held all session |
+
+### THE THREE UNPUSHED COMMITS
+
+| hash | contents |
+|---|---|
+| `298c6c6` | **CODE.** `services.ts`: `.min(1)` on create · `needsName` · `serviceName` into the enrichment prompt + json_schema + required · the backfill in `updateFields` · start/done/FAILED logging. `landing.ts`: three `?? ""` restored. ⚠️ **The `.min(1)` half is SUPERSEDED by the uncommitted name ladder** — it is removed again in the working tree, because `.min(1)` REJECTS a blank where the ladder GUARANTEES one never survives, and the two cannot both run. The rest of this commit stands unchanged |
+| `b4bd422` | **DOCS.** CLAUDE.md §15i + §15j; CHECKPOINT entries |
+| `b98c565` | **DOCS.** Stage D close-out (predates the 08-31 session) |
+
+### MODIFIED, UNCOMMITTED — ELEVEN FILES + ONE DELETION + ONE NEW MIGRATION
+
+⚠️ **This block said FOUR until 2026-09-02. It was written before the compliance-gate work
+and the name ladder landed in the tree, and a fresh session reading it would not have
+learned that the publish path now fails closed.** Corrected by measurement
+(`git status --porcelain -uno`), not by recall — the count in a handover is history, never
+a reference (§15f). **Re-measure before quoting this; do not trust it because it is written down.**
+
+**THREE SEPARATE PIECES OF WORK ARE MIXED IN THE TREE. They are intended as separate commits.**
+
+**A — THE NAME LADDER (increment two of Arfeen's 2026-08-30 ruling). Blocks the push.**
+
+| file | what changed |
+|---|---|
+| `server/routers/services.ts` | `.min(1)` REMOVED from create (it blocks the ladder) · `resolveServiceName()` three-tier ladder · wired into `create` + `nameLadder` proof log · enrichment backfill now tags `extracted` · `.trim()` added to the UPDATE name schema, closing the whitespace door |
+| `drizzle/schema.ts` | `services.nameSource` enum column, nullable |
+| `client/src/v2/V2TrailIntake.tsx` | `nameAsk` phase — the tier-1 ask, skippable; both creation entry points routed through it; success bubble reads the written name back |
+| `drizzle/0107_service_name_source.sql` | 🆕 **UNTRACKED, NOT APPLIED.** Migration travels alone and needs its own authorisation |
+
+**B — THE COMPLIANCE GATE (publish fails closed)**
+
+| file | what changed |
+|---|---|
+| `server/routers/meta.ts` | missing `serviceId` or unavailable DB now REFUSE the publish instead of skipping the gate · `GATE RAN` proof log |
+| `client/src/pages/AdCopyDetail.tsx` | publish button + dialog removed — it called `publishToMeta` with no `serviceId`, so every ad from that page reached Meta unscreened |
+| `client/src/v2/V2CampaignKit.tsx` | `PushKitModal` gated on `serviceId != null` |
+| `client/src/components/PublishToMetaDialog.tsx` | 🔴 **DELETED** (229 lines) |
+
+**C — MEASUREMENT INSTRUMENTATION + DOCS**
+
+| file | what changed |
+|---|---|
+| `server/_core/llm.ts` | 🆕 **MODEL-IDENTITY LOGGING** — `origin` / `winner` / `responded` / `failed[]` / `ladder` / `switched` / `fellThrough`. Additive; no behaviour change |
+| `server/hvcoGenerator.ts` | the `persist` / `nameOverride` test harness |
+| `CLAUDE.md` | §14a · the parent law ABSENCE IS NOT EVIDENCE · §15k |
+| `CHECKPOINT.md` | this block and everything below it |
+| `docs/handovers/ANDROMEDA_MAP_PLAIN_2026-08-03.md` | ⚪️ SUPERSEDED banner → `docs/RESEARCH_INDEX.md`; body deliberately unedited |
+| `docs/handovers/ANDROMEDA_RESEARCH_MAP_2026-08-03.md` | the same SUPERSEDED banner |
+
+### UNTRACKED, NEW ACROSS THE LAST TWO SESSIONS
+
+`docs/copy-research/` (7 reports + README) · `server/scripts/traceability-proof.ts` ·
+`persist-false-control.ts` · `set-b-run.ts` · `model-logging-control.ts` ·
+`read-typed-source.ts` · `read-transcript-shape.ts` · `dump-cascade-context.ts` ·
+`dump-prompt-corpora.ts` · `ab-icp-phaseA.ts`
+
+> # 🔴 PUSHING `railway-build` IS AN INSTANT PRODUCTION DEPLOY. IT IS NOT AUTHORISED.
+> **Nothing may be staged, committed or pushed without Arfeen's explicit go-ahead in the
+> immediately preceding message.**
+
+---
+
+## 2. ✅ SET B RAN — AND DELIVERED TWO PROOFS IN ONE CALL
+
+**Harness `server/scripts/set-b-run.ts`. Output `scratchpad/setb-full.log`. Product name
+"The Incredible You Coach Training" via `nameOverride`. `persist:false`. `liteMode`.
+Temperature UNSET — the API default of 1.0, deliberately not pinned.**
+
+### PROOF 1 — `persist:false` IS PROVEN
+
+```
+BEFORE  count=6864  MAX(createdAt)=2026-08-30 16:41:52
+AFTER   count=6864  MAX(createdAt)=2026-08-30 16:41:52
+```
+
+Both readings taken **inside the same process**, immediately before and immediately after the
+generation call. Outcome "both unchanged" was pre-committed in §0b **before** the run, so no
+backwards reasoning was available. **`MAX(createdAt)` is what makes it stronger than a count alone:**
+a count could in principle survive an equal delete-and-insert; the timestamp not moving says no row
+was written at all.
+
+📌 **`services.name` on 318 is STILL `""`.** The override is **per-call** and wrote nothing.
+
+### PROOF 2 — THE FIRST MEASUREMENT IN THIS PROJECT'S HISTORY WITH KNOWN MODEL PROVENANCE
+
+**All 4 calls:** `claude-sonnet-4-6` · `failed=[none]` · `ladder=0/2` · `fellThrough=false`.
+**One model answered every call and nothing fell over.** Every earlier measurement — set A, the
+60-title pass, the 40-of-60 read, every fabrication and traceability figure — has **no** such record
+and cannot separate a prompt effect from a model switch.
+
+📌 **The logging's own negative control passed and is scoped honestly:** 404 fall-through at ladder
+position 0 is **PROVEN**; 500, timeout/abort, mid-stream failure, the 529/502/503/504 retry path and
+the alias-resolution branch are **UNEXERCISED**. Four of those five were listed before the run; the
+fifth was added after, and that is recorded, because a scope block completed after the run is the
+same shape as a baseline measured during it.
+
+---
+
+## 3. 🔴🔴 COMPARABILITY RULES — LOAD-BEARING, EASY TO LOSE, READ BEFORE QUOTING ANY NUMBER
+
+`persist:false` returns **before** `gateBeforePersist`. Therefore:
+
+| set | population | n |
+|---|---|---|
+| **A** — the shipped titles | **POST-GATE** | **55** |
+| **B**, **C** | **PRE-GATE** | **60** |
+
+> # 🔴 A MUST NEVER BE COMPARED WITH B. They are different populations.
+> A difference between them would read as a **prompt effect** when it is a **gate effect**.
+>
+> # 🔴 3.3% IS NOT THE BEFORE-NUMBER FOR SET B. It was computed on set A, post-gate.
+>
+> ✅ **B vs C REMAINS VALID — both pre-gate. The plan is unaffected.**
+
+**MODE CONFIRMED BY MEASUREMENT, NOT INFERENCE.** `tabType` for service 318:
+`long 5 · short 5 · beast_mode 27 · subheadlines 18`. `long=5`/`short=5` are reachable only at
+multiplier 0.25, so **set A was `liteMode` too**. No second comparability break — the gate is the
+only one.
+
+**THE GATE REMOVED 5 FROM SET A:** 3 `beast_mode`, 2 `subheadlines`, 0 `long`, 0 `short`.
+
+🔵 **OPEN ITEM — set B is the FIRST PRE-GATE VIEW of generator output this project has ever had.**
+Every earlier sample was already filtered. **Reading the removed set is a separate question worth
+asking later.** Not now.
+
+---
+
+## 4. 🔴 THE `sourceOfTruth` FINDING — IN FULL
+
+`sourceOfTruth` is fetched **by `userId`, never by `serviceId`**, and injected as:
+
+> `BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:`
+
+**NINE GENERATORS, ALL BY `userId`:** `hvco` · `headlines` · `offers` · `heroMechanisms` · `adCopy` ·
+`emailSequence` · `whatsappSequence` · `landingPage` · `leadMagnetContent`.
+
+🔴 **`sourceOfTruth.userId` is `.unique()` — ONE ROW PER ACCOUNT IS THE MAXIMUM THE SCHEMA ALLOWS.
+A PER-SERVICE BRAND VOICE CANNOT BE EXPRESSED AT ALL.** This is a schema limit, not a query bug.
+
+> ✅ **PLAIN ANSWER: EVERY SERVICE ON AN ACCOUNT IS TOLD THE SAME BRAND VOICE, REGARDLESS OF WHAT
+> THAT SERVICE IS.** A coach with two services gets one service's voice injected into the other's
+> copy, labelled approved and binding.
+
+| | |
+|---|---|
+| users total | 23 |
+| users with a `sourceOfTruth` row | **1** — userId 1, the dev/admin account |
+| services on that account | **98** |
+| **live paying coaches affected** | **0** |
+
+🔴 **THE STING IS NOT CUSTOMER IMPACT — IT IS THE EVIDENCE BASE. Every measurement this project has
+ever taken was generated on user 1, so every one of them carried *Identity Reclamation* (12-week 1:1
+coaching for high-achieving women rediscovering authentic identity) as its binding brand voice.**
+
+### ✅ THE CONTAMINATION WAS PROVED, NOT INFERRED
+
+Term counts across the four texts that actually reach the title prompt, versus the 60 set B titles:
+
+```
+term                      SOT  ICP  SVC  CASC  TITLES
+process of elimination      1    0    0     0       1
+category                    1    0    0     0       1
+strengths                   1    0    0     0       1
+forensic                    1    0    0     1       8
+perform                     4    0    0     1       3
+layer                       2    0    0     1       7
+identity                    4    0    0     1       2
+excavat                     0    0    0     2       5
+notes app                   0    1    0     2       8
+mastermind                  0    2    0     0       0
+limiting belief             0    0    0     0       0
+legacy wealth               0    0    0     0       0
+```
+
+**Every identity-register term is ABSENT from the ICP and from the service fields entirely.**
+
+- ✅ **THREE TERMS APPEAR IN SOT AND NOWHERE ELSE AND STILL REACH THE TITLES:**
+  **`process of elimination`, `category`, `strengths`.** One source, one route, no alternative
+  explanation. **Title 52 — *"This is not another values exercise that hands you a category you
+  already know how to perform — it is a process of elimination…"* — is a TRANSPOSITION of the SOT
+  `uniqueValue` paragraph.**
+- ⚠️ **`forensic`, `perform`, `layer`, `identity` are SOT-ORIGIN WITH THE ROUTE UNRESOLVED.** They
+  sit in SOT *and* in the cascade context, and the cascade was built by upstream nodes that also
+  inject SOT by userId. **Direct or via the cascade CANNOT be resolved from the output alone. This
+  is recorded as UNRESOLVED. It is not to be resolved by choosing.**
+- **NOT SOT:** `excavat` is cascade-origin (the generated method name); `notes app` is ICP-origin.
+
+📌 **The ladder answers, for the record:** `mastermind` is in the ICP **twice** and reaches **zero**
+titles. `limiting belief`, `legacy wealth`, `confidence` reach zero. `youtube` reaches one.
+**Four ladder answers, one word in 60 titles.**
+
+---
+
+## 5. THE THREE CONSEQUENCES
+
+### A. §15l IN ITS SHARPER FORM — MISTAKES PROPAGATE, CORRECTIONS DO NOT
+
+**Nine call sites fetch `sourceOfTruth` by `userId`. Nine.** The same wrong shape was copied into
+every generator as each was written. Set against §15l's other half — `complianceRewrite`'s correct
+`response.model` read that generalised to **nothing**, and `validator.ts`'s correction that never
+reached the two files deleting fallbacks on the opposite belief:
+
+> # **A MISTAKE PROPAGATES TO NINE CALL SITES. A CORRECTION TRAVELS TO NONE.**
+
+**The asymmetry is the defect.** Copying is how new code gets written here, so whatever is in the
+copied site spreads by default; a correction requires someone to go looking, and nobody does.
+**Working rule unchanged and now urgent: a fix is not finished until you have grepped for where else
+the same shape lives.**
+
+### B. THE THIRD PROVENANCE CATEGORY — **TRANSPLANTED**
+
+The extractor today knows two categories: **traced** (to the coach's typed words) and **untraced**
+(invented). **Title 52 is neither.** It is traceable to a real human-authored source — the SOT
+`uniqueValue` paragraph — that belongs to **a different programme entirely.**
+
+> # **GROUNDED IN THE COACH'S OWN WORDS CAN BE TRUE AND STILL WRONG.**
+> The words are real, sourced and human. **They are about a different business.**
+
+🔴 **THE EXTRACTOR MUST GAIN `TRANSPLANTED` BEFORE ANY BEFORE-AND-AFTER NUMBER IS QUOTED.**
+
+### 🔴 UNRESOLVED — CC AND ARFEEN DISAGREE ABOUT WHICH WAY A TRANSPLANTED SPECIFIC SCORES TODAY
+
+| | claim |
+|---|---|
+| **CC** | it scores as **TRACED** — the *best* possible result — so the metric moves the wrong way while looking like progress |
+| **Arfeen** | it scores as **INVENTED** (untraced) |
+
+**Both were reasoned, neither was measured.** The two predict **opposite movement under a naive
+fix**, so this is not a wording difference — it decides whether adding the bucket makes the number
+go up or down, and therefore how the result gets read.
+
+> 🔴 **SETTLE IT BY READING THE MATCHING CODE IN `traceability-proof.ts`, NOT BY EITHER PARTY
+> REASONING ABOUT IT — AND DO IT BEFORE THE EXTRACTOR GAINS THE BUCKET.**
+>
+> The question the code answers: when a specific matches text in the SOT corpus but not in the
+> coach's typed subset, **which branch claims it?** That depends on what the matcher's corpus
+> actually contains, which is a fact in the file, not a matter of opinion.
+
+📌 **Recorded unresolved on purpose.** Neither reading is entered as the finding. **Not read yet —
+no code was opened for this question in the 2026-09-01 session.**
+
+### C. `REGISTER_STANDARD` RE-OPENS — 🔵 **HYPOTHESIS, NOT A FINDING**
+
+`sharedSystem` in `hvcoGenerator.ts` appends `REGISTER_STANDARD` to every title call. The uniform
+register across all 60 titles **might** come from there rather than from the SOT injection.
+
+> ⚠️ **THIS IS EXPLICITLY RECORDED AS A HYPOTHESIS AND HAS NOT BEEN TESTED.** Nothing was measured
+> about `REGISTER_STANDARD` this session. **Do not cite it as a cause.**
+
+---
+
+## 6. 🔴 ARFEEN'S ERROR — RECORDED AT HIS INSTRUCTION, AND KEPT
+
+**He read the 60 set B titles against a business description taken from a PLANNING DOCUMENT rather
+than the one actually typed in this run**, and declared (a) a total ICP mismatch — "not one is about
+the business Arfeen described" — and (b) a B2B violation.
+
+- ❌ **BOTH WITHDRAWN.** Measured against the real typed intake, **the ICP is faithful to what he
+  wrote and the titles are faithful to the ICP.** The reader is buying help for her own life and
+  confidence; what she later sells is downstream. **Compliant on the rule as written.**
+
+📌 **CC'S NOTE, RECORDED WITH IT:** he did this **in the same session in which he wrote §15m** — the
+law about reading output rather than matching it against an expectation. The expectation he matched
+against was a stale brief. **§15m caught its own author within the hour, which is evidence the law
+describes a REFLEX, not a lapse of care.** Anyone can do this. Nobody is above it.
+
+✅ **WHAT SURVIVES AND IS STRONGER: fabricated intimacy is CONFIRMED.** Every specific in ICP 291 is
+invented — the notes app, the husband's patience, four months on LinkedIn, twelve years in HR, the
+$150 session. The coach supplied none of them; his whole typed corpus is 9 messages / 95 words.
+**The failure mode is not an implausible persona but a CONVINCING one**, and the misdiagnosis
+happened precisely by looking for an obvious mismatch.
+
+---
+
+## 7. 🔴 OPEN QUESTION THAT BLOCKS TRUST IN SEVERAL DOCUMENTS — FOR ARFEEN
+
+**Two different businesses are on record and they are not the same business:**
+
+| source | business |
+|---|---|
+| the handover / planning documents | **coach training for people who have NEVER coached and have no track record** |
+| what he TYPED in this run (`intake-3`, kit 225) | **a coaching practice for women returning to work after leaving careers for family** |
+
+🔴 **UNTIL HE SAYS WHICH IS CURRENT, ANYTHING QUOTING THE COACH-TRAINING VERSION CARRIES AN
+UNVERIFIED PREMISE.** This is not a small documentation tidy — it is the premise under which
+audiences, ICPs, fabrication judgements and the whole pre-launch list were written.
+
+---
+
+## 8. NEXT ACTIONS, IN ORDER
+
+### 🛑 FIRST: ITEM 1 AND ALL EXTRACTOR WORK ARE **STOPPED ON PURPOSE, NOT FORGOTTEN**
+
+Stopped by Arfeen on 2026-09-01: *"Something upstream is wrong and item 1 would not have touched
+it."* **Do not resume either until the SOT question is settled.** The extractor additionally cannot
+produce a quotable number until it gains **TRANSPLANTED** (§5B).
+
+### 1. THE SOT-SUPPRESSION FLAG — BUILD, SHOW THE DIFF, DO NOT RUN
+
+A test-harness flag that suppresses the `sourceOfTruth` injection for one call.
+
+- **Constraints, same as `nameOverride`:** reachable **only** from `server/scripts/`, never from any
+  tRPC router input schema, never client-suppliable. Default preserves current behaviour **exactly**,
+  so every product path stays byte-identical.
+- 🔴 **DIFF FIRST. Show it to Arfeen before running anything.** Nothing built and run in one step.
+- **Scope decision required before building:** `hvcoGenerator` alone, or all nine call sites?
+  Suppressing one while the cascade still carries SOT-derived upstream text **does not remove SOT
+  from the prompt** — it removes one of two routes. **State which is being tested; do not blur it.**
+
+### 2. SET B-PRIME — ONE VARIABLE, FALSIFICATION CONDITION FIXED IN ADVANCE
+
+Re-run set B **changing only the SOT injection.** Same name, same service, same ICP, same
+`liteMode`, same `persist:false`, **same unpinned temperature 1.0**, model identity logged and
+confirmed identical.
+
+> 🔒 **PRE-COMMITTED, WRITTEN BEFORE THE RUN (§0b discipline):**
+> **The claim is: the identity register in set B comes from the SOT injection.**
+> **It is FALSIFIED if `process of elimination`, `category` and `strengths` — the three terms that
+> appear in SOT and nowhere else — still appear in set B-prime with SOT suppressed.**
+> **It is SUPPORTED if all three vanish.**
+### 🔴🔴 CONSTRAINT — SET B-PRIME CAN ISOLATE THE **DIRECT ROUTE ONLY**. STATED BEFORE THE RUN.
+
+**The cascade context for service 318 was generated on 2026-08-30 with `sourceOfTruth` ALREADY
+INJECTED, and that text is STORED.** Suppressing the injection now does not change stored cascade
+text.
+
+> **The cascade route SURVIVES SUPPRESSION — whether we suppress in one generator or in all nine.**
+> Short of **regenerating the entire cascade**, it cannot be removed. Set B-prime therefore tests
+> **one of two carriers**, not the presence of SOT in the prompt.
+
+### 🔒 THE INTERPRETATION RULE — WRITTEN IN ADVANCE BECAUSE IT WILL BE MISREAD OTHERWISE
+
+| set B-prime result | what it means | what it does NOT mean |
+|---|---|---|
+| **looks DIFFERENT from set B** | the direct route is a carrier | — |
+| **looks SIMILAR to set B** | **the direct route is not the only carrier** | 🔴 **NOT that `sourceOfTruth` is not the source** |
+
+> # **A NULL RESULT IS NOT AN EXONERATION.**
+> **Without this written down in advance it WILL be read as one** — a similar-looking set B-prime is
+> exactly the shape of "we checked SOT and it wasn't that". It is the parent law again: the absence
+> of a visible change read as the absence of a cause.
+
+### ⚠️ THE TEMPERATURE CAVEAT — SPECIFIC, NOT GENERAL
+
+Temperature is **1.0** and is deliberately not pinned (§0b).
+
+| term | count in set B | what ONE run can say |
+|---|---|---|
+| `forensic` | **8** | ✅ a single run **can** speak to it |
+| `layer` | **7** | ✅ a single run **can** speak to it |
+| `process of elimination` | **1** | 🔴 **cannot** — a count of one is not settleable in one run |
+| `category` | **1** | 🔴 **cannot** |
+| `strengths` | **1** | 🔴 **cannot** |
+
+🔴 **The three CLEAN terms — the SOT-only ones that carry the whole unambiguous case — are exactly
+the three a single run cannot settle.** That is not a reason to skip the run; it is a reason to
+**decide the number of repeat runs BEFORE the run**, rather than after seeing whether the singletons
+happen to reappear. **Deciding afterwards is choosing the reading that fits the result.**
+
+### 3. REPORT FORMAT — FIXED IN ADVANCE
+
+1. **The 60 titles, verbatim and in full, grouped by the four calls, FIRST** — no summary, no
+   selection, no characterisation, no commentary. **A summary is a match-check with extra steps.**
+2. **THEN, separately:** the two counts and whether they moved · the model that answered · whether
+   anything failed over · the term table for set B-prime beside set B.
+3. **No interpretation until Arfeen has read the titles.**
+
+---
+
+## 9. ✅ GIT STATUS — MEASURED AT THE FOOT OF THIS BLOCK, 2026-09-01
+
+**Taken, not recalled. If a future session finds different values, THE MEASUREMENT WINS and this
+block is stale (§15f).**
+
+```
+branch                railway-build
+HEAD                  298c6c6cb3cca55e1f635fdeb2afabc275a99834
+origin/railway-build  8011d62aff4f41220529f73625e512bc87fd1ca8
+ahead/behind          3 / 0
+staged                0 files
+modified (tracked)    CHECKPOINT.md
+                      CLAUDE.md
+                      server/_core/llm.ts
+                      server/hvcoGenerator.ts
+TS errors             34
+```
+
+🔴 **NOTHING STAGED. NOTHING COMMITTED. NOTHING PUSHED. NOTHING DEPLOYED.**
+
+---
+
 # CHECKPOINT — NODE 4 (Unique Method) SHIPPED, LIVE and TIER-1 PROVEN; next node is the Lead Magnet
 
 **For a cold terminal with no memory of the session that produced this.** Read this file, then
@@ -5,6 +415,1236 @@
 
 ---
 
+# ⚪️ SUPERSEDED COLD-START BLOCK — written 2026-08-31. **Kept for its detail, NOT for its next-actions.** The live block is the 2026-09-01 one above. Its §0/§0a/§0b corrections and its instrument results still stand; its ordering does not.
+
+**A fresh terminal with no memory of this session can restart from this block alone. Every number
+below was MEASURED at write time, not recalled.**
+
+---
+
+## 0. 🔴 THE NUMBER THAT EXISTS NOWHERE ELSE — RECORD FIRST, IT IS THE PERISHABLE ONE
+
+**`persist:false` negative control — BASELINE, measured on production 2026-08-30 21:23:55 UTC:**
+
+```
+hvcoTitles TOTAL          6864
+hvcoTitles serviceId=318    55
+services MAX(id)           318
+```
+
+⚠️ **THE CONTROL DID NOT COMPLETE. There is no after-count and no verdict.** Two launches, neither
+returned a measured pair:
+
+1. First attempt died on module resolution (script was in the scratchpad, outside the repo's
+   `node_modules`). **It never reached the generator — nothing ran on production.**
+2. Second attempt ran from `server/scripts/persist-false-control.ts` but **`railway run`
+   BLOCK-BUFFERS stdout** — the known trap already recorded in this file — so no line was ever
+   observed. **It was then KILLED at session teardown (task `b5k5y1f4q`), so it DEFINITELY did not
+   complete.** It was killed mid-flight at an unknown stage: possibly still in LLM generation
+   (4 prompts), possibly past it.
+
+🔴 **CONSEQUENCE, AND IT MUST BE CHECKED BEFORE RE-RUNNING:** if `persist:false` is broken, that
+second run may have WRITTEN ~55 rows before it was killed. **Re-measure `hvcoTitles` before trusting
+6864 as the baseline.**
+
+## 🔴 CORRECTION 2026-08-31 — THE TOTAL-COUNT COMPARISON IS RETIRED. DO NOT USE IT.
+
+**Arfeen retired this check in conversation on the night of 2026-08-30 and it was never written
+down. A later session read the stale version and proposed it as the first action. This block is the
+correction travelling into the record, which is where §15i said it had to go.**
+
+🔴 **DO NOT GATE ANYTHING ON "is `hvcoTitles` still 6864?".** The comparison cannot distinguish the
+two outcomes it exists to separate:
+
+| what actually happened | what the total shows |
+|---|---|
+| `persist:false` correctly suppressed the write | **6864** |
+| the process was killed before it ever reached the write | **6864** |
+
+**Identical reading, opposite meanings.** That is the parent law exactly — *absence is not
+evidence*. An unchanged total is what a clean run and a never-got-there run both look like, and
+under any partial-write scenario the number could be anything at all. **6864 is a decision record.
+It is not a value to subtract from.**
+
+⚠️ **AND THE BASELINE IS NOT INNOCENT EITHER.** 6864 was measured at **21:23:55 UTC**, which sits
+*inside* the 21:20–21:30 window of the first launch. It cannot be assumed to predate every attempt.
+A baseline taken during the thing it is a baseline for measures nothing (§15f).
+
+### ✅ THE TWO INSTRUMENTS THAT REPLACE IT — REPORT SEPARATELY, NEVER MERGE INTO ONE VERDICT
+
+1. **TIMESTAMPS.** Read `createdAt` on `hvcoTitles` rows for service 318. They should all date from
+   the afternoon cascade of 2026-08-30. **Any row inside 21:20–21:30 UTC or 03:40–03:50 UTC means
+   `persist:false` DOES NOT SUPPRESS → abort the harness, do not run set B.**
+2. **THE DIVERGENCE SIGNATURE — independent, and it fails differently.** `createHvcoTitles` and
+   `incrementHvcoCount` are a two-step with no transaction between them, so an interruption can
+   leave rows written with no matching quota increment. Compare the user's **distinct `hvcoSetId`
+   count** against `users.hvcoGeneratedCount`. ⚠️ **NOT rows against the counter** —
+   `incrementHvcoCount` adds **+1 per RUN**, not per row, so a row-level comparison is a
+   category error and will always look wrong.
+
+📌 **Measured this session:** `createHvcoTitles` issues **ONE multi-row INSERT**, so it is atomic at
+the statement level — the row set is all-or-nothing, and a torn *partial* set is not reachable
+through that path. **The unprotected gap is BETWEEN the insert and the increment**, which is
+precisely what instrument 2 looks for.
+
+📌 The control is **unfinished, not unrunnable.** What makes it re-runnable is the two instruments
+above, not the number.
+
+### ✅ BOTH INSTRUMENTS RUN 2026-08-31 15:31 UTC — MEASURED, READ-ONLY, REPORTED SEPARATELY
+
+**Session timezone confirmed UTC first** (`NOW()` == `UTC_TIMESTAMP()` == `2026-08-31 15:31:08`), so
+the window comparison below is valid rather than assumed. `services.id=318` -> `userId = 1`.
+
+**INSTRUMENT 1 — TIMESTAMPS. CLEAN. `persist:false` is NOT disproven; nothing was written.**
+
+| | |
+|---|---|
+| service 318 rows | **55, ONE `hvcoSetId`** (`qANUBA1gL8SDpOT54cC_t`), every row `2026-08-30 16:41:52` |
+| rows in 21:15–21:35 or 03:35–03:55 UTC, service 318 | **0** |
+| rows in those windows, **WHOLE TABLE** | **0** |
+| **`MAX(createdAt)` across ALL of `hvcoTitles`** | **`2026-08-30 16:41:52`** |
+
+🔑 **The strongest line is the last one.** The newest row in the entire table predates both kill
+windows, so no write landed anywhere — not merely "not under service 318". That is a positive
+observation, not an absence (§15k). **Total is still 6864, reported as a FACT and used as evidence
+of NOTHING.**
+
+**INSTRUMENT 2 — DIVERGENCE SIGNATURE. 🔴 INCONCLUSIVE. It cannot discriminate on this account.**
+
+```
+user 1: hvcoGeneratedCount = 3   ·   distinct hvcoSetId = 78 (73 source='generated')
+```
+
+**A 70-set gap, and it is NOT evidence of an interrupted write.** `server/routers/admin.ts` carries
+**two reset-to-zero paths** (single-user ~line 165 and bulk ~line 913) plus a per-field adjuster
+(~line 865). The counter is **resettable and untimestamped**, so a gap cannot be attributed to any
+particular run. User 1 is the dev/admin account and has been reset repeatedly.
+
+> ⚠️ **Reporting this gap as a hit would have been a FALSE POSITIVE of exactly the §15k shape** — an
+> instrument that fires loudly while measuring something else entirely. **It is recorded as
+> inconclusive, and it is NOT merged with instrument 1.**
+
+📌 **Why it had nothing to find here anyway:** the order is insert *then* increment, so a kill can
+never increment without inserting. Instrument 1 shows zero rows inserted, therefore zero increments
+were possible. **For THIS incident the gap is moot. The instrument stays in the file because it is
+the right instrument for a run that did reach the insert.**
+
+---
+
+## 0a. 🔴 THE 6864 FINDING, STATED PLAINLY — THE SHARPEST INSTANCE OF THE PARENT LAW YET
+
+> **The baseline was measured at 21:23:55 UTC, INSIDE the 21:20–21:30 window of the run it was
+> meant to baseline.**
+>
+> **A baseline taken DURING the event it baselines can never discriminate.** Not "was unlucky", not
+> "needs care" — *cannot*, in principle, for any value it could have returned.
+
+**It happens to be correct.** That is established by **instrument 1** — `MAX(createdAt)` across the
+whole table is `2026-08-30 16:41:52`, before both windows — and **not by the number**. The number
+was incapable of showing it. Had a write landed at 21:22, 6864 would have silently included it and
+read exactly as clean.
+
+📌 **§15f said a baseline is measured, never read. This adds the other half: MEASURED IS NOT ENOUGH
+IF IT IS MEASURED AT THE WRONG MOMENT.** A fresh reading taken inside the window is as useless as a
+stale one copied from a document, and it looks considerably more rigorous.
+
+---
+
+## 0b. ✅ DECIDED 2026-08-31 (Arfeen) — THE `persist:false` PROOF IS FOLDED INTO SET B
+
+**No further cycle is spent proving `persist:false` on its own.** Zero writes is consistent with the
+flag working *and* with the run never reaching the write — the parent law again. A standalone re-run
+would buy another ambiguous reading.
+
+### 🔒 PRE-COMMITTED INTERPRETATION — WRITTEN BEFORE THE RUN, NOT AFTER
+
+**Measure `COUNT(*)` and `MAX(createdAt)` on `hvcoTitles` IMMEDIATELY BEFORE set B, run set B,
+measure BOTH again IMMEDIATELY AFTER.** Both readings at run time, from the source (§15f), and
+`MAX(createdAt)` alongside the count precisely because §0a is what happens when a count travels
+alone.
+
+| result | verdict — **agreed in advance** |
+|---|---|
+| **both UNCHANGED** | ✅ `persist:false` PROVEN, **and set B is delivered in the same call** |
+| **either CHANGED** | 🔴 `persist:false` IS BROKEN. Cost: one set of junk rows |
+
+**The cost of the failing branch is accepted in advance and is small:** the DB is already scheduled
+for the pre-launch wipe, and `hvcoGeneratedCount` for user 1 is already **3 against 78 sets**, i.e.
+already meaningless (§0, instrument 2). **Nobody reasons backwards from the result, because the
+reading of each outcome is fixed here, before the run.**
+
+### 🔴🔴 COMPARABILITY RULE — SET A IS POST-GATE, SET B IS PRE-GATE. NEVER COMPARE THEM.
+
+**LOAD-BEARING. This sits next to the interpretation table because it constrains what any number
+from either set is allowed to mean.**
+
+`persist:false` returns **before** `gateBeforePersist`. Therefore:
+
+| set | population |
+|---|---|
+| **A** (the 55 shipped titles) | **POST-GATE** — what survived filtering |
+| **B** (and C) | **PRE-GATE** — raw generator output |
+
+> 🔴 **A AND B ARE DIFFERENT POPULATIONS AND MUST NEVER BE COMPARED.** A difference between them
+> would read as a **prompt effect** when it is a **gate effect**.
+>
+> 🔴 **DO NOT USE 3.3% AS THE BEFORE-NUMBER FOR SET B.** That figure was computed on set A, post-gate.
+
+✅ **B vs C REMAINS VALID — both are pre-gate.** The plan is unaffected. The isolation B and C were
+designed to provide is intact; only the A-to-B comparison is void.
+
+### ✅ MODE CONFIRMED BY MEASUREMENT, NOT INFERRED (2026-09-01)
+
+CC inferred `liteMode` for set B from the 5+5+30+20 shape. **Arfeen asked for it to be confirmed
+rather than inferred, and it now is** — `tabType` counts for service 318:
+
+```
+long 5 · short 5 · beast_mode 27 · subheadlines 18   (total 55)
+```
+
+**`long=5` and `short=5` are only reachable at multiplier 0.25, i.e. `liteMode`.** Set A and set B
+ran in the **same mode**. ✅ **There is no second comparability break — the gate is the only one.**
+
+### 🔵 OPEN ITEM (NOT NOW) — NOBODY HAS EVER SEEN WHAT THE GATE REMOVES
+
+**Set B is the first PRE-GATE view of generator output this project has ever had.** Every sample
+previously read — including every fabrication and traceability figure — was already filtered.
+
+The same `tabType` counts give the gate's take on set A exactly: **60 nominal → 55 kept, 5 removed —
+3 `beast_mode` and 2 `subheadlines`, 0 `long`, 0 `short`.**
+
+📌 **Reading the removed set is a separate question worth asking later.** Roughly 5 titles per batch
+are being dropped and their content has never been examined. **Not now — recorded so it is not
+lost.**
+
+### 🔴 OUTPUT GOES TO A FILE. NOT TO STDOUT.
+
+**`railway run` BLOCK-BUFFERS stdout.** That trap is already recorded in this file and it has
+already killed two attempts unobserved. **A third repetition is not acceptable.** The harness writes
+its readings and its titles to a file and the file is read afterwards.
+
+### 🌡️ THE TEMPERATURE DISTINCTION — KEEP IT EXPLICIT, DO NOT LET IT COLLAPSE
+
+| what | temperature | why |
+|---|---|---|
+| **SET B — the thing being measured** | 🔴 **PRODUCTION DEFAULT, 1.0. Do NOT pin it.** | Set B is the before-number **for production behaviour**. Run it cool and it stops describing the product |
+| **THE EXTRACTOR — the instrument** | ✅ **0** | An instrument should not vary run to run. Repeatability belongs to the measuring device |
+
+> **Pinning the thing you are measuring is not rigour, it is measuring something else.**
+> The optional `temperature` parameter is therefore **NOT built yet** — it belongs with the
+> extractor work and must not ride along with the model logging.
+
+## 🔴 CORRECTION 2026-09-01 (ARFEEN'S, RECORDED AS HIS) — THE B2B / WRONG-PERSON CLAIM IS WITHDRAWN
+
+**Arfeen judged the 60 set B titles against a business description taken from a PLANNING DOCUMENT
+rather than the description actually typed in this run.** Measured against the real typed intake,
+**the ICP is faithful to what he wrote and the titles are faithful to the ICP.**
+
+- ❌ **WITHDRAWN: "the titles describe the opposite person."** They do not.
+- ❌ **WITHDRAWN: "this is B2B and breaks the foundational rule."** The reader is buying help for her
+  own life and confidence; what she later sells is downstream. **Compliant on the rule as written.**
+
+📌 **HIS OWN NOTE, RECORDED AT HIS INSTRUCTION:** he did this **in the same session in which he
+wrote §15m**, the law about reading output instead of matching it against an expectation. **The
+expectation he matched against was a stale brief.** §15m's failure mode caught its own author within
+the hour — which is the strongest possible evidence that the law is about a reflex, not about care.
+
+### ✅ WHAT SURVIVES, AND IS STRONGER — FABRICATED INTIMACY IS CONFIRMED
+
+**Every specific in ICP 291 is invented.** The notes app, the husband's patience, four months on
+LinkedIn, twelve years in HR, the $150 session, the cancelled booking — **the coach supplied none of
+them.** His entire typed corpus is 9 messages (`groundingMeta.corpusWords: 95`).
+
+> # **THE FAILURE MODE IS NOT AN IMPLAUSIBLE PERSONA. IT IS A CONVINCING ONE.**
+
+**The invention is coherent, internally consistent and on-target, so nothing looks wrong.** Arfeen
+misdiagnosed it **precisely by looking for an obvious mismatch** — and the mismatch he thought he
+found was an artefact of his stale brief, while the real defect sat in plain sight looking correct.
+
+📌 **A fabrication detector that looks for implausibility will never fire here.** The persona is
+*better* than a real one: cleaner, more vivid, more quotable. That is the whole problem.
+
+---
+
+## 🔴 LIVE DEFECT — `sourceOfTruth` IS FETCHED BY `userId`, NOT BY `serviceId` (found 2026-09-01)
+
+**Scoped read-only. NOT FIXED. Do not fix without a dedicated sprint.**
+
+`hvcoGenerator.ts:129-133` fetches `sourceOfTruth` **by `userId`** and prefixes all four title
+prompts with:
+
+> `BRAND CONTEXT — this is the approved brand voice. All copy must be consistent with this:`
+
+**The row for user 1 is a DIFFERENT PROGRAMME** — *Identity Reclamation*, 12-week 1:1 coaching for
+high-achieving women rediscovering authentic identity. **It governed the voice of a campaign for
+career-returners.**
+
+### IT IS NOT ONE GENERATOR. IT IS NINE.
+
+`hvcoGenerator` · `headlinesGenerator` · `offersGenerator` · `heroMechanismsGenerator` ·
+`adCopyGenerator` · `emailSequenceGenerator` · `whatsappSequenceGenerator` · `landingPageGenerator` ·
+`leadMagnetContentGenerator` — **every one fetches `sourceOfTruth` by `userId`. Not one fetches by
+`serviceId`.** `sourceOfTruth.userId` is `.unique()`, so **one row per account is the maximum the
+schema allows.**
+
+> ✅ **PLAIN ANSWER: YES. EVERY SERVICE ON AN ACCOUNT IS TOLD THE SAME BRAND VOICE, REGARDLESS OF
+> WHAT THAT SERVICE IS.** A coach with two different services gets one service's brand voice
+> injected into the other's copy, labelled as approved and binding. There is no per-service voice
+> and the schema cannot express one.
+
+### 📊 BLAST RADIUS — MEASURED, AND SMALLER THAN IT SOUNDS IN ONE WAY AND LARGER IN ANOTHER
+
+| | |
+|---|---|
+| users total | **23** |
+| users with a `sourceOfTruth` row | **1** |
+| that user | **userId 1** — the dev/admin account |
+| services on that account | **98** |
+| services governed by a foreign SOT | **98** |
+| live paying coaches affected today | **0** |
+
+🔴 **THE STING IS NOT CUSTOMER IMPACT. IT IS THE EVIDENCE BASE.** No real coach is affected — and
+**every measurement this project has ever taken was generated on user 1**, i.e. with *Identity
+Reclamation* injected as the approved brand voice. **Set A, set B, the 60-title pass, the
+fabrication reads, the traceability figures: all of them.**
+
+### 🔬 IS THE IDENTITY LANGUAGE FROM THE SOT INJECTION OR FROM THE ICP? — MEASURED, NOT JUDGED
+
+Term counts across the four texts that actually reach the title prompt (`SOT` = the 6 injected
+fields; `ICP` = pains/goals/implementationBarriers, the only ICP fields injected; `SVC` =
+targetCustomer + hvcoTopic, the only service fields injected; `CASC` = the 2036-char cascade
+context) versus the 60 titles:
+
+```
+term                      SOT  ICP  SVC  CASC  TITLES
+process of elimination      1    0    0     0       1
+category                    1    0    0     0       1
+strengths                   1    0    0     0       1
+forensic                    1    0    0     1       8
+perform                     4    0    0     1       3
+layer                       2    0    0     1       7
+identity                    4    0    0     1       2
+excavat                     0    0    0     2       5
+notes app                   0    1    0     2       8
+mastermind                  0    2    0     0       0
+limiting belief             0    0    0     0       0
+legacy wealth               0    0    0     0       0
+confidence                  0    1    0     0       0
+```
+
+**✅ SEPARABLE, and the answer is SOT — not the ICP.** Every identity-register term is **absent from
+the ICP and from the service fields entirely.**
+
+- **UNAMBIGUOUS (SOT only, not even in the cascade):** `process of elimination`, `category`,
+  `strengths`. One source, one route. *"This is not another values exercise that hands you a
+  category… it is a process of elimination"* is a transposition of the SOT `uniqueValue` paragraph.
+- **ORIGIN CERTAIN, ROUTE NOT:** `forensic`, `perform`, `layer`, `identity` appear in SOT **and** in
+  the cascade context — but the cascade was built by upstream nodes that **also** inject SOT by
+  userId. **Origin is SOT either way; whether it arrived directly or via the cascade cannot be
+  resolved from the output alone.** Recorded as unresolved rather than chosen.
+- **NOT SOT:** `excavat` is cascade-origin (the generated method name). `notes app` is ICP-origin.
+
+📌 **AND THE LADDER ANSWERS, FOR THE RECORD:** `mastermind` is in the ICP **twice** and reaches
+**zero** titles. `limiting belief`, `legacy wealth` and `confidence` reach zero. **`youtube` reaches
+one.** Four ladder answers, one word.
+
+---
+
+## 🚩 FLAGGED FOR CORRECTION 2026-09-01 — THE NODE COVERAGE MAP MISCLASSIFIES LANDING-PAGE RESEARCH
+
+**FLAG ONLY. THE MAP IS NOT CORRECTED, AND MUST NOT BE UNTIL THE TEARDOWNS HAVE BEEN READ.
+NEITHER ARFEEN NOR CC HAS READ THEM.**
+
+### THE DEFECT — CLASSIFICATION BY PRODUCTION METHOD, NOT BY CONTENT
+
+The coverage map sorts landing-page material by **how a document was produced** rather than by
+**what is in it.** A per-page operator teardown is filed as a *worked example* because it was
+produced by examining one page; a general prose report is filed as *standard-grade* because it was
+produced as a report. **Nothing in that sort is about content.**
+
+### MEASURED — REPO SWEEP, 284 DOCUMENTS, 2026-09-01
+
+| bucket as the map files it | words | files |
+|---|---|---|
+| **"worked examples"** — `docs/landing-page-references/replication-specs/` | **51,872** | 9 |
+| "platform mechanics" — `docs/andromeda/landing-page-research/` | 9,474 | 7 + README |
+| **"the standard" / apply-only target** — `docs/landing-page-research/` | **2,639** | 2 |
+
+> # **THE LANDING PAGE IS THE MOST-RESEARCHED NODE IN THE PROJECT, BY A WIDE MARGIN.**
+> The map does not say so, because the 51,872 words are filed under a heading that reads as
+> secondary. **The category the map calls partially banked is the SMALLEST of the three, by a factor
+> of twenty.**
+
+### 🔴 THE OPERATIONAL CONSEQUENCE — THE APPLY-ONLY PLAN POINTS AT THE SMALL DOCUMENT
+
+**The map's apply-only plan points at the 1,373-word conversion guide and does not mention the nine
+teardowns at all.** So the plan of record proposes applying **1,373 words** while **51,872 words** on
+the same node sit unmentioned — and the conversion guide is itself cited by nothing but the map and
+itself (`LANDING_PAGE_VISUAL_QUALITY_STANDARD.md` derives from the reference PNGs and from
+conversation, not from it).
+
+📌 **Why the flag stops here.** Whether the teardowns actually contain standard-grade content is a
+question about their contents, and **their contents have not been read.** Reclassifying them on
+word count alone would repeat the map's own error in the opposite direction — sorting by a property
+that is not content. **Read them, then correct the map.**
+
+📌 **Also still outstanding, unchanged:** the `QA Report_ High-Ticket Coaching Landing Page
+Architecture` and the 7,218-word `Nine_Landing_Page_Replication_Research_and_Strategy_Report.docx`
+are **`~/Downloads`-only and absent from the repo** — the same exposure the research map already
+flagged for the script research.
+
+📌 **Copied to `~/Downloads` on 2026-09-01 for Arfeen to read:** the nine replication specs, the
+references README, and `LANDING_PAGE_VISUAL_QUALITY_STANDARD.md` — 11 files, clean filenames, one
+copy each, no repo file moved or changed.
+
+---
+
+## 15m. READ THE OUTPUT, DO NOT MATCH IT (STANDING LAW — locked 2026-08-31, Arfeen)
+
+**The whole §15 series up to here is about INSTRUMENTS. This one is about the OBSERVER, and it is
+the reason the rest of the series was needed.**
+
+> # **A CHECK THAT PRODUCED THE EXPECTED-LOOKING RESULT HAS TOLD YOU NOTHING UNTIL SOMEONE HAS READ WHAT IT ACTUALLY SAYS.**
+
+**Matching is not reading.** Confirming that output *resembles* the expected shape is not the same
+act as reading what it says, and it feels identical from the inside.
+
+### 🔑 WHY THIS IS THE COUNTERPART TO EVERYTHING ELSE IN THE SERIES
+
+§15c, §15f, §15h, §15i, §15j, §15k and the parent law all describe **instruments that cannot
+discriminate**. None of them explains **how those instruments kept passing review**.
+
+> **This does. Somebody glanced, and saw what they expected to see.**
+> An instrument that cannot discriminate survives exactly as long as nobody reads its output —
+> and it produces expected-looking output every single time, which is what makes it so restful.
+
+### ✅ THE INSTANCE THAT PRODUCED THE LAW
+
+The model-logging control passed. `fellThrough=true` on arm 1, `false` on arm 2 — **precisely the
+expected shape**, and a match-check would have stopped there and recorded a clean pass. Reading the
+line found the warning naming **the winning model as though it were the ask**, with the identity of
+the model that actually died absent from the log entirely.
+
+**The defect was in the reporting of a control that had just passed.**
+
+### ✅ A SECOND INSTANCE, SAME SESSION, WITHIN THE HOUR
+
+TS went 34 → 35 after a change to `_core/llm.ts`. Grepping the error list for `llm.ts` returned
+**nothing**; grepping for the new script's own filename returned **nothing**. The cause was the new
+script, and **the error was reported against a DIFFERENT file** —
+`e2e-bonus-teardown.ts(17,16): TS2393 Duplicate function implementation` — because an import-free
+`.ts` file is a global script and two top-level `main`s collide.
+
+📌 **Searching the output for what you expect to find is match-checking with extra steps.** The
+answer was in the output the whole time, under another file's name. Fixed with `export {}`;
+baseline back to **34**.
+
+### 🔑 THE SHARPER HALF — A SEARCH ENCODES THE HYPOTHESIS (Arfeen, 2026-09-01)
+
+**Two greps, both empty, and the fault was in neither file.**
+
+> **A SEARCH ENCODES THE HYPOTHESIS. AN EMPTY RESULT SAYS YOUR SUSPECT WAS NOT THERE — NOT THAT
+> NOTHING IS.**
+
+**This is the parent law wearing its most convincing costume**: `grep` returning nothing feels like
+a measurement of the whole output, and is in fact a measurement of one guess. Two confident empty
+results read as "the change is clean" when they only ever meant "not the two files I named".
+
+#### ✅ THE WORKING FORM
+
+> **WHEN A BASELINE MOVES, READ THE WHOLE DELTA. DO NOT SEARCH IT FOR THE FILE YOU SUSPECT.**
+
+📌 What actually resolved it was **diffing the full sorted error list** against the list with the
+change removed — a delta, read whole. The file name that came back was one nobody would have
+searched for.
+
+---
+
+## 15l. NON-PROPAGATION — THE CHARACTERISTIC DEFECT OF THIS CODEBASE (Arfeen, 2026-08-31)
+
+**Promote to CLAUDE.md §15 series on the next docs pass. Recorded here first so it is not lost.**
+
+**Three instances, and they are ONE pattern, not three notes.** It runs in **both directions**:
+
+| direction | instance |
+|---|---|
+| **a WRONG belief is not corrected everywhere it is asserted** | `_core/validator.ts` recorded that tool-use enforcement is **descriptive, not strict**. That correction **never reached** the two files that had deleted fallbacks on the opposite belief (§15i) |
+| **a RIGHT pattern is not adopted everywhere it applies** | `_core/complianceRewrite.ts` (~line 266) already preferred the **responded** model over the requested one, *for the exact fall-through reason*. It **never generalised** — every other caller stayed blind |
+| **a WRONG premise SPREADS while the right one does not** | the fallback deletion propagated a false guarantee across files by the same mechanism that failed to propagate the correction |
+
+> # **ONE FILE LEARNS AND THE CODEBASE DOES NOT.**
+
+### 🔑 THE WORKING RULE
+
+> **A fix is not finished until you have GREPPED FOR WHERE ELSE THE SAME SHAPE LIVES.**
+
+📌 **Why this is the characteristic defect *here* specifically:** the correction and the right
+pattern both get written down **in the file where they were discovered**, with a good comment
+explaining the reasoning. That comment satisfies the author completely — the knowledge feels
+recorded. **It is recorded in exactly one place, and every other site keeps its old belief.**
+
+📌 **It is the parent law at codebase scale:** *no contradicting comment elsewhere* is read as *no
+contradiction elsewhere*. **Absence of a second assertion is not agreement.**
+
+---
+
+## 🔬 NEGATIVE CONTROL — MODEL LOGGING. SCOPE STATED BEFORE THE RUN (§15c)
+
+**Written before execution so the result cannot be over-claimed afterwards.**
+
+**WHAT IT WILL PROVE (if it passes):** that `fellThrough` **fires** when the primary model returns
+**404 at ladder position 0**, and that a clean call at position 0 reports `fellThrough=false`. Both
+arms are required — a control that only shows the alarm firing cannot show it discriminating (§15k).
+
+**WHAT IT WILL NOT PROVE, AND MUST NOT BE RECORDED AS PROVING:**
+
+- ❌ behaviour on a **500** — a different branch of the same `if`, never exercised
+- ❌ behaviour on a **timeout / AbortController abort** — that path throws rather than continuing
+- ❌ behaviour on a **mid-stream failure** after a 200 has been returned
+- ❌ behaviour on **529/502/503/504**, which take the retry-with-delay path and re-`fetch` before any
+  ladder movement
+- ❌ that the logging is **"verified"**. It is verified **for one failure mode**
+
+> **RECORD THE RESULT AS "404 fall-through PROVEN", NEVER AS "model logging VERIFIED".**
+
+### ✅ RESULT — RUN 2026-08-31, `server/scripts/model-logging-control.ts`, output to file
+
+**Both arms fired and the control DISCRIMINATED** (log: `scratchpad/model-control.log`):
+
+```
+ARM 1 (bogus override):  ladder=1/3  fellThrough=true   + the MODEL PROVENANCE CHANGED warning
+ARM 2 (no override):     ladder=0/2  fellThrough=false  + no warning
+```
+
+**404 fall-through is PROVEN.** Not "model logging verified" — see the FINAL SCOPE block below,
+which supersedes this paragraph and is explicit about which exclusions were pre-committed and which
+was added after the fact.
+
+### 🔴 DEFECT FOUND BY READING THE OUTPUT — `requestedModel` IS THE WRONG MODEL IN THE WARNING
+
+The arm-1 warning reads:
+
+```
+requested claude-sonnet-4-6 after falling through 1 ladder entry; answered by claude-sonnet-4-6
+```
+
+**The caller did not request `claude-sonnet-4-6`. It requested the bogus model.** `requestedModel`
+holds the model of the attempt that **succeeded**, so the warning names the winner as though it were
+the ask, and **the identity of the model that actually FAILED is absent from the log entirely.**
+
+**Consequence for provenance:** the line proves *a* fall-through happened, but not *from what*. In
+production the interesting question is precisely which primary 404'd — and this line cannot answer
+it. **It is a marker that under-discriminates (§15h), caught only because the control's output was
+read rather than assumed to match its own expectation.**
+
+**FIX APPLIED 2026-08-31 — and the review of it corrected a premise, in the other direction.**
+
+⚠️ **CC'S CORRECTION, ACCEPTED BY ARFEEN 2026-09-01 — RECORDED AS CC'S.** Arfeen's review said
+`PREFERRED_MODELS[0]` is the wrong origin under an override, "because an override prepends an
+entry". **CC checked it against the code before implementing it: that does not hold.**
+`PREFERRED_MODELS` is *constructed with the prepend already applied* —
+`params.model ? [params.model, ...DEFAULT_MODELS.filter(...)] : DEFAULT_MODELS` (~line 338) — so
+`PREFERRED_MODELS[0]` **is** position zero of the ladder that actually ran, in both cases. The
+control output confirms it: `origin=claude-bogus-model-does-not-exist-00000`.
+
+✅ **His SECOND instruction was right and is the stronger fix, and it makes the first moot:** name
+**every** model that died, not just the head. On a longer ladder "which primary failed?" has more
+than one answer, and `origin` alone cannot give it. Implemented as `ladderFailures`, pushed at the
+404/500 continuation point, rendered as `failed=[model:status,...]`.
+
+### ✅ RE-RUN — BOTH ARMS, OUTPUT TO FILE, **READ** RATHER THAN MATCHED (§15m)
+
+```
+ARM 1  origin=claude-bogus-model-does-not-exist-00000  winner=claude-sonnet-4-6
+       failed=[claude-bogus-model-does-not-exist-00000:404]  ladder=1/3  fellThrough=true
+       warn: asked for claude-bogus-model-does-not-exist-00000, answered by claude-sonnet-4-6
+             after 1 fall-through; died: [claude-bogus-model-does-not-exist-00000:404]
+
+ARM 2  origin=claude-sonnet-4-6  winner=claude-sonnet-4-6  failed=[none]
+       ladder=0/2  fellThrough=false   (no warning — the quiet arm stayed quiet)
+```
+
+**The arm-1 line now names the bogus model as the origin and the real one as the winner.** Confirmed
+by reading the line, not by confirming it matched.
+
+### 📋 SCOPE — FINAL, AND HONEST ABOUT ITS OWN CONSTRUCTION
+
+**PROVEN:** 404 fall-through at ladder position 0, with correct origin, winner and casualty list.
+
+**UNPROVEN AND NOT BEING PURSUED NOW** — five things:
+
+1. **500** — different branch of the same `if`, never exercised
+2. **timeout / AbortController abort** — throws rather than continuing the ladder
+3. **mid-stream failure** after a 200
+4. **529 / 502 / 503 / 504** — the retry-with-delay path, which re-`fetch`es *before* the ladder moves
+5. **the alias-resolution branch** — `switched=false` on both arms, so it has still never fired
+
+🔴 **RECORDED DELIBERATELY: FOUR OF THOSE FIVE WERE LISTED BEFORE THE RUN. THE FIFTH WAS ADDED
+AFTER.** A scope block completed after the run is **the same shape as a baseline measured during the
+event it baselines** (§0a) — it silently conforms to what happened. The fifth is legitimate, but it
+was not a pre-commitment and is not recorded as one.
+
+📌 **Do not chase the remaining five now.** They are logged as known-unexercised, which is a
+different and honest thing from logged as passing.
+
+📌 **`ladder=1/3` vs `ladder=0/2` is correct, not a bug** — a `params.model` override prepends an
+entry, so the denominator legitimately grows by one.
+
+---
+
+## 🛑 SET B IS HELD — AND THE REASON IS §15e, NOT SCHEDULING
+
+**BLOCKED ON ARFEEN, NOT ON CC. DO NOT UNBLOCK IT BY PICKING SOMETHING SENSIBLE.**
+
+`services.id=318` has a **BLANK name**. Set B supplies a product name through `nameOverride`, and
+**that name has to come from the person with the knowledge.**
+
+> **If CC invents a plausible product name, then the BEFORE-NUMBER for a fabrication measurement is
+> itself measured against a FABRICATED INPUT.**
+
+That is **§15e exactly** — the brief written by the tester rather than by the person who holds the
+facts. A sensible-sounding invented name is the *most* dangerous version, because it reads as real
+and contaminates the number silently in whichever direction the invention happened to lean.
+
+🔴 **The blocker is a single input: the real product name for service 318, from Arfeen.** Nothing
+else about set B is waiting on anything.
+
+### 🛑 2026-09-01 — SET B RELEASED, THEN RE-BLOCKED ON ARRIVAL. NOT RUN.
+
+Set B was authorised with the product name given as the literal string **`[NAME GOES HERE]`** — an
+**unfilled template placeholder**, not a name.
+
+**Running on it would have made the before-number for a fabrication measurement a measurement of a
+placeholder.** Substituting anything plausible instead is §15e in its purest form — and this block
+exists specifically to stop the sensible-sounding substitution.
+
+📌 **Deliberately NOT done while waiting: the pre-run baseline was NOT measured.** §0b requires
+count and `MAX(createdAt)` taken *immediately before* the run. Measuring them now, for a run that
+happens later, manufactures precisely the §0a defect — a baseline separated from the event it
+baselines. **The correct state while blocked is no baseline at all.**
+
+**Still blocked on exactly one input, unchanged.**
+
+---
+
+## ✅ SET B — RUN 2026-09-01. `persist:false` PROVEN. FIRST MEASUREMENT WITH KNOWN PROVENANCE.
+
+**Harness:** `server/scripts/set-b-run.ts`. Output: `scratchpad/setb-full.log` +
+`scratchpad/setb-titles.txt`. Baseline taken **inside the same process, immediately before the
+generation call**, per §0b — never earlier.
+
+| | |
+|---|---|
+| product name via `nameOverride` | **"The Incredible You Coach Training"** (from Arfeen) |
+| `services.name` on 318 | **still `""`** — nothing written, the override is per-call |
+| context | service 318 · ICP **291** (only ICP; no campaignId passed) · `liteMode` · `persist:false` |
+| temperature | **UNSET — API default 1.0. Deliberately not pinned** |
+| duration | 71s, 4 LLM calls |
+| titles | **60** raw (pre-gate; set A's 55 is post-`gateBeforePersist`) |
+
+### THE PRE-COMMITTED PROOF — OUTCOME "BOTH UNCHANGED"
+
+```
+BEFORE  count=6864  MAX(createdAt)=2026-08-30 16:41:52
+AFTER   count=6864  MAX(createdAt)=2026-08-30 16:41:52
+```
+
+**Both unchanged → per the table fixed in §0b BEFORE the run: `persist:false` is PROVEN, and set B
+is delivered in the same call.** No backwards reasoning was available; the reading was already
+written down.
+
+📌 **`MAX(createdAt)` is what makes this stronger than the retired 6864 check.** A count alone could
+in principle hold steady across an equal-sized delete and insert; the timestamp not moving says no
+row was written at all. Two independent readings, both flat.
+
+### 🔑 MODEL PROVENANCE — THE FIRST IN THIS PROJECT'S HISTORY
+
+**All 4 calls:** `origin=claude-sonnet-4-6 winner=claude-sonnet-4-6 responded=claude-sonnet-4-6
+failed=[none] ladder=0/2 switched=false fellThrough=false`
+
+**Nothing failed over. One model answered every call.** Every earlier measurement this project has
+taken — the 40-of-60 read, the 60-title pass, set A's 55 — has **no** such record and cannot
+separate a prompt effect from a model switch. **Set B can.**
+
+---
+
+### 📌 SET B IS WORTH HAVING EVEN IF THE EXTRACTOR NEVER STABILISES
+
+The 55 titles of set A were generated with **`Product: ` blank**, and the earlier reads came from
+briefs nobody typed. **Set B would be the first clean title sample ZAP has ever produced — real
+product name, real ladder answers.** That value is independent of traceability working, and it does
+not evaporate if the stability threshold fails.
+
+---
+
+## 1. REPO STATE — measured
+
+| | |
+|---|---|
+| branch | `railway-build` |
+| HEAD | **`298c6c6cb3cca55e1f635fdeb2afabc275a99834`** |
+| `origin/railway-build` | `8011d62aff4f41220529f73625e512bc87fd1ca8` |
+| deployed | **`8011d62`** — i.e. **NOTHING FROM THIS SESSION IS DEPLOYED** |
+| TS baseline | **34** (held) |
+| staged | **nothing** |
+
+**THREE UNPUSHED COMMITS:**
+
+| hash | contents |
+|---|---|
+| `298c6c6` | **CODE.** `services.ts`: `.min(1)` on create; `needsName`; `serviceName` added to the enrichment prompt + json_schema + required; the backfill in `updateFields`; start/done/FAILED logging. `landing.ts`: three `?? ""` restored |
+| `b4bd422` | **DOCS.** CLAUDE.md §15i + §15j; CHECKPOINT entries |
+| `b98c565` | **DOCS.** Stage D close-out (predates this session) |
+
+**UNCOMMITTED (tracked):** `CHECKPOINT.md` · `CLAUDE.md` (**§14a THREE SURFACES** + the parent law **ABSENCE IS NOT EVIDENCE** + **§15k**) ·
+`server/hvcoGenerator.ts` (the `persist` / `nameOverride` harness).
+
+**UNTRACKED (new this session):** `docs/copy-research/` (7 reports + README) ·
+`server/scripts/traceability-proof.ts` · `server/scripts/persist-false-control.ts`.
+
+🔴 **PUSHING `railway-build` IS AN INSTANT PRODUCTION DEPLOY. IT IS NOT AUTHORISED.**
+
+---
+
+## 2. THE PUSH SITTING — ONE UNIT OF WORK, NOT A DEPLOY
+
+**A deploy alone yields `created = 0`, which is NOT a pass — it is no evidence.** Plan for all of it
+in one sitting:
+
+1. **Measure B** — `SELECT MAX(id) FROM services;` immediately before the push. **Measured, never
+   read from this file (§15f).** *(For reference only: it was 318 at 21:23:55 UTC on 2026-08-30 —
+   this is a decision record, NOT the value to subtract from.)*
+2. **Push** `railway-build`.
+3. **Confirm the deployed bytes carry the change** — marker **derived from a diff of the built
+   artefacts**, never from the intent of the change (§15h). Count it in the OLD and NEW build and
+   show the counts differ. Prefer one marker that must DISAPPEAR.
+4. 🔴 **SEPARATE AUTHORISATION REQUIRED** — create ONE service on production. This is a prod write.
+5. **Run the scoped count:**
+   ```sql
+   SELECT COUNT(*) AS created, SUM(TRIM(name)='') AS blank
+   FROM services WHERE id > B;
+   ```
+
+> **SUCCESS = `blank = 0` WITH `created > 0`. `created = 0` IS NOT A PASS.**
+
+✅ **NEGATIVE CONTROL, ALREADY RUN AND PASSED:** against `id > 310` on the pre-fix build the query
+returns **`created = 8, blank = 7`.** The check demonstrably fires, so it is not decoration.
+
+---
+
+## 3. THE TRACEABILITY WORK — WHERE IT STOPPED AND WHY
+
+**`server/scripts/traceability-proof.ts`** — read-only, SELECTs only, not in the generation path,
+NOT a gate. Measures *what fraction of the specifics a title asserts trace to a coach-typed source*,
+against the **typed subset** (ladder answers + the coach's own chat messages), never the corpus.
+
+**RUN 1 (set A, no validity filter, no synthetic control):**
+```
+TRACED 2 · UNTRACED 58 · UNVERIFIABLE 9 · ASSET 41
+TRACEABLE FRACTION: 2 of 60 = 3.3%
+```
+⚠️ **CAVEAT THAT TRAVELS WITH THAT NUMBER:** **25 of his 62 typed tokens (40.3%) are LAUNDERED** —
+present in BOTH the typed subset and the generated vocabulary, because enrichment derived the
+generated fields from his own description. Rule 2 disqualifies a laundered token as sole evidence,
+so **3.3% is systematically LOW by an amount that share bounds.**
+✅ Laundered *phrases* still trace — the bigram branch is evaluated before the laundered branch, so
+the disqualification is single-token only.
+
+**RUN 2 (validity filter + synthetic control) — INVALIDATED ITSELF.**
+```
+extractor returned 130 · REJECTED 61 numeric-span + 2 orphan · kept 67
+TRACED 0 · UNTRACED 34 · UNVERIFIABLE 9 · ASSET 24
+🔴 SYNTHETIC CONTROL FAILED — the extractor found NOTHING in any of the three
+   synthetic titles, and nothing in the YouTube title that carried run 1's only trace.
+```
+📌 **The validity filter fired on 61 of 130 — it is not decoration.** But the run is UNTRUSTWORTHY
+and **0 of 34 = 0.0% MUST NOT be quoted as a corrected figure.**
+
+### 🔑 THE CAUSE, FOUND — and it retired CC's own hypothesis before it could be tested
+
+> **NO SAMPLING PARAMETER IS SET ANYWHERE.** `_core/llm.ts` builds
+> `{model, max_tokens, messages, system?, tools?, tool_choice?}` — **no `temperature`, no `top_p`,
+> no `top_k`.** Every call runs at the **Anthropic API default of 1.0**.
+
+**Run-to-run variance on identical input is therefore EXPECTED, not a symptom.** CC's title-field
+hypothesis (that asking the extractor for a redundant `title` field was degrading extraction) **was
+never testable and remains untested.**
+
+---
+
+## 4. 🔴 TWO PRODUCT-WIDE FACTS — stated as FACTS, not tasks
+
+### A. THE WHOLE CASCADE GENERATES AT TEMPERATURE 1.0
+
+Not the extractor — **everything.** Every generator, every node, every title, every landing page.
+Nobody had written this down.
+
+⚠️ **CAUTION, SO NOBODY OVERSELLS IT LATER: TEMPERATURE WILL NOT FIX FABRICATION.** An instruction
+demanding a specific number produces one at temperature 0 too. **Temperature governs VARIANCE, not
+GROUNDEDNESS.** Pinning it makes measurement repeatable; it does not make the copy honest. The
+seat-cap law is unaffected.
+
+### B. THERE IS NO MODEL-IDENTITY LOGGING
+
+`PREFERRED_MODELS` is a **fallback ladder** — a 404/500 on the primary silently answers from a
+different model, and nothing records which one replied.
+
+> **CONSEQUENCE: EVERY MEASUREMENT THIS PROJECT HAS EVER TAKEN HAS UNKNOWN MODEL PROVENANCE, AND A
+> PROMPT EFFECT CANNOT BE SEPARATED FROM A MODEL SWITCH.**
+
+📌 This is the parent law again: the absence of a model-change signal was read as the absence of a
+model change.
+
+---
+
+## 5. AUTHORISED BUT NOT DONE — two additive changes to `_core/llm.ts`
+
+**In this order:**
+
+1. **MODEL LOGGING FIRST.** Record which model actually answered. Without it, change 2 cannot be
+   evaluated — a stable run could be stability or could be the same model twice by luck.
+2. **THEN an optional `temperature`, forwarded ONLY when explicitly supplied:**
+   `if (typeof params.temperature === "number") body.temperature = params.temperature;`
+   **No product path passes it, so every product request body stays byte-identical.**
+
+🔵 **OPEN QUESTION, NOT A PENDING ACTION: should the cascade itself be pinned to a lower
+temperature?** That is a product decision with quality trade-offs across every node and it is
+**not** part of this work. Recorded so it is not silently adopted along with the harness change.
+
+---
+
+## 6. NEXT ACTIONS, IN ORDER
+
+1. ✅ **DONE 2026-08-31 — the two instruments in §0 ran.** Instrument 1 clean, instrument 2
+   inconclusive. The old "is it still 6864?" comparison is **RETIRED** (§0 banner, §0a).
+2. 🔨 **`_core/llm.ts` MODEL LOGGING — BUILT, NOT RUN, NOT COMMITTED.** Additive only, TS baseline
+   held at 34. ⚠️ **NOT YET EXERCISED — the `fellThrough` branch has never fired.** Its negative
+   control is cheap and must be run before the logging is trusted: pass a **bogus `params.model`**,
+   which 404s at ladder position 0 and forces a fall-through to position 1 (§15c).
+   🔴 **The optional `temperature` parameter is deliberately NOT built** — see §0b.
+3. **Apply the three extractor fixes** — drop `title` from the extraction schema; batch 5 not 10;
+   **make the negative synthetic assert an untraced reader-subject specific rather than absence.**
+4. **Run the stability check** (below).
+5. **Only if it passes: set B, then set C.**
+
+### THE STABILITY THRESHOLD — COMMITTED IN WRITING BEFORE THE RUN, NOT AFTER
+
+**Two runs, identical input (set A + 3 synthetics), temperature 0, model logged and confirmed
+IDENTICAL across both. PASS requires ALL FOUR:**
+
+1. **Both runs trace BOTH positive synthetics** (`limiting beliefs`, `mastermind`).
+2. **Both runs report the negative synthetic as UNTRACED *with at least one reader-subject
+   specific*** — **silence FAILS** (§15k).
+3. **Kept-specific counts within ±10%** of each other.
+4. **Reader-subject traced / untraced / unverifiable each within ±3.**
+
+**UNFIT is anything less, regardless of how good either individual run looks.**
+
+✅ **The threshold could plausibly fail — IT ALREADY DOES.** Run 1: ~68 reader specifics, 2 traced.
+Run 2: 43, 0 traced. That fails criteria 1, 3 and 4 today. Calibrated against observed behaviour.
+
+### 🛑 THE BOUND — TWO STABILISATION ATTEMPTS
+
+**If it is still unstable after the second attempt: STOP.** The metric is lost, **item 1 ships on
+judgement exactly as originally scoped, and nothing is worse than it was.**
+📌 **The scene finding never depended on a stable number** and stands on its own.
+
+### THE THREE SETS — PINNED, DO NOT BLUR
+
+| set | what | use |
+|---|---|---|
+| **A** | the existing 55 titles, generated with `Product: ` **BLANK** | **NEGATIVE CONTROLS ONLY.** Never a before-number, never positive fixtures |
+| **B** | current unfixed prompt, name supplied via `nameOverride` | **THE REAL BEFORE-NUMBER** |
+| **C** | same run, fixed prompt | **THE AFTER-NUMBER** |
+
+**B and C isolate the item-1 change. A stays what it is.**
+
+---
+# 🔴🔴 THE SCENE FINDING — FABRICATED INTIMACY MEASURED FOR THE FIRST TIME (2026-08-31)
+
+**`server/scripts/traceability-proof.ts` — read-only, SELECTs only, not in the generation path, NOT
+a gate.** Run against service 318 / ICP 291 / kit 225, **set A** (the 55 titles generated with
+`Product: ` blank — **negative controls only, NOT the before-number**).
+
+## THE HEADLINE, WHICH IS WHAT THE RUN WAS FOR
+
+**17 reader-subject `scene` specifics; 13 untraced.** None is a number, a timeframe, a named enemy
+or an insider term — **the four things every gate we own looks for.**
+
+```
+"the Notes App"        ← FOUR separate shipped titles
+"First Outreach Call Has Lived in Their Head"
+"Status Update You Can Actually Give Your Husband"
+"'I'm Sort of Thinking About Maybe...'"
+"LinkedIn headline"
+"first network outreach conversation"
+```
+
+The coach never mentioned a Notes app, a husband, a LinkedIn headline or an unfinished sentence.
+
+## 🔴 FINDING A — **FABRICATION CONCENTRATES, IT DOES NOT DISTRIBUTE** (Arfeen)
+
+**The Notes app appears in FOUR separate titles.** One invented anchor, adopted and reused across
+a batch.
+
+> **A PER-TITLE CHECK SEES FOUR INDEPENDENT SMALL ODDITIES. A BATCH VIEW SEES ONE FABRICATION
+> REPEATED FOUR TIMES — which is the louder signal by far.**
+
+📌 **Batch-level detection is worth more than per-title detection here**, and **a repeated invented
+anchor is itself a detectable pattern**: a concrete noun phrase appearing across N titles of one set
+while absent from the coach's typed source is a stronger fabrication signal than any single title
+provides. **Nothing in the codebase looks across a batch today.**
+
+## 🔴 FINDING B — **FABRICATED INTIMACY IS A COMPLIANCE EXPOSURE, NOT ONLY AN HONESTY ONE** (Arfeen)
+
+> *"Status Update You Can Actually Give Your Husband"* **implies the reader is married, and to a
+> man. That is a PERSONAL ATTRIBUTE under Meta policy.**
+
+**An invented scene can assert a personal attribute — and NEITHER the fabrication rules NOR the
+compliance gate can see it.** The fabrication layer looks for claims, numbers and dates; the
+compliance gate is tier-1 and blind to second-person diagnosis. **A scene slips both.**
+
+### ✅ CONSEQUENCE — THE TWO ITEMS MERGE. They are one defect seen from two sides.
+
+## 📋 PRE-LAUNCH LIST, RE-RANKED 2026-08-31 (CC's ranking, as asked)
+
+| # | item | |
+|---|---|---|
+| **0** | `services.name` write-path validation | prerequisite; corrupts the evidence everything else is judged on |
+| **1** | 🔀 **COMPLIANCE-GATE BLINDNESS *AND* FABRICATED INTIMACY — MERGED** | **an invented scene can assert a personal attribute; the fabrication rules miss it because it makes no claim, and the gate misses it because it is not tier-1.** Both halves produce Meta violations on LIVE coach ad accounts, and neither half is visible to inspection |
+| **2** | B2C drift | |
+| **3** | 🆕 **NON-ATOMIC WRITE-THEN-ACCOUNT — SCAN EVERY GENERATOR** | see the finding below. Only remaining item that touches **entitlement/money**, cheapest to scan, and the only one that becomes **unfixable in retrospect** — once real coaches bill against wrong counters you cannot reconstruct who was over- or under-charged. Below 1 and 2 because those hit LIVE ad accounts |
+| **4** | Two intake channels on opposite branches (was 3) | |
+| **5** | `PROOF_COMPOSITIONAL_CEILING_RULE` wired nowhere (was 4) | |
+
+---
+# 🔧 STRUCTURAL FINDING 2026-08-31 — THE WRITE AND ITS ACCOUNTING ARE NOT ATOMIC (Arfeen)
+
+**RECORDED ONLY. NOT TO BE ACTIONED YET.**
+
+`runHvcoGeneration` ends with two separate statements and **no transaction between them**:
+
+```ts
+await createHvcoTitles(allTitles);   // ONE multi-row INSERT — atomic at statement level
+await incrementHvcoCount(input.userId);   // +1 per RUN, separate statement
+```
+
+**An interruption between them leaves rows written with no accounting.** Because the insert is a
+single statement the row set is all-or-nothing, so the torn state is never a partial *set* — it is
+**a whole set with no increment.**
+
+## 🔑 ARFEEN'S FRAMING — SAME CLASS AS THE LANDING-PAGE DOUBLE-INCREMENT, MIRRORED
+
+| | landing pages | HVCO |
+|---|---|---|
+| failure | incremented **twice** | can increment **zero** times |
+| effect | **steals** a coach's allowance | **gives away** a coach's allowance |
+
+> **The write and its accounting are not atomic and can err in EITHER direction.** Two sightings of
+> one class, not two bugs. The double-increment was read as an off-by-one; it was the same missing
+> transaction seen from the other side.
+
+**Harmless pre-launch — the wipe covers it. Post-launch it silently mis-bills, with no error, no log
+line and nothing for a coach or an admin to notice.** `hvcoGeneratedCount` is a live quota gate
+(`server/routers/hvco.ts:53` and `:88`), so a missed increment is a free generation the coach was
+not sold.
+
+📌 **The scan, when authorised, must look for BOTH directions** — a create-then-increment with no
+transaction, *and* an increment reachable more than once on one path — across every generator, not
+only HVCO. Two sightings in two different generators means the shape is the default in this
+codebase, not the exception.
+
+📌 **Why merged rather than adjacent:** they share a failure surface and a fix surface. A gate
+taught to see second-person diagnosis and NOT taught to see an invented scene would pass
+*"the Status Update You Can Actually Give Your Husband"* — it diagnoses nobody. **Fixing one without
+the other leaves the same title shipping.**
+
+---
+# 🔑 A CHECK THAT CAN ONLY FIND THE DEFECT IS CONFIRMING, NOT MEASURING (2026-08-31)
+
+**CC's, and Arfeen recorded it as the demand he would have failed to make.**
+
+**§15c says: state what result would make a check FIRE, and confirm it is reachable. That is half a
+test.** For anything that reports a FRACTION rather than a pass/fail, **both outcomes must be
+reachable in the same corpus**, or the number is not a measurement.
+
+> **An extractor that can only find fabrication is CONFIRMING, not MEASURING.**
+> **An always-untraced result is decoration in exactly the way an always-traced one is.**
+
+**The instance — both controls live in ONE corpus, the 55 titles of service 318:**
+
+- **NEGATIVE control (must report UNTRACED):** `10-Year Gap`, `12 Years of Expertise`, `90-Day`,
+  `Six Months`, `Former Directors`, `Notes App`, `Stop Reorganising the Folder` — no counterpart
+  anywhere in what the coach typed.
+- **POSITIVE control (must report TRACED):** the shipped title *"What the YouTube Tutorial
+  Skips…"*. The coach's `priorAttempts` answer reads *"They done research online, watched YouTube
+  videos, but they tried but it was too complex."* **`YouTube` is present in his typed words and
+  ABSENT from every generated field** — a rare single token, which is the evidence rule exactly.
+
+📌 **The extractor is refuted by its own test set if it returns all-traced or all-untraced.**
+
+📌 **Generalises past this build:** wherever a metric replaces a judgement, name the input that must
+score HIGH and the input that must score LOW before running it. A fraction with only one
+demonstrated pole is a confirmation dressed as a measurement.
+
+---
+
+# ⚖️ TWO CHANGES TO THE TRACEABILITY DESIGN BEFORE BUILD (Arfeen, 2026-08-31)
+
+## 1. RULE ONE HAS A BIAS. MEASURE IT, DO NOT DISCOVER IT.
+
+Disqualifying any token present in the generated vocabulary is correct and errs safe. **But the
+generated fields were DERIVED FROM HIS TYPED DESCRIPTION** — enrichment read what he wrote and
+produced `painPoints`, `whyProblemExists` and the rest from it.
+
+> **His own words are LAUNDERED INTO the generated vocabulary, and rule one disqualifies them
+> hardest exactly where they are most central to how he talks. The traced fraction will therefore be
+> SYSTEMATICALLY LOW.**
+
+✅ **Fix, cheap:** count the **laundered set** — tokens present in BOTH the typed subset AND the
+generated vocabulary — and report it **beside the other three numbers.** That converts an unknown
+bias into a measured one. **If it is large, the headline fraction carries the caveat prominently,
+not in a footnote.**
+
+## 2. THE TAXONOMY CONFLATED TWO CATEGORIES WITH OPPOSITE LICENSING RULES
+
+`scene` was defined as a situational detail asserted about the reader's life. **But `3-Step
+Excavation` and `5 Sentences` are assertions about THE DELIVERABLE**, and asset-structure specifics
+are **legitimate with no coach source at all** — that is precisely the substitute designed for the
+ladder-absent branch.
+
+✅ **Add `subject` beside `type`, values `reader` and `asset`.**
+- **`asset`-subject specifics require NO trace and MUST NOT count as untraced.**
+- **`reader`-subject specifics require one.**
+
+🔴 **Without that separation the metric would score THE CORRECT FIX AS WORSE** — a good
+ladder-absent result would read as a bad one.
+
+## 📌 THE CONFOUND IS PINNED AS THREE SETS, NOT TWO
+
+| set | what it is | use |
+|---|---|---|
+| **A** | the existing 55 titles, generated with `Product: ` **blank** | **negative controls ONLY.** Never a before-number, never positive fixtures |
+| **B** | fresh run, **current unfixed prompt**, name supplied via `nameOverride` | **the BEFORE number** |
+| **C** | same run, **fixed prompt** | **the AFTER number** |
+
+**B and C isolate the item-1 change. A stays what it is.**
+
+## 📌 AND THE HEADLINE OF ANY REPORT IS THE `scene` COUNT, NOT THE FRACTION
+
+> **Arfeen: "The scene type is the finding, not the numbers."** `Notes App` and `Stop Reorganising
+> the Folder` are none of number, timeframe, named enemy or insider term. **They are the
+> fabricated-intimacy class, live in production today, and this makes that category countable for
+> the first time. Whatever fraction comes back, that is what the run is for.**
+
+---
+# ⚖️ ORDERING OVERRULED — TRACEABILITY FIRST, USING CC'S OWN ARGUMENT (Arfeen, 2026-08-31)
+
+**CC wrote *"the fixture set does not solve fabricated intimacy — only traceability does"* and then
+recommended building the fixture-adjacent layer first. Those do not sit together, and the sentence
+is the part that is right.**
+
+## THE FOUR REASONS — recorded as Arfeen's
+
+1. **It is the only one of the three that touches PROVENANCE, which is the whole project.** Layer 1
+   raises craft quality without moving provenance — and **a better-written invented scene is harder
+   to catch by eye, which matters because eye review is the only instrument we currently own.**
+2. **Item 1 is queued and currently ships on JUDGEMENT** — CC said so when scoping it. If the metric
+   exists first, item 1's proof run against ICP 291 and an empty-ladder ICP **produces a NUMBER, not
+   a read**: traceable fraction before, traceable fraction after. **That is §15f applied to item 1's
+   own verification**, and it is the difference between reading titles and measuring them.
+3. **Step two already exists.** `bonusWordOverlap` and `bonusSignificantWords` are in
+   `_core/validator.ts` and already imported by `groundingCorpus`, `icpGrounding` and
+   `fabricationValidator`. **Only the extraction step is new machinery.**
+4. **ICP 291 is the only campaign in existence with real ladder answers**, and nothing else will
+   have any until the intake is fixed. **The test case exists now.**
+
+## THE ORDER, SETTLED
+
+- **1st — TRACEABILITY, as a MEASUREMENT, never a gate.**
+- **2nd — Layer 1 deterministic shape checks.** Not never: cheap, no §14 exposure, closes the only
+  confirmed class-3 defect. **It simply is not the thing that unblocks anything.**
+- **Last or never — Layer 2 LLM judge.**
+
+## ✅ AGREED IN ADVANCE, BECAUSE IT WILL LOOK LIKE A FAILURE THE FIRST TIME IT RUNS
+
+> **For most coaches the typed subset is EMPTY, so the honest output is "0 of N traceable."**
+> **THAT IS THE FINDING, NOT A BUG.**
+
+🔴 **It must NEVER gate a campaign.** Gating on it would block every manual-branch campaign on day
+one, since the manual fork cannot reach `offerSharpen`.
+
+📌 **And that zero is the second thing the metric is for: it QUANTIFIES WHAT THE BRANCH FORK
+ACTUALLY COSTS.** Today the fork's cost is an argument. With this it is a number per campaign.
+
+## 🔴 §15c APPLIES TO THE EXTRACTOR, NOT ONLY THE JUDGE
+
+> **A traceability run that never reports an UNTRACEABLE specific is decoration.**
+
+**Negative control named in advance:** the 55 titles from service 318, which carry known-invented
+specifics. **Positive control, equally required:** the same set must also be able to report a
+*traced* specific, or an always-untraced extractor is decoration of the opposite kind. **Both
+outcomes are reachable in that one corpus — see the extractor proposal.**
+
+## ⚠️ THE CONTAINMENT FALSE POSITIVE — DESIGNED FOR, NOT DISCOVERED
+
+**Straight out of 2026-08-30:** the tracing primitive is word containment, and CC caught it
+producing a false positive when the single word **"coaching"** matched by chance and inflated the
+typed count by eight characters. **A title is a SHORT STRING. Single-word overlap on short strings
+manufactures traces that are not real, and it does it in the flattering direction.**
+
+**Required by Arfeen before any build:** a specific that cannot be traced with confidence is
+reported **UNVERIFIABLE**, and is **counted in NEITHER direction** — never silently as traced, never
+silently as invented.
+
+---
+# 📚 COPY CRAFT RESEARCH BANKED + COLD READ — 2026-08-31
+
+**Seven NotebookLM reports (batch two, notebook one) copied from `~/Downloads` to
+`docs/copy-research/`, SHA-256 verified, indexed in that folder's `README.md`.** CC read all seven
+in full and gave a cold read **before** seeing the strategy side's distilled standard, deliberately,
+so the agreements would mean something. **Four of CC's points beat Arfeen's own read and one of them
+would have caused a regression.**
+
+---
+
+## 🔴🔴 1. THE §14 COLLISION — CC's, and the most important thing either side found
+
+**Arfeen's distilled standard said the ladder-present instruction should be a WORKED
+BEFORE-AND-AFTER PAIR.**
+
+> **A pair contains a before. A before is a failure exemplar. §14 was locked because a failure
+> exemplar in a system prompt CAUSED the Sprint B email regression.**
+>
+> **Arfeen, recorded verbatim in substance: *"I would have rebuilt it."***
+
+**CC's resolution, accepted:** the worked pairs live in **the standard humans read** and in **the
+fixture set**, never interpolated into a prompt.
+
+**Arfeen's amendment on top, and it is the sharper half:** §14 bans **the failure exemplar, not the
+example.** A prompt may carry **the positive half alone** — the coach's raw ladder answer and the
+finished title beside it, with no wrong shape shown. **Demonstration survives; the negative exemplar
+does not.**
+
+✅ **Drawn formally in CLAUDE.md §14a — three surfaces, three rules** (system prompt / human
+reference document / test fixture), because §14 spoke as if there were one. CC added the
+`validator.ts` reconciliation: **specific post-hoc `failContext` about the output just produced is
+corrective and allowed; a generic canonical wrong shape in a standing prompt primes and is banned.**
+The test: *could the model reproduce this text as output? If yes it does not belong in a prompt.*
+
+---
+
+## 🔴 2. ARFEEN'S CENTRAL LINE, PARTIALLY REFUTED — and the correction changes the ladder-absent branch
+
+**The line as written:** *specificity of SCENE rather than specificity of NUMBER, because a scene
+needs no fact we do not hold.*
+
+> **Arfeen's own correction: "That is wrong. AN INVENTED SCENE IS A FACT WE DO NOT HOLD, AND AN
+> UNFALSIFIABLE ONE."**
+
+### ✅ THE CORRECTED LINE
+
+> **SCENE IS PERMITTED ONLY WHERE THE SCENE CAME FROM THE LADDER.**
+
+📌 **The consequence, and it settles yesterday's open design question:** the **ladder-absent branch
+may not use scene at all.** Therefore the redirect onto **the asset's own structure** is **not the
+weaker option on that branch — it is the only one.** Recorded because that branch is the DEFAULT
+path (manual fork can never reach `offerSharpen`), so this is the majority case, not the edge.
+
+---
+
+## 🔴🔴 3. NEW PRE-LAUNCH ITEM — **FABRICATED INTIMACY**. Nothing we own can see it.
+
+**Name is CC's. Recorded as the sharpest available.**
+
+**Every gate we own looks for a CLAIM, a NUMBER, a DATE or a SECOND-PERSON DIAGNOSIS. Nothing looks
+for an INVENTED SCENE.** A fabricated scene asserts nothing checkable, so it passes the compliance
+axis, the fabrication validator, the persistence gate and the anti-fabrication corpus check.
+
+**This is exactly the failure the Copy Craft research would INDUCE if adopted naively.**
+`credibility-without-claims` is the best fit in the set for our situation — no numbers, no
+testimonials, no outcome claims — and its answer is **demonstrated attunement**: narrate the
+client's moment of struggle so accurately that precision becomes the proof. **For a human
+practitioner that is RETRIEVAL from a real memory. For our generator, on a corpus measured at 20%
+coach-typed, it is INVENTION.**
+
+> *"You close your laptop at 6:30 PM and realise you haven't tasted your dinner in three weeks"* is
+> not evidence of understanding when a model wrote it. **It is fabricated intimacy, and it will pass
+> every gate we own.**
+
+🔴 **AND IT IS NOT PROSPECTIVE — IT IS ALREADY SHIPPING.** `icpContext` in `hvcoGenerator` opens
+*"IDEAL CUSTOMER PROFILE — use this to make every title specific and targeted"* and feeds
+`icp.pains`, `icp.goals`, `icp.implementationBarriers`. **The prompt already instructs the model to
+mine invented biography for scene.** The research would make it worse; the defect exists now.
+
+📌 It is **Arfeen's own ruling at scale: plausible fabrication is worse than obvious fabrication,
+because it survives review.**
+
+## 📋 CC'S RANKING OF IT — asked for, and given with the argument
+
+> ⚠️ **SUPERSEDED 2026-08-31 — DO NOT USE THIS TABLE.** Items 1 and 2 were later MERGED, and the
+> non-atomic write-then-account scan entered at 3. **The authoritative list is the one in the
+> cold-start block at the top of this file.** Kept here as the decision record for the merge.
+
+**ENTERS AT #2.** The list now reads:
+
+| # | item | why here |
+|---|---|---|
+| **0** | `services.name` write-path validation | prerequisite, cheap, unblocks the evidence everything else is judged on |
+| **1** | Compliance-gate blindness to second-person diagnosis | **stays #1 on severity: it produces Meta violations on LIVE coach ad accounts.** A ban removes a coach's ability to advertise at all |
+| **2** | 🆕 **FABRICATED INTIMACY** | undetectable **by construction** — every other item can be found by inspection or a query; a fabricated scene looks exactly like a sourced one |
+| **3** | B2C drift (was 2) | **arguably a SUBSET of #2** — drifting to a fabricated audience |
+| **4** | Two intake channels on opposite branches (was 3) | |
+| **5** | `PROOF_COMPOSITIONAL_CEILING_RULE` wired nowhere (was 5) | |
+
+📌 **CC's argument for ranking it #1 instead, stated so Arfeen can overrule:** compliance-gate
+blindness is at least FINDABLE — 60 titles were read and the Personal-Attributes hits spotted.
+Fabricated intimacy has no such read. **Findability is not severity, so it stays at #2 — but the two
+OVERLAP:** an invented scene about the reader's inner life usually IS a second-person diagnosis.
+Fixing #1 will partially mask #2, which is a reason to measure #2 before fixing #1.
+
+---
+
+## 🔍 4. THREE FURTHER FINDINGS — all CC's
+
+1. **`BANNED_COPYWRITING_WORDS` IS TUNED FOR HYPE; THE REGISTER DEFECT WE SHIP IS CORPORATE BLOAT.**
+   Verified against `copywritingRules.ts`: `leverage` ✅ and `synergy` ✅ are present; **`utilize`,
+   `facilitate`, `methodology`, `operationalize`, `robust`, `seamless`, `holistic`, `cutting-edge`
+   and `world-class` are all ABSENT.** The banned list is component 1 of a survivable voice
+   instruction and **the only one of the five we have — and it is aimed at the wrong failure.**
+2. **THE PUNCTUATION PRESCRIPTION INVERTS FOR A NON-HUMAN AUTHOR.** Em-dashes, ellipses and
+   stage-whisper parentheses are **voice from a person and TELLS from a generator.** Same tokens,
+   opposite signal, because the reader's prior about the author differs. **None of the seven reports
+   could see this, because none imagined a non-human author.**
+3. **THE SET CONTRADICTS ITSELF.** `the-voice-problem` and `rhythm-and-readability` prescribe
+   conspiratorial asides and lean-in ellipses; `credibility-without-claims` and
+   `writing-about-difficult-subjects` prescribe steady **relational containment** for exactly the
+   sensitive niches most ZAP coaches occupy. **A stage-whisper aside is the opposite of containment.
+   For our niche mix, CONTAINMENT WINS.**
+
+---
+
+## ✅ 5. AGREED SEPARATELY, RECORDED AS AGREEMENT NOT ASSUMPTION
+
+**The causal model in the research does not transfer.** Register relapse is explained throughout as
+stress, imposter syndrome, cognitive load crashing working memory, and the schoolroom shield. **A
+generator has none of that.**
+
+> **The conclusion holds — mechanical rules beat adjectives — for a DIFFERENT reason.**
+> **Arfeen judged CC's statement of it better than his own: ADJECTIVES ARE LOW-INFORMATION TOKENS
+> THAT BARELY CONSTRAIN THE OUTPUT DISTRIBUTION.**
+
+🔴 **Banking the report's reason alongside its conclusion would be committing §15i on the day we
+wrote it** — a right conclusion filed under a reason that is false for our case is exactly what gets
+reused.
+
+📌 **This also explains a defect already on the board.** `REGISTER_STANDARD` is ~180 words of prose
+about a posture — every line true, every line an OUTCOME DESCRIPTION, not one mechanical trigger,
+not one banned form, not one worked pair. **That is why it did not stop "Defensive Position
+Loading".** It was recorded as a mystery. It is not one: it is the report's diagnosis, in our repo.
+**Four of the five components of a survivable instruction we do not have anywhere.**
+
+---
 📌 **REFERENCE HYGIENE, applied to this file 2026-08-31 (Arfeen).** Every cross-file citation in
 today's blocks and in CLAUDE.md §15i–§15j names a **file plus a symbol** (function, constant, or
 named block) rather than a line number. **Line numbers in cross-file references rot silently — the
@@ -1216,6 +2856,15 @@ chip.
    "Defensive Position Loading" / "Conditioned Loop Diagnosis". The only confirmed class-3 defect.
 
 ## 8. PRE-LAUNCH LIST IN RANK ORDER
+
+⚠️ **RE-RANKED AGAIN 2026-08-31 (second time) — `FABRICATED INTIMACY` MERGES INTO #1 with
+compliance-gate blindness.** An invented scene can assert a personal attribute and slips both the
+fabrication rules and the gate. B2C drift is #2, the intake fork #3. Full entry at the top.
+
+⚠️ **SUPERSEDED — RE-RANKED 2026-08-31 — `FABRICATED INTIMACY` ENTERS AT #2**, pushing B2C drift to #3,
+the intake-branch split to #4. Full entry and CC's ranking argument at the top of this file. Nothing
+we own can detect an invented scene: every gate looks for a claim, a number, a date or a
+second-person diagnosis. It is already shipping via `icpContext`'s instruction to mine the ICP.
 
 ⚠️ **RE-RANKED 2026-08-30 — `services.name` write-path validation is now NUMBER ONE**, promoted
 above compliance-gate blindness by Arfeen's decision after service 318 came back with an empty
@@ -3889,7 +5538,8 @@ operator-token assertion, before publishing the page and before any Graph call.*
 three independent checks: the ledger was 0 bytes, a scan for `graph.facebook` / the four create
 calls / `GET /me` / the ad account id returned 0 hits, and `assertTokenLive` lives only in
 `publish()`, which was never invoked. **Teardown ran clean and reconciled EXACTLY** — adCopy 5424 ·
-headlines 2174 · adCreatives 405 · concepts 6 · published 2 · protected 29 — with Cloudinary
+headlines 2174 · adCreatives 405 · concepts 6 · published 2 · protected 29 — **[HISTORICAL: these
+are the figures as at that run, NOT a current baseline. `adCreatives` was 418 on 2026-09-01.]** — with Cloudinary
 verified GONE by direct HTTP on all 12 objects, not by the sweep's self-report.
 
 🔑 **IT WAS A FALSE POSITIVE. THE PAGE IT WAS ABOUT TO PUBLISH WAS ALREADY CLEAN.** The active angle
@@ -4063,6 +5713,7 @@ the same style sequence, and the generator's Layer 1+2+3 line **byte-identical (
 expectation computed BEFORE the run from `awarenessDeckPlan`/`subTypePlanFor`/`visibilityTierPlanFor`.
 Teardown swept **12 public_ids → 12 Cloudinary objects deleted, 0 failures** (exactly 3 per
 creative). Reconciled: adCopy 5424 · headlines 2174 · adCreatives 405 (0 stamped) · protected 29.
+**[HISTORICAL — figures as at that run, NOT a current baseline. `adCreatives` was 418 on 2026-09-01.]**
 
 ⚠️ **What the stamp MEANS:** the concept whose HEADLINE the picture bakes — not "the picture
 descends from that concept". The scene still comes from `awarenessDeckPlan`, and the on-picture
@@ -4180,7 +5831,7 @@ zero non-null values (no backfill), ALTERs 2.08s/2.23s. 0097, 0098, 0099, 0100 a
 the code using them is NOT deployed. Schema is deliberately ahead of code.
 
 **All step-1 throwaways torn down** and reconciled EXACTLY: adCopy **5424** · headlines **2174** ·
-adCreatives **405** · meta_published_ads **2** · protected `272:5 273:5 275:5 276:5 277:5 285:4` =
+adCreatives **405** *(HISTORICAL — as at that run; 418 on 2026-09-01)* · meta_published_ads **2** · protected `272:5 273:5 275:5 276:5 277:5 285:4` =
 **29**. The sweep cleared **3 Cloudinary objects for 1 row** — 0099 working; pre-0099 it would have
 cleared 2 and leaked 1.
 
@@ -4347,6 +5998,20 @@ Traced end to end 2026-08-09, in code, not recalled:
   OF V1 ONLY** (`AdCopyDetail.tsx:246-247` → `PublishToMetaDialog`), and `client/src/pages/` is
   read-only legacy per CLAUDE.md §5. It is FALSE of the live V2 path. Corrected here rather than
   left to mislead the next session — the §15a failure mode exactly.
+
+  > 📌 **MARKER APPENDED 2026-09-01 — the sentence above is UNCHANGED and remains the record of
+  > what was true when it was written. Both artefacts it cites are now GONE:**
+  >
+  > - **`client/src/components/PublishToMetaDialog.tsx` was DELETED on 2026-09-01.** It published
+  >   without a `serviceId`, which skipped the compliance gate entirely; by the time it was deleted
+  >   it had no callers, but it remained a working template for that exact mistake.
+  > - **The V1 publish button was REMOVED from `AdCopyDetail.tsx` on 2026-09-01**, and replaced in
+  >   the Action Bar with the line *"Publishing has moved to Campaign Kit."*
+  > - 🔴 **THE LINE NUMBERS CITED ABOVE (`AdCopyDetail.tsx:246-247`) NO LONGER POINT AT ANYTHING.**
+  >   That block was removed in the same change. Do not chase them.
+  >
+  > **Publishing now runs only through the V2 Campaign Kit, which supplies `serviceId`, and
+  > `publishToMeta` refuses a publish without one.**
 - **Assessed as an unfinished GAP, not a design decision.** Nothing in the build spec says publish
   should draw from the creative row; spec §3 requires the three surfaces to ship as a coordinated
   set, which only means anything if the coordinated set is what ships.
@@ -4624,7 +6289,11 @@ in-image text, an anatomical failure, or a subject buried under the headline.
 
 ## 7. Production data — verified 2026-08-06 (re-verified post-deploy by direct query)
 
-- `adCreatives` = **405** (the baseline). `meta_published_ads` = **2**. `jobs` running = **0**.
+- `adCreatives` = **418** — MEASURED on production 2026-09-01 12:23 UTC. (Was **405** when this
+  section was written on 2026-08-06; +13 since.) `meta_published_ads` = **2**, re-measured
+  2026-09-01 and unchanged. ⚠️ `jobs` running was **NOT** re-measured on 2026-09-01 — the 0 below
+  is the 2026-08-06 figure and must be measured, not read.
+- ~~`adCreatives` = **405** (the baseline).~~ *superseded — see the line above.*
 - **All campaigns currently on ZAP are dummy/test data.** Nothing to preserve, migrate, or keep
   backward-compatible. This drops the urgency of the sites-4/6 stage-column migration — no real old
   campaign needs regeneration coherence.
@@ -4944,6 +6613,7 @@ dimensions. **The person slot correctly STAYED on Flux** — a fix that moved ev
 been a regression, not a fix. Images: `docs/screenshots/run-2026-08-06-regen-canvas/`.
 
 **Reconciled:** `adCreatives` 405 → 407 → **405**, running jobs **0**, Cloudinary swept 4/4.
+**[HISTORICAL — the 405 is that run's restore point, NOT a current baseline. 418 on 2026-09-01.]**
 
 ### ⚠️ Judged by Arfeen, and one thing is NOT fixed by this
 
@@ -5071,7 +6741,8 @@ rule is the sole authority** — no score in the module decides pass or fail.
 
 Every run: fresh labelled throwaway with a real ICP and 8 concepts (so **desire was genuinely
 live**, not the deck-constant fallback), id-scoped teardown, all four baselines reconciled to
-**adCopy 5424 · headlines 2174 · adCreatives 405 · running jobs 0**. No images rendered on any run,
+**adCopy 5424 · headlines 2174 · adCreatives 405 · running jobs 0** *(HISTORICAL — figures as at
+those runs, NOT a current baseline; `adCreatives` was 418 on 2026-09-01)*. No images rendered on any run,
 so Cloudinary was never involved.
 
 **Deck-wide anti-echo is proven live, not just on fixtures.** Run 2 caught **3 echoes, all against a
@@ -5422,6 +7093,9 @@ they need the pattern-scoped listing sweep (`cloudinary.search` sorted by `creat
 
 ### 12.10 Baselines to reconcile every proof run against
 
-`adCopy` **5424** · `headlines` **2174** · `adCreatives` **405**. All three were restored exactly
+`adCreatives` **418** — MEASURED 2026-09-01 12:23 UTC, was **405** at the time of this chapter.
+🔴 **`adCopy` **5424** and `headlines` **2174** were NOT re-measured on 2026-09-01.** They are the
+2026-08-06 figures and are printed here as history only. **Measure all three at run time (§15f);
+reconciling against a number read from this page is the defect §15f exists to stop.** All three were restored exactly
 after every proof run in this chapter. The copy proofs render no images, so Cloudinary is not
 involved — but the moment a proof renders one, §10's teardown rules apply in full.
