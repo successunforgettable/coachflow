@@ -8,9 +8,20 @@ import { filterRecord, getGlobalNegativePrompts } from "../lib/complianceFilter"
 import { BANNED_COPYWRITING_WORDS, BANNED_MECHANISM_NAMES } from "../_core/copywritingRules";
 
 const createServiceSchema = z.object({
-  // `.min(1)` mirrors updateServiceSchema below. Its absence here is why create
-  // accepted what update refuses: `NOT NULL` rejects NULL, never the empty string.
-  name: z.string().min(1).max(255),
+  // ⚠️ DELIBERATELY NO `.min(1)` — REMOVED, NOT OMITTED. 298c6c6 added one here to mirror
+  // updateServiceSchema. It is removed again by the name ladder below, and the reason is
+  // worth keeping so nobody restores it as an obvious missing guard:
+  //
+  //   `.min(1)` REJECTS a blank name. The ladder GUARANTEES a blank never survives.
+  //   Both cannot run — `.min(1)` throws at input validation, before the ladder could
+  //   resolve anything, and the throw lands in V2TrailIntake's bare `catch` (~L283) whose
+  //   "Try again" chip replays the identical empty payload. A coach who describes their
+  //   business without naming their programme would loop there forever.
+  //
+  // `.min(1)` was also never sufficient: it accepts "   ", which sanitizePlaceholder then
+  // converts to "". The ladder covers that case and every other client call site.
+  // See resolveServiceName below. Arfeen's ruling, 2026-08-30 (CHECKPOINT §"THE DECIDED FIX").
+  name: z.string().max(255),
   category: z.enum(["coaching", "speaking", "consulting"]),
   description: z.string(),
   targetCustomer: z.string().max(500),
@@ -30,9 +41,97 @@ export const PLACEHOLDER_DEFAULTS = new Set([
 export const sanitizePlaceholder = (v: string | null | undefined): string =>
   !v || !v.trim() || PLACEHOLDER_DEFAULTS.has(v.trim().toLowerCase()) ? "" : v;
 
+// ── THE SERVICE-NAME LADDER (increment two — Arfeen's ruling, 2026-08-30) ───────────
+//
+// "Never blank. Always tagged with which tier it came from."
+//
+// Vocabulary is deliberately IDENTICAL to Node 4's `heroMechanisms.sourceTier`
+// (drizzle/0104_coach_method.sql) — the ruling was "Node 4's sourceTier ladder,
+// generalised", and one vocabulary across both ladders makes a later audit one query.
+//
+//   coach_stated     — the coach typed it
+//   extracted        — built from the coach's own supplied words (category + who they help)
+//   guarded_fallback — nothing to build from; a deterministic, category-shaped name
+//
+// 🔴 TIER 2 IS DETERMINISTIC. NO LLM CALL, BY RULING, NOT BY CONVENIENCE:
+//   "Defer makes the product name another generated field, and the finding of today is
+//    that GENERATED FIELDS GROUND GENERATED FIELDS. Filling this blank with generated
+//    text is THE DISEASE APPLIED TO THE CURE."
+// Anything added here that calls a model reintroduces exactly what that ruling rejected.
+export type ServiceNameSource = "coach_stated" | "extracted" | "guarded_fallback";
+
+const CATEGORY_NOUN: Record<string, string> = {
+  coaching: "Coaching",
+  speaking: "Speaking",
+  consulting: "Consulting",
+};
+
+// Tier 3 only. Reached when the coach supplied neither a name nor a target customer.
+const CATEGORY_FALLBACK_NAME: Record<string, string> = {
+  coaching: "Coaching Programme",
+  speaking: "Speaking Engagement",
+  consulting: "Consulting Engagement",
+};
+
+/** Cut to a word boundary at or under `max`, so tier 2 never ends mid-word. */
+const cutToWord = (v: string, max: number): string => {
+  const flat = v.trim().replace(/\s+/g, " ");
+  if (flat.length <= max) return flat;
+  const clipped = flat.slice(0, max);
+  const lastSpace = clipped.lastIndexOf(" ");
+  // No space in the window means one very long token — hard-cut rather than return "".
+  return (lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:.\-–—]+$/, "");
+};
+
+/**
+ * Resolve the name that will be written, and the tier it came from.
+ *
+ * Called AFTER sanitizePlaceholder, so "", "   " and "To be defined" all arrive here as
+ * "" and are treated identically — that is deliberate, and it is what makes this cover
+ * every client call site rather than only the ones with a blank-name bug.
+ *
+ * Total by construction: `category` is a non-optional enum on both the create schema and
+ * the DB, so CATEGORY_FALLBACK_NAME always resolves. The `?? ` defaults are belt-and-braces
+ * for a category that somehow arrives outside the enum — a free runtime check, kept on
+ * purpose (§15j), not dead code awaiting cleanup.
+ */
+export function resolveServiceName(input: {
+  name: string;
+  category: string;
+  targetCustomer: string;
+}): { name: string; nameSource: ServiceNameSource } {
+  // ── Tier 1 — the coach typed it ──
+  const stated = input.name.trim();
+  if (stated) return { name: stated.slice(0, 255), nameSource: "coach_stated" };
+
+  // ── Tier 2 — built from the coach's own words: what they do, and who for ──
+  // "Coaching for overwhelmed founders". Grounded in targetCustomer, which the coach
+  // supplied (or which the extractor read back from what they typed).
+  //
+  // Rejected alternative, recorded so it is not re-proposed: chopping the first clause
+  // off `description`. It is the more literal reading of "derived from their own typed
+  // description" and it produces fragments — "Helping Overwhelmed Founders Get Their" —
+  // which then propagate into landing-page brand slots and `Product:` title prompts.
+  const who = cutToWord(sanitizePlaceholder(input.targetCustomer), 60);
+  if (who) {
+    const noun = CATEGORY_NOUN[input.category] ?? "Coaching";
+    return { name: `${noun} for ${who}`.slice(0, 255), nameSource: "extracted" };
+  }
+
+  // ── Tier 3 — nothing to build from ──
+  return {
+    name: CATEGORY_FALLBACK_NAME[input.category] ?? "Coaching Programme",
+    nameSource: "guarded_fallback",
+  };
+}
+
 const updateServiceSchema = z.object({
   id: z.number(),
-  name: z.string().min(1).max(255).optional(),
+  // `.trim()` before `.min(1)` — the same defect at a different door. `.min(1)` alone
+  // accepts "   " (length 3), which is how a rename could still blank a name that the
+  // create ladder had just guaranteed. Verified against the installed zod 4.3.6:
+  // "   " is REJECTED and "  Hi " is stored as "Hi".
+  name: z.string().trim().min(1).max(255).optional(),
   category: z.enum(["coaching", "speaking", "consulting"]).optional(),
   description: z.string().min(1).optional(),
   targetCustomer: z.string().min(1).max(500).optional(),
@@ -111,14 +210,37 @@ export const servicesRouter = router({
       if (!db) throw new Error("Database not available");
       
       // Sanitize known placeholder defaults from stale client bundles
+      const sanitizedName = sanitizePlaceholder(input.name);
+      const sanitizedTargetCustomer = sanitizePlaceholder(input.targetCustomer);
+
+      // THE LADDER. Runs after sanitize, so "", "   " and "To be defined" are all
+      // already "" by here and resolve identically. This is the guarantee that
+      // `services.name` is never written blank, and it holds for ALL SEVEN client
+      // call sites, not only the two that could send an empty string.
+      const { name: resolvedName, nameSource } = resolveServiceName({
+        name: sanitizedName,
+        category: input.category,
+        targetCustomer: sanitizedTargetCustomer,
+      });
+
       const insertData: any = {
         userId: ctx.user.id,
         ...input,
-        name: sanitizePlaceholder(input.name),
+        name: resolvedName,
+        nameSource,
         description: sanitizePlaceholder(input.description),
-        targetCustomer: sanitizePlaceholder(input.targetCustomer),
+        targetCustomer: sanitizedTargetCustomer,
         mainBenefit: sanitizePlaceholder(input.mainBenefit),
       };
+
+      // PROOF THE LADDER RAN, and which rung answered. Without this, a non-blank name
+      // cannot distinguish "the coach typed one" from "tier 3 caught a blank" — the
+      // two outcomes are identical in the row until `nameSource` is read back, and
+      // identical in the logs entirely. `sourceOfTruth`-style absence is not evidence.
+      console.log(
+        `[services.create] nameLadder userId=${ctx.user.id} tier=${nameSource} ` +
+        `suppliedBlank=${sanitizedName === ""} nameLen=${resolvedName.length}`,
+      );
       // Convert price to string for decimal field
       if (insertData.price !== undefined) {
         insertData.price = insertData.price.toString();
@@ -343,7 +465,20 @@ Return JSON with these exact fields:
         avatarName: trunc(filteredExpanded.avatarName, 100),
         avatarTitle: trunc(filteredExpanded.avatarTitle, 100),
         // Only overwrite user-visible fields if they were empty
-        ...(needsName && filteredExpanded.serviceName ? { name: trunc(filteredExpanded.serviceName, 255) } : {}),
+        // LEGACY BACKFILL ONLY — and it now tags what it writes.
+        //
+        // New rows can never reach here needing a name: the create ladder resolves one
+        // before the row exists. This fires for the 131 rows that PREDATE the ladder —
+        // the 38 measured blank — where a re-run of expandProfile is the only repair path.
+        // Kept for exactly that reason, not because create still depends on it.
+        //
+        // Tagged `extracted`: this value came from a model reading the coach's own
+        // description. That is weaker than `coach_stated` and must never be able to
+        // masquerade as it — an untagged generated name is the thing the 2026-08-30
+        // ruling rejected.
+        ...(needsName && filteredExpanded.serviceName
+          ? { name: trunc(filteredExpanded.serviceName, 255), nameSource: "extracted" as const }
+          : {}),
         ...(needsDescription && filteredExpanded.description ? { description: trunc(filteredExpanded.description, 65535) } : {}),
         ...(needsTargetCustomer && filteredExpanded.targetCustomer ? { targetCustomer: trunc(filteredExpanded.targetCustomer, 65535) } : {}),
         ...(needsMainBenefit && filteredExpanded.mainBenefit ? { mainBenefit: trunc(filteredExpanded.mainBenefit, 65535) } : {}),

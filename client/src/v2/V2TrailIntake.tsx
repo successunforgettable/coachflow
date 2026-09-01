@@ -49,6 +49,12 @@ const LADDER_ENABLED = true;
  * Wording is the product-owner's, verbatim. Keys match ICPLadderAnswers on the server.
  */
 const LADDER_SKIP_CHIP = "Skip this one";
+// Tier 1 of the service-name ladder. `services.extractFromText` is INSTRUCTED to return an
+// empty serviceName when the coach names no programme, so this is the common case for a
+// coach who describes their business in prose — not an edge case. Skippable by design:
+// the server ladder guarantees a usable name either way, so this ask must never gate the
+// campaign. It exists so the coach gets first refusal on their own product's name.
+const NAME_SKIP_CHIP = "Skip — I'll name it later";
 const SHARPEN_YES = "Sharpen it";
 const SHARPEN_NO = "Looks good, carry on";
 const LADDER_QUESTIONS: { key: "trigger" | "priorAttempts" | "hesitation" | "successMoment"; text: string }[] = [
@@ -65,6 +71,7 @@ type Phase =
   | "confirm"      // echo card up, chips live
   | "correction"   // waiting for "what did I get wrong" free text
   | "tweakbox"     // field-edit fallback after loops maxed
+  | "nameAsk"      // tier-1 ask: the extraction carried no programme name
   | "creating"     // services.create in flight
   | "ladder"       // ICP grounding: 3 skippable follow-ups about real clients
   | "campaignType" // Sprint 3 C2: "What are you inviting people to?" chips live
@@ -254,6 +261,26 @@ export default function V2TrailIntake() {
     setPhase("confirm");
   };
 
+  // ── Tier-1 gate: give the coach first refusal on their own product's name ──
+  //
+  // THE SCREEN THIS APPEARS ON (§15d): /v2-dashboard/trail/new, the Trail intake chat,
+  // immediately after the coach confirms the extraction and before the row is created.
+  //
+  // Placed AFTER the "That's me" confirm rather than before it on purpose: the confirm
+  // beat asks "did I understand your business", and asking for a product name against an
+  // understanding the coach has not yet accepted would be asking about the wrong thing.
+  // Both entry points into creation route through here, so neither can skip the ask.
+  const askServiceNameOrCreate = (fields: TweakBoxFields) => {
+    if (fields.serviceName.trim()) {
+      createService(fields);
+      return;
+    }
+    pendingFields.current = fields;
+    addMsg({ type: "zappy-bubble", mood: "idle", text: "One more thing — what do you call it?" });
+    addMsg({ type: "chip-row", chips: [NAME_SKIP_CHIP] });
+    setPhase("nameAsk");
+  };
+
   // ── Service creation (the moment the row exists) ──
   const createService = async (fields: TweakBoxFields) => {
     pendingFields.current = fields;
@@ -270,12 +297,17 @@ export default function V2TrailIntake() {
       createdServiceId.current = (created as { id: number }).id;
       setServiceCreated(true);
       addMsg({ type: "system-divider", text: "Service profile created" });
+      // SHOW THE COACH THE NAME THAT WAS ACTUALLY WRITTEN. `created.name` is the server
+      // ladder's resolved value, never blank — so this reads back the row rather than
+      // re-deriving it here. Duplicating the ladder client-side would be a second
+      // implementation free to drift from the one that owns the column.
+      const resolvedName = ((created as { name?: string }).name ?? "").trim();
       addMsg({
         type: "zappy-bubble",
         mood: "celebrating",
-        text: fields.serviceName
-          ? `Done — ${fields.serviceName} is on the board. 🦊`
-          : "Done — your campaign is on the board. 🦊",
+        text: fields.serviceName.trim()
+          ? `Done — ${resolvedName} is on the board. 🦊`
+          : `No problem — I'll call it "${resolvedName}" for now. You can rename it any time in the Kit. 🦊`,
       });
       // Campaign-type beat. The ICP sharpen offer deliberately does NOT live here —
       // it comes after the coach has seen their first ICP reveal (see offerSharpen).
@@ -349,6 +381,17 @@ export default function V2TrailIntake() {
       // Guard: if resolver isn't ready yet, the text input shouldn't be active
       // during hasAssetsChoice. If it somehow fires, ignore silently (input is
       // hidden during choice phase so this shouldn't happen in practice).
+      return;
+    }
+    if (phase === "nameAsk") {
+      addMsg({ type: "user-bubble", text });
+      const typed = text.trim();
+      const base = pendingFields.current;
+      if (!base) return;
+      // Tier 1. An empty submit cannot reach here (the composer does not send blanks),
+      // but trim-and-check anyway so whitespace falls to the server ladder rather than
+      // being stored as a name the coach never chose.
+      createService({ ...base, serviceName: typed });
       return;
     }
     if (phase === "ladder") {
@@ -1061,6 +1104,14 @@ export default function V2TrailIntake() {
       }
       return;
     }
+    if (chip === NAME_SKIP_CHIP && phase === "nameAsk") {
+      addMsg({ type: "user-bubble", text: NAME_SKIP_CHIP });
+      // Skipping is a first-class answer. The server ladder resolves tier 2 or 3 and
+      // the success bubble reads the written name back, so the coach still sees what
+      // their product ended up being called.
+      if (pendingFields.current) createService(pendingFields.current);
+      return;
+    }
     if (chip === LADDER_SKIP_CHIP && phase === "ladder") {
       askLadder(ladderIdx.current + 1);
       return;
@@ -1076,7 +1127,7 @@ export default function V2TrailIntake() {
       // messagesRef is synchronously true (includes the echo just added).
       handleFork(chip, messagesRef.current);
     } else if (chip === "That's me") {
-      if (extraction.current) createService(extractionToFields(extraction.current));
+      if (extraction.current) askServiceNameOrCreate(extractionToFields(extraction.current));
     } else if (chip === "Try again") {
       if (pendingFields.current) createService(pendingFields.current);
     } else if (chip === "Not quite") {
@@ -1093,12 +1144,14 @@ export default function V2TrailIntake() {
 
   const handleTweakConfirm = (fields: TweakBoxFields) => {
     addMsg({ type: "user-bubble", text: "Fixed the details ✍️" });
-    createService(fields);
+    // Same gate: TweakBox has no validation on its name field, so a coach can confirm
+    // it empty. The ask catches that rather than letting the server pick silently.
+    askServiceNameOrCreate(fields);
   };
 
-  const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets" || phase === "ladder";
+  const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets" || phase === "ladder" || phase === "nameAsk";
   // Hide the bar entirely on chips-only beats — no dead input (Commit 2 fix).
-  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets" || phase === "ladder";
+  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets" || phase === "ladder" || phase === "nameAsk";
   const stops: TrailStop[] = INTAKE_STOPS.map(s => {
     if (s.key === "service" && serviceCreated) return { ...s, state: "done" as const };
     if (confirmedStopKeys.has(s.key)) return { ...s, state: "imported" as const };
@@ -1158,6 +1211,7 @@ export default function V2TrailIntake() {
               inputPlaceholder={
                 phase === "hasAssets" ? "Paste it here…"
                   : phase === "correction" ? "What did I get wrong?"
+                  : phase === "nameAsk" ? "Your programme or product name…"
                   : "Tell me about your business…"
               }
               inputDisabled={!inputActive}

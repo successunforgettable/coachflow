@@ -135,6 +135,10 @@ export const services = mysqlTable("services", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
+  // WHERE THE NAME CAME FROM (migration 0107). Same vocabulary as heroMechanisms.sourceTier.
+  // NULL is meaningful and is the reason this is nullable: it means the row PREDATES the
+  // name ladder, which is exactly the set worth finding later (the 38 measured blank).
+  nameSource: mysqlEnum("nameSource", ["coach_stated", "extracted", "guarded_fallback"]),
   category: mysqlEnum("category", ["coaching", "speaking", "consulting"]).notNull(),
   description: text("description").notNull(),
   targetCustomer: varchar("targetCustomer", { length: 500 }).notNull(),

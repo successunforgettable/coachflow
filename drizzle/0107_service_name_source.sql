@@ -1,0 +1,80 @@
+-- 0107 — where a service's name came from: the honesty record for the name ladder
+--        (travels ALONE — architectural invariant 6)
+--
+-- Adds ONE nullable column:
+--   services.nameSource ENUM('coach_stated','extracted','guarded_fallback') NULL
+--
+-- WHY THIS EXISTS. Measured 2026-08-30: `services.name` reached the live HVCO title
+-- prompt as the literal string "Product: " on 38 of 131 services — 29%, and 7 of 7 in
+-- August. 34 of those 38 had a SUCCESSFUL enrichment run and were still left blank.
+-- The cause was never a coach omission: `services.extractFromText` is INSTRUCTED to
+-- return an empty serviceName when the coach names no programme ("If no name is given,
+-- leave empty"), and V2TrailIntake passed that straight through to create.
+--
+-- Arfeen's ruling, 2026-08-30, recorded because it overrode CC's recommendation:
+--
+--   "Defer makes the product name another generated field, and the finding of today is
+--    that GENERATED FIELDS GROUND GENERATED FIELDS. Filling this blank with generated
+--    text is THE DISEASE APPLIED TO THE CURE."
+--
+-- The shape that followed is Node 4's `sourceTier` ladder, generalised — never blank,
+-- always tagged:
+--   1  coach_stated      the coach typed the name
+--   2  extracted         built from the coach's own supplied words, DETERMINISTICALLY
+--   3  guarded_fallback  nothing to build from; a category-shaped deterministic name
+--
+-- ⚠️ THE TAG IS THE POINT, NOT THE FALLBACK. Without it, a row whose name was invented
+-- by tier 3 is indistinguishable from one the coach typed — which is the precise
+-- distinction pre-launch open item 1 turns on. A name with no provenance is how a
+-- generated field ends up grounding another generated field.
+--
+-- ⚠️ VOCABULARY IS DELIBERATELY IDENTICAL to `heroMechanisms.sourceTier` and
+-- `coachMethods.sourceTier` (migration 0104). Two ladders, one vocabulary, one audit query.
+--
+-- ⚠️ WHY NULLABLE, AND WHY THAT IS NOT LAZINESS. All 131 existing rows keep NULL, and
+-- NULL CARRIES MEANING: "this row predates the ladder". That is exactly the population
+-- worth finding later. A NOT NULL DEFAULT would erase the distinction between a row the
+-- ladder tagged and a row it never saw — an absence dressed up as a signal.
+--
+-- ⚠️ ADDITIVE AND INERT. One new nullable column changes no existing row and no existing
+-- read. Every current row carries NULL and every current query is unaffected.
+--
+-- 🔴🔴 NOT APPLIED, AND THE ORDERING IS LOAD-BEARING — READ BEFORE DEPLOYING ANY CODE.
+--
+--   THIS MIGRATION MUST BE APPLIED **BEFORE** THE CODE THAT WRITES `nameSource` DEPLOYS.
+--
+-- `services.create` writes this column on every insert. If the code ships first, every
+-- INSERT throws ER_BAD_FIELD_ERROR (1054) and SERVICE CREATION FAILS COMPLETELY for
+-- every coach on every path — a total intake outage, strictly worse than the blank name
+-- this fixes. Apply, verify, then deploy. Never the reverse.
+--
+-- Applying is an ALTER TABLE and needs Arfeen's explicit go-ahead in the immediately
+-- preceding message (CLAUDE.md §10 — schema-only is NOT an exception).
+--
+-- REVERSIBILITY. Dropping this loses only the provenance record; it destroys no service
+-- and no name:
+--   ALTER TABLE `services` DROP COLUMN `nameSource`;
+-- Note the ordering inverts on the way back out: drop the column only AFTER the code that
+-- writes it has been rolled back, for the same ER_BAD_FIELD_ERROR reason.
+--
+-- IDEMPOTENCE. MySQL has no "ADD COLUMN IF NOT EXISTS". Re-running errors with
+-- ER_DUP_FIELDNAME (1060), which is safe — it means the column is already present.
+--
+-- VERIFY AFTER APPLYING (expect exactly 1 row, enum, YES, NULL default):
+--   SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+--     FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA = DATABASE()
+--      AND TABLE_NAME   = 'services'
+--      AND COLUMN_NAME  = 'nameSource';
+--
+-- AND CONFIRM THE BACKLOG IS UNTOUCHED (every pre-existing row NULL, none rewritten):
+--   SELECT COUNT(*) AS total,
+--          SUM(nameSource IS NULL)  AS untagged_legacy,
+--          SUM(TRIM(name) = '')     AS still_blank
+--     FROM services;
+--   -- expect: untagged_legacy = total, and still_blank unchanged from its pre-migration value.
+--   -- This migration repairs NO existing row. The 38 blanks stay blank until expandProfile
+--   -- is re-run against them; that is a separate, deliberate piece of work.
+
+ALTER TABLE `services`
+  ADD COLUMN `nameSource` ENUM('coach_stated','extracted','guarded_fallback') NULL AFTER `name`;
