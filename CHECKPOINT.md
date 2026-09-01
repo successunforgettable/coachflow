@@ -1,3 +1,319 @@
+# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-02
+### supersedes the 2026-09-01 block below, which is retained and marked, not deleted
+
+**A fresh terminal with no memory of this session can restart from this block alone. Every number
+below was MEASURED at write time (§15f), not recalled — including one that CONTRADICTED the
+instruction to write it down, see §4.**
+
+---
+
+## 1. SESSION OPENED AFTER A TERMINAL CRASH — THE STATE WAS MEASURED AND IT MATCHED
+
+The session began by re-measuring rather than trusting any prior handover. Expected vs found:
+
+| | expected | measured | |
+|---|---|---|---|
+| branch | `railway-build` | `railway-build` | ✅ |
+| HEAD | `298c6c6` | `298c6c6` | ✅ |
+| `origin/railway-build` after fresh fetch | `8011d62` | `8011d62` | ✅ |
+| unpushed | 3 | 3 | ✅ |
+| staged | none | 0 | ✅ |
+| working tree | "eight modified + one deletion" | **nine modified + one deletion = TEN** | 🔴 |
+
+**The only mismatch was the file count, and it came from a handover document, not a measurement.**
+Arfeen's ruling: *"the count of eight came from a handover document, not from a measurement. Your
+ten is correct and the document is wrong."* This is §15f in the wild, twice in one session — see
+§4 below for the second instance.
+
+## 2. WHAT SHIPPED TODAY — ALL PUSHED AND DEPLOYED
+
+| commit | what |
+|---|---|
+| `ebf25f4` | docs(CHECKPOINT): the cold-start block said four files when there were ten |
+| `44c2c33` | **feat(services): the name ladder** — never blank, always tagged, `.min(1)` removed rather than lost |
+| `298c6c6` | fix(services,landing): a blank name and three undefined fields |
+| `b4bd422` | docs(§15i,§15j) |
+| `b98c565` | docs: Stage D closed |
+
+Deployment `2979dd52` → SUCCESS. Bundle `index-B5FQtB5L.js` → **`index-D62_MFq7.js`**.
+
+**Deploy proven by markers counted in BOTH builds (§15h), never one:**
+
+| marker | old | new |
+|---|---|---|
+| `nameAsk` | 0 | 6 |
+| `Skip — I'll name it later` | 0 | 1 |
+| `One more thing — what do you call it?` | 0 | 1 |
+| `No problem — I'll call it` | 0 | 1 |
+| `Done — your campaign is on the board` | **1** | **0** ← the disappearing half |
+
+⚠️ **One candidate marker was DISCARDED because it could not discriminate:** `Your programme or
+product name` already returned 1 in the old bundle (it is TweakBox's existing placeholder). It
+would have reported success against both builds. Caught only by counting it in the old build first.
+
+## 3. THE NAME LADDER — BUILT, SHIPPED, AND 0107 APPLIED TO PRODUCTION
+
+Increment two of Arfeen's 2026-08-30 ruling. `resolveServiceName()` in `server/routers/services.ts`:
+
+| tier | enum | fires when | writes |
+|---|---|---|---|
+| 1 | `coach_stated` | `name.trim()` non-empty | the coach's words |
+| 2 | `extracted` | tier 1 blank, `targetCustomer` present | `"{Coaching\|Speaking\|Consulting} for {targetCustomer}"`, cut to a word boundary at 60 |
+| 3 | `guarded_fallback` | both blank | `"Coaching Programme"` / `"Speaking Engagement"` / `"Consulting Engagement"` |
+
+Tier 2 is DETERMINISTIC — no LLM call — by ruling, not convenience. `.min(1)` was REMOVED from
+`createServiceSchema` deliberately: it rejects a blank where the ladder guarantees one never
+survives, and the two cannot both run. `.trim()` added to `updateServiceSchema.name`, closing the
+whitespace door (verified against installed zod 4.3.6: `"   "` rejected, `"  Hi "` stored as `"Hi"`).
+
+### 🔴 MIGRATION 0107 IS APPLIED TO PRODUCTION — 2026-09-02
+
+Applied ahead of the code, deliberately: `services.create` writes `nameSource` on every insert, and
+code landing before the column would throw `ER_BAD_FIELD_ERROR` on every INSERT — a total intake
+outage. Target confirmed as production first via `@@version_comment` = `MySQL Community Server - GPL`
+(local Homebrew reports `Homebrew`; **`VERSION()` is `9.4.0` on both and cannot distinguish**).
+
+Verified by READING `INFORMATION_SCHEMA`, not by absence of an error:
+`nameSource enum('coach_stated','extracted','guarded_fallback')`, nullable YES, default NULL,
+ordinal 4, table 43 → 44 columns. All 131 rows untouched, all NULL.
+
+### 🔑 THE PRE-DEPLOY NEGATIVE CONTROL — CANNOT BE RETAKEN, DO NOT LOSE IT
+
+Measured on production 2026-09-02, immediately before the ladder code went live:
+
+> **38 blank names in 131 rows. `MAX(id)` = 318. `nameSource` set on 0 rows.**
+
+This is the ONLY pre-fix reading that will ever exist. Once the ladder is live no new row can be
+blank, so a `blank_names` figure measured afterwards is contaminated by the fix and is not a
+control. Any future claim that the ladder worked must be a delta against **38 / 131 / 318**.
+
+## 4. 🔴 NOTHING IS UNPUSHED — THE INSTRUCTION TO RECORD "THREE COMMITS STILL UNPUSHED" WAS WRONG
+
+This block was commissioned with an instruction to record *"the three commits still unpushed and why
+they were held."* **Measured at write time: `git rev-list --count origin/railway-build..HEAD` = 0.**
+HEAD and `origin/railway-build` are both `ebf25f4`. The three commits were held earlier in the
+session pending the compliance-gate read, then pushed on Arfeen's explicit authorisation together
+with the two new ones, and deployed.
+
+Recorded as a correction rather than silently omitted, because it is the second instance in one
+session of a remembered figure diverging from a measured one — and the first (§1) was also a count.
+
+## 5. THE TEN UNCOMMITTED WORKING-TREE CHANGES — THREE SEPARATE PIECES OF WORK
+
+⚠️ Ten again, but **not the same ten as at session start** — the ladder files were committed in
+`44c2c33` and this checkpoint's own edits took their place. Re-measure; do not trust this list.
+
+**A — COMPLIANCE GATE (built, uncommitted, UNDEPLOYED)**
+
+| file | |
+|---|---|
+| `server/routers/meta.ts` | missing `serviceId` or unavailable DB now REFUSE the publish instead of skipping the gate; `GATE RAN` proof log |
+| `client/src/pages/AdCopyDetail.tsx` | publish button + dialog removed — it called `publishToMeta` with **no `serviceId`**, so every ad from that page reached Meta unscreened |
+| `client/src/v2/V2CampaignKit.tsx` | `PushKitModal` gated on `serviceId != null` |
+| `client/src/components/PublishToMetaDialog.tsx` | 🔴 DELETED (229 lines) |
+
+🔴 **THE GUARD HAS NEVER BEEN OBSERVED FIRING.** It is not deployed, and no run has fed it the
+input it exists to reject. Until a publish attempt with a missing `serviceId` is seen to be
+REFUSED, this is a §15c check with no demonstrated reachable failure. **Do not log it as closed on
+the strength of the code reading correctly.**
+
+**B — MEASUREMENT INSTRUMENTATION (Set B)**
+
+| file | |
+|---|---|
+| `server/_core/llm.ts` | model-identity logging — `origin`/`winner`/`responded`/`failed[]`/`ladder`/`switched`/`fellThrough`. Additive |
+| `server/hvcoGenerator.ts` | `persist:false` / `nameOverride` test harness |
+
+**C — DOCS**
+
+| file | |
+|---|---|
+| `CHECKPOINT.md` | this block, the launch-blocking intake gap, the four-files correction |
+| `CLAUDE.md` | §14a · §15-PARENT ABSENCE IS NOT EVIDENCE · §15k |
+| `docs/handovers/ANDROMEDA_MAP_PLAIN_2026-08-03.md` | ⚪️ SUPERSEDED banner |
+| `docs/handovers/ANDROMEDA_RESEARCH_MAP_2026-08-03.md` | ⚪️ SUPERSEDED banner |
+
+---
+
+# 🔴🔴 6. FOUR CORRECTIONS MADE TODAY — THESE OUTRANK THE FINDINGS
+
+**Recorded first and plainly, because a wrong finding acted on is worse than a finding not made.
+Three of the four were CC's own errors, and two of them would have caused real damage.**
+
+## 6a. FIRST-PERSON AD COPY IS THE ANTI-FABRICATION FIX, NOT A DEFECT
+
+CC reported service 318's first-person ad bodies as *"fabricated founder backstory"* and treated
+the first person itself as the defect. **Wrong, and acting on it would have REMOVED A GUARDRAIL.**
+
+`5fc1a1c` — **2026-07-27** — `feat(register): first-person register standard across all nine
+reader-facing generators`. Confirmed an ancestor of HEAD; still live. Its own reasoning:
+
+> First person is the default for two reasons that reinforce each other: a claim about the
+> advertiser's own experience is STRUCTURALLY outside the rule, and it needs no client.
+> Third-person case study requires a real client story, and a new coach has no "Sarah" — so
+> third-person framing pushes beginners straight into inventing proof.
+
+`adCopyAngles.ts:233` instructs *"told in first person"*; `:71` instructs *"the coach's own
+first-person account of doing the work"*. **Arfeen's memory that this was fixed weeks ago was
+correct.** The residual defect is far narrower: the instruction is the coach's account of DOING THE
+WORK, and on 318 the model wrote the coach's account of BEING THE CLIENT. Content drift inside a
+working design — **1 campaign in 34**, not a systemic fabrication failure.
+
+## 6b. THE `[INSERT_*]` TOKENS ARE DELIBERATE OPERATOR-FILL, NOT DEFECTS
+
+CC flagged six unreplaced tokens in 318's offer as placeholders that escaped. They are the design.
+`offersGenerator.ts:83`: *"Emit the placeholder `[INSERT_PRICE]` verbatim wherever the price would
+appear. Do NOT invent a currency amount."* `[INSERT_HOST_NAME]` is documented as operator-fills in
+the Sprint-B host-name fabrication fix. **They are anti-fabrication tokens awaiting operator input.**
+Whether they should reach a coach's Kit unfilled is a product question; it is not a generator bug.
+
+📌 Distinguish from the lead magnet's `[YOUR TITLE / FUNCTION]` — intentional worksheet blanks,
+also correct.
+
+## 6c. SERVICE 318 IS NOT REPRESENTATIVE
+
+318 was the only service created since 30 August, so "every service since then" was a population of
+one. Widened to all **34 completed kits (19 June – 30 August)**. Of the four things flagged on 318:
+
+| check | result |
+|---|---|
+| empty LP mechanism slot | **27 of 34** — 318 is in the MAJORITY, see §7 |
+| offer/campaign-type mismatch | **2 of 3** lead-magnet kits, both 29–30 Aug — new, see §6d |
+| first-person about the coach's own history | **1 of 34** — 318 alone, and see §6a |
+| headlines narrowing to one profession | **1 of 34** — 318 alone, on a check with only 5 eligible services; too underpowered to trust |
+
+**Treating 318 as representative would have pointed at the wrong three things.**
+
+## 6d. THE OFFER CAMPAIGN-TYPE MISMATCH IS REAL, IS NEW, AND WAS CAUSED BY A FIX
+
+Arfeen said it was not previously the case. **Correct.** The only earlier lead-magnet kit (service
+262, 9 July) is clean of event language; both affected kits are 29–30 August.
+
+| kit | service | created | offer | |
+|---|---|---|---|---|
+| 177 | 262 | 2026-07-09 | "The Designer's Cold-Outreach System — Or You Don't Pay" | clean |
+| 223 | **316** | 2026-08-29 | "**A Free Live Session** for Couples" | 🔴 mismatch |
+| 225 | **318** | 2026-08-30 | "**Free Masterclass** for Career-Returners" | 🔴 mismatch |
+
+**Traced to source.** `resolveOfferMode` (`_core/campaignFraming.ts:92`) is a **binary**
+`"free_event" | "paid"`. `lead_magnet` is not a sales page → resolves to `free_event`. The free-mode
+prompt then says a guide is something the reader **registers** for, worth **"an hour of someone's
+life"**, carrying an **"ATTENDANCE PROMISE"**, with **"nothing is sold in the room"** — live-event
+framing applied to a downloadable PDF.
+
+**The cause is `3085b50` (2026-08-20), a CORRECT fix.** Before it the offer node assumed paid, which
+is why July's lead-magnet kit got a paid-programme offer. After it, `lead_magnet` inherits event
+framing because **there is no lead-magnet mode**. 318 postdates the fix by ten days. Nothing was
+removed or bypassed.
+
+---
+
+# 🔴 7. THE SURVIVING FINDING — 27 OF 34 KITS HAVE AN EMPTY MECHANISM SLOT ON THE LANDING PAGE
+
+**The one finding from the 318 read that survived contact with the fleet, and it is bigger than the
+original report suggested: 79% of completed kits.** The method node produces a full mechanism and
+the landing page's `uniqueMechanism` slot is empty — the cascade does not carry it.
+
+Measured against each row's ACTIVE angle, not `originalAngle` (four rows are `free`/`godfather`; the
+first pass read the wrong column and was corrected).
+
+| campaign type | kits | mechanism empty |
+|---|---|---|
+| **webinar** | 14 | **14** |
+| **in_person_event** | 8 | **8** |
+| **lead_magnet** | 3 | **3** |
+| **discovery_call** | 2 | **2** |
+| course_launch | 2 | 0 |
+| challenge | 1 | 0 |
+| product_launch | 4 | 0 |
+
+**The split is perfectly by campaign type. ⚠️ WEBINAR IS AMONG THE AFFECTED — all 14 of 14.**
+
+**The seven services whose landing page DOES carry a mechanism:**
+> **215, 249, 254, 255, 256, 258, 261**
+
+All seven are course_launch, challenge or product_launch. No webinar, in-person event, lead magnet
+or discovery call has ever produced one.
+
+---
+
+# 🔴🔴 8. LAUNCH-BLOCKING INTAKE GAP — recorded in full further down this file
+
+The six-field confirmation screen has been unreachable since `a3e83d6` (2026-06-15). The Trail
+intake shows a coach only **serviceName**, **serviceDescription** and **targetCustomer** before
+creating the record; **serviceCategory, mainBenefit and icpDescriptor are NEVER displayed**, and
+`That's me` creates the row immediately. `confidence` and `lowConfidenceFields` are computed and
+discarded on this path. Full entry with evidence is under "LAUNCH-BLOCKING PRODUCT GAP" below.
+
+---
+
+# 9. THE LIVE CAMPAIGN BRIEF — THREE CAMPAIGNS, IN FLIGHT
+
+**Recorded in full so a crashed terminal can resume the build without re-briefing.**
+
+## THE PRODUCT
+- **Name, verbatim, use everywhere: `The Digital Asset Blueprint`.**
+- 🔴 **`Secret Millionaire Blueprint` is the PAID PROGRAMME sold inside the room. IT MUST NEVER
+  ENTER ANY RECORD** — not the service, not the offer, not any generated asset.
+- A **free** live workshop on **Zoom, every Sunday**. Taught with **Shez Khan**.
+- Teaches a **four-step framework for evaluating digital assets**: assessing an asset, sizing a
+  position relative to portfolio, setting a downside rule before entry.
+- **Education, not financial advice.**
+- **UAE and Mauritius only.**
+- Campaign type **webinar** on all three. Path **build it all**. **Nothing publishes** — stop at
+  the landing page.
+
+## 🔑 THE AUDIENCE FACT THAT GOVERNS EVERY GENERATOR
+> **Around 90% of attendees have never touched crypto and are not joining for it. Crypto is the
+> VEHICLE, not the REASON.** They come because income has stopped being enough, because they want
+> something of their own, because they want to build something for their family, or because they
+> want financial independence from a spouse. **Copy aimed at crypto-interested people reaches the
+> wrong audience.**
+
+## 🔴 THE HARD CONSTRAINT — EMOTIONAL MOTIVATION, NON-FINANCIAL PROMISE
+> **No claim or implication about income, returns, profit, wealth, getting rich, replacing a
+> salary, or a second income arriving.** The reason someone clicks may be money; **what is promised
+> is a method and a room.** Meta polices financial claims hardest of anything, and the UAE
+> regulates financial promotions on top.
+
+## THE THREE AUDIENCES
+1. **Working professionals** — salaried, 35–55, senior or specialist roles, UAE and Mauritius, many
+   expatriates with no pension building behind them. Done everything right and the maths still does
+   not work: salary capped, horizon ends when the job does, nothing being built that belongs to
+   them. Most have never touched crypto and would not call themselves investors. Want to build
+   something of their own alongside the job; no idea where a serious person starts.
+2. **Entrepreneurs** — business owners and founders, 35–55, UAE and Mauritius. Already built
+   something, which is the problem: everything inside one business in one market, and if it stops,
+   everything stops. Used to deciding on incomplete information weekly, but outside their own
+   industry their instincts do not transfer. Most have never touched crypto. Want something
+   building in parallel that does not depend on them showing up; will not guess with capital they
+   worked for.
+3. **Women** — 35–55, UAE and Mauritius, some in professional roles, some running households and
+   managing the family's money. Want something that is theirs — an income they do not have to ask
+   about, and something that outlasts them for their children. Careful, and usually the person who
+   actually tracks the money, but every conversation in this space was pitched at men who trade, so
+   they have been talked past rather than taught. Most have never touched crypto and are not
+   looking to become traders. Want to be shown how it works properly, on their own terms, before
+   deciding anything.
+
+## CAMPAIGN ONE — STATE AT CHECKPOINT
+Extraction captured in the browser BEFORE creation (`createCalls: 0`). Six fields as returned:
+
+| field | value |
+|---|---|
+| serviceName | `The Digital Asset Blueprint` |
+| serviceCategory | `coaching` → **to be changed to `speaking`** |
+| serviceDescription | `A free weekly live Zoom workshop teaching a four-step framework for evaluating digital assets — assessment, position sizing, and downside rules — co-hosted with Shez Khan.` |
+| targetCustomer | `Salaried professionals aged 35–55 in senior or specialist roles in the UAE and Mauritius, many expatriates with no pension building behind them.` |
+| mainBenefit | `Build something of their own alongside their job by learning a structured, serious framework for evaluating and entering digital assets.` |
+| icpDescriptor | `Expat salaried professionals aged 35–55 in the UAE or Mauritius who have done everything right financially but see a capped salary, no pension, and nothing being built that belongs to them.` |
+
+`confidence: high`, `lowConfidenceFields: []`. **No financial claim present in any field.**
+Instruction: change category to `speaking`, leave everything else exactly as extracted, do not
+hand-tune campaigns two or three.
+
+---
+
 # 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-01
 ### supersedes the 2026-08-31 block below, which is retained and marked, not deleted
 
@@ -1305,6 +1621,78 @@ compliance gate can see it.** The fabrication layer looks for claims, numbers an
 compliance gate is tier-1 and blind to second-person diagnosis. **A scene slips both.**
 
 ### ✅ CONSEQUENCE — THE TWO ITEMS MERGE. They are one defect seen from two sides.
+
+# 🔴🔴 LAUNCH-BLOCKING PRODUCT GAP — THE COACH NEVER SEES WHAT WAS EXTRACTED ABOUT THEM (recorded 2026-09-02, Arfeen. NOT FIXED — recording only)
+
+**A coach confirms a business profile they have been shown less than half of, and the row is created
+on that confirmation.** This is a PRODUCT gap, not a generator defect, and it is recorded as
+launch-blocking rather than as a note.
+
+## THE SIX-FIELD CONFIRMATION SCREEN HAS BEEN UNREACHABLE SINCE 2026-06-15
+
+`a3e83d6` — *"fix: blockers B1 + B2 — patienceGuard utility + legacy route redirects"* — pointed all
+three Auto Mode routes at `LegacyRedirect`, which sends the coach to `/v2-dashboard/trail/new`:
+
+```
+<Route path={"/v2-dashboard/auto-mode/confirm"} component={LegacyRedirect} />
+<Route path={"/v2-dashboard/auto-mode/progress"} component={LegacyRedirect} />
+<Route path={"/v2-dashboard/auto-mode"} component={LegacyRedirect} />
+```
+
+`V2AutoModeIntakeConfirm.tsx` is still in the repo, marked *"kept for Sprint 6 deletion ceremony"*.
+It renders all six extracted fields as editable inputs, gates submission until each is non-empty,
+and enforces an 8-character minimum on any field the extractor flagged. **Nothing routes to it.**
+Verified in production 2026-09-02: navigating to `/v2-dashboard/auto-mode` lands on
+`/v2-dashboard/trail/new`. Unreachable for two and a half months.
+
+⚠️ **DISTINGUISH THE TWO THINGS CALLED "AUTO MODE".** The auto *build path* is alive and well —
+it is the `Build it all for me ⚡` fork chip, which sets `campaignKits.path = 'auto'`. What is gone is
+the six-field confirm *screen*. Only the screen is the subject of this entry.
+
+## WHAT THE COACH IS ACTUALLY SHOWN BEFORE THE ROW IS CREATED
+
+Measured on the live Trail intake, 2026-09-02, with the `extractFromText` response captured in the
+browser before `That's me` was tapped:
+
+| extracted field | shown to the coach? | where |
+|---|---|---|
+| `serviceName` | ✅ yes | echo-card title |
+| `serviceDescription` | ✅ yes | echo-card preview line |
+| `targetCustomer` | ✅ yes | inside *"So: you're a coach helping {X}. Right?"* |
+| `serviceCategory` | 🔴 **NEVER** | only ever surfaces as the noun coach/speaker/consultant |
+| `mainBenefit` | 🔴 **NEVER** | not rendered at any point |
+| `icpDescriptor` | 🔴 **NEVER** | not rendered at any point |
+
+**Three of six are never displayed, and `That's me` creates the row immediately.**
+
+`mainBenefit` is the campaign's promise. `serviceCategory` selects the downstream template family.
+`icpDescriptor` becomes `idealCustomerProfiles.name` and seeds the entire ICP. A coach accepts all
+three sight-unseen, and the only surface that shows fields individually — TweakBox — requires
+tapping `Not quite` **twice**, and each tap RE-RUNS the extraction, so it cannot be used to inspect
+the extraction that is about to be committed.
+
+## WHY THIS IS LAUNCH-BLOCKING AND NOT A NOTE
+
+1. **It is the consent surface.** "That's me" is presented as confirmation of an understanding the
+   coach has mostly not been given. Whatever the extractor inferred about category, promise and
+   ideal customer is adopted silently.
+2. **It is upstream of everything.** Every downstream generator reads these fields. An error here
+   is not caught later; it is amplified by nine generators.
+3. **`confidence` and `lowConfidenceFields` are computed and discarded on this path.** The
+   extractor grades its own work and the Trail intake reads neither — an extraction the model
+   itself labelled `low` proceeds exactly as one labelled `high`. Auto Mode used both to flag
+   fields and enforce a minimum length. That machinery still exists and now has no caller (§15d).
+4. **The blank-name family came through this same hole.** Item 0 is the write-path; this is the
+   read-path the coach was never given.
+
+📌 **Cheap partial mitigation, NOT taken today:** the echo card already renders a title and a
+preview. Adding the remaining three fields to it is a display change, not a flow change. Recorded
+so the size of the fix is not overestimated later.
+
+📌 **Not to be confused with putting Auto Mode back on a route.** That is a separate decision and
+was explicitly deferred by Arfeen on 2026-09-02.
+
+---
 
 ## 📋 PRE-LAUNCH LIST, RE-RANKED 2026-08-31 (CC's ranking, as asked)
 
