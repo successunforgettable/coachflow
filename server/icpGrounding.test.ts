@@ -349,14 +349,87 @@ describe("buyer intel — empty fields are OMITTED, never placeholdered", () => 
     }
   });
 
-  it("puts every filled field into the prompt as ground truth, below the angle and above the ladder", () => {
-    const p = ICP_USER_PROMPT({ ...SERVICE, ...INTEL }, { ladder: { trigger: "Their health visitor asked how they were coping." } });
+  // ── PROVENANCE SPLIT (migration 0108, 2026-09-02) ──────────────────────────────────
+  // This test previously asserted that ANY populated buyer-intel field renders as "the
+  // coach's own words". That assumption was measured false: 4 of 35 completed kits carried
+  // expandProfile output that CONTRADICTED the coach's typed description (services 232, 248,
+  // 249, 250). The contract is now per-field provenance, and it is asserted in BOTH
+  // directions so neither block can silently stop rendering.
+
+  const LADDER = { trigger: "Their health visitor asked how they were coping." };
+  const HYPOTHESIS_HEADING = "A WORKING HYPOTHESIS ABOUT THIS BUYER — GENERATED, NOT SUPPLIED BY THE COACH.";
+  const COACH_HEADING = "WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER";
+  const allTagged = (tier: string) =>
+    Object.fromEntries(ICP_BUYER_INTEL_FIELDS.map(f => [String(f.key), tier]));
+
+  it("renders UNTAGGED buyer intel as a generated hypothesis, never as the coach's words", () => {
+    const p = ICP_USER_PROMPT({ ...SERVICE, ...INTEL }, { ladder: LADDER });
     for (const v of Object.values(INTEL)) expect(p).toContain(v);
-    expect(p).toContain("WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER");
+    expect(p).toContain(HYPOTHESIS_HEADING);
+    expect(p).not.toContain(COACH_HEADING);
     // The ladder is real clients and must remain the LAST, highest-authority block.
-    expect(p.indexOf("WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER"))
-      .toBeLessThan(p.indexOf("treat this as authoritative"));
+    expect(p.indexOf(HYPOTHESIS_HEADING)).toBeLessThan(p.indexOf("treat this as authoritative"));
     expect(p).toContain("including the coach's general description of this buyer above");
+  });
+
+  it("renders COACH-TAGGED buyer intel as ground truth, and emits no hypothesis block", () => {
+    const p = ICP_USER_PROMPT(
+      { ...SERVICE, ...INTEL, buyerIntelSource: allTagged("coach_stated") },
+      { ladder: LADDER },
+    );
+    for (const v of Object.values(INTEL)) expect(p).toContain(v);
+    expect(p).toContain(COACH_HEADING);
+    expect(p).not.toContain(HYPOTHESIS_HEADING);
+    expect(p.indexOf(COACH_HEADING)).toBeLessThan(p.indexOf("treat this as authoritative"));
+  });
+
+  it("puts the coach's own words ABOVE the generated sketch when the row carries both", () => {
+    const p = ICP_USER_PROMPT({
+      ...SERVICE,
+      ...INTEL,
+      buyerIntelSource: { painPoints: "coach_stated" },
+    });
+    expect(p).toContain(COACH_HEADING);
+    expect(p).toContain(HYPOTHESIS_HEADING);
+    expect(p).toContain(INTEL.painPoints);
+    expect(p).toContain(INTEL.hiddenReasons);
+    expect(p.indexOf(COACH_HEADING)).toBeLessThan(p.indexOf(HYPOTHESIS_HEADING));
+  });
+
+  // ── STATED NEGATIVE (migration 0109, 2026-09-02) ───────────────────────────────────
+  // Service 319: the coach wrote "Around nine in ten have never touched crypto and would not
+  // call themselves investors" and no trace survived into any of the six extracted fields.
+  // These assert the fact now reaches the prompt AND outranks the generated sketch.
+
+  const NEGATIVE = "Around nine in ten have never touched crypto and would not call themselves investors.";
+  const NEG_HEADING = "NOT TRUE OF THIS BUYER";
+
+  it("renders a stated negative, verbatim, when the coach supplied one", () => {
+    const p = ICP_USER_PROMPT({ ...SERVICE, buyerNegatives: NEGATIVE });
+    expect(p).toContain(NEG_HEADING);
+    expect(p).toContain(NEGATIVE);
+  });
+
+  it("emits NO negative block when the coach stated none — blank and whitespace alike", () => {
+    expect(ICP_USER_PROMPT(SERVICE)).not.toContain(NEG_HEADING);
+    expect(ICP_USER_PROMPT({ ...SERVICE, buyerNegatives: "" })).not.toContain(NEG_HEADING);
+    expect(ICP_USER_PROMPT({ ...SERVICE, buyerNegatives: "   " })).not.toContain(NEG_HEADING);
+  });
+
+  it("places the stated negative ABOVE the generated hypothesis it constrains", () => {
+    const p = ICP_USER_PROMPT({ ...SERVICE, ...INTEL, buyerNegatives: NEGATIVE });
+    expect(p.indexOf(NEG_HEADING)).toBeLessThan(p.indexOf(HYPOTHESIS_HEADING));
+  });
+
+  it("gives the stated negative explicit precedence over the sketch below it", () => {
+    const p = ICP_USER_PROMPT({ ...SERVICE, ...INTEL, buyerNegatives: NEGATIVE });
+    expect(p).toContain("It outranks anything below that would describe them otherwise.");
+  });
+
+  it("the hypothesis block carries the subordination sentence that is the whole fix", () => {
+    const p = ICP_USER_PROMPT({ ...SERVICE, ...INTEL });
+    expect(p).toContain("The coach's own words above — Description, Target Customer and Main Benefit — are the authority here.");
+    expect(p).toContain("Where the sketch points somewhere else, follow the coach's words and leave the sketch behind.");
   });
 });
 

@@ -55,6 +55,10 @@ const LADDER_SKIP_CHIP = "Skip this one";
 // the server ladder guarantees a usable name either way, so this ask must never gate the
 // campaign. It exists so the coach gets first refusal on their own product's name.
 const NAME_SKIP_CHIP = "Skip — I'll name it later";
+// The stated-negative ask (migration 0109). Fires ONLY when the extractor returned no
+// buyerNegatives — the same shape as the name ask above, for the same reason: a beat the
+// coach who already said it never sees. Skippable; it can never gate a campaign.
+const NEGATIVE_SKIP_CHIP = "Nothing comes to mind";
 const SHARPEN_YES = "Sharpen it";
 const SHARPEN_NO = "Looks good, carry on";
 const LADDER_QUESTIONS: { key: "trigger" | "priorAttempts" | "hesitation" | "successMoment"; text: string }[] = [
@@ -72,6 +76,7 @@ type Phase =
   | "correction"   // waiting for "what did I get wrong" free text
   | "tweakbox"     // field-edit fallback after loops maxed
   | "nameAsk"      // tier-1 ask: the extraction carried no programme name
+  | "negativeAsk"  // the extraction carried no stated negative about the buyer
   | "creating"     // services.create in flight
   | "ladder"       // ICP grounding: 3 skippable follow-ups about real clients
   | "campaignType" // Sprint 3 C2: "What are you inviting people to?" chips live
@@ -88,6 +93,7 @@ interface Extraction {
   targetCustomer: string;
   mainBenefit: string;
   icpDescriptor: string;
+  buyerNegatives: string;
   confidence: "high" | "medium" | "low";
   lowConfidenceFields: string[];
 }
@@ -179,6 +185,7 @@ export default function V2TrailIntake() {
   const appendMessagesMutation = trpc.trail.appendMessages.useMutation();
   const checkCoherenceMutation = trpc.autoMode.checkCoherence.useMutation();
   const updateServiceFromExtractionMutation = trpc.services.updateFromExtraction.useMutation();
+  const updateServiceMutation = trpc.services.update.useMutation();
   const utils = trpc.useUtils();
   const campaignType = useRef<CampaignTypeValue | null>(null);
   // Snapshot of the thread for the direct flush — kept by a ref so async
@@ -288,6 +295,11 @@ export default function V2TrailIntake() {
     addMsg({ type: "zappy-bubble", mood: "thinking", text: "Locking that in…" });
     try {
       const created = await createMutation.mutateAsync({
+        // The extractor's stated negative, when the coach said one. This is the MAIN path —
+        // the negativeAsk beat below exists only for coaches who did not.
+        ...(extraction.current?.buyerNegatives?.trim()
+          ? { buyerNegatives: extraction.current.buyerNegatives.trim() }
+          : {}),
         name: fields.serviceName,
         category: fields.serviceCategory,
         description: fields.serviceDescription,
@@ -309,14 +321,50 @@ export default function V2TrailIntake() {
           ? `Done — ${resolvedName} is on the board. 🦊`
           : `No problem — I'll call it "${resolvedName}" for now. You can rename it any time in the Kit. 🦊`,
       });
-      // Campaign-type beat. The ICP sharpen offer deliberately does NOT live here —
-      // it comes after the coach has seen their first ICP reveal (see offerSharpen).
-      askCampaignType();
+      // Stated-negative beat, then the campaign-type beat. The ICP sharpen offer
+      // deliberately does NOT live here — it comes after the coach has seen their first
+      // ICP reveal (see offerSharpen).
+      askNegativeOrContinue();
     } catch {
       addMsg({ type: "zappy-bubble", mood: "idle", text: "Hm — that save fizzled. Want me to try again?" });
       addMsg({ type: "chip-row", chips: ["Try again"] });
       setPhase("confirm");
     }
+  };
+
+  /**
+   * Ask what is NOT true of this buyer — but only when the extractor found nothing.
+   *
+   * THE SCREEN (§15d): /v2-dashboard/trail/new, immediately after the service row exists and
+   * before the campaign-type beat. Placed here because the coach has just confirmed who the
+   * buyer IS, which is the moment "and who they are not" reads as a natural follow-up.
+   *
+   * Skippable by design. The fact improves every downstream generator; it gates nothing.
+   */
+  const askNegativeOrContinue = () => {
+    if (extraction.current?.buyerNegatives?.trim()) {
+      askCampaignType();
+      return;
+    }
+    addMsg({
+      type: "zappy-bubble",
+      mood: "idle",
+      text: "One more — is there anything that's not true of them? Something they haven't done, or aren't looking for?",
+    });
+    addMsg({ type: "chip-row", chips: [NEGATIVE_SKIP_CHIP] });
+    setPhase("negativeAsk");
+  };
+
+  /** Persist a typed negative onto the service row, then carry on. Never blocks the flow. */
+  const saveNegativeAndContinue = async (text: string) => {
+    const serviceId = createdServiceId.current;
+    const v = text.trim();
+    if (serviceId != null && v) {
+      // Non-fatal by design: a failed save costs specificity downstream, never the campaign.
+      try { await updateServiceMutation.mutateAsync({ id: serviceId, buyerNegatives: v }); }
+      catch { /* the campaign continues without it */ }
+    }
+    askCampaignType();
   };
 
   /** Post the campaign-type beat. */
@@ -381,6 +429,11 @@ export default function V2TrailIntake() {
       // Guard: if resolver isn't ready yet, the text input shouldn't be active
       // during hasAssetsChoice. If it somehow fires, ignore silently (input is
       // hidden during choice phase so this shouldn't happen in practice).
+      return;
+    }
+    if (phase === "negativeAsk") {
+      addMsg({ type: "user-bubble", text });
+      void saveNegativeAndContinue(text);
       return;
     }
     if (phase === "nameAsk") {
@@ -1104,6 +1157,12 @@ export default function V2TrailIntake() {
       }
       return;
     }
+    if (chip === NEGATIVE_SKIP_CHIP && phase === "negativeAsk") {
+      addMsg({ type: "user-bubble", text: NEGATIVE_SKIP_CHIP });
+      // A coach with nothing to add is a complete answer, not a gap.
+      askCampaignType();
+      return;
+    }
     if (chip === NAME_SKIP_CHIP && phase === "nameAsk") {
       addMsg({ type: "user-bubble", text: NAME_SKIP_CHIP });
       // Skipping is a first-class answer. The server ladder resolves tier 2 or 3 and
@@ -1149,9 +1208,9 @@ export default function V2TrailIntake() {
     askServiceNameOrCreate(fields);
   };
 
-  const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets" || phase === "ladder" || phase === "nameAsk";
+  const inputActive = phase === "describe" || phase === "correction" || phase === "hasAssets" || phase === "ladder" || phase === "nameAsk" || phase === "negativeAsk";
   // Hide the bar entirely on chips-only beats — no dead input (Commit 2 fix).
-  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets" || phase === "ladder" || phase === "nameAsk";
+  const showInput = phase === "greeting" || phase === "describe" || phase === "correction" || phase === "extracting" || phase === "hasAssets" || phase === "ladder" || phase === "nameAsk" || phase === "negativeAsk";
   const stops: TrailStop[] = INTAKE_STOPS.map(s => {
     if (s.key === "service" && serviceCreated) return { ...s, state: "done" as const };
     if (confirmedStopKeys.has(s.key)) return { ...s, state: "imported" as const };
@@ -1212,6 +1271,7 @@ export default function V2TrailIntake() {
                 phase === "hasAssets" ? "Paste it here…"
                   : phase === "correction" ? "What did I get wrong?"
                   : phase === "nameAsk" ? "Your programme or product name…"
+                  : phase === "negativeAsk" ? "What isn't true of them…"
                   : "Tell me about your business…"
               }
               inputDisabled={!inputActive}

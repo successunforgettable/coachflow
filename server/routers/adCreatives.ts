@@ -53,7 +53,8 @@ export const AD_HEADLINE_HOUSE_MAX = 38;
  * A (2026-07-31) — recover the mechanism NAME from a field that holds a description.
  *
  * `services.uniqueMechanismSuggestion` is documented as "A proprietary-sounding
- * NAME" (routers/services.ts:194) but is persisted with trunc(…, 65535), so
+ * NAME" (routers/services.ts:340 — line re-checked 2026-09-02; it was cited as :194,
+ * which drifted as the file grew) but is persisted with trunc(…, 65535), so
  * nothing enforces that shape. Measured on production: of 101 services carrying
  * a mechanism, **94 exceed 255 characters** — long enough to blow the
  * `adCreatives.headline` varchar(255) and crash the coach's Generate button

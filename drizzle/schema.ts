@@ -169,6 +169,39 @@ export const services = mysqlTable("services", {
   avatarTitle: varchar("avatarTitle", { length: 100 }), // Ideal customer title/role
   // AI-expanded onboarding fields (Item 1.1 — Build Plan March 1 2026)
   painPoints: text("painPoints"), // 3-5 specific pain points the ideal customer feels daily
+  /**
+   * WHERE EACH BUYER-INTEL FIELD CAME FROM (migration 0108). A per-field map, not one column:
+   *   { "painPoints": "extracted", "failedSolutions": "coach_stated", ... }
+   * Values use the same vocabulary as heroMechanisms.sourceTier and services.nameSource.
+   *
+   * A MAP RATHER THAN SEVEN ENUM COLUMNS because the seven fields genuinely diverge — a coach
+   * can edit painPoints in the service form while failedSolutions stays as enrichment wrote it.
+   * One column per field would be seven columns to express one fact per field.
+   *
+   * NULL = the row predates tagging. Every one of the 131 existing rows is NULL, and on this
+   * path NULL is treated as `extracted`, because every buyer-intel field measured on those rows
+   * was written by expandProfile, never by a coach.
+   */
+  // `.$type<>()` is load-bearing, not decoration: a bare `json()` infers as `{}`, which
+  // propagates into every object that spreads a services row and produced 10 new TS errors
+  // in CreateServiceStep.tsx on first attempt. Typing it keeps the baseline at 34.
+  buyerIntelSource: json("buyerIntelSource").$type<Record<string, string>>(),
+  /**
+   * WHAT THE COACH STATED IS **NOT** TRUE OF THIS BUYER (migration 0109).
+   *
+   * The intake's six extracted fields are all positively framed — each asks what something IS —
+   * so a stated negative had nowhere to land and was discarded. Measured on service 319: the
+   * coach wrote "Around nine in ten have never touched crypto and would not call themselves
+   * investors" and no trace of it survived into any stored field, while `expandProfile` went on
+   * to invent a Binance account, a 70% drawdown and a paid Telegram signals group.
+   *
+   * Read by `expandProfile` as a CONSTRAINT BEFORE it invents, and by the ICP prompt. It is
+   * deliberately NOT wired into the ten downstream generators: they inherit it through the ICP.
+   *
+   * `.$type<string>()` is explicit rather than load-bearing — `text()` already infers string, so
+   * the inference-widening that a bare `json()` caused in CreateServiceStep.tsx cannot occur here.
+   */
+  buyerNegatives: text("buyerNegatives").$type<string>(),
   falseBeliefsVsRealReasons: text("falseBeliefsVsRealReasons"), // What they think is stopping them vs what really is
   failedSolutions: text("failedSolutions"), // What they have tried before and why it failed
   hiddenReasons: text("hiddenReasons"), // Real reasons behind their problem they would never admit

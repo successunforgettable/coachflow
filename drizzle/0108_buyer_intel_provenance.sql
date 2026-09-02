@@ -1,0 +1,80 @@
+-- 0108 — where each buyer-intel field came from (travels ALONE — architectural invariant 6)
+--
+-- Adds ONE nullable JSON column:
+--   services.buyerIntelSource JSON NULL
+-- A per-field map, e.g. {"painPoints":"extracted","failedSolutions":"coach_stated"}.
+-- Values reuse the vocabulary of heroMechanisms.sourceTier (0104) and services.nameSource
+-- (0107): 'coach_stated' | 'extracted' | 'guarded_fallback'.
+--
+-- WHY THIS EXISTS — MEASURED, NOT SUSPECTED (2026-09-02).
+-- Across all 35 completed kits, FOUR carried expandProfile output that CONTRADICTED the
+-- coach's own typed description:
+--
+--   232  coach: "People ... who have NEVER DONE CRYPTO and have heard scary things about it"
+--        enrichment: "I tried buying some crypto on Coinbase in 2021 ... I panicked and sold"
+--
+--   248  coach: "12-week programme ... busy women in their 40s who want to LOSE WEIGHT"
+--   249  enrichment: "three free discovery calls ... $800 on a Canva COACHING BRAND KIT ...
+--   250  still have ZERO CLIENTS ... posting 'coaching tips' on Instagram"
+--        — an entirely different business, not a mismatched experience level.
+--
+-- Service 251 is the control: same coach, near-identical description, and its enrichment is
+-- correctly about weight loss. Three of four near-duplicate services drifted; one did not.
+-- Non-deterministic drift, not a systematic mis-mapping.
+--
+-- ⚠️ THE DEFECT IS THE LABEL, NOT THE ENRICHMENT. `icpPrompts.buildBuyerIntelBlock` handed
+-- these seven fields to the model under the heading "WHAT THE COACH ALREADY TOLD US ABOUT
+-- THIS BUYER ... These are the coach's own words about the buyer they actually serve", and
+-- closed with "Where this conflicts with what you would otherwise assume, THIS WINS."
+-- Model output was relabelled as testimony and given override authority over the model's own
+-- judgement. That is the "GENERATED FIELDS GROUND GENERATED FIELDS" failure named in the
+-- 2026-08-30 ruling, operating one layer earlier than where it was first found.
+--
+-- ⚠️ WHY A JSON MAP AND NOT SEVEN ENUM COLUMNS. The seven fields genuinely diverge: a coach
+-- can edit painPoints in the service form while failedSolutions stays as enrichment wrote it.
+-- Seven columns would encode one fact per field in seven places. This DEPARTS from the
+-- single-enum pattern of 0104 and 0107, deliberately, and the departure is recorded here so
+-- it reads as a decision rather than an inconsistency.
+--
+-- ⚠️ WHY NULL IS READ AS 'extracted', NOT 'coach_stated'. Every buyer-intel field on every
+-- one of the 131 existing rows was written by expandProfile; none was typed by a coach on any
+-- path a coach actually takes. Defaulting an unknown to "the coach said this" is precisely the
+-- claim that caused the four contradictions above. The resolver therefore treats absent/NULL
+-- as `extracted`, which is conservative in the only direction that matters. There is
+-- deliberately NO DEFAULT on the column — NULL means "predates tagging" and stays legible.
+--
+-- ⚠️ ADDITIVE AND INERT. One new nullable column changes no existing row and no existing read.
+-- Every current row carries NULL and every current query is unaffected.
+--
+-- 🔴🔴 NOT APPLIED, AND THE ORDERING IS LOAD-BEARING — READ BEFORE DEPLOYING ANY CODE.
+--
+--   THIS MIGRATION MUST BE APPLIED **BEFORE** THE CODE THAT WRITES `buyerIntelSource` DEPLOYS.
+--
+-- `services.expandProfile` and `services.update` both write this column. If the code ships
+-- first, those writes throw ER_BAD_FIELD_ERROR (1054): enrichment fails on every cascade and
+-- the service edit form fails on save. Apply, verify, then deploy. Never the reverse.
+--
+-- Applying is an ALTER TABLE and needs Arfeen's explicit go-ahead in the immediately preceding
+-- message (CLAUDE.md §10 — schema-only is NOT an exception).
+--
+-- REVERSIBILITY. Dropping this loses only the provenance record; it destroys no buyer intel:
+--   ALTER TABLE `services` DROP COLUMN `buyerIntelSource`;
+-- Ordering inverts on the way out: drop only AFTER the writing code is rolled back.
+--
+-- IDEMPOTENCE. MySQL has no "ADD COLUMN IF NOT EXISTS". Re-running errors with
+-- ER_DUP_FIELDNAME (1060), which is safe — it means the column is already present.
+--
+-- VERIFY AFTER APPLYING (expect exactly 1 row, json, YES, NULL default):
+--   SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+--     FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA = DATABASE()
+--      AND TABLE_NAME   = 'services'
+--      AND COLUMN_NAME  = 'buyerIntelSource';
+--
+-- AND CONFIRM NO EXISTING ROW WAS TOUCHED:
+--   SELECT COUNT(*) AS total, SUM(buyerIntelSource IS NULL) AS untagged FROM services;
+--   -- expect: untagged = total. This migration tags NOTHING retrospectively, by design —
+--   -- a backfill would be asserting provenance nobody measured for those rows.
+
+ALTER TABLE `services`
+  ADD COLUMN `buyerIntelSource` JSON NULL AFTER `painPoints`;

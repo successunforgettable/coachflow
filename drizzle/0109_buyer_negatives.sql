@@ -1,0 +1,89 @@
+-- 0109 — a slot for what the coach says is NOT true of the buyer (travels ALONE — invariant 6)
+--
+-- Adds ONE nullable column:
+--   services.buyerNegatives TEXT NULL
+--
+-- WHY THIS EXISTS — THE HOLE, MEASURED 2026-09-02.
+-- All six of `services.extractFromText`'s content fields are POSITIVELY FRAMED. Each asks what
+-- something IS: serviceName, serviceCategory, serviceDescription ("what they do"),
+-- targetCustomer ("who they help"), mainBenefit ("the outcome they deliver"), icpDescriptor
+-- ("the emotional / situational state"). There is no field for who the buyer is NOT, what they
+-- have NOT done, or what they are NOT looking for.
+--
+-- The extraction prompt's only instruction about absence is the GROUNDING RULE — "leave a field
+-- empty if you cannot infer it" — which governs MISSING information. A stated negative is the
+-- opposite: information the coach explicitly SUPPLIED. The prompt distinguished "I don't know"
+-- from "I know" and had no third state for "I know that it is not so."
+--
+-- THE EVIDENCE. Service 319, the coach's own sentence:
+--   "Around nine in ten have never touched crypto and would not call themselves investors."
+-- Stored targetCustomer, in full:
+--   "Salaried professionals aged 35–55 in senior or specialist roles in the UAE and Mauritius,
+--    many expatriates with no pension building behind them."
+-- No trace, in any of the six. `expandProfile` — which runs FIRST, before the ICP — then wrote
+-- a Binance account opened in 2021, a 70% drawdown, a panic-sell, and a paid Telegram signals
+-- group at $99–$299/month. Every crypto-native line in the finished ad copy traces to it.
+--
+-- ⚠️ THE FIELDS WERE ALREADY OVER BUDGET CARRYING ONLY POSITIVE FACTS. Measured on 319:
+--   targetCustomer 144 chars against a stated limit of 120
+--   mainBenefit    136 chars against a stated limit of 120
+-- There was no spare room to "just mention it in targetCustomer", and no field name would have
+-- marked it as a disqualifier if there had been.
+--
+-- ⚠️ TWELVE DOWNSTREAM CONSUMERS WANTED THIS FACT. Ten generator modules read
+-- targetCustomer/targetMarket (adCopy, adCreatives, bonus, emailSequence, headlines,
+-- heroMechanisms, hvco, landingPage, leadMagnetContent, offers), plus expandProfile and the ICP
+-- generator. TWO downstream slots exist for exactly this fact: `heroMechanisms.whatTried`, and
+-- the `awareness` axis on `headlines` and `adCopy`.
+--
+-- ⚠️ THE AWARENESS AXIS IS NOT THE DEFECT AND MUST NOT BE TOUCHED. COLD_WEIGHTED_STAGE_MIX is
+-- already 3/3/1/1/0, and service 319 got 4 unaware + 3 problem_aware of 10 ad-copy rows — the
+-- stages were assigned correctly. The `unaware` body still opened "It took me far too long to
+-- notice that the panic-sell wasn't an emotion problem." The stage was right and the buyer model
+-- underneath it was wrong, which is why this column feeds the BUYER MODEL and nothing else.
+--
+-- WHAT READS IT. Exactly two prompts:
+--   1. `expandProfile` — as a CONSTRAINT, before it invents, because it runs first and its
+--      output is what the ICP inherits. Constraining only the ICP would leave the ICP
+--      arbitrating against an already-written contradiction.
+--   2. the ICP prompt — as a block ABOVE the buyer-intel blocks, outranking them.
+-- It is deliberately NOT added to the ten generator prompts; they inherit it via the ICP.
+--
+-- ⚠️ RELATIONSHIP TO 0108. 0108 stops expandProfile's output being labelled "the coach's own
+-- words … this wins". That lowers the authority of an invention. It CANNOT RESTORE A FACT NEVER
+-- STORED — a hypothesis correctly labelled a hypothesis is still the only description of the
+-- buyer the ICP has, if the contradicting fact was discarded at intake. The two are complements:
+-- 0108 demotes the invention, 0109 supplies the thing that displaces it.
+--
+-- ⚠️ ADDITIVE AND INERT. One new nullable column changes no existing row and no existing read.
+-- Every current row carries NULL; an absent negative is a legitimate answer, never a gap.
+--
+-- 🔴🔴 NOT APPLIED. MUST BE APPLIED **BEFORE** THE CODE THAT WRITES IT DEPLOYS.
+-- `services.create` and `services.update` both accept `buyerNegatives`. If the code ships first,
+-- those writes throw ER_BAD_FIELD_ERROR (1054) — service creation and the service edit form both
+-- fail. Apply, verify, then deploy. Never the reverse.
+--
+-- Applying is an ALTER TABLE and needs Arfeen's explicit go-ahead in the immediately preceding
+-- message (CLAUDE.md §10 — schema-only is NOT an exception). 0108 and 0109 are to be authorised
+-- together; both carry the same ordering constraint.
+--
+-- REVERSIBILITY. Dropping this loses the captured negatives and nothing else:
+--   ALTER TABLE `services` DROP COLUMN `buyerNegatives`;
+-- Ordering inverts on the way out: drop only AFTER the writing code is rolled back.
+--
+-- IDEMPOTENCE. Re-running errors with ER_DUP_FIELDNAME (1060), which is safe.
+--
+-- VERIFY AFTER APPLYING (expect 1 row, text, YES):
+--   SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+--     FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA = DATABASE()
+--      AND TABLE_NAME   = 'services'
+--      AND COLUMN_NAME  = 'buyerNegatives';
+--
+-- AND CONFIRM NOTHING WAS BACKFILLED:
+--   SELECT COUNT(*) AS total, SUM(buyerNegatives IS NULL) AS empty FROM services;
+--   -- expect: empty = total. Nothing is inferred retrospectively — a negative nobody stated
+--   -- is not a negative, and guessing one would be the invention this column exists to stop.
+
+ALTER TABLE `services`
+  ADD COLUMN `buyerNegatives` TEXT NULL AFTER `buyerIntelSource`;

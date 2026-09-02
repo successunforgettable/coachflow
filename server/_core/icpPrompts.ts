@@ -43,7 +43,25 @@ export type ICPServiceInput = {
   targetCustomer: string | null;
   mainBenefit: string | null;
   /**
-   * Buyer intel the coach already typed at Node 1 (the `services` row). Every
+   * Per-field provenance map for the buyer-intel fields below, read straight from
+   * `services.buyerIntelSource` (migration 0108). Absent or NULL resolves to `extracted`
+   * — see resolveBuyerIntelTier for why that direction is deliberate.
+   */
+  buyerIntelSource?: unknown;
+  /**
+   * What the coach stated is NOT true of this buyer (migration 0109). Rendered as its own
+   * block, ABOVE the buyer-intel blocks, because it constrains them: the intel is a
+   * hypothesis and this is something the coach actually said.
+   */
+  buyerNegatives?: string | null;
+  /**
+   * Buyer intel about the buyer, carried on the `services` row. Historically described as
+   * "what the coach typed"; measured 2026-09-02, these fields are written by expandProfile
+   * on every path a coach actually takes, so provenance is now recorded per field rather
+   * than assumed. Every field is optional and a blank field is OMITTED from the prompt
+   * entirely, never rendered as a placeholder.
+   *
+   * Every
    * field is optional and most coaches leave several blank — a blank field is
    * OMITTED from the prompt entirely, never rendered as a placeholder.
    *
@@ -163,20 +181,86 @@ export function hasBuyerIntel(service: ICPServiceInput): boolean {
  * Blank fields are omitted entirely — never printed as "Not specified", which
  * is noise the model treats as content and which the prompt tests forbid.
  */
+export type BuyerIntelTier = "coach_stated" | "extracted" | "guarded_fallback";
+
+/**
+ * Per-field provenance for the seven buyer-intel fields, as stored in
+ * `services.buyerIntelSource` (migration 0108).
+ *
+ * ⚠️ NULL / ABSENT RESOLVES TO `extracted`, NOT to `coach_stated`. That direction is the whole
+ * point of this fix: measured 2026-09-02, 4 of 35 completed kits carried enrichment output that
+ * CONTRADICTED the coach's own typed description — three of them profiling an entirely different
+ * business — and every buyer-intel field on every pre-tagging row was written by expandProfile,
+ * never by a coach. Defaulting an unknown to "the coach said this" is the claim that caused the
+ * damage; defaulting it to "generated" is merely conservative.
+ */
+export function resolveBuyerIntelTier(
+  source: unknown,
+  key: string,
+): BuyerIntelTier {
+  if (source && typeof source === "object" && !Array.isArray(source)) {
+    const v = (source as Record<string, unknown>)[key];
+    if (v === "coach_stated" || v === "extracted" || v === "guarded_fallback") return v;
+  }
+  return "extracted";
+}
+
+/**
+ * The coach's stated negative. Emitted ABOVE the buyer-intel blocks so the model reads the
+ * constraint before the sketch it constrains, and phrased so a "not" is treated as a fact the
+ * coach supplied rather than as a gap to be filled.
+ */
+export function buildBuyerNegativesBlock(service: ICPServiceInput): string {
+  const v = typeof service.buyerNegatives === "string" ? service.buyerNegatives.trim() : "";
+  if (!v) return "";
+  return `
+
+NOT TRUE OF THIS BUYER — the coach stated this explicitly, and it is ground truth about the person. It outranks anything below that would describe them otherwise. Where a section would otherwise assume experience, behaviour or intent that this rules out, write the section for the person the coach actually described.
+
+${v}`;
+}
+
 export function buildBuyerIntelBlock(service: ICPServiceInput): string {
   if (!hasBuyerIntel(service)) return "";
-  const lines: string[] = [];
+
+  const source = (service as { buyerIntelSource?: unknown }).buyerIntelSource;
+  const coachLines: string[] = [];
+  const generatedLines: string[] = [];
+
   for (const { key, label } of ICP_BUYER_INTEL_FIELDS) {
     const v = service[key];
     if (typeof v === "string" && v.trim().length > 0) {
-      lines.push(`${label}: ${v.trim()}`);
+      const line = `${label}: ${v.trim()}`;
+      if (resolveBuyerIntelTier(source, String(key)) === "coach_stated") coachLines.push(line);
+      else generatedLines.push(line);
     }
   }
-  return `
+
+  // The coach's own material keeps its authority, and is emitted FIRST so that the generated
+  // sketch below is read against it rather than the other way round.
+  const coachBlock = coachLines.length
+    ? `
 
 WHAT THE COACH ALREADY TOLD US ABOUT THIS BUYER — treat this as ground truth about the person, not as background colour. These are the coach's own words about the buyer they actually serve. Build the sections below on these specifics and keep their phrasing wherever it is vivid. Where this conflicts with what you would otherwise assume, this wins.
 
-${lines.join("\n")}`;
+${coachLines.join("\n")}`
+    : "";
+
+  // Generated material is named as generated, and is subordinated to the coach's own words.
+  // Wording is the product-owner's, verbatim (2026-09-02) — do not paraphrase it.
+  const generatedBlock = generatedLines.length
+    ? `
+
+A WORKING HYPOTHESIS ABOUT THIS BUYER — GENERATED, NOT SUPPLIED BY THE COACH.
+
+The lines below were produced by an earlier automated pass over the same service description shown above. They are one plausible sketch of the buyer, useful for specificity wherever they agree with what the coach actually wrote.
+
+The coach's own words above — Description, Target Customer and Main Benefit — are the authority here. Anything you carry forward from this sketch must describe the same person, the same experience level and the same business those words describe. Where the sketch points somewhere else, follow the coach's words and leave the sketch behind.
+
+${generatedLines.join("\n")}`
+    : "";
+
+  return `${coachBlock}${generatedBlock}`;
 }
 
 export function ICP_SYSTEM_PROMPT(): string {
@@ -214,7 +298,7 @@ Service Name: ${service.name}
 Category: ${service.category}
 Description: ${service.description}
 Target Customer: ${service.targetCustomer}
-Main Benefit: ${service.mainBenefit}${angleBlock}${buildBuyerIntelBlock(service)}${buildLadderBlock(opts?.ladder)}${opts?.seedBlock ?? ""}
+Main Benefit: ${service.mainBenefit}${angleBlock}${buildBuyerNegativesBlock(service)}${buildBuyerIntelBlock(service)}${buildLadderBlock(opts?.ladder)}${opts?.seedBlock ?? ""}
 
 VOICE RULES — apply to every section:
 - Write as if you are narrating the customer's internal experience, not describing them from the outside

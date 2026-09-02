@@ -26,6 +26,9 @@ const createServiceSchema = z.object({
   description: z.string(),
   targetCustomer: z.string().max(500),
   mainBenefit: z.string().max(500),
+  // The coach's stated negative (0109). Optional: most coaches state none, and an absent
+  // negative is a legitimate answer, never a gap.
+  buyerNegatives: z.string().max(1000).optional(),
   price: z.number().optional(),
 });
 
@@ -136,6 +139,7 @@ const updateServiceSchema = z.object({
   description: z.string().min(1).optional(),
   targetCustomer: z.string().min(1).max(500).optional(),
   mainBenefit: z.string().min(1).max(500).optional(),
+  buyerNegatives: z.string().max(1000).optional(),
   price: z.number().optional(),
   // Social proof fields (Issue 2 fix)
   totalCustomers: z.number().optional(),
@@ -307,7 +311,10 @@ export const servicesRouter = router({
 
 A coach/consultant has described their service:
 - Name: ${service.name}${service.description?.trim() ? `\n- Description: ${service.description}` : ""}${service.targetCustomer?.trim() ? `\n- Target Customer: ${service.targetCustomer}` : ""}${service.mainBenefit?.trim() ? `\n- Main Benefit: ${service.mainBenefit}` : ""}
-
+${service.buyerNegatives?.trim() ? `
+NOT TRUE OF THIS BUYER — the coach stated this explicitly. Every field below must be consistent with it. Where a plausible pain point or failed solution would require something this rules out, write one that does not.
+${service.buyerNegatives.trim()}
+` : ""}
 Generate a complete marketing intelligence profile for a coach in this niche.
 
 SPECIFICITY RULES — every field must pass this test:
@@ -454,6 +461,33 @@ Return JSON with these exact fields:
       // Map LLM field names to DB column names.
       // Only overwrite fields that were empty — never overwrite user-filled content.
       // Truncate to column limits: text = 65535, varchar(300) = 300, varchar(100) = 100
+      // PROVENANCE, TAGGED AT WRITE TIME (migration 0108). Every field this block writes is
+      // MODEL OUTPUT, so every one of them is tagged `extracted` — never `coach_stated`.
+      //
+      // Measured 2026-09-02 across the 35 completed kits: 4 carried enrichment that
+      // CONTRADICTED the coach's own typed description (services 232, 248, 249, 250; three of
+      // them profiling an entirely different business). The ICP prompt was handing this text to
+      // the model labelled "the coach's own words about the buyer they actually serve" with
+      // explicit override authority. The text is often useful; the label was false, and the
+      // label is what this records.
+      const BUYER_INTEL_KEYS = [
+        "painPoints", "whyProblemExists", "failedSolutions",
+        "falseBeliefsVsRealReasons", "hiddenReasons", "avatarName", "avatarTitle",
+      ] as const;
+      const existingIntelSource =
+        service.buyerIntelSource && typeof service.buyerIntelSource === "object" && !Array.isArray(service.buyerIntelSource)
+          ? (service.buyerIntelSource as Record<string, string>)
+          : {};
+      // Merge, never replace: a field a coach edited stays `coach_stated` unless THIS run
+      // rewrites it, and this run only rewrites the keys below.
+      const buyerIntelSource: Record<string, string> = { ...existingIntelSource };
+      for (const k of BUYER_INTEL_KEYS) buyerIntelSource[k] = "extracted";
+
+      // NOTE: buyerIntelSource is deliberately NOT a member of `updateFields`. That object is
+      // the STRING field map, and its member types flow all the way out through the mutation's
+      // return value into CreateServiceStep's review form. Widening it to `unknown` to carry
+      // one JSON map cost 10 TS errors there. The provenance map is merged into the DB payload
+      // at the .set() call instead, where it belongs.
       const updateFields: Record<string, string> = {
         // Always overwrite deep-research fields (not user-editable in the form)
         painPoints: trunc(filteredExpanded.painPoints, 65535),
@@ -490,7 +524,7 @@ Return JSON with these exact fields:
       try {
         await db
           .update(services)
-          .set({ ...updateFields, updatedAt: new Date() })
+          .set({ ...updateFields, buyerIntelSource, updatedAt: new Date() })
           .where(eq(services.id, input.serviceId));
       } catch (dbErr: unknown) {
         const e = dbErr as { code?: string; sqlMessage?: string; message?: string };
@@ -562,8 +596,29 @@ Return JSON with these exact fields:
         throw new Error("Service not found");
       }
       
+      // PROVENANCE (migration 0108). A buyer-intel field the COACH edits here becomes
+      // `coach_stated` — this is the one path on which that claim is true, and it is what
+      // earns the ground-truth block in the ICP prompt. Merged, never replaced, so a field
+      // the coach has not touched keeps whatever expandProfile tagged it.
+      const BUYER_INTEL_KEYS = [
+        "painPoints", "whyProblemExists", "failedSolutions",
+        "falseBeliefsVsRealReasons", "hiddenReasons", "avatarName", "avatarTitle",
+      ] as const;
+      const editedIntelKeys = BUYER_INTEL_KEYS.filter(
+        k => typeof (updateData as Record<string, unknown>)[k] === "string",
+      );
+
       // Convert price to string for decimal field
       const setData: any = { ...updateData, updatedAt: new Date() };
+      if (editedIntelKeys.length > 0) {
+        const prior =
+          existing.buyerIntelSource && typeof existing.buyerIntelSource === "object" && !Array.isArray(existing.buyerIntelSource)
+            ? (existing.buyerIntelSource as Record<string, string>)
+            : {};
+        const merged: Record<string, string> = { ...prior };
+        for (const k of editedIntelKeys) merged[k] = "coach_stated";
+        setData.buyerIntelSource = merged;
+      }
       if (setData.price !== undefined) {
         setData.price = setData.price?.toString();
       }
@@ -636,11 +691,13 @@ OUTPUT FIELDS:
 
 - serviceDescription: a single sentence (≤ 200 chars) describing what they do, in the user's own framing. Mirror their language, not marketing language.
 
-- targetCustomer: who they help (≤ 120 chars). Capture the demographic + context the user describes (e.g., "senior leaders at fast-growing tech companies who feel exhausted after 10+ years"). If only generic ("business owners"), capture that and mark this field as low-grounding.
+- targetCustomer: who they help (≤ 200 chars). Capture the demographic + context the user describes (e.g., "senior leaders at fast-growing tech companies who feel exhausted after 10+ years"). If only generic ("business owners"), capture that and mark this field as low-grounding.
 
-- mainBenefit: the primary outcome they deliver (≤ 120 chars). Capture in the user's own outcome language.
+- mainBenefit: the primary outcome they deliver (≤ 200 chars). Capture in the user's own outcome language.
 
 - icpDescriptor: a one-line ideal-customer descriptor for downstream ICP generation (≤ 150 chars). Combine targetCustomer specificity with the emotional / situational state the user mentioned.
+
+- buyerNegatives: anything the coach states is NOT true of this buyer (≤ 300 chars). Experience they do not have, things they are not looking for, descriptions they would reject, or a proportion of the audience for whom something does not apply. Capture the coach's own phrasing. Leave empty when the coach states nothing of this kind.
 
 - confidence: "high" if all six content fields are clearly grounded in the input. "medium" if at least four are grounded and the rest are reasonable inferences from context. "low" if fewer than four are grounded — when the input is too short, too generic, or so vague the extraction would be guesswork.
 
@@ -648,7 +705,9 @@ OUTPUT FIELDS:
 
 GROUNDING RULE:
 
-Leave a field as empty string ("") if you cannot infer it with reasonable confidence from the input. The user prefers an empty field they can type into over an invented field they have to delete. Empty fields automatically go into lowConfidenceFields.`;
+Leave a field as empty string ("") if you cannot infer it with reasonable confidence from the input. The user prefers an empty field they can type into over an invented field they have to delete. Empty fields automatically go into lowConfidenceFields.
+
+A statement about what is NOT true of the buyer is information the coach gave you, not information you are missing. It belongs in buyerNegatives. It never causes a positive field to be left empty, and it is never dropped for lack of a field to hold it.`;
 
       const userPrompt = `RAW BUSINESS DESCRIPTION (entered by user):
 
@@ -677,6 +736,7 @@ Extract the structured business profile. Return JSON matching the schema.`;
                 targetCustomer: { type: "string" },
                 mainBenefit: { type: "string" },
                 icpDescriptor: { type: "string" },
+                buyerNegatives: { type: "string" },
                 confidence: { type: "string", enum: ["high", "medium", "low"] },
                 lowConfidenceFields: { type: "array", items: { type: "string" } },
               },
@@ -687,6 +747,11 @@ Extract the structured business profile. Return JSON matching the schema.`;
                 "targetCustomer",
                 "mainBenefit",
                 "icpDescriptor",
+                // Listed for consistency with the other six. NOTE (§15i): on the Anthropic
+                // tool-use path `required` is STEERING, not enforcement — nothing throws if the
+                // model omits it. The reader below treats a missing value as "", which is the
+                // same as the coach stating no negative.
+                "buyerNegatives",
                 "confidence",
                 "lowConfidenceFields",
               ],
@@ -704,6 +769,7 @@ Extract the structured business profile. Return JSON matching the schema.`;
         targetCustomer: string;
         mainBenefit: string;
         icpDescriptor: string;
+        buyerNegatives: string;
         confidence: "high" | "medium" | "low";
         lowConfidenceFields: string[];
       };
