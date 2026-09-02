@@ -7,6 +7,95 @@ given figure is marked — see §7.1, where "27 of 34" turned out to be 0 of 29.
 
 ---
 
+## 0. GROUND TRUTH — READ THIS FIRST, IT IS WHAT THE REST OF THE BLOCK ASSUMED
+
+**Added 2026-09-03 after reading this block cold and finding it could not answer five basic
+questions. Everything below was MEASURED at the moment of writing.**
+
+### 0.1 · WHERE THE WORK IS
+
+| | |
+|---|---|
+| repo | `/Users/arfeenkhan/zap-deploy` |
+| **branch** | **`railway-build`** — the production branch. **NEVER push to `main`.** |
+| HEAD at checkpoint | **`d8212b9`** — the commit containing this block |
+| `origin/railway-build` | **`d8212b9`** — identical |
+| unpushed commits | **0 — everything is pushed** |
+| deployed commit | **`d8212b9`, status SUCCESS**, verified by matching the deployment's own commit hash to HEAD |
+
+🔴 **PUSHING `railway-build` DEPLOYS TO PRODUCTION AUTOMATICALLY (~2–3 min).** There is no separate
+release step. A push is a deploy. Never push to hold work.
+
+### 0.2 · THE TWO COMMITS THIS SESSION ENDED ON
+
+| commit | what it is |
+|---|---|
+| `b23aad7` | `docs/andromeda/worked-examples/` — 10 files (§9) |
+| **`d8212b9`** | **this checkpoint** — 46 files: CHECKPOINT.md, CLAUDE.md (§15m), `llm.ts` model-identity capture, `hvcoGenerator.ts` test-harness fields, and accumulated docs/scripts |
+
+Earlier tonight, all already deployed: `0c9905a` (0108+0109) → `f0c1bed` (0110) → `4a263f9`
+(the update-path fix).
+
+### 0.3 · WHAT IS UNCOMMITTED, AND WHY — verified present at checkpoint time
+
+**Exactly four files are modified/deleted in the working tree. Nothing else is.** All four are the
+compliance gate, held back **at Arfeen's instruction, for its own deploy** (full detail at §7.3):
+
+| file | diff |
+|---|---|
+| `server/routers/meta.ts` | +38 −2 |
+| `client/src/pages/AdCopyDetail.tsx` | +8 −29 |
+| `client/src/v2/V2CampaignKit.tsx` | +4 −1 |
+| `client/src/components/PublishToMetaDialog.tsx` | **deleted** |
+
+🔴 **These exist ONLY in the working tree. A `git checkout`, `git stash`, `git reset --hard` or a
+clean clone DESTROYS them.** Verify all four are still present before any such command. If they are
+gone, they must be rebuilt — there is no commit to recover them from.
+
+### 0.4 · THE 321 UNTRACKED FILES ARE EXPECTED — do not "tidy" them
+
+`git status` shows **321 untracked entries**. That is not mess left behind; it is a **deliberate
+decision recorded here so a fresh session does not undo it**:
+
+- **~590 MB of screenshot binaries** (`docs/screenshots/` ≈ 516 MB, root-level `audit-*`/`craft-*`/
+  `b2-*` PNGs ≈ 74 MB, 298 PNGs total) were **deliberately NOT committed**. `.git` is 479 MB;
+  committing them roughly **doubles the repo permanently**, which is a decision for Arfeen, not a
+  side effect of a checkpoint. **They remain on disk, untouched.**
+- Everything non-binary that was outstanding **was** committed in `d8212b9`.
+
+**Do not bulk `git add .` in this repo.** It would commit ~590 MB of binaries in one irreversible
+step.
+
+### 0.5 · THE NEXT ACTION
+
+⚠️ **Arfeen has NOT set this order. It is CC's recommendation, and he owns the call.** The session
+ended on a clean checkpoint with no work in flight and no instruction pending.
+
+1. **Deploy the compliance gate (§7.3).** It is BUILT, uncommitted, and closes a live hole — a
+   publish with no `serviceId` bypasses the compliance axis, the fabrication check and the
+   ad-to-page match entirely. It is the only finished work not yet shipped, and it is the only item
+   that is at risk from a stray `git checkout`. **Ship it first for both reasons.**
+2. **The webinar mechanism path (§7.1).** 🔴 `0 of 29` webinar pages have a mechanism; `51 of 51`
+   sales pages do. Fix the generation path, not the rows.
+3. **The word-budget floor (§9).** Two lines: add `script_length_under_budget` on
+   `totalWords < budget.min`. The constant already exists.
+4. Then the 🟡 items at §7.2, §7.4, §7.5, §7.6.
+
+### 0.6 · VERIFY THIS BLOCK BEFORE TRUSTING IT (§15f — measure, never read)
+
+```
+git rev-parse --abbrev-ref HEAD                  # expect: railway-build
+git fetch origin railway-build && git rev-parse --short HEAD origin/railway-build
+git status --short | grep -E '^ ?[MD]'           # expect: EXACTLY the four §0.3 files
+npx tsc --noEmit 2>&1 | grep -c "error TS"       # expect: 34
+npx vitest run server/pipeline-fixes.test.ts     # expect: 412 passed
+```
+
+⚠️ **If any number here disagrees with the tree, THE TREE WINS and this block is stale.** These
+figures were true at 2026-09-03 checkpoint time and nothing keeps them true afterwards.
+
+---
+
 ## 1. WHAT THIS SESSION WAS
 
 **Three provenance defects, found one after another, all three now fixed and LIVE on production.**
