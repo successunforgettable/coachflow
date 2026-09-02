@@ -145,6 +145,36 @@ Always audit `INFORMATION_SCHEMA` before assuming Drizzle key == DB column. Comm
 - Root cause of Sprint B email regression (May 2026): showing failure shape as "Wrong:" primed the model to emit it
 - Stick to concrete-shape directives describing what the output IS
 
+### 14a. THREE SURFACES, THREE RULES (amended 2026-08-31, Arfeen)
+
+**§14 above was written as if there is one surface. There are three, and the ban applies to one of
+them.** Drawn formally because the Copy Craft research would otherwise have rebuilt the Sprint B
+regression: its central prescription is the *worked before-and-after pair*, a pair contains a
+before, and a before is a failure exemplar.
+
+| surface | what it is | rule |
+| :--- | :--- | :--- |
+| **SYSTEM / USER PROMPT** | text sent to the model at generation time | 🔴 **NO FAILURE EXEMPLAR.** Positive-only. This is what §14 bans and why |
+| **HUMAN REFERENCE DOCUMENT** | the written standard a person reads | ✅ **PAIRS REQUIRED.** Before, diagnostic middle, after. A human cannot execute an adjective |
+| **TEST FIXTURE / EVALUATION SET** | inputs to a check that emits a VERDICT, never copy | ✅ **BAD EXAMPLES REQUIRED** — they are the negative control (§15c). A checker that has never seen a failure is untested |
+
+### 🔑 THE BAN IS ON THE FAILURE EXEMPLAR, NOT ON THE EXAMPLE
+
+> **A prompt MAY carry the positive half of a pair alone** — e.g. the coach's raw ladder answer and
+> the finished title beside it, with **no wrong-shape shown**. Demonstration survives; the negative
+> exemplar does not.
+
+📌 **And "describing what went wrong with THIS output" is not a failure exemplar.**
+`_core/validator.ts` already injects `failContext` into the retry prompt, and it works — it was
+built to fix a real intermittent failure class. The distinction that makes both true:
+
+- ✅ **Specific, post-hoc, about the output just produced** — *"the `emails` field came back as a
+  string; return a literal array"*. Corrective. Allowed.
+- 🔴 **Generic, pre-emptive, a canonical wrong shape carried in the standing prompt** — *"Wrong:
+  'Our cutting-edge ecosystem leverages…'"*. Primes. Banned.
+
+**The test: could the model reproduce this text as output? If yes, it does not belong in a prompt.**
+
 ## 15. Marketing Content Default
 
 - For ALL wire sprints, design decisions, content audits, copy reviews: authorize researching the marketingskills repo (github.com/mysticaltech/marketingskills.git) + web as the PRIMARY industry-grounded reference frame, BY DEFAULT without Arfeen prompting
@@ -489,3 +519,71 @@ never has to be asked.** §15i is for when a defence has a real cost and the tra
 want to surface." A one-line `?? ""` is not clutter, and surfacing an upstream bug is what LOGGING
 is for — not what an unguarded crash in production is for. **If you want the omission visible, log
 it AND default it. Never default-by-crashing.**
+
+## 15-PARENT. ABSENCE IS NOT EVIDENCE (STANDING LAW — the parent of §15c, §15f, §15h–§15k, locked 2026-08-31)
+
+**Nine numbered laws are a list. One sentence is teachable. This is the shape all of them share:**
+
+> # **TREATING THE ABSENCE OF A SIGNAL AS A SIGNAL.**
+
+**Every entry below is one instance of it. Keep the entries — they carry the detail. But if only one
+sentence survives into a future session, make it this one.**
+
+| law | the absence that was read as evidence |
+|---|---|
+| **§15c** | a check that never fires — *no failure reported* read as *no failure* |
+| **§15f** | a baseline read from a document — *no visible drift* read as *no drift* |
+| **§15h** | a marker present in both builds — *marker found* read as *deploy landed* |
+| **§15i** | a guarantee nothing enforces — *no error seen* read as *the value is guaranteed* |
+| **§15j** | a free runtime check deleted — *never observed to fire* read as *cannot fire* |
+| **§15k** | a control that passes on silence — *nothing found* read as *correctly found nothing* |
+| **the conditional-field measurement rule** | a key never written — *count of zero* read as *nobody did it* |
+| **the swallowed enrichment error** | no log line — *no failure* read as *it ran* |
+| **`created = 0` reading as a pass** | no rows created — *no blanks* read as *no blanks produced* |
+
+### The test, in one move
+
+> **Before reading a null, a zero, an empty set or a silence as an ANSWER, ask: what would this look
+> like if the instrument were broken, disconnected, or pointed at the wrong thing?**
+> **If the answer is "exactly the same", you have measured nothing.**
+
+📌 **Why this recurs so relentlessly here:** a positive finding announces itself and gets checked. An
+absence is quiet, arrives looking like good news, and **costs nothing to accept.** Every instance
+above was found by accident rather than by looking — because nothing about an absence prompts a
+second look.
+
+---
+
+## 15k. A CONTROL THAT PASSES ON SILENCE IS NOT A CONTROL (STANDING LAW — locked 2026-08-31)
+
+**The sharpest instance of the parent law, and it was found INSIDE the control built to satisfy
+§15c.**
+
+**The instance.** `traceability-proof.ts` carries a synthetic negative control — a title built from
+nothing, asserted in advance to come back UNTRACED. It was reported ✅ PASS.
+
+**It passed because the extractor found NOTHING IN THE TITLE AT ALL.** The control could not
+distinguish:
+
+- **correctly declined to trace** — the extractor read a specific and found no source; and
+- **saw nothing** — the extractor failed to read a specific at all.
+
+**A check that cannot fail, sitting inside the control written to prevent checks that cannot fail.**
+
+### The rule
+
+> **Every control must be able to tell ABSENCE-OF-FINDING from CORRECT-NEGATIVE.**
+> **SILENCE MUST FAIL IT, NEVER PASS IT.**
+
+**The fix, concretely:** a negative control must assert **a POSITIVE artefact of the negative
+result** — here, *"yields at least one reader-subject specific, classified untraced"* — not merely
+the absence of a positive one. **"No trace found" is not a result. "Found a specific and could not
+trace it" is.**
+
+📌 **The generalisation:** any assertion of the form *"X did not happen"* passes trivially when the
+machinery that would detect X is broken. **Assert the observation, not the non-observation.**
+
+📌 **What it caught.** Without this control the run would have reported **0 of 34 = 0.0%** as the
+*corrected, more rigorous* successor to 3.3% — a cleaner number from a filtered, better-instrumented
+build. **It would have read as PROGRESS. It was a broken run**, and the extractor had silently lost
+the only traced specific in the corpus.

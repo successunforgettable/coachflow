@@ -1,3 +1,19 @@
+> # ⚪️ SUPERSEDED 2026-09-01 — DO NOT USE THIS FILE AS THE CURRENT PICTURE
+>
+> **The live index is [`docs/RESEARCH_INDEX.md`](../RESEARCH_INDEX.md), which is GENERATED from the
+> filesystem and regenerated with `python3 tools/research-index.py`.**
+>
+> **Nothing below has been edited.** Correcting a past record in place falsifies it — this file
+> stays exactly as written, as the record of what was believed on 2026-08-03.
+>
+> Known to be wrong below, per the 2026-09-01 sweep: it classifies landing-page research by
+> production method rather than content (so 51,872 words of teardowns file as "worked examples");
+> it lists **Offer** and **Unique Method** as needing research when both are recorded done
+> elsewhere; and it does not distinguish **HELD** research (Email, WhatsApp — exists, Arfeen holds
+> it, not banked) from missing research.
+
+---
+
 # Andromeda: what your research decided, what's built, and what's missing
 
 **Written for Arfeen, 3 August 2026. Plain English. Nothing was built, changed, or deployed to write

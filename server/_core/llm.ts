@@ -349,7 +349,29 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
   let response: Response | null = null;
   let lastError = "";
 
+  // ── MODEL-IDENTITY CAPTURE (2026-08-31) ────────────────────────────────────
+  // PREFERRED_MODELS is a FALLBACK LADDER: a 404/500 on the primary silently
+  // answers from a different model. Until now nothing on the success path
+  // recorded which entry replied, so every measurement this project has taken
+  // has unknown model provenance and a prompt effect could not be separated
+  // from a model switch.
+  //
+  // `_core/complianceRewrite.ts` (~line 266) already did this correctly for its
+  // own return value — reading `response.model` precisely because a fall-through
+  // is possible. This generalises that same read to every caller, as a log line.
+  //
+  // Both variables are written on EVERY attempt, so whichever `break` exits the
+  // loop leaves them describing the attempt that actually succeeded.
+  let requestedModel = "";
+  let ladderPosition = -1;
+  // Every ladder entry that DIED, with the status that killed it. The
+  // production question is "which primary failed?", and on a longer ladder
+  // that is more than one answer — so record all of them, not just the head.
+  const ladderFailures: Array<{ model: string; status: number }> = [];
+
   for (const model of PREFERRED_MODELS) {
+    requestedModel = model;
+    ladderPosition += 1;
     const body: Record<string, unknown> = {
       model,
       max_tokens: 8192,
@@ -446,6 +468,9 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
     if (response.status !== 404 && response.status !== 500) {
       throw new Error(`Claude API failed: ${response.status} – ${lastError}`);
     }
+    // Reaching here means a 404/500 and the loop is about to try the next
+    // ladder entry. Record the casualty before its identity is overwritten.
+    ladderFailures.push({ model, status: response.status });
   }
   // (end of model retry loop)
 
@@ -454,6 +479,52 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const claudeResponse = await response.json() as any;
+
+  // ── MODEL-IDENTITY LOGGING — SUCCESS PATH, UNCONDITIONAL ───────────────────
+  // One greppable line per call. `responded` is the model that actually
+  // produced these tokens; `requested` is the ladder entry we asked for.
+  //
+  // ⚠️ THE TWO SIGNALS ARE NOT THE SAME STRENGTH, AND MUST NOT BE READ AS ONE:
+  //   • `fellThrough` (ladderPosition > 0) is UNAMBIGUOUS — the primary model
+  //     failed with a 404/500 and a different model answered. This is the
+  //     silent switch the logging exists to expose.
+  //   • `switched` (responded !== requested) is WEAKER — it also fires benignly
+  //     when an alias resolves to a dated id (asking for `claude-sonnet-4-6`
+  //     and being answered by a pinned build). Informative, not an alarm.
+  // Collapsing them would turn routine alias resolution into a false ladder
+  // fallback, which is the §15h failure — a marker that cannot discriminate.
+  // ⚠️ `requestedModel` is the WINNING attempt, NOT what the caller asked for.
+  // The first version of this logging reported only that, and the arm-1 control
+  // line then read "requested claude-sonnet-4-6" when the caller had in fact
+  // requested a bogus model — the identity of the model that DIED was absent
+  // from the log entirely. `origin` and `failed` exist to close that: origin is
+  // the head of the ladder that actually ran (PREFERRED_MODELS already carries
+  // the caller's override prepended, so this is correct in both cases), and
+  // `failed` names every casualty with the status that killed it.
+  const respondedModel = typeof claudeResponse?.model === "string" ? claudeResponse.model : "UNREPORTED";
+  const fellThrough = ladderPosition > 0;
+  const switched = respondedModel !== requestedModel;
+  const originModel = PREFERRED_MODELS[0];
+  const failedList = ladderFailures.map(f => `${f.model}:${f.status}`).join(",") || "none";
+  console.log(
+    `[LLM][model] origin=${originModel} winner=${requestedModel} responded=${respondedModel} ` +
+    `failed=[${failedList}] ` +
+    `ladder=${ladderPosition}/${PREFERRED_MODELS.length - 1} switched=${switched} fellThrough=${fellThrough} ` +
+    `stop_reason=${claudeResponse?.stop_reason ?? "UNREPORTED"} ` +
+    `in=${claudeResponse?.usage?.input_tokens ?? "?"} out=${claudeResponse?.usage?.output_tokens ?? "?"}`
+  );
+  if (fellThrough) {
+    console.warn(
+      `[LLM][model] MODEL PROVENANCE CHANGED — asked for ${originModel}, answered by ${respondedModel} ` +
+      `after ${ladderPosition} fall-through${ladderPosition === 1 ? "" : "s"}; died: [${failedList}]. ` +
+      `A measurement spanning this call cannot separate a prompt effect from a model switch.`
+    );
+  } else if (switched) {
+    console.log(
+      `[LLM][model] alias resolved — asked ${requestedModel}, answered by ${respondedModel} ` +
+      `(ladder position 0, so this is resolution, NOT a fallback).`
+    );
+  }
 
   // Extract content. For tool-use callers, find the tool_use block in
   // the response's content array and JSON.stringify its `input` field
@@ -612,5 +683,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const forgeResult = (await response.json()) as InvokeResult;
+  // Provenance for the non-Anthropic path too, so "which model answered?" has
+  // an answer on every branch rather than only the one production uses. This
+  // branch is unreachable while ENV.anthropicApiKey is set; the line costs
+  // nothing and removes a blind spot rather than leaving one (§15j).
+  console.log(`[LLM][model] provider=forge requested=gemini-2.5-flash responded=${(forgeResult as any)?.model ?? "UNREPORTED"}`);
+  return forgeResult;
 }

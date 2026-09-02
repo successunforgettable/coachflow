@@ -30,7 +30,28 @@ export async function runHvcoGeneration(input: {
   hvcoTopic: string;
   powerMode?: boolean;
   liteMode?: boolean;
-}): Promise<{ hvcoSetId: string }> {
+  /**
+   * TEST-HARNESS ONLY — both of the following exist so the traceability proof can
+   * measure the title prompt without writing to production. Neither appears in any
+   * tRPC router input schema, and neither is reachable from any product path:
+   * `hvcoTitles.generate` and the orchestration callers construct this object
+   * field-by-field and never spread caller-supplied input into it.
+   *
+   * `persist: false` suppresses the DB write and the quota increment. Verified by
+   * counting hvcoTitles across the run, not by assuming (§15c).
+   */
+  persist?: boolean;
+  /**
+   * TEST-HARNESS ONLY. Substitutes the product name for THIS CALL so a clean
+   * before/after read is possible without writing `services.name` on production.
+   *
+   * 🔴 This value reaches an LLM prompt. It is therefore reachable ONLY from
+   * `server/scripts/`, never from a router input schema, and must never be wired
+   * to anything a client can supply — that is the no-client-supplied-prompt-text
+   * guardrail, and this parameter is the exact shape it forbids.
+   */
+  nameOverride?: string;
+}): Promise<{ hvcoSetId: string; titles?: string[] }> {
   const { getDb, createHvcoTitles, incrementHvcoCount } = await import("./db");
   const { services, idealCustomerProfiles, sourceOfTruth, campaigns, campaignKits } = await import("../drizzle/schema");
   const { eq, and } = await import("drizzle-orm");
@@ -124,6 +145,9 @@ The titles will name a live in-person workshop, mastermind, or training day. For
     : '';
 
   // Field fallbacks
+  // nameOverride is applied HERE and nowhere else, so every prompt that
+  // interpolates `service.name` sees the same value. Test-harness only.
+  const resolvedProductName = input.nameOverride?.trim() || service.name || "";
   const resolvedTargetMarket = input.targetMarket?.trim() || service.targetCustomer || "";
   const resolvedHvcoTopic = input.hvcoTopic?.trim() || service.hvcoTopic || "";
 
@@ -135,7 +159,7 @@ The titles will name a live in-person workshop, mastermind, or training day. For
   // ── 1/4: Long Titles (20 variations × multiplier) ──────────────────────────
   const longTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO (High-Value Content Offer) titles.
 
-Product: ${service.name}
+Product: ${resolvedProductName}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
@@ -203,7 +227,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
   // ── 2/4: Short Titles (20 variations × multiplier) ─────────────────────────
   const shortTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
-Product: ${service.name}
+Product: ${resolvedProductName}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
@@ -262,7 +286,7 @@ Return ONLY a JSON array of ${20 * countMultiplier} title strings, nothing else.
   // ── 3/4: Power Mode Titles (30 always — no multiplier) ─────────────────────
   const powerModeTitlesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling HVCO titles.
 
-Product: ${service.name}
+Product: ${resolvedProductName}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
@@ -313,7 +337,7 @@ Return ONLY a JSON array of 30 title strings, nothing else.`;
   // ── 4/4: Subheadlines (20 always — no multiplier) ──────────────────────────
   const subheadlinesPrompt = `${sotContext ? `${sotContext}\n\n` : ''}You are an expert copywriter creating compelling subheadlines for HVCOs.
 
-Product: ${service.name}
+Product: ${resolvedProductName}
 Target Market: ${resolvedTargetMarket}
 HVCO Topic: ${resolvedHvcoTopic}
 ${icpContext ? `\n${icpContext}\n` : ''}
@@ -355,6 +379,16 @@ Return ONLY a JSON array of 20 subheadline strings, nothing else.`;
       hvcoTopic: input.hvcoTopic,
     });
   });
+
+  // TEST-HARNESS DRY RUN. `persist` defaults to true, so every product path is
+  // byte-unchanged; only a caller that explicitly passes `persist: false` — which
+  // is reachable only from server/scripts — takes this branch. Returns the titles
+  // in memory so the harness has something to measure, and skips the quota
+  // increment and the kit auto-select along with the insert.
+  if (input.persist === false) {
+    console.log(`[hvco] DRY RUN — persist:false. ${allTitles.length} titles generated, ZERO rows written, quota untouched.`);
+    return { hvcoSetId, titles: allTitles.map((t: any) => String(t?.title ?? "")).filter(Boolean) };
+  }
 
   await createHvcoTitles(allTitles);
   await incrementHvcoCount(input.userId);

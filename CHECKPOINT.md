@@ -1,4 +1,337 @@
-# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-02
+# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-03 (night of 09-02/03)
+### supersedes the 2026-09-02 block below, which is retained and marked, not deleted
+
+**Every number in this block was MEASURED against production at write time (§15f), not recalled.
+Where a figure I was given differed from what I measured, the measurement is recorded and the
+given figure is marked — see §7.1, where "27 of 34" turned out to be 0 of 29.**
+
+---
+
+## 1. WHAT THIS SESSION WAS
+
+**Three provenance defects, found one after another, all three now fixed and LIVE on production.**
+They are the same defect wearing three costumes, which is why §15m was drawn from them rather than
+from any one of them.
+
+| # | column | the false claim it let through | commit | live |
+|---|---|---|---|---|
+| 1 | `services.nameSource` | a blank service name, unattributed | `298c6c6` + ladder | ✅ |
+| 2 | `services.buyerIntelSource` | LLM invention labelled the coach's own words | `0c9905a` → **`4a263f9`** | ✅ |
+| 3 | `testimonials.scope` / `.source` | seeded demo rows rendered as the coach's proof | `f0c1bed` | ✅ |
+
+**Migrations applied to production this session: 0107, 0108, 0109, 0110.** Each applied under its
+own single-purpose authorisation from Arfeen, read back after writing, with a negative control.
+
+---
+
+## 2. THE THREE FIXES, IN THE ORDER THEY WERE FOUND
+
+### 2.1 · `nameSource` — the name ladder (0107)
+
+Three tiers, tier 2 deterministic, **never blank, always tagged**. `.min(1)` was deliberately
+REMOVED from `createServiceSchema` — it rejects a blank where the ladder guarantees one never
+survives, and the two cannot both run. `.trim()` added to `updateServiceSchema.name` to close the
+whitespace hole on the update path.
+
+### 2.2 · `buyerIntelSource` — and the inversion that shipped inside the fix (0108, then 4a263f9)
+
+0108 added the column and tagged `expandProfile` output `extracted`. **The update path then
+inverted it.** The tag was applied on this test:
+
+```
+BUYER_INTEL_KEYS.filter(k => typeof updateData[k] === "string")
+```
+
+**Presence in a payload read as authorship.** Every form resends the fields it rendered —
+`CreateServiceStep.tsx:183` resends all seven, loaded straight from `result.expanded`. A coach who
+clicked through the review screen **without touching a character** had the entire LLM enrichment
+restamped as their own words. `V2GeneratorWizard.tsx:1098` resends `painPoints`;
+`ServiceDetail.tsx` resends three on any save, including a category-only change.
+
+**That tag is not cosmetic.** `buildBuyerIntelBlock` splits on it: `coach_stated` fields are emitted
+FIRST as *"the coach's own words about the buyer they actually serve … this wins"*, with authority
+to override everything else. The defect promoted invention into ground truth and then instructed
+the ICP generator to defer to it.
+
+**The fix (`4a263f9`).** Detection is now a **diff against the stored row**, which the ownership
+check has already loaded, so it costs nothing. Both sides normalised — trim, collapse internal
+whitespace — so a cosmetic round-trip cannot manufacture authorship. Extracted as
+`detectEditedIntelKeys`, a pure function, provable without a database.
+
+**The two-arm proof, and why one arm would have been worthless.** Arm A (nothing changed, all seven
+resent) → **0 edits**. Arm B (exactly one field changed) → **1 edit**. *"Nothing tagged"* is what a
+working comparison AND a dead one both produce, so the test asserts the arms **DIFFER** rather than
+trusting either reading (§15k). One test reproduces the old presence behaviour beside the new one:
+**seven versus zero on identical input.**
+
+⚠️ **The unit test was not the check that mattered.** A passing test on a well-shaped fixture proves
+the function, not the wiring. Had `existing` not carried those seven fields, `stored[k]` would be
+`undefined` everywhere, every present field would read as different, and **the defect would
+reproduce exactly with all 13 tests still green.** Verified separately: all seven are real
+top-level `text`/`varchar` columns on `services`, and the query is an unrestricted `select()`.
+
+**Production exposure measured, not assumed: ZERO.** 3 of 139 services carry `buyerIntelSource` at
+all (324, 325, 326); every key reads `extracted`; `coach_stated` count 0. Confirmed with a positive
+control — the same subquery returns **7 for `extracted`** on each row, so the zero is a reading, not
+a broken instrument. Nothing to revert, therefore no genuine edits at risk.
+
+### 2.3 · `testimonials.scope` / `.source` (0110) — the one that was live and public
+
+`partitionProof` promoted **every row that was not service-specific** into the coach band:
+
+```
+if (serviceId != null && r.serviceId === serviceId) offer.push(...)
+else coach.push(...)          // ← unconditional promotion
+```
+
+Ten seeded demo rows therefore rendered as the coach's own proof on live public URLs. Now:
+
+```
+if (r.source !== "coach_supplied") continue;                    // untagged rows DROP
+if (... && r.scope === "service_specific") offer.push(...)
+else if (r.scope === "coach_portable")     coach.push(...)
+```
+
+**Display is opt-in. An unscoped row is not the coach's proof.** NULL resolves to the
+least-privileged outcome on all three columns, by design.
+
+---
+
+## 3. ⚖️ §15m — ABSENCE IS NOT ENDORSEMENT (STANDING LAW, locked 2026-09-03)
+
+**Recorded in full at its own heading below. Restated here because it is the through-line of the
+whole session.**
+
+> **A record that was never tagged was never approved. Untagged is not "cleared" — it is UNKNOWN,
+> and unknown must resolve to the least-privileged outcome, never the most.**
+
+### THE THREE INSTANCES
+
+| # | the untagged thing | what the code did with it | what it should have done |
+|---|---|---|---|
+| 1 | a service with **no name** | invented one downstream, unattributed | tier-2 deterministic name, **tagged** |
+| 2 | a buyer-intel field with **no provenance** | treated as `coach_stated` — maximum authority | treat as `extracted` — a hypothesis |
+| 3 | a testimonial with **no scope** | rendered as the coach's own proof, publicly | **drop it** |
+
+**In all three the absence of a marker was read as permission.** Each was a different table, a
+different author, a different sprint — which is what makes it a law rather than a bug.
+
+📌 **Why it recurs:** adding a provenance column feels like the work is done. It is not. **The
+column is inert until every read path decides what NULL means** — and NULL arrives looking like the
+permissive answer because nothing objected.
+
+📌 **Family:** §15c a check that cannot fail · §15d machinery nothing reaches · §15f a stale
+baseline · §15h a marker that cannot distinguish · §15i a guarantee nothing enforces · §15j a free
+check deleted · §15k a control that passes on silence · **§15m an absent tag read as approval.**
+Parent: **§15-PARENT, absence is not evidence.**
+
+### THE TEST — apply before any new provenance column ships
+
+> **State what NULL means on every read path, before the column ships. If NULL has not been
+> assigned a meaning, it already has one — the permissive one.**
+
+---
+
+## 4. THE TAKEDOWN — 18 LIVE PAGES CARRYING FABRICATED TESTIMONIALS
+
+**17 pages + LP 243 taken down earlier = 18 total.** KV entries deleted from namespace
+`dfb6bc40747d471086075865d815ecd0`, rows cleared, then **each URL re-fetched and confirmed 404**:
+
+`214` · `206` · `208` · `209` · `177` · `215` · `216` · `217` · `172` · `220` · `221` · `212` ·
+`235` · `236` · `239` · `240` · `241` — **non-404 count: 0.** Published pages **41 → 24**;
+`publicSlug`/`publicUrl` set on **0 of 17**.
+
+### 🔴 HOW THIS WAS MISSED THE FIRST TIME — the methodology failure that matters more than the bug
+
+I grepped the published HTML **for Tony Robbins' name**, did not find it, and reported the page
+clean. Five or six fabricated testimonials carrying percentage claims were live on that page.
+**I checked for what I expected to find instead of reading what was there.**
+
+> **The corrected method, used for every check since: ENUMERATE, then set-compare.** Extract *all*
+> `&ldquo;…&rdquo;` strings and *all* short text nodes in each band, then compare the sets.
+> **Never grep for the name you expect.** Searching for an expected string can only ever confirm a
+> hypothesis; it cannot discover what is actually rendering. This is §15-PARENT applied to reading
+> a page: *not finding Robbins* looked identical to *the band being clean*.
+
+### THE PURGE — 10 seeded rows removed, library 14 → 4
+
+**Restore point: `~/Downloads/testimonials-1-10-restore.sql`** — verified present at checkpoint
+time, **3,522 bytes, 10 lines, one `INSERT` per row** including `id`, so the rows restore with
+their original identifiers.
+
+⚠️ **That file is OUTSIDE the repo and is not under git.** It survives only as long as
+`~/Downloads` does. If those rows ever need to matter again, move it somewhere durable first.
+
+### BOTH PARTITIONS PROVEN RENDERING — measured at checkpoint time
+
+`testimonials` now holds **exactly 4 rows, 0 with NULL scope, 0 with NULL source, 4
+`coach_supplied`**:
+
+| id | serviceId | scope | source | name | band |
+|---|---|---|---|---|---|
+| 11 | 324 | `service_specific` | `coach_supplied` | Basim Maghribi | **offer** |
+| 12 | 324 | `service_specific` | `coach_supplied` | Praveen Nagraj | **offer** |
+| 13 | 324 | `service_specific` | `coach_supplied` | Rochelle Listner | **offer** |
+| 14 | — | `coach_portable` | `coach_supplied` | Tony Robbins | **coach** |
+
+LP 243 rendered **37,695 bytes, four quotes total**, offer band `{Basim, Praveen, Rochelle}` and
+coach band **exactly `{Tony Robbins}`**. **This is the first successful render of the coach
+partition** — and note that a page rendering *no* testimonials would have been the same green as a
+page rendering the right ones, which is why both bands had to be enumerated, not merely counted.
+
+---
+
+## 5. `buyerNegatives` (0109) — THE INTAKE NOW HAS A SLOT FOR A STATED NEGATIVE
+
+Every one of the six extracted fields was positively framed, so a negative the coach actually said
+had nowhere to go and was **discarded**. `extractFromText` now returns **seven** fields, with a
+third GROUNDING RULE state for the negative. `expandProfile` receives it as a constraint block
+**before** it invents anything.
+
+### THE PROOF — the sentence the old build threw away
+
+Measured on production at checkpoint time. `buyerNegatives` is **NULL on services 318–323** (all
+predate 0109) and **populated on 324, 325, 326**. Service 324 captured:
+
+> **"Around 9 in 10 have never touched crypto and are not day traders. Not looking for signals,
+> tips, or anything automated. Not looking for another course or book to leave unfinished."**
+
+**That sentence is the whole argument for 0109.** It is the coach's own words, it is decisive for
+who the campaign must not address, and on the build that shipped this morning it went in the bin —
+silently, with no field to hold it and no error to notice.
+
+Also shipped: `buildBuyerNegativesBlock()` is emitted **above** the intel blocks, and
+`buildBuyerIntelBlock` is split into a coach ground-truth block and a clearly-labelled hypothesis
+block, in Arfeen's approved wording.
+
+---
+
+## 6. THE THREE CAMPAIGNS BUILT TONIGHT — 324, 325, 326
+
+Built through the **real UI** on zapcampaigns.com. Arfeen logged in himself; his credentials were
+never typed or handled.
+
+| service | name | category | created |
+|---|---|---|---|
+| **324** | The Digital Asset Blueprint | speaking | 09-02 13:49 |
+| **325** | The Digital Asset Blueprint | speaking | 09-02 14:04 |
+| **326** | The Digital Asset Blueprint | speaking | 09-02 14:11 |
+
+Audiences: professionals · entrepreneurs · women. Constraints held throughout: **no financial
+claims** (no number, timeframe, guarantee, or promise that wealth will result), and **the paid
+programme sold in the room is named nowhere** in any asset, record or prompt.
+
+### LP 243 IS LIVE, ON A REAL TEMPLATE, WITH REAL TESTIMONIALS
+
+| field | value |
+|---|---|
+| serviceId | **324** |
+| pageType | `webinar_registration` |
+| publishedStyle | **`webinar_rajsekar_coaching`** — the frozen replica, not a React preview |
+| renderedBuild | `f0c1bed` |
+| slug | `the-digital-asset-blueprint-243` |
+
+⚠️ **Earlier in the session I reported LP 243 screenshots as "the real page". They were
+`LandingPageDetail.tsx`, a React preview — no frozen template had run.** The row above is the
+corrected, measured state.
+
+---
+
+## 7. WHAT REMAINS OPEN
+
+### 7.1 🔴 THE WEBINAR MECHANISM SLOT IS EMPTY — and it is worse than the figure I was given
+
+I was told "27 of 34 kits". **Measured at checkpoint time it is categorical:**
+
+| pageType | non-empty `uniqueMechanism` | total |
+|---|---|---|
+| `webinar_registration` | **0** | **29** |
+| `sales_page` | **51** | **51** |
+
+**Every webinar page has an empty mechanism. Every sales page has one.** The same probe, run on
+both, gives opposite answers — which is the control that makes this a finding rather than a broken
+query. This is not a scattered data-quality problem across some kits; it is **a categorical gap in
+the webinar generation path**. Fix the path, not the rows.
+
+*(Note the shape: `27 of 34` reads as a partial problem worth deferring. `0 of 29` reads as a broken
+feature. Same defect, and the second framing is the true one.)*
+
+### 7.2 🟡 `lead_magnet` offers resolve to `free_event`
+
+Carried forward, not re-measured this session. Re-measure before acting (§15f).
+
+### 7.3 🟡 THE COMPLIANCE GATE IS BUILT AND UNDEPLOYED — **deliberately left uncommitted**
+
+Four files, held back from tonight's commits **at Arfeen's instruction, for their own deploy**:
+
+- `server/routers/meta.ts` (+38 −2) — the server-side gate; refuses a publish without `serviceId`
+- `client/src/pages/AdCopyDetail.tsx` (+8 −29) — removes the no-`serviceId` publish path
+- `client/src/v2/V2CampaignKit.tsx` (+4 −1)
+- `client/src/components/PublishToMetaDialog.tsx` — **deleted**
+
+The defect it closes: a publish with no `serviceId` **skipped the compliance gate entirely** — the
+compliance axis, the fabrication check and the ad-to-page match all bypassed. **These four files are
+still in the working tree, uncommitted, and must be verified as still present before any future
+`git checkout` or `stash` in this repo.**
+
+### 7.4 🟡 THE SIX-FIELD INTAKE CONFIRM SCREEN HAS BEEN UNREACHABLE SINCE `a3e83d6` (June)
+
+A §15d instance: the screen exists, nothing routes to it.
+
+### 7.5 🟡 TWO OF THE THREE `partitionProof` CALLERS ARE UNTESTED
+
+`injectRealTestimonials` (the only caller of `partitionProof`) has three callers:
+
+| caller | status |
+|---|---|
+| `server/landingPagePublisher.ts:114` | ✅ **proven tonight** via LP 243 |
+| `server/routers/complianceRewrites.ts:335` | ❌ untested |
+| `server/scripts/step4c-multiad-publish.ts:345` | ❌ untested |
+
+The fix is correct in the function. **Two paths reach it that no one has watched.**
+
+### 7.6 🟡 OTHER CARRIED ITEMS
+
+- `asSeenIn` / `proofMetrics` are read by **none** of the five templates
+- The cold-weighted distribution `3/3/1/1/0` vs `2/3/2/1/0` remains an **open three-way conflict**
+- Orphaned services 320–323
+
+---
+
+## 8. GATES AT CHECKPOINT TIME — measured, not recalled
+
+| gate | value |
+|---|---|
+| `npx tsc --noEmit` errors | **34** (baseline held) |
+| `server/pipeline-fixes.test.ts` | **412 passed** |
+| `server/icpGrounding.test.ts` | **46 passed** |
+| `server/lib/realTestimonials.test.ts` | **13 passed** |
+| `server/routers/services.editDetection.test.ts` | **13 passed** (new tonight) |
+
+⚠️ **A trap worth recording.** `server/_core/icpGrounding.test.ts` **does not exist** — the file is
+`server/icpGrounding.test.ts`. Passing the wrong path to vitest **runs nothing and reports success**,
+which silently turned a 59-test baseline into 13. If a suite total drops without explanation, check
+the path before believing the number.
+
+---
+
+## 9. ALSO BANKED TONIGHT — `docs/andromeda/worked-examples/`
+
+Ten files (`b23aad7`): eight verbatim campaign documents plus a README and
+**`SCRIPT_GENERATOR_REQUIREMENTS.md`**, which converts the eight defects found when Arfeen's
+hand-written scripts were graded against the research into generator requirements — split into what
+a validator can measure and what needs the prompt, with the two deliberate departures (no celebrity
+beside a regulated offer; no guarantee on a money offer) recorded as **decisions, not omissions**.
+
+**One finding there is new and cheap to fix:** `WORD_BUDGET_TABLE` has a floor and nothing reads it.
+`validateScriptStructure` tests `totalWords > budget.max` and never `< budget.min`, so a 40-word
+thirty-second script passes as cleanly as an 85-word one. All three banked 30s scripts measure
+**below** the 75-word floor while the document reports them as comfortably compliant.
+
+---
+---
+
+# 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-02 (retained, not deleted)
 ### supersedes the 2026-09-01 block below, which is retained and marked, not deleted
 
 **A fresh terminal with no memory of this session can restart from this block alone. Every number
@@ -1691,6 +2024,330 @@ so the size of the fix is not overestimated later.
 
 📌 **Not to be confused with putting Auto Mode back on a route.** That is a separate decision and
 was explicitly deferred by Arfeen on 2026-09-02.
+
+---
+
+# ⚖️ §15m — ABSENCE IS NOT ENDORSEMENT (STANDING LAW — locked 2026-09-03)
+
+**The child of §15-PARENT, and the one that keeps recurring. Named because THREE separate
+provenance systems, in three separate files, made the identical mistake within six days — and the
+fourth will make it too unless the shape has a name.**
+
+> # **AN UNSET PROVENANCE FIELD IS NOT PERMISSION.**
+> **"We don't know where this came from" must never resolve to "the coach vouches for it."**
+
+## THE THREE INSTANCES
+
+| # | file | the absence | what it was read as | what it cost |
+|---|---|---|---|---|
+| **1** | `server/routers/services.ts` — `nameSource` | a blank/NULL name provenance | **`coach_stated`** — the coach named their programme | 38 of 131 services shipped `Product: ` into live title prompts |
+| **2** | `server/routers/services.ts` — `buyerIntelSource` | a buyer-intel key merely PRESENT in a form payload | **`coach_stated`** — the coach edited it | `CreateServiceStep` round-trips all seven enrichment fields; a coach clicking through the review screen converts the whole invention into testimony |
+| **3** | `server/lib/realTestimonials.ts` — `partitionProof` | a testimonial with `serviceId IS NULL` | **portable COACH PROOF** — endorsed for any page | **18 live public pages** carried fabricated testimonials with invented percentage claims under a real coach's name |
+
+**Three fields. Three files. Three different NULLs. One reading: absence → endorsement.**
+
+## WHY IT KEEPS HAPPENING
+
+📌 **The permissive branch is always the shorter code.** `else coach.push(...)` is fewer characters
+than a gate. `typeof x === "string"` is fewer than a comparison against the stored value. The
+defect is what you get by NOT writing the check — so it arrives by default, in code that looks
+clean, and reviews as tidy.
+
+📌 **It reads as generosity.** Every instance was written to AVOID LOSING something: don't lose the
+coach's cross-service proof; don't lose their edit; don't leave the name blank. The intent was
+protective every time. **The harm is that "don't lose it" silently became "display it as
+endorsed."**
+
+📌 **It fails in the expensive direction.** A dropped testimonial costs a little credibility. A
+fabricated one on a public page under a real coach's name is a compliance event, a trust event,
+and — in a financial-promotions market like the UAE — a regulatory one.
+
+## THE RULE
+
+> **A provenance value must be WRITTEN by the party whose authority it claims, at the moment they
+> exercise it. It may never be INFERRED from the absence of a contrary signal.**
+>
+> **Every provenance field's unset state must resolve to the LEAST privileged outcome.** For a
+> display gate that means: NOT SHOWN. For an authority tag: NOT AUTHORITATIVE. For a claim of
+> coach authorship: NOT THE COACH'S.
+
+### THE TEST — apply it to every new provenance column, before it ships
+
+> **1. Name the party whose authority the value claims.**
+> **2. Name the exact line where THAT PARTY supplies it, and the screen they are on when they do.**
+> **3. Set the unset state to the least privileged outcome, and write a test that a fully-unset row
+>    gets that outcome.**
+>
+> **If step 2 has no answer, the column is decoration and the code will infer the value instead —
+> which is this defect.**
+
+📌 **The test that catches it:** feed the gate a row with EVERY provenance field NULL and assert it
+gets nothing. `realTestimonials.test.ts` now opens with exactly that case — *"drops UNTAGGED rows
+entirely — the pre-0110 state renders nowhere."* A gate without that test is untested in the only
+direction that has ever mattered here.
+
+📌 **Relationship to the family.** §15-PARENT is *absence read as a signal*. §15m is its sharpest
+form: **absence read as PERMISSION**, where the cost is not a wrong measurement but published
+fabrication. §15c is a check that cannot fail; §15d is machinery nothing reaches; §15i is a
+guarantee nothing enforces. **§15m is a permission nobody granted.**
+
+📌 **Standing consequence:** `nameSource`, `buyerIntelSource`, `scope` and `source` all now resolve
+their NULL to the least-privileged outcome. **Any future provenance column must do the same, and
+must ship with the all-NULL test.** The `buyerIntelSource` update path (recorded below) is the one
+instance still OPEN — it fails in the dangerous direction today.
+
+---
+
+# ✅ CLOSED 2026-09-03 by `4a263f9` — 0108 INVERTS ITSELF ON THE UPDATE PATH (recorded 2026-09-02, CC's own defect)
+
+> **FIXED.** Presence-in-payload replaced by a normalised diff against the stored row
+> (`detectEditedIntelKeys`). Two-arm proof: 0 edits when nothing changed, 1 when one field changed,
+> arms asserted to DIFFER. Production exposure measured at **zero**. See §2.2 of the live block.
+> The diagnosis below stands and is why the fix took the shape it did.
+
+**The provenance fix shipped tonight can label enrichment output as the coach's own words — which
+is the exact fault 0108 exists to prevent.** Found by reading `ServiceDetail`'s update payload
+while running campaign one, not by a test.
+
+## THE MECHANISM
+
+`services.update` (`server/routers/services.ts`) tags a buyer-intel field `coach_stated` whenever
+that key arrives as a **string**:
+
+```js
+const editedIntelKeys = BUYER_INTEL_KEYS.filter(
+  k => typeof (updateData as Record<string, unknown>)[k] === "string",
+);
+```
+
+**"Present in the payload" is not "edited by the coach."** Every client form resends the fields it
+rendered, whether or not the coach touched them. So a save tags fields the coach merely looked at —
+or never looked at.
+
+## WHERE IT BITES — THREE SURFACES, MEASURED
+
+| surface | buyer-intel keys resent on update | severity |
+|---|---|---|
+| `client/src/components/onboarding/CreateServiceStep.tsx:183` | **ALL SEVEN** — `updateService.mutateAsync({ id, ...reviewFields })` where `reviewFields` is populated **directly from `result.expanded`**, i.e. expandProfile's own output | 🔴🔴 **worst** |
+| `client/src/v2/V2GeneratorWizard.tsx:1098` | `painPoints` (guarded on non-empty) | 🔴 |
+| `client/src/pages/ServiceDetail.tsx:150-178` | `whyProblemExists`, `avatarName`, `avatarTitle` — sent on **any** save, including a category-only change | 🔴 |
+
+**`CreateServiceStep` is the inversion in its purest form:** the review screen loads expandProfile's
+output into a form and saves it straight back. Under tonight's code every one of the seven is then
+stamped `coach_stated`, and the ICP prompt duly presents it as *"the coach's own words about the
+buyer they actually serve … this wins."* **A coach who clicks through the review screen without
+editing a character converts the entire invention into testimony.**
+
+## WHY SERVICE 324 ESCAPED IT
+
+Campaign one changed only the category via `ServiceDetail`, and at that moment `expandProfile` had
+not yet run, so `whyProblemExists`, `avatarName` and `avatarTitle` were empty. The form sends
+`formData.X || undefined`, which omits an empty string, so no buyer-intel key reached the payload
+and nothing was tagged. **Verified by reading the row: `services.324.buyerIntelSource` was NULL
+after the save.**
+
+⚠️ **That escape is an accident of ordering, not a safeguard.** The same edit on any service whose
+enrichment has already run — which is every one of the 136 rows in production — mis-tags on save.
+
+## THE SHAPE
+
+📌 **It is the §15-parent trap inside the fix built to stop it.** `typeof x === "string"` reads
+"the key is present" as "the coach supplied it". Presence is not authorship, exactly as absence is
+not evidence.
+
+📌 **It fails in the DANGEROUS direction.** The resolver's default was chosen conservatively —
+unknown resolves to `extracted`, never `coach_stated`, because over-claiming is the harm. This path
+over-claims anyway, and does it on the one surface built to display generated content.
+
+📌 **Live in production now.** The code shipped in `0c9905a` and deployed 2026-09-02.
+
+## THE FIX — DEFERRED BY ARFEEN UNTIL THE THREE CAMPAIGNS ARE BUILT
+
+**The open question, to be answered in the proposal:** how the update path can distinguish a field
+the coach actually EDITED from one the form merely RESENT. Presence cannot carry that signal, so it
+has to come from somewhere else — a comparison against the stored value, an explicit provenance
+argument from the caller, or a narrower set of surfaces permitted to claim `coach_stated` at all.
+**Do not fix by widening the tagging; the defect is that tagging is too eager already.**
+
+---
+
+# ⚠️ THE COLD-WEIGHTED DISTRIBUTION IS 3/3/1/1/0 — AND WHICH ONE IS RIGHT IS **OPEN** (recorded 2026-09-02)
+
+**Recorded because 2/3/2/1/0 has been quoted in handovers and is WRONG as a statement of what the
+code does — and because the underlying question is genuinely unresolved, not settled.**
+
+## WHAT IS IMPLEMENTED — read from the code, 2026-09-02
+
+`server/_core/conceptAxis.ts:94-100`:
+
+```js
+export const COLD_WEIGHTED_STAGE_MIX: Readonly<Record<AwarenessStage, number>> = {
+  unaware: 3, problem_aware: 3, solution_aware: 1, product_aware: 1, most_aware: 0,
+};
+```
+
+> ## **3 / 3 / 1 / 1 / 0** — unaware · problem_aware · solution_aware · product_aware · most_aware
+
+Allocated by `awarenessPlanForCount(count)` (`:218`), a pure function of `count` — largest-remainder
+apportionment over that constant. It reads nothing else: not the ICP, not the service, not the
+niche.
+
+## 🔴 2/3/2/1/0 IS WRONG AS A DESCRIPTION OF THE CODE
+
+It was quoted in a handover on 2026-09-02 as one of five settled Andromeda properties. It is not
+what the code does. **The spec already caught this and says so** —
+`docs/andromeda/image-rule-spec.md:526`:
+
+> ⚠️ **Two caveats kept honest.** First, the distribution actually implemented is **3/3/1/1/0**, not
+> the 2/3/2/1/0 sometimes quoted, and §5.7 records a genuine three-way conflict in the corpus about
+> which distribution is right — **still open**.
+
+## 🟡 AND IT IS OPEN, NOT SETTLED
+
+**§5.7 of the image-rule spec records a THREE-WAY CONFLICT IN THE CORPUS about which distribution is
+correct.** So there are three distinct states here and they must not be collapsed:
+
+| | |
+|---|---|
+| what the code does | **3/3/1/1/0** — certain, read from source |
+| what has been quoted | 2/3/2/1/0 — **wrong about the code** |
+| what is correct | **UNRESOLVED** — three-way corpus conflict, §5.7 |
+
+📌 **Being wrong about the code and being wrong about the research are different errors.** 2/3/2/1/0
+is definitely the first. Whether 3/3/1/1/0 is the second is exactly what §5.7 leaves open.
+
+📌 **NOT CHASED, deliberately** (Arfeen, 2026-09-02). Resolving the three-way conflict is research
+work and would change the stage mix of every batch. It is recorded here so the next person quoting a
+distribution quotes the right one and knows it is contested — not so that anyone changes it.
+
+📌 **Nothing in 0108 or 0109 touches this.** Confirmed by reading the function bodies: the awareness
+plan, the sub-type plan (`subTypePlanFor`, a pure function of the awareness plan), the concept count
+(`DEFAULT_CONCEPT_COUNT = 8`) and the P.D.A.F. 2-of-4 rule are all independent of ICP and service
+content. Andromeda suites re-run after both builds: `conceptPlan` + `conceptValidator` +
+`conceptGenerator` 48/48, `pdafGate` green.
+
+---
+
+# ✅ CLOSED 2026-09-03 by `0c9905a` (migration 0109) — THE INTAKE HAS NO SLOT FOR A STATED NEGATIVE (recorded 2026-09-02, Arfeen)
+
+> **FIXED.** `extractFromText` returns a seventh field, `buyerNegatives`, with a third GROUNDING RULE
+> state; `buildBuyerNegativesBlock()` is emitted above the intel blocks. Proven on production:
+> NULL on 318–323, populated on 324–326. See §5 of the live block for the captured sentence.
+> The twelve-consumer analysis below stands.
+
+**One intake with no slot for a fact about who the buyer is NOT, twelve downstream consumers with
+slots expecting it, and two of them built for exactly that fact.**
+
+A coach can state the single most load-bearing thing about their audience and the system will
+discard it between the sentence they typed and the first generator that needed it.
+
+## 1. ALL SIX EXTRACTED FIELDS ARE POSITIVELY FRAMED
+
+`services.extractFromText` outputs six content fields. Every one asks what something IS:
+
+| field | what it asks for | stated limit |
+|---|---|---|
+| `serviceName` | the product name | ≤ 60 |
+| `serviceCategory` | one of three enum values | — |
+| `serviceDescription` | "describing what they do" | ≤ 200 |
+| `targetCustomer` | "who they help… demographic + context" | ≤ 120 |
+| `mainBenefit` | "the primary outcome they deliver" | ≤ 120 |
+| `icpDescriptor` | "the emotional / situational state" | ≤ 150 |
+
+**There is no field for who the buyer is NOT, what they have NOT done, what they are NOT looking
+for, or where they sit on an experience scale.**
+
+## 2. THE GROUNDING RULE HAS TWO STATES AND NEEDS A THIRD
+
+The prompt's only instruction about absence:
+
+> Leave a field as empty string ("") if you cannot infer it with reasonable confidence from the
+> input. The user prefers an empty field they can type into over an invented field they have to
+> delete.
+
+That governs **MISSING** information. A disqualifying fact is the opposite — information the coach
+explicitly SUPPLIED. The prompt distinguishes *"I don't know"* from *"I know"*, and has **no third
+state for "I know that it is not so."** A scan of the entire extraction prompt for any exclusion,
+negation or disqualification concept returns nothing.
+
+## 3. THE EVIDENCE — SERVICE 319, MEASURED
+
+**What the coach typed** (verbatim, in the intake paragraph):
+
+> "Around nine in ten have never touched crypto and would not call themselves investors."
+
+**What was stored as `targetCustomer`:**
+
+> "Salaried professionals aged 35–55 in senior or specialist roles in the UAE and Mauritius, many
+> expatriates with no pension building behind them."
+
+**No trace of the sentence, in any of the six fields.**
+
+⚠️ **And the fields were ALREADY OVER BUDGET carrying only positive facts.** Measured on service 319:
+
+| field | stored length | stated limit |
+|---|---|---|
+| `targetCustomer` | **144** | 120 |
+| `mainBenefit` | **136** | 120 |
+| `serviceDescription` | 171 | 200 |
+
+Two of the three prose fields exceeded their own limits before any negative was considered. There
+is no spare room to "just mention it in targetCustomer".
+
+## 4. THE TWELVE DOWNSTREAM CONSUMERS
+
+**Ten generator modules read `targetCustomer` / `targetMarket` directly:**
+
+`adCopyGenerator` · `adCreativesGenerator` · `bonusGenerator` · `emailSequenceGenerator` ·
+`headlinesGenerator` · `heroMechanismsGenerator` · `hvcoGenerator` · `landingPageGenerator` ·
+`leadMagnetContentGenerator` · `offersGenerator`
+
+**Plus two more that matter most:**
+
+- **`services.expandProfile`** — runs FIRST, before the ICP (`V2TrailIntake.tsx:482`), and writes
+  `painPoints` / `failedSolutions` / `hiddenReasons`. **This is the one that caused the damage.**
+- **the ICP generator** — whose own CALIBRATE block asks the model to decide **AWARENESS**
+  (*"Unaware: does not yet name this as a problem"*) and **PRIOR ATTEMPTS** (*"What has this person
+  already tried"*). Both questions are answered directly by the dropped sentence, and the model was
+  told to decide them from an input that no longer contained the answer.
+
+### 🔑 TWO DOWNSTREAM SLOTS EXIST FOR EXACTLY THIS FACT
+
+- **`heroMechanisms.whatTried`** — literally "what this buyer already tried". On service 319 it was
+  filled with a Binance account, a 70% drawdown and a paid Telegram signals group.
+- **the `awareness` axis** — a real column on both `headlines` and `adCopy`
+  (`unaware / problem_aware / solution_aware / product_aware / most_aware`).
+
+## 5. ⚠️ THE AWARENESS AXIS IS NOT THE DEFECT — MEASURED, AND IT EXONERATES IT
+
+`COLD_WEIGHTED_STAGE_MIX` is already **3 : 3 : 1 : 1 : 0** — 75% weighted to unaware/problem-aware.
+Service 319's actual allocation:
+
+| surface | distribution |
+|---|---|
+| headlines | 1 unaware · 1 problem_aware · 1 solution_aware · 1 product_aware |
+| adCopy | **4 unaware · 3 problem_aware** · 3 solution_aware |
+
+**Seven of ten ad-copy rows were correctly assigned to cold stages — and the `unaware` body opens:**
+
+> *"It took me far too long to notice that the panic-sell wasn't an emotion problem."*
+
+**An UNAWARE-stage ad written about someone who already panic-sells.** The axis assigned the right
+stage; the buyer model underneath it was wrong. **The fix therefore belongs in the buyer model, not
+in the awareness allocation** — anyone reaching for the axis is reaching for the wrong lever.
+
+## 6. THE LABEL FIX (0108) SUBORDINATES THE INVENTION — IT CANNOT RESTORE A FACT NEVER STORED
+
+The buyer-intel provenance split built 2026-09-02 stops `expandProfile`'s output being presented to
+the ICP as *"the coach's own words… this wins"*. That is necessary and it is not sufficient:
+
+> **A hypothesis correctly labelled as a hypothesis is still the only description of the buyer the
+> ICP has, if the fact that would contradict it was discarded at intake.**
+
+0108 lowers the authority of the invention. Only a captured negative can displace it.
+
+📌 **Family:** §15d is machinery nothing reaches. This is the inverse — **a fact with twelve places
+to go and nowhere to be captured.** Same outcome, opposite end of the pipe.
 
 ---
 
