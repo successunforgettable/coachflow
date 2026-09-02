@@ -128,6 +128,55 @@ export function resolveServiceName(input: {
   };
 }
 
+/**
+ * The seven buyer-intel fields whose provenance `services.buyerIntelSource` records.
+ * Exported so the edit-detector and its tests read ONE list — a second copy would drift.
+ */
+export const BUYER_INTEL_KEYS = [
+  "painPoints", "whyProblemExists", "failedSolutions",
+  "falseBeliefsVsRealReasons", "hiddenReasons", "avatarName", "avatarTitle",
+] as const;
+
+/** Trim + collapse internal whitespace, so a cosmetic round-trip is not mistaken for authorship. */
+const normaliseForCompare = (v: unknown): string =>
+  typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
+
+/**
+ * WHICH BUYER-INTEL FIELDS DID THE COACH ACTUALLY EDIT?
+ *
+ * ── THE DEFECT THIS REPLACES (2026-09-03) ───────────────────────────────────────────────────
+ * The previous test was `typeof updateData[k] === "string"` — i.e. "the key is present in the
+ * payload". PRESENCE IS NOT AUTHORSHIP. Every client form resends the fields it rendered:
+ * `CreateServiceStep.tsx:183` resends ALL SEVEN, loaded straight from `result.expanded`, so a
+ * coach who clicked through the review screen without touching a character had the ENTIRE
+ * enrichment stamped `coach_stated` — and the ICP prompt then presented an invention as
+ * "the coach's own words about the buyer they actually serve … this wins."
+ * `V2GeneratorWizard.tsx:1098` resends painPoints; `ServiceDetail.tsx` resends three on any save,
+ * including a category-only change.
+ *
+ * ── THE TEST NOW ────────────────────────────────────────────────────────────────────────────
+ * A field is edited when the SUBMITTED value DIFFERS from the STORED value. The stored row is
+ * already loaded for the ownership check, so this costs nothing. A diff is a demonstration of
+ * authorship; a key in a payload is not (§15m).
+ *
+ * Both sides are normalised (trim, collapse internal whitespace) so a form that round-trips a
+ * line ending or a trailing space does not manufacture authorship out of nothing.
+ *
+ * 🔴 FAILS IN THE SAFE DIRECTION. If this under-detects, a genuine coach edit stays tagged
+ * `extracted` and the ICP treats real coach words as a hypothesis — a small loss of authority.
+ * If it over-detects, invention is published as testimony. Those costs are not symmetrical.
+ */
+export function detectEditedIntelKeys(
+  incoming: Record<string, unknown>,
+  stored: Record<string, unknown>,
+): string[] {
+  return BUYER_INTEL_KEYS.filter((k) => {
+    const sent = incoming[k];
+    if (typeof sent !== "string") return false;      // not submitted at all
+    return normaliseForCompare(sent) !== normaliseForCompare(stored[k]);
+  });
+}
+
 const updateServiceSchema = z.object({
   id: z.number(),
   // `.trim()` before `.min(1)` — the same defect at a different door. `.min(1)` alone
@@ -596,16 +645,13 @@ Return JSON with these exact fields:
         throw new Error("Service not found");
       }
       
-      // PROVENANCE (migration 0108). A buyer-intel field the COACH edits here becomes
-      // `coach_stated` — this is the one path on which that claim is true, and it is what
-      // earns the ground-truth block in the ICP prompt. Merged, never replaced, so a field
-      // the coach has not touched keeps whatever expandProfile tagged it.
-      const BUYER_INTEL_KEYS = [
-        "painPoints", "whyProblemExists", "failedSolutions",
-        "falseBeliefsVsRealReasons", "hiddenReasons", "avatarName", "avatarTitle",
-      ] as const;
-      const editedIntelKeys = BUYER_INTEL_KEYS.filter(
-        k => typeof (updateData as Record<string, unknown>)[k] === "string",
+      // PROVENANCE (migration 0108, edit-detection corrected 2026-09-03). A buyer-intel field
+      // the COACH actually EDITED becomes `coach_stated`. Detection is a DIFF against the stored
+      // row — not the mere presence of the key — because every form resends what it rendered.
+      // See detectEditedIntelKeys above for the full reasoning.
+      const editedIntelKeys = detectEditedIntelKeys(
+        updateData as Record<string, unknown>,
+        existing as unknown as Record<string, unknown>,
       );
 
       // Convert price to string for decimal field
