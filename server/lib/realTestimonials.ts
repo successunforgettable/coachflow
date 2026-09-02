@@ -29,8 +29,22 @@ import type { LandingPageContent } from "../../drizzle/schema";
 
 /** The shape LandingPageContent.testimonials / .coachTestimonials use. `location` carries `title`. */
 export type RealTestimonial = NonNullable<LandingPageContent["testimonials"]>[number];
-/** A raw library row (carries serviceId, needed to partition). */
-export type LibraryRow = { serviceId: number | null; name: string; title: string | null; quote: string };
+/**
+ * A raw library row. Carries `serviceId` to partition, and `scope`/`source` (migration 0110) to
+ * decide whether the row may be DISPLAYED at all.
+ *
+ * Both are nullable because every row predating 0110 has neither. NULL is NOT a permission.
+ */
+export type TestimonialScope = "service_specific" | "coach_portable";
+export type TestimonialSource = "coach_supplied" | "seeded_demo" | "imported";
+export type LibraryRow = {
+  serviceId: number | null;
+  name: string;
+  title: string | null;
+  quote: string;
+  scope?: TestimonialScope | null;
+  source?: TestimonialSource | null;
+};
 
 /** Map one library row → the content testimonial shape. `title` → `location` (the rendered subtitle). */
 export function mapLibraryRow(r: { name: string; title: string | null; quote: string }): RealTestimonial {
@@ -38,16 +52,49 @@ export function mapLibraryRow(r: { name: string; title: string | null; quote: st
 }
 
 /**
- * PURE. Partition coach-wide rows into OFFER (serviceId === S) and COACH (everything else), dropping
- * blank quotes. Each row goes to exactly one bucket → no duplication. Unit-tested without a DB.
+ * PURE. Partition library rows into OFFER proof and COACH proof, dropping blank quotes and dropping
+ * anything the coach has not affirmatively marked as displayable.
+ *
+ * ── WHY THE `else` WENT AWAY (2026-09-03) ─────────────────────────────────────────────────────
+ * The previous shape was:
+ *
+ *     if (serviceId != null && r.serviceId === serviceId) offer.push(...);
+ *     else coach.push(...);                       // ← unconditional
+ *
+ * That `else` PROMOTED every row that was not this service's into "the coach's own portable
+ * proof". `serviceId IS NULL` means UNSCOPED, not ENDORSED-FOR-ANY-PAGE, and the code read the
+ * first as the second. Ten seeded demo rows sitting in one production library therefore rendered
+ * on EIGHTEEN live public pages — carrying invented percentage claims ("our lead quality jumped
+ * 40%") under a real coach's name, across webinar, sales, event, discovery and lead-magnet
+ * templates alike, because this runs in the shared publisher before any template is chosen.
+ *
+ * ── THE RULE NOW ─────────────────────────────────────────────────────────────────────────────
+ * Display is OPT-IN and requires TWO affirmative facts, both captured at write time:
+ *   · `source === "coach_supplied"` — the coach gave us this, it is not demo or unvetted import
+ *   · `scope`  — where the coach said it may appear
+ *
+ * Anything else — NULL, "seeded_demo", "imported", unknown — is DROPPED. It appears on no page.
+ *
+ * 🔴 THIS FAILS CLOSED, DELIBERATELY, AND IT IS THE POINT. Every row predating 0110 has NULL for
+ * both, so every existing library row becomes invisible until a human tags it. Arfeen accepted
+ * that explicitly, including for the Tony Robbins quote and for other users' rows. A missing
+ * testimonial costs a little credibility; an invented one on a public page under a coach's name
+ * is what took eighteen pages down. Absence of a tag is not permission (see CLAUDE.md §15m).
  */
 export function partitionProof(rows: LibraryRow[], serviceId: number | null): { offer: RealTestimonial[]; coach: RealTestimonial[] } {
   const clean = (Array.isArray(rows) ? rows : []).filter((r) => typeof r?.quote === "string" && r.quote.trim().length > 0);
   const offer: RealTestimonial[] = [];
   const coach: RealTestimonial[] = [];
   for (const r of clean) {
-    if (serviceId != null && r.serviceId === serviceId) offer.push(mapLibraryRow(r));
-    else coach.push(mapLibraryRow(r));
+    // Gate 1 — provenance. Only material the coach affirmatively supplied may ever render.
+    if (r.source !== "coach_supplied") continue;
+    // Gate 2 — placement. The coach says where it belongs; we never infer it from absence.
+    if (serviceId != null && r.serviceId === serviceId && r.scope === "service_specific") {
+      offer.push(mapLibraryRow(r));
+    } else if (r.scope === "coach_portable") {
+      coach.push(mapLibraryRow(r));
+    }
+    // else: dropped. An untagged row of unknown origin renders nowhere.
   }
   return { offer, coach };
 }
@@ -68,7 +115,12 @@ export async function getAllCoachTestimonials(userId: number): Promise<LibraryRo
   if (!db) return [];
   try {
     return await db
-      .select({ serviceId: testimonials.serviceId, name: testimonials.name, title: testimonials.title, quote: testimonials.quote })
+      // scope/source are SELECTED because partitionProof gates on them. Omitting them here would
+      // make every row undisplayable — the gate would be reading undefined, not a decision.
+      .select({
+        serviceId: testimonials.serviceId, name: testimonials.name, title: testimonials.title,
+        quote: testimonials.quote, scope: testimonials.scope, source: testimonials.source,
+      })
       .from(testimonials)
       .where(eq(testimonials.userId, userId))
       .orderBy(asc(testimonials.createdAt));

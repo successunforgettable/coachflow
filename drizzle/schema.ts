@@ -1785,7 +1785,28 @@ export const testimonials = mysqlTable("testimonials", {
   name: varchar("name", { length: 255 }).notNull(),
   title: varchar("title", { length: 255 }),
   quote: text("quote").notNull(),
+  /**
+   * WHERE THE COACH SAYS THIS MAY APPEAR (migration 0110).
+   *   service_specific — about THIS programme; renders only on that service's pages
+   *   coach_portable   — about the coach generally; may render on any of their pages
+   * NULL = predates tagging → renders NOWHERE. Absence is not permission.
+   */
+  scope: mysqlEnum("scope", ["service_specific", "coach_portable"]),
+  /**
+   * WHERE IT CAME FROM (migration 0110). Set at write time, never inferred.
+   *   coach_supplied — the coach gave us this; the ONLY value that may render
+   *   seeded_demo    — sample/fixture data; must never reach a public page
+   *   imported       — bulk-pasted, not yet vetted by the coach
+   * NULL = predates tagging → renders NOWHERE.
+   */
+  source: mysqlEnum("source", ["coach_supplied", "seeded_demo", "imported"]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /**
+   * Added by 0110 because the table had NO edit timestamp. On 2026-09-03 a purge of ten seeded
+   * rows had to proceed WITHOUT being able to answer "has this been edited since seeding?" —
+   * the schema simply could not say. This makes that question answerable next time.
+   */
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   userIdIdx: index("idx_testimonials_userId").on(table.userId),
   serviceIdIdx: index("idx_testimonials_serviceId").on(table.serviceId),

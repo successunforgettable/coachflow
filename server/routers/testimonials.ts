@@ -28,12 +28,25 @@ export const testimonialsRouter = router({
     }),
 
   /** Add a testimonial to the library. Real testimonials only — nothing auto-generated. */
+  /**
+   * THE QUESTION AT THE POINT OF ENTRY (migration 0110, 2026-09-03).
+   *
+   * `scope` is REQUIRED and has no default, deliberately. It is the coach answering "is this about
+   * this specific programme, or about you generally?" — the one fact that decides where the
+   * testimonial may appear, and the fact whose ABSENCE put invented quotes on eighteen live pages.
+   * A default here would re-create the defect: the system would be guessing placement again.
+   *
+   * `source` is fixed to "coach_supplied" on this path and is NOT caller-settable. This is the
+   * surface a coach uses; a caller cannot mark something coach-supplied that a coach did not
+   * supply. Demo and import paths must write their own value and are gated out of rendering.
+   */
   add: protectedProcedure
     .input(z.object({
       name: z.string().min(1).max(255),
       title: z.string().max(255).optional(),
       quote: z.string().min(1).max(1000),
       serviceId: z.number().optional(),
+      scope: z.enum(["service_specific", "coach_portable"]),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -44,6 +57,8 @@ export const testimonialsRouter = router({
         name: input.name,
         title: input.title ?? null,
         quote: input.quote,
+        scope: input.scope,
+        source: "coach_supplied",
       });
       const id = Number(result.insertId);
       const [row] = await db.select().from(testimonials).where(eq(testimonials.id, id)).limit(1);
@@ -67,6 +82,11 @@ export const testimonialsRouter = router({
         title: z.string().max(255).optional(),
         quote: z.string().max(2000),
       })).min(1).max(200),
+      /**
+       * Required here too — a paste of 40 rows is still the coach saying where they belong.
+       * Applies to the whole batch; a coach with both kinds pastes twice.
+       */
+      scope: z.enum(["service_specific", "coach_portable"]),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -83,7 +103,10 @@ export const testimonialsRouter = router({
 
       type RowStatus = "added" | "duplicate" | "invalid";
       const results: Array<{ index: number; status: RowStatus; reason?: string }> = [];
-      const toInsert: Array<{ userId: number; serviceId: number | null; name: string; title: string | null; quote: string }> = [];
+      const toInsert: Array<{
+        userId: number; serviceId: number | null; name: string; title: string | null; quote: string;
+        scope: "service_specific" | "coach_portable"; source: "imported";
+      }> = [];
 
       input.items.forEach((row, index) => {
         const name = (row.name ?? "").trim();
@@ -93,7 +116,15 @@ export const testimonialsRouter = router({
         const key = norm(quote);
         if (seen.has(key)) { results.push({ index, status: "duplicate" }); return; }
         seen.add(key); // dedupe within the batch too
-        toInsert.push({ userId: ctx.user.id, serviceId: input.serviceId ?? null, name, title: (row.title ?? "").trim() || null, quote });
+        // source = "imported", NOT "coach_supplied": a bulk paste has not been reviewed row by row.
+        // It is therefore NOT displayable until the coach confirms each one — the gate in
+        // partitionProof drops it. This is the difference between "in the library" and "approved
+        // to appear on a public page", and it is the distinction the old code never made.
+        toInsert.push({
+          userId: ctx.user.id, serviceId: input.serviceId ?? null, name,
+          title: (row.title ?? "").trim() || null, quote,
+          scope: input.scope, source: "imported",
+        });
         results.push({ index, status: "added" });
       });
 

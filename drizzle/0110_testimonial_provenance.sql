@@ -1,0 +1,81 @@
+-- 0110 — testimonial provenance: where it came from, where it may appear, when it changed
+--        (travels ALONE — architectural invariant 6)
+--
+-- Adds THREE columns to `testimonials`:
+--   scope     ENUM('service_specific','coach_portable') NULL
+--   source    ENUM('coach_supplied','seeded_demo','imported') NULL
+--   updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+--
+-- ── WHY THIS EXISTS. IT IS NOT HYPOTHETICAL. ────────────────────────────────────────────────
+-- On 2026-09-03, EIGHTEEN live public pages were taken down because they carried fabricated
+-- testimonials under a real coach's name, including:
+--   "Within three weeks of implementing the system, our lead quality jumped 40%…"  — Sarah Chen
+--   "…engagement tripled and I got two new clients from LinkedIn alone."           — James Okafor
+--   "I delivered a 500-person keynote last month…"                                 — Priya Sharma
+-- Ten seeded demo rows sat in one production library. `partitionProof` read them like this:
+--
+--     if (serviceId != null && r.serviceId === serviceId) offer.push(...);
+--     else coach.push(...);                       // ← unconditional
+--
+-- That `else` PROMOTED every unscoped row into "the coach's own portable proof". `serviceId IS
+-- NULL` means UNSCOPED; the code read it as ENDORSED-FOR-ANY-PAGE. Because the injection runs in
+-- the shared publisher BEFORE any template is chosen, the rows appeared on webinar, sales, event,
+-- discovery and lead-magnet pages alike — 17 pages, plus one published the same day.
+--
+-- ── WHY THREE COLUMNS AND NOT ONE ───────────────────────────────────────────────────────────
+-- `scope` and `source` answer different questions and BOTH must be true for a row to render:
+--   · source = coach_supplied  → the coach gave us this; it is not demo data or an unvetted paste
+--   · scope                    → where the coach says it belongs
+-- A single column would force one to be inferred from the other, which is the original defect
+-- wearing a new name.
+--
+-- `updatedAt` exists because the table had NO edit timestamp. During the 2026-09-03 purge the
+-- instruction was "stop if any row has been edited since seeding" — and THAT QUESTION COULD NOT
+-- BE ANSWERED. The columns were id, userId, serviceId, name, title, quote, createdAt. Nothing
+-- recorded modification. The purge proceeded on a judgement call it should not have had to make.
+--
+-- ⚠️ WHY NULL RENDERS NOWHERE — THE WHOLE POINT, AND IT FAILS CLOSED ON PURPOSE.
+-- Every existing row has NULL for scope and source. Under the new gate that means EVERY LIBRARY
+-- ROW IN PRODUCTION BECOMES INVISIBLE until a human tags it — including the Tony Robbins quote,
+-- and including rows belonging to other users. Arfeen accepted this explicitly on 2026-09-03:
+-- a missing testimonial costs a little credibility; an invented one on a public page under a
+-- coach's name is what took eighteen pages down. There is deliberately NO DEFAULT on scope or
+-- source: a default would be the system guessing again, which is the defect.
+--
+-- ⚠️ ADDITIVE. No existing row's displayed content changes — they simply stop being displayed
+-- until tagged. No row is deleted, altered, or backfilled by this migration. Backfilling would be
+-- asserting provenance nobody measured, which is precisely the error being corrected.
+--
+-- 🔴🔴 NOT APPLIED. ORDERING IS LOAD-BEARING — APPLY BEFORE THE CODE DEPLOYS.
+-- `getAllCoachTestimonials` SELECTs scope and source, and `testimonials.add` / `addMany` WRITE
+-- them. If the code ships first, every publish and every testimonial save throws
+-- ER_BAD_FIELD_ERROR (1054). Apply, verify, then deploy. Never the reverse.
+--
+-- Applying is an ALTER TABLE and needs Arfeen's explicit go-ahead in the immediately preceding
+-- message (CLAUDE.md §10 — schema-only is NOT an exception).
+--
+-- REVERSIBILITY. Dropping these loses the provenance record and restores the old permissive
+-- behaviour — which is the bug. Roll back the CODE first, then:
+--   ALTER TABLE `testimonials` DROP COLUMN `scope`, DROP COLUMN `source`, DROP COLUMN `updatedAt`;
+--
+-- IDEMPOTENCE. MySQL has no "ADD COLUMN IF NOT EXISTS". Re-running errors with ER_DUP_FIELDNAME
+-- (1060), which is safe — it means the columns are already present.
+--
+-- VERIFY AFTER APPLYING (expect 3 rows; scope/source nullable with NULL default):
+--   SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
+--     FROM INFORMATION_SCHEMA.COLUMNS
+--    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'testimonials'
+--      AND COLUMN_NAME IN ('scope','source','updatedAt');
+--
+-- AND CONFIRM NOTHING WAS BACKFILLED — every existing row must be untagged:
+--   SELECT COUNT(*) AS total,
+--          SUM(scope IS NULL)  AS untagged_scope,
+--          SUM(source IS NULL) AS untagged_source
+--     FROM testimonials;
+--   -- expect: untagged_scope = untagged_source = total.
+--   -- If either is less than total, something backfilled and the provenance is now a guess.
+
+ALTER TABLE `testimonials`
+  ADD COLUMN `scope`  ENUM('service_specific','coach_portable') NULL AFTER `quote`,
+  ADD COLUMN `source` ENUM('coach_supplied','seeded_demo','imported') NULL AFTER `scope`,
+  ADD COLUMN `updatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `createdAt`;

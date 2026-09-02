@@ -81,6 +81,9 @@ export default function TestimonialBulkImport({ serviceId, onDone, onImported }:
     },
   });
   const [raw, setRaw] = useState("");
+  // Batch-level scope (0110). Required: an import is still the coach saying where these belong.
+  // Rows land as source="imported" and therefore do NOT render until the coach confirms them.
+  const [scope, setScope] = useState<"service_specific" | "coach_portable" | "">("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo<ParsedRow[]>(() => (raw.trim() ? validate(parsePaste(raw)) : []), [raw]);
@@ -97,7 +100,7 @@ export default function TestimonialBulkImport({ serviceId, onDone, onImported }:
 
   const doImport = () => {
     const items = parsed.filter((r) => r.valid).map((r) => ({ name: r.name, title: r.title || undefined, quote: r.quote }));
-    if (items.length) addMany.mutate({ serviceId, items });
+    if (items.length && scope) addMany.mutate({ serviceId, items, scope: scope as "service_specific" | "coach_portable" });
   };
 
   return (
@@ -106,6 +109,23 @@ export default function TestimonialBulkImport({ serviceId, onDone, onImported }:
       <div style={{ fontSize: 13, color: MUTE, marginBottom: 12, lineHeight: 1.5 }}>
         Paste one per line as <code>Name | Title | Quote</code> (title optional), or upload a CSV
         (columns: name, title, quote). We&rsquo;ll skip exact duplicates automatically.
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Who are these testimonials about?</div>
+        <label style={{ display: "block", fontSize: 13, marginBottom: 4, cursor: "pointer" }}>
+          <input type="radio" name="bulk-scope" checked={scope === "service_specific"}
+            onChange={() => setScope("service_specific")} style={{ marginRight: 8 }} />
+          This specific programme
+        </label>
+        <label style={{ display: "block", fontSize: 13, cursor: "pointer" }}>
+          <input type="radio" name="bulk-scope" checked={scope === "coach_portable"}
+            onChange={() => setScope("coach_portable")} style={{ marginRight: 8 }} />
+          Me generally — any of my pages
+        </label>
+        <div style={{ fontSize: 11, color: MUTE, marginTop: 6, lineHeight: 1.5 }}>
+          Imported testimonials are saved to your library but are not shown on any page until you
+          confirm each one. Nothing you paste here goes public on its own.
+        </div>
       </div>
 
       <textarea
@@ -157,8 +177,8 @@ export default function TestimonialBulkImport({ serviceId, onDone, onImported }:
         {!result ? (
           <button
             onClick={doImport}
-            disabled={validCount === 0 || addMany.isPending}
-            style={{ background: BRAND, color: "white", border: "none", borderRadius: 9999, padding: "11px 24px", fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: validCount === 0 || addMany.isPending ? "not-allowed" : "pointer", opacity: validCount === 0 || addMany.isPending ? 0.5 : 1 }}
+            disabled={validCount === 0 || addMany.isPending || !scope}
+            style={{ background: BRAND, color: "white", border: "none", borderRadius: 9999, padding: "11px 24px", fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: validCount === 0 || addMany.isPending || !scope ? "not-allowed" : "pointer", opacity: validCount === 0 || addMany.isPending || !scope ? 0.5 : 1 }}
           >
             {addMany.isPending ? "Importing…" : `Import ${validCount || ""} testimonial${validCount === 1 ? "" : "s"}`.trim()}
           </button>

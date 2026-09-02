@@ -35,6 +35,9 @@ export default function TestimonialPicker({ serviceId, mode, onDone }: Testimoni
   const [formName, setFormName] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formQuote, setFormQuote] = useState("");
+  // THE QUESTION AT THE POINT OF ENTRY (0110). No default — the coach must answer it, because a
+  // default is the system guessing placement, which is the defect this replaces.
+  const [formScope, setFormScope] = useState<"service_specific" | "coach_portable" | "">("");
   const [saving, setSaving] = useState(false);
 
   const items = library.data ?? [];
@@ -49,7 +52,7 @@ export default function TestimonialPicker({ serviceId, mode, onDone }: Testimoni
   };
 
   const handleAdd = async () => {
-    if (!formName.trim() || !formQuote.trim()) return;
+    if (!formName.trim() || !formQuote.trim() || !formScope) return;
     setSaving(true);
     try {
       const added = await addMutation.mutateAsync({
@@ -57,11 +60,12 @@ export default function TestimonialPicker({ serviceId, mode, onDone }: Testimoni
         title: formTitle.trim() || undefined,
         quote: formQuote.trim(),
         serviceId: serviceId ?? undefined,
+        scope: formScope as "service_specific" | "coach_portable",
       });
       if (mode === "campaign" && selected.size < 3 && added) {
         setSelected(prev => { const n = new Set(Array.from(prev)); n.add(added.id); return n; });
       }
-      setFormName(""); setFormTitle(""); setFormQuote("");
+      setFormName(""); setFormTitle(""); setFormQuote(""); setFormScope("");
       setShowForm(false);
     } finally { setSaving(false); }
   };
@@ -200,8 +204,37 @@ export default function TestimonialPicker({ serviceId, mode, onDone }: Testimoni
               {formQuote.length}/1000
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={S.btn} onClick={handleAdd} disabled={saving || !formName.trim() || !formQuote.trim()}>
+          <div style={{ marginTop: 12 }}>
+            <div style={{
+              fontFamily: "Instrument Sans, sans-serif", fontSize: 13, fontWeight: 600,
+              color: "#1A1624", marginBottom: 6,
+            }}>
+              Who is this testimonial about?
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 13, cursor: "pointer" }}>
+                <input
+                  type="radio" name="testimonial-scope" checked={formScope === "service_specific"}
+                  onChange={() => setFormScope("service_specific")} style={{ marginRight: 8 }}
+                />
+                This specific programme — show it only on this programme&apos;s pages
+              </label>
+              <label style={{ fontFamily: "Instrument Sans, sans-serif", fontSize: 13, cursor: "pointer" }}>
+                <input
+                  type="radio" name="testimonial-scope" checked={formScope === "coach_portable"}
+                  onChange={() => setFormScope("coach_portable")} style={{ marginRight: 8 }}
+                />
+                Me generally — it can appear on any of my pages
+              </label>
+            </div>
+            <div style={{
+              fontFamily: "Instrument Sans, sans-serif", fontSize: 11, color: "#6b7280", marginTop: 6,
+            }}>
+              We only show a testimonial where you tell us it belongs.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button style={S.btn} onClick={handleAdd} disabled={saving || !formName.trim() || !formQuote.trim() || !formScope}>
               {saving ? "Saving..." : "Save"}
             </button>
             <button style={S.btnOutline} onClick={() => setShowForm(false)}>Cancel</button>
