@@ -18,9 +18,21 @@ questions. Everything below was MEASURED at the moment of writing.**
 |---|---|
 | repo | `/Users/arfeenkhan/zap-deploy` |
 | **branch** | **`railway-build`** — the production branch. **NEVER push to `main`.** |
-| HEAD at checkpoint | **`d8212b9`** — the commit containing this block |
-| `origin/railway-build` | **`d8212b9`** — identical |
+| HEAD at checkpoint | **`8a8ed3c`** or later — see the note below |
+| `origin/railway-build` | **identical to HEAD — 0 unpushed** |
 | unpushed commits | **0 — everything is pushed** |
+
+📌 **This row is structurally one commit behind and always will be: a commit cannot contain its own
+hash.** The block was written in `d8212b9` and this §0 added in `8a8ed3c`. **Do not treat a mismatch
+here as evidence of lost work** — that is the one number in this block that is expected to drift.
+Resolve it in one command:
+
+```
+git log --oneline -3 && git status --short | grep -E '^ ?[MD]'
+```
+
+If the top commits are checkpoint/docs commits and the modified set is exactly the four files at
+§0.3, the tree is in the state this block describes.
 | deployed commit | **`d8212b9`, status SUCCESS**, verified by matching the deployment's own commit hash to HEAD |
 
 🔴 **PUSHING `railway-build` DEPLOYS TO PRODUCTION AUTOMATICALLY (~2–3 min).** There is no separate
