@@ -1231,7 +1231,10 @@ export default function V2CampaignKit() {
           Phase D Sprint 3: passes placeholderReport so the modal can render
           a compact warning section if placeholders exist (kit page banner
           carries the full UX; modal just nudges the user to review first). */}
-      {showPushModal && kitId != null && (
+      {/* `serviceId` is required: the server refuses a publish without it (the compliance
+          gate cannot run), so rendering the modal without one would offer a button that
+          can only fail. Matches the placeholder-editor guard below. */}
+      {showPushModal && kitId != null && serviceId != null && (
         <PushKitModal
           kitId={kitId}
           kitName={kit.name || "Campaign"}

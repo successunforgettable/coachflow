@@ -17,17 +17,12 @@ import { RegenerateConfirmationDialog } from "@/components/RegenerateConfirmatio
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ComplianceBadge } from "@/components/ComplianceBadge";
 import { checkCompliance } from "@/lib/complianceUtils";
-import { PublishToMetaDialog } from "@/components/PublishToMetaDialog";
-import { Send } from "lucide-react";
 
 export default function AdCopyDetail() {
   const [, params] = useRoute("/ad-copy/:adSetId");
   const adSetId = params?.adSetId || "";
   const [powerMode, setBeastMode] = useState(false);
   const [activeTab, setActiveTab] = useState("headlines");
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [selectedHeadline, setSelectedHeadline] = useState("");
-  const [selectedBody, setSelectedBody] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useAuth();
 
@@ -239,22 +234,14 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
 
       {/* Action Bar */}
       <div className="flex items-center gap-4 mb-6">
-        <Button
-          onClick={() => {
-            // Use first headline and body as defaults
-            if (adSet.headlines.length > 0 && adSet.bodies.length > 0) {
-              setSelectedHeadline(adSet.headlines[0].content);
-              setSelectedBody(adSet.bodies[0].content);
-              setPublishDialogOpen(true);
-            } else {
-              toast.error("Need at least one headline and body copy to publish");
-            }
-          }}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Send className="h-4 w-4 mr-2" />
-          Publish to Meta
-        </Button>
+        {/* PUBLISH REMOVED (2026-09-01). The button here called `meta.publishToMeta`
+            with NO `serviceId`, which skipped the compliance gate entirely — every ad
+            published from this page reached Meta unscreened. The server now refuses
+            such a publish, and the dialog, its state and its icon import are removed
+            with it so nothing here reads as a live publish path. */}
+        <span className="text-sm text-muted-foreground">
+          Publishing has moved to Campaign Kit.
+        </span>
         <Button onClick={handleExportPDF} variant="outline">
           <Download className="h-4 w-4 mr-2" />
           Download PDF
@@ -583,14 +570,6 @@ ${adSet.links.map((l: any, i: number) => `${i + 1}. ${l.content}`).join("\n\n")}
         isLoading={generateMutation.isPending}
       />
 
-      {/* Publish to Meta Dialog */}
-      <PublishToMetaDialog
-        open={publishDialogOpen}
-        onOpenChange={setPublishDialogOpen}
-        headline={selectedHeadline}
-        body={selectedBody}
-        linkUrl=""
-      />
       </div>
     </div>
   );

@@ -536,12 +536,48 @@ export const metaRouter = router({
       // resolved to must read as supplied, and an unresolved token must not read as a
       // missing figure. Content-agnostic, so it catches a coach's hand-edit in the Kit
       // as well as anything a generator produced.
-      if (input.serviceId != null) {
+      // FAIL CLOSED ON A MISSING INPUT (2026-09-01). `serviceId` is
+      // `z.number().optional()`, and this gate used to be wrapped in
+      // `if (input.serviceId != null)` — so a caller that simply OMITTED the key
+      // skipped the compliance axis, the fabrication check and the ad-to-page match
+      // in silence, and the ad reached Meta unscreened. Absence of what the check
+      // needs must BLOCK the publish, never skip the check.
+      if (input.serviceId == null) {
+        console.warn(
+          `[publishToMeta] REFUSED for user ${ctx.user.id} — no serviceId supplied; ` +
+          `the compliance gate cannot run without it.`,
+        );
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This ad cannot be published because it is not linked to a service. " +
+            "The compliance check needs the service to run, and publishing without it is not allowed.",
+        });
+      }
+      {
         const { checkOutput, checkAdToPageMatch } = await import("../_core/complianceAxis");
         const { buildCoachCorpus, buildProofSupplied } = await import("../_core/groundingCorpus");
         const { services, idealCustomerProfiles, landingPages } = await import("../../drizzle/schema");
         const gateDb = await getDb();
-        if (gateDb) {
+        // Same defect, same rule: no database means the gate cannot run, so the
+        // publish is refused rather than allowed through unchecked.
+        if (!gateDb) {
+          console.warn(
+            `[publishToMeta] REFUSED for user ${ctx.user.id} serviceId=${input.serviceId} — ` +
+            `database unavailable, compliance gate could not run.`,
+          );
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Cannot publish right now — the compliance check is unavailable. Please try again.",
+          });
+        }
+        {
+          // PROOF THIS RAN. Without this line a publish that skipped the gate was
+          // indistinguishable after the fact from one that passed it — there is no
+          // serviceId column on `meta_published_ads` to reconstruct it from.
+          console.log(
+            `[publishToMeta] GATE RAN for user ${ctx.user.id} serviceId=${input.serviceId}`,
+          );
           const [svc] = await gateDb.select().from(services)
             .where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))).limit(1);
           const [gateIcp] = await gateDb.select().from(idealCustomerProfiles)
