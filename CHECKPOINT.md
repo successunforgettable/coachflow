@@ -19,7 +19,7 @@ destroy.
 | HEAD at checkpoint | **`c30381f`** — see the drift note below |
 | `origin/railway-build` | **identical to HEAD** |
 | unpushed commits | **0** |
-| **deployed commit** | **`c30381f`, status SUCCESS** — verified by matching the deployment's own commit hash to HEAD, and by grepping the deployed bundle for markers proven to differ between builds |
+| **deployed commit** | **`c30381f`, status SUCCESS** at the moment this row was written — verified by matching the deployment's own commit hash to HEAD, AND by grepping the deployed bundle for markers proven to differ between builds. **This row drifts exactly like HEAD — see below.** |
 
 🔴 **PUSHING `railway-build` IS THE DEPLOY.** Railway auto-builds and releases on push (~3–5 min).
 There is no separate release step. **Never push to "hold" work.**
@@ -34,6 +34,16 @@ git log --oneline -3 && git status --short | grep -E '^ ?[MDAR]'
 
 If the top commit is a `checkpoint(...)` commit sitting on `c30381f` and the tracked-change list is
 EMPTY, the tree is exactly what this block describes.
+
+🔴 **THE DEPLOYED COMMIT DRIFTS THE SAME WAY, FOR THE SAME REASON — and this is the one that looks
+alarming.** Pushing the checkpoint IS a deploy (there is no separate release step), so production
+will report the CHECKPOINT commit, not `c30381f`, within a few minutes of this block being written.
+**That is expected and is not a mystery deploy.**
+
+> **`c30381f` is the last commit that changed PRODUCT CODE.** A `checkpoint(...)` commit touches
+> `CHECKPOINT.md` only, rebuilds the bundle, and changes no behaviour. If the deployed hash is a
+> checkpoint commit whose parent chain reaches `c30381f`, the running code is the code this block
+> describes. Confirm with `git log --oneline -3` rather than by comparing hashes to this table.
 
 ### 0.2 · WHAT IS UNCOMMITTED — **NOTHING**
 
@@ -88,6 +98,24 @@ for the webinar mechanism, they are already enumerated and recorded in a passing
 them (`problemAgitation`, `solutionIntro` on webinar) sit on the very page type just worked. No
 re-investigation needed — the list is in `server/landingPageBlankList.test.ts` under
 `ACCEPTED_DESYNCS`.
+
+### 0.65 · HOW TO RUN THINGS HERE — none of this session's proofs are reproducible without it
+
+| need | command | what it actually runs |
+|---|---|---|
+| read prod DB / call a prod-credentialled endpoint using **the DEPLOYED code** | `railway ssh --environment production --service coachflow "cd /app && npx tsx _x.ts"` | the container. Has full source + `node_modules` + `tsx`. **This is the deployed build.** |
+| run **YOUR LOCAL working-tree code** against prod env (API keys, DATABASE_URL) | `railway run --environment production --service coachflow npx tsx _x.ts` | your edits, prod credentials. **Use this to test a change BEFORE it is deployed.** |
+| grep the running server's bundle | `railway ssh ... "grep -c 'MARKER' dist/index.js"` | `dist/index.js`, esbuild, **not minified** — source strings survive, so prompt text is greppable |
+
+🔴 **A script must sit at the REPO ROOT (or `/app` in the container), not in a temp directory.**
+Node resolves `./server/...` and `node_modules` from the script's own directory; a script under
+`/tmp` dies with `MODULE_NOT_FOUND` on its first import. Write it to the repo root, run it, delete
+it. (To move a local script into the container: `base64` it locally, `echo '<b64>' | base64 -d >
+/app/_x.ts` over ssh.)
+
+📌 Two environment traps that cost time this session: **macOS has no `timeout`**, and **zsh eats
+`$var:path` as a history modifier** — `git show "$c:server/foo.ts"` silently mangles to
+`$cfoo.ts`; brace it as `git show "${c}:server/foo.ts"`.
 
 ### 0.7 · VERIFY THIS BLOCK BEFORE TRUSTING IT (§15f — measure, never read)
 
