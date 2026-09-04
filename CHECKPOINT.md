@@ -1,4 +1,284 @@
-# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-03 (night of 09-02/03)
+# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-05
+### supersedes the 2026-09-03 block below, which is retained and marked, not deleted
+
+**Every number in this block was MEASURED at write time (§15f), not recalled.** The 2026-09-03
+block failed its own cold read. This one is written to answer four questions **from the block
+alone**: what is deployed · what is uncommitted · what to do next · what a stray git command would
+destroy.
+
+---
+
+## 0. GROUND TRUTH
+
+### 0.1 · WHERE THE WORK IS
+
+| | |
+|---|---|
+| repo | `/Users/arfeenkhan/zap-deploy` |
+| **branch** | **`railway-build`** — the production branch. **NEVER push to `main`.** (There is no local `main` ref; `git rev-parse main` failing is expected, not a problem.) |
+| HEAD at checkpoint | **`c30381f`** — see the drift note below |
+| `origin/railway-build` | **identical to HEAD** |
+| unpushed commits | **0** |
+| **deployed commit** | **`c30381f`, status SUCCESS** — verified by matching the deployment's own commit hash to HEAD, and by grepping the deployed bundle for markers proven to differ between builds |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.** Railway auto-builds and releases on push (~3–5 min).
+There is no separate release step. **Never push to "hold" work.**
+
+📌 **HEAD is the one figure expected to drift**, because a commit cannot contain its own hash: this
+block is written in the checkpoint commit, so HEAD will read one commit further on than `c30381f`
+as soon as that commit lands. **Do not treat that as lost work.** Settle it in one command:
+
+```
+git log --oneline -3 && git status --short | grep -E '^ ?[MDAR]'
+```
+
+If the top commit is a `checkpoint(...)` commit sitting on `c30381f` and the tracked-change list is
+EMPTY, the tree is exactly what this block describes.
+
+### 0.2 · WHAT IS UNCOMMITTED — **NOTHING**
+
+```
+git status --short | grep -E '^ ?[MDAR]'     # measured at checkpoint: 0 lines
+```
+
+**The working tree is clean. There is no uncommitted work anywhere in this repo.**
+
+⚠️ **This is a CHANGE from the 2026-09-03 block, and the most likely thing to be misremembered.**
+That block warned that four compliance-gate files existed only in the working tree and would be
+destroyed by `git checkout` / `stash` / `reset`. **Those four files were committed on 2026-09-05 in
+`61c2908` and are now safe in git history.** The warning no longer applies. Do not go looking for
+them in the working tree — their absence there is correct.
+
+### 0.3 · WHAT A STRAY GIT COMMAND WOULD DESTROY
+
+| command | risk today |
+|---|---|
+| `git checkout` / `git stash` / `git reset --hard` | **Nothing.** Tree is clean; everything is committed and pushed. |
+| **`git clean -fd` / `git clean -fdx`** | 🔴 **DESTROYS ~590 MB of untracked screenshots and binaries that exist in no commit and cannot be recovered.** See §0.4. This is now the ONLY destructive-command risk in this repo. |
+| `git add .` then commit | 🔴 Commits ~590 MB of binaries in one irreversible step, roughly **doubling** a 479 MB `.git`. |
+
+### 0.4 · THE 321 UNTRACKED FILES ARE DELIBERATE — do not "tidy" them
+
+`git status` shows **321 untracked entries** (measured). That is not mess; it is a recorded decision:
+
+- ~590 MB of screenshot binaries (`docs/screenshots/` ≈ 516 MB, plus root-level `audit-*` /
+  `craft-*` / `b2-*` PNGs ≈ 74 MB) were **deliberately NOT committed** — committing them roughly
+  doubles the repo permanently, which is Arfeen's call, not a checkpoint side effect.
+- Everything non-binary that was outstanding **is** committed.
+
+**Never run `git add .` or `git clean` in this repo.**
+
+### 0.5 · GATES AT CHECKPOINT TIME — measured, not recalled
+
+| gate | value |
+|---|---|
+| `npx tsc --noEmit 2>&1 \| grep -c "error TS"` | **34** (baseline held all session) |
+| `npx vitest run server/pipeline-fixes.test.ts` | **412 passed** |
+| `npx vitest run server/landingPageBlankList.test.ts` | **8 passed** (new this session) |
+| `npx vitest run server/leadMagnetMechanismContext.test.ts` | **14 passed** |
+| `npx vitest run server/landingPages.test.ts` | 🔴 **FAILS — pre-existing, not a regression.** `Error: Database not available`; the suite needs a live DB and there is none locally. Do not chase it. |
+
+### 0.6 · THE NEXT ACTION
+
+⚠️ **Arfeen has NOT set this order — it is CC's recommendation and he owns the call.** The session
+ended clean, with nothing in flight and no instruction pending.
+
+**Take §4 item 1: the 11 remaining blank-list desyncs.** They are the same defect class just fixed
+for the webinar mechanism, they are already enumerated and recorded in a passing test, and two of
+them (`problemAgitation`, `solutionIntro` on webinar) sit on the very page type just worked. No
+re-investigation needed — the list is in `server/landingPageBlankList.test.ts` under
+`ACCEPTED_DESYNCS`.
+
+### 0.7 · VERIFY THIS BLOCK BEFORE TRUSTING IT (§15f — measure, never read)
+
+```
+git rev-parse --abbrev-ref HEAD                       # expect: railway-build
+git fetch origin railway-build
+git rev-parse --short HEAD refs/remotes/origin/railway-build
+git status --short | grep -E '^ ?[MDAR]'              # expect: NOTHING
+git status --short | grep -c '^??'                    # expect: ~321
+npx tsc --noEmit 2>&1 | grep -c "error TS"            # expect: 34
+npx vitest run server/pipeline-fixes.test.ts          # expect: 412 passed
+railway deployment list --environment production --service coachflow --json \
+  | python3 -c "import sys,json;d=json.load(sys.stdin)[0];print(d['status'],d['meta']['commitHash'][:7])"
+```
+
+⚠️ **If any number disagrees with the tree, THE TREE WINS and this block is stale.**
+
+---
+
+## 1. WHAT SHIPPED THIS SESSION — two fixes, both live
+
+### 1.1 · `61c2908` — the publish gate skipped itself when its input was absent
+
+`publishToMeta.serviceId` is `z.number().optional()` and the compliance gate was wrapped in
+`if (input.serviceId != null)`. **A caller that OMITTED the key skipped the compliance axis, the
+fabrication check and the ad-to-page match in silence, and the ad reached Meta unscreened.** The
+same shape sat one level in: `if (gateDb)` let a publish through unchecked when the DB was down.
+Both now fail closed and throw **before** the first of the four Graph creates. `AdCopyDetail`'s
+Publish button (which called the endpoint with no `serviceId` at all) and `PublishToMetaDialog`
+were removed; `V2CampaignKit` gates `PushKitModal` on `serviceId != null`.
+
+Adds `[publishToMeta] GATE RAN` — without it, a publish that skipped the gate was indistinguishable
+after the fact from one that passed, since `meta_published_ads` has no `serviceId` column.
+
+**Both arms proved on production:**
+
+- **NEGATIVE** — `serviceId` omitted → `[publishToMeta] REFUSED for user 1 — no serviceId supplied`,
+  `BAD_REQUEST`. `meta_published_ads` 2→2, max id 2→2, newest campaign id unchanged, no new
+  campaign ids.
+- **POSITIVE** (one authorised publish) — `[publishToMeta] GATE RAN for user 1 serviceId=324`, all
+  four Graph creates fired. `meta_published_ads` 2→3 (+1, new row id 5, `status=PAUSED`). Read back
+  from Meta: campaign `120251702758030626` `status=PAUSED`.
+
+🔑 **RECORD THIS — THE FIRST NEGATIVE ARM WAS A FALSE PASS, CAUGHT AND DISCARDED.** It threw
+`BAD_REQUEST` and the assertion went green, but the message was the **daily-budget** guard:
+`assertDailyBudgetForAccount` runs BEFORE the gate and rejected `dailyBudget: 1` on an AED account
+(floor is above AED 3.00). **The call never reached the compliance gate.** A refusal by an unrelated
+guard had passed as proof of the gate — §15k exactly. The re-run pinned `dailyBudget: 20` so the
+call reaches the gate, and asserted on the *specific* refusal text rather than on "something threw".
+**Any future test of this gate must pin the budget above the AED floor or it proves nothing.**
+
+📌 Two read-backs were incomplete: `getAdSets` hit Meta rate limit `code 17` *after* the publish, so
+ad-set status is evidenced by the outbound `status=PAUSED` and the DB row, **not** independently
+confirmed from Meta's stored copy. The campaign status was.
+
+### 1.2 · `c30381f` — the webinar prompt discarded the mechanism the cascade handed it
+
+`cascadeContext.ts:92` lists `mechanism` among the landing-page node's upstream selections, and
+`describeMechanismText` puts the selected hero mechanism's name and description into the prompt.
+The `webinar_registration` block of `PAGETYPE_PROMPTS` then instructed the model to return
+`uniqueMechanism: ""` **and** `whyOldFail: ""`. `webinarLight.ts` builds its entire "why this works"
+band from exactly those two fields, so `methodSection` hit `if (!whyOld && !mech) return ""` and the
+band **never rendered on any webinar page** — while the comment above it read *"both always
+generated"*. A guarantee nothing enforced, inverted (§15i).
+
+Shipped: blank entries removed for webinar only; a positive `METHOD BAND` instruction binding both
+fields to the supplied mechanism (§14a, no wrong-shape exemplar); the false comment corrected;
+`MECHANISM_CASCADE_MARKER` exported and used *by the emitter* so the detector cannot drift;
+`pageTypeRenderFields.ts` + `landingPageBlankList.test.ts` hold the blank lists to what the renderer
+can display. **Discovery, lead-magnet and event blocks untouched — their templates have no
+mechanism slot.**
+
+🔑 **RECORD THIS — THE FINDING THAT MATTERS MOST. THE PROMPT INSTRUCTION ALONE WOULD NOT HAVE
+WORKED.** In the negative-control run, with no mechanism in the cascade and the prompt explicitly
+telling it to return both fields empty, **the model invented a mechanism anyway.** The clamp caught
+it and logged
+`[landingPageGenerator] webinar angle=original: no selected hero mechanism in the cascade; clearing uniqueMechanism/whyOldFail`.
+
+> **The server-side clamp — not the prompt — is what guarantees the behaviour.** A prompt
+> instruction is STEERING, not enforcement. Had this shipped as prompt-only, **lp 170, 171 and 179
+> (live, published, no kit) would have published a confident invented method band.**
+> **Do not "simplify" this by deleting the clamp and trusting the prompt.**
+
+**Proof — differential swap, two coined names, one variable:**
+
+| run | mechanism supplied | page produced |
+|---|---|---|
+| A | `The Kestrel Anchoring Cascade` | named it; did not name B |
+| B | `The Marrowfield Torque Sequence` | named it; did not name A |
+| C | none | both fields empty; void check clean |
+
+**Deploy markers (§15h), counted in BOTH builds:** `METHOD BAND` 0→1 · `no selected hero mechanism
+in the cascade` 0→1 · blank-list run `- whyOldFail:""/- uniqueMechanism:""/- shockingStat:""` **1→0**
+(the disappearing half). ⚠️ **Two obvious markers were INVALID and must not be reused:**
+`"both always generated"` survives in both builds because the replacement comment *quotes* it, and
+`- uniqueMechanism: ""` is 4→4 because the new empty-case clause reintroduces it.
+
+---
+
+## 2. THE CORRECTED MEASUREMENT — it is **0 of 48**, not 27 of 34 and not 0 of 29
+
+Measured on production, mechanism read from the ACTIVE angle (all four angles checked; same result):
+
+| pageType | total | filled | empty |
+|---|---|---|---|
+| `sales_page` | 51 | **51** | 0 |
+| `webinar_registration` | 29 | 0 | **29** |
+| `event_registration` | 10 | 0 | **10** |
+| `discovery_call_booking` | 5 | 0 | **5** |
+| `lead_magnet_download` | 4 | 0 | **4** |
+
+**The brief said "27 of 34 kits". The 2026-09-03 block corrected it to "0 of 29 webinar". Both
+undercount: it is 0 of 48 across FOUR page types.** The 51/51 sales result is the control that makes
+this a finding rather than a broken query. `campaignType` maps onto `pageType`: `course_launch`,
+`product_launch` and `challenge` all resolve to `sales_page` (no blank list) — which is the whole
+of the 4-vs-3 split.
+
+**Only webinar was a defect.** Template mechanism slots: `webinarLight` 1 · `salesAliAbdaal` 3 ·
+`salesLight` 2 · `webinarRajsekar`, `eventHormozi`, `eventImanGadzhi`, `discoveryBurchard`,
+`burchardProductivity`, `leadMagnetPublish` **all 0**.
+
+---
+
+## 3. THE SALES-PATH BASELINE — 11 of 13, on a denominator far smaller than it looks
+
+Measured before the fix, to check the sales path genuinely carries the mechanism rather than
+inventing fluently:
+
+- **37 of the 51 sales pages have NO campaign kit** — no mechanism was ever in their cascade.
+  **Every one of them still produced a confident invented mechanism.** This is the evidence base for
+  the clamp in §1.2.
+- 14 had a kit + a selected mechanism; **1 excluded** (`lp 185`, selected mechanism literally named
+  `"The 10"`, matched spuriously inside "the 10-Week…" — a degenerate marker).
+- **11 of 13 = 85%** name their kit's selected mechanism. Mismatches: `lp 42`, `lp 44`; neither
+  matched a sibling mechanism from the same set, which is the evidence against selection drift.
+- **Substance:** mean content-word coverage of the stored description **66.6%**; 10 of 12 ≥30%.
+  The metric UNDERSTATES — `lp 213` scores 22% while plainly echoing the argument.
+
+📌 **The join is via ICP** (`landingPages.serviceId` → `idealCustomerProfiles.serviceId` → `icp.id` →
+`campaignKits.userId+icpId`), matching what the generator itself does — **not**
+`selectedLandingPageId`. Control: the same join resolves **25/29 webinar** pages, which is what
+proves the 37 `NO_KIT` results are a real absence and not a broken query.
+
+---
+
+## 4. OPEN QUEUE — in priority order
+
+1. 🔴 **The 11 remaining blank-list desyncs**, recorded as `ACCEPTED_DESYNCS` in
+   `server/landingPageBlankList.test.ts`. Same defect class as §1.2 — a prompt blanking a field its
+   own template renders, so the section can never appear. **Includes `problemAgitation` and
+   `solutionIntro` on `webinar_registration` (both templates render both).** Also 8 on
+   `event_registration`, 1 on `lead_magnet_download`. The list may only SHRINK: a new desync fails
+   the test, and so does a stale entry, so fixing one forces the record updated.
+2. 🟡 **The word-budget floor.** `validateScriptStructure` tests `totalWords > budget.max` and never
+   `< budget.min`, so a 40-word 30-second script passes as cleanly as an 85-word one. All three
+   banked 30s scripts are BELOW the 75-word floor while documented as compliant. The constant
+   already exists in `WORD_BUDGET_TABLE`; it is roughly two lines.
+3. 🟡 **`lead_magnet` offers resolve to `free_event`** — a downloadable guide described as a live
+   event. **Carried forward and NOT re-measured since 2026-09-03. Re-measure before acting (§15f).**
+4. 🟡 **The six-field intake confirm screen has been unreachable since `a3e83d6` (June).** A §15d
+   instance: the screen exists, nothing routes to it. (The commonly-repeated detail that "a coach
+   sees only two of six fields" is NOT verified — check it before quoting it.)
+5. 🟡 **Two of the three `injectRealTestimonials` callers are unexercised.** `partitionProof` has
+   exactly ONE caller, `injectRealTestimonials`; that function has three.
+   `landingPagePublisher.ts:114` ✅ proven via LP 243. `routers/complianceRewrites.ts:335` ❌ and
+   `scripts/step4c-multiad-publish.ts:345` ❌ never watched.
+6. 🟡 **§7.6 carried items** (in the superseded block below): `asSeenIn` / `proofMetrics` read by
+   NONE of the five templates · the cold-weighted distribution `3/3/1/1/0` vs `2/3/2/1/0` open
+   three-way conflict · orphaned services 320–323.
+
+---
+
+## 5. STATE DELIBERATELY LEFT IN PLACE — not defects, do not "fix" on sight
+
+- **The 29 webinar pages stay empty until REGENERATED.** `c30381f` fixed the generation path, not
+  the rows. Nothing was regenerated and no landing-page row was written this session.
+- **`lp 170, 171, 179, 182` have no kit and therefore no selected mechanism.** On regeneration they
+  will produce an EMPTY method band, enforced by the clamp, and `methodSection` will omit the band
+  cleanly. **That is the intended shape, not a gap.** 170, 171 and 179 are currently published.
+- 🔴 **A PAUSED test campaign is live on Arfeen's Meta ad account and is AWAITING HIS DELETION:**
+  **`120251702758030626` — "ZZ-GATE-POSITIVE-ARM — paused, safe to delete"**, plus
+  `meta_published_ads` row **id 5**. It spends nothing (PAUSED at campaign, ad set and ad).
+  **Do not delete it without Arfeen saying so** — he asked to see it first.
+- **Protected services `272, 273, 274, 275, 276, 277, 285`** — never publish against these.
+- **Meta ad account bills in AED**; the daily-budget floor is above AED 3.00, and
+  `z.number().min(1)` is currency-unaware. Any publish test must pin `dailyBudget: 20`.
+
+---
+---
+
+# 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-03 (retained, not deleted)
 ### supersedes the 2026-09-02 block below, which is retained and marked, not deleted
 
 **Every number in this block was MEASURED against production at write time (§15f), not recalled.
