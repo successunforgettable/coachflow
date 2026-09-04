@@ -393,6 +393,13 @@ async function describeOffer(
  */
 export const MECHANISM_CHARS_DEFAULT = 900;
 
+/**
+ * The exact prefix `describeMechanismText` emits when a mechanism travels in the cascade.
+ * Exported so a CONSUMER can decide whether a mechanism actually arrived, without re-deriving
+ * the wording — the emitter below uses this same constant, so the two cannot drift apart.
+ */
+export const MECHANISM_CASCADE_MARKER = "Selected hero mechanism:";
+
 /** Shape of the columns this renderer reads. Loose on purpose so the test can pass a plain object. */
 export type MechanismRowLike = {
   mechanismName?: string | null;
@@ -407,7 +414,7 @@ export type MechanismRowLike = {
  */
 export function describeMechanismText(m: MechanismRowLike, maxChars: number = MECHANISM_CHARS_DEFAULT): string {
   const description = truncateAtSentence(m.mechanismDescription ?? "", maxChars);
-  let desc = `Selected hero mechanism: "${m.mechanismName ?? ""}".`;
+  let desc = `${MECHANISM_CASCADE_MARKER} "${m.mechanismName ?? ""}".`;
   if (m.descriptor && !hasPlaceholder(m.descriptor)) {
     desc += ` Type: ${m.descriptor}.`;
   }

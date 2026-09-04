@@ -160,8 +160,12 @@ function frameworkSection(content: LandingPageContent): string {
 
 /**
  * "Why this works" — the method band that carries a low-proof page: why the old way fails + the
- * unique mechanism (both always generated). Real-or-omit. This is where proof would sit on the rich
- * page; here the argument is the mechanism, not the crowd.
+ * unique mechanism. NOT always generated: both are written only when the cascade supplied a
+ * selected hero mechanism, and are deliberately empty when it did not — in which case this whole
+ * band omits, which is the intended shape rather than a gap. (The comment here previously read
+ * "both always generated" while the webinar prompt blanked both unconditionally, so the band
+ * never rendered on any webinar page — a guarantee nothing enforced, §15i.) Real-or-omit. This is
+ * where proof would sit on the rich page; here the argument is the mechanism, not the crowd.
  */
 function methodSection(content: LandingPageContent): string {
   const whyOld = ok(content.whyOldFail) ? esc(content.whyOldFail) : "";

@@ -3,6 +3,7 @@ import { resolveAutoFillTokens, substituteCopyToken } from "./lib/templates/oper
 import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, GUARANTEE_CLAIMS_RULE, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
+import { MECHANISM_CASCADE_MARKER } from "./_core/cascadeContext";
 import { checkOutput } from "./_core/complianceAxis";
 import { validateLandingPageTestimonialsFabrication } from "./_core/validator";
 
@@ -162,11 +163,24 @@ SECTIONS TO POPULATE (fill substantively):
   helps. Title + description ONLY. Do NOT include any monetary value or price —
   bonus values are operator-supplied later; never invent a ₹/$ figure.
 
+METHOD BAND — whyOldFail + uniqueMechanism. The registration page carries a
+"why this works" band that the renderer builds from exactly these two fields.
+
+When a "Selected hero mechanism" is supplied in the context above:
+- uniqueMechanism — write it FROM that mechanism. Use its supplied name as the
+  name of the method, and draw the explanation from its supplied description,
+  rendered in this page's voice. 2-4 sentences.
+- whyOldFail — one short paragraph naming what the reader has already tried that
+  stalls, written so the supplied mechanism reads as the structural answer to it.
+
+When no "Selected hero mechanism" is supplied in the context above, return both
+as empty strings:
+- uniqueMechanism: ""
+- whyOldFail: ""
+
 SECTIONS TO LEAVE EMPTY (return as empty string ""):
 - problemAgitation: ""
 - solutionIntro: ""
-- whyOldFail: ""
-- uniqueMechanism: ""
 - shockingStat: ""
 - insiderAdvantages: ""
 - quizSection: { question: "", options: [], answer: "" }
@@ -791,6 +805,25 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
         `(${gate.blocking.length} hits, classes=[${Array.from(new Set(gate.blocking.map((h) => String(h.classId)))).join(",")}]); returning best-effort — publish gate will hold it.`,
       );
     }
+  }
+
+  // ── ENFORCE THE METHOD-BAND BINDING (2026-09-05) ────────────────────────────
+  // The prompt asks for `uniqueMechanism` + `whyOldFail` only when the cascade supplied a
+  // selected hero mechanism. A prompt instruction is STEERING, not enforcement (§15i), so the
+  // no-mechanism case is decided here, where it is decidable. Production evidence for why:
+  // 37 sales pages were generated for services with no campaign kit — no mechanism in context
+  // at all — and every one of them returned a confident, invented mechanism.
+  if (pageType === "webinar_registration" && !cascadeContext.includes(MECHANISM_CASCADE_MARKER)) {
+    const pm = parsed as Record<string, unknown>;
+    if ((typeof pm.uniqueMechanism === "string" && pm.uniqueMechanism.trim() !== "")
+      || (typeof pm.whyOldFail === "string" && pm.whyOldFail.trim() !== "")) {
+      console.warn(
+        `[landingPageGenerator] webinar angle=${angle}: no selected hero mechanism in the cascade; ` +
+        `clearing uniqueMechanism/whyOldFail rather than publishing an invented method band.`,
+      );
+    }
+    pm.uniqueMechanism = "";
+    pm.whyOldFail = "";
   }
 
   return parsed as LandingPageContent;
