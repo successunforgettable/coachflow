@@ -59,7 +59,14 @@ export function buildConceptScriptPrompt(concept: ScriptConceptInput, cascadeCon
   const budget = wordBudgetForSeconds(targetSeconds);
   const persona = concept.personaLabel || "this ideal customer";
   const sceneCount = targetSeconds === 15 ? 3 : targetSeconds <= 30 ? 4 : 5;
-  const perScene = Math.floor(budget.min / sceneCount); // concrete per-scene cap, derived from the LOW end so the total lands under the hard max
+  // Per-scene guidance derived from the TARGET, with a band that multiplies back into the total band.
+  // It used to read `Math.floor(budget.min / sceneCount)` — anchored on the LOW end — so the most
+  // concrete number in the prompt steered every duration to the floor or below: 15s→30 (floor 30),
+  // 60s→150 (floor 150), and 30s→72 against a floor of 75, because flooring 75/4 loses three words.
+  // The scripts obeyed this line rather than the "~target" line above it, and landed under-length.
+  const perScene = Math.round(budget.target / sceneCount);
+  const perSceneMin = Math.round(budget.min / sceneCount);
+  const perSceneMax = Math.floor(budget.max / sceneCount);
   return `You are a world-class direct-response video scriptwriter for Meta ads. Write ONE short script a coach
 will record themselves (phone camera or avatar), for a SINGLE fixed concept.
 
@@ -85,8 +92,9 @@ ${physicalSubjectGuidance(`${cascadeContext} ${concept.desire ?? ""} ${persona}`
 Every line — hook, body and CTA — sounds like a real person said it, not a copywriter. The whole script,
 not just the opening, must survive the read-aloud test above.
 
-LENGTH — this is a ${targetSeconds}-SECOND script. That is only ~${budget.target} spoken words TOTAL, hard max ${budget.max}.
-You have ${sceneCount} scenes, so each scene is ONE short spoken line of about ${perScene} words — never more than ${perScene + 4}.
+LENGTH — this is a ${targetSeconds}-SECOND script. Total spoken words: HARD FLOOR ${budget.min}, HARD CEILING ${budget.max}, aim ~${budget.target}.
+BOTH numbers are non-negotiable and they fail the same way — under ${budget.min} the read ends early and the slot sits half empty; over ${budget.max} it overruns the slot and the ending gets cut off.
+You have ${sceneCount} scenes. Each scene is ONE spoken line of ${perSceneMin}–${perSceneMax} words, aiming ~${perScene}. Holding EVERY scene inside that range is exactly what lands the total between ${budget.min} and ${budget.max}.
 Count as you write. Every word costs a fraction of a second on camera. Placement-safe short: Meta Advantage+ serves
 one asset across Reels, Stories and Feed, and the short end runs cleanly everywhere. Tight means FEWER, shorter
 sayable lines — one idea per breath — not denser sentences.
@@ -94,14 +102,18 @@ sayable lines — one idea per breath — not denser sentences.
 SCENE MAP (${targetSeconds === 15 ? "3 tight scenes at 15s: hook → the turn (the one new-way point) → CTA — problem and solution fold into the turn" : targetSeconds <= 30 ? "4 scenes at 30s: hook → problem → turn → solution-and-CTA — fold the solution and the CTA into one closing scene so the whole thing fits the word cap" : "5 scenes: hook → problem → turn → solution → CTA"}):
 - Scene 1 is the HOOK, written in the ${concept.hookPattern} style, opening on the leading desire above.
 - Include a TURN beat — the "here's the new way" shift from problem to solution (sceneType: "turn"). Keep it short.
-- Total spoken words ~${budget.target}, HARD MAX ${budget.max}. This ceiling is non-negotiable: if a draft lands near ${budget.max}, cut a WHOLE sentence — don't shave words. Fewer, tighter scenes beat more scenes that overrun.
+- Total spoken words: HARD FLOOR ${budget.min}, HARD CEILING ${budget.max}, aim ~${budget.target}. BOTH bounds are non-negotiable, and each is repaired a WHOLE BEAT at a time: if a draft lands near ${budget.max}, cut a WHOLE sentence — never shave words; if it lands near ${budget.min}, add a WHOLE line to an existing scene — never pad the sentences you already have.
 - Each scene is for a HUMAN presenter recording themselves — no stock footage, no render directions.
 
 Return valid JSON only, no markdown:
 { "hookPattern": "${concept.hookPattern}", "scenes": [ { "sceneNumber": 1, "sceneType": "hook", "spokenLine": "the exact words the coach says out loud, written the way people talk", "onScreenText": "SHORT CAPTION OVERLAY", "deliveryNote": "pacing/tone cue for the presenter" } ] }`;
 }
 
-const SCRIPT_JSON_SCHEMA = {
+/**
+ * Exported for the same reason `describeMechanismText` is: so a harness measuring generation
+ * behaviour sends the REAL schema rather than a copy of it that can drift away from production.
+ */
+export const SCRIPT_JSON_SCHEMA = {
   type: "json_schema" as const,
   json_schema: {
     name: "concept_video_script",
