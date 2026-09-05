@@ -93,7 +93,9 @@ them in the working tree — their absence there is correct.
 ⚠️ **Arfeen has NOT set this order — it is CC's recommendation and he owns the call.** The session
 ended clean, with nothing in flight and no instruction pending.
 
-**Take §4 item 1: the 11 remaining blank-list desyncs.** They are the same defect class just fixed
+**Take §4 item 1: the 13 remaining blank-list desyncs.** ⚠️ **CORRECTED 2026-09-05 — this line
+originally read "11", which was wrong.** The count is 13, and it comes from `ACCEPTED_DESYNCS` in
+`server/landingPageBlankList.test.ts`, which is the only authority for it. They are the same defect class just fixed
 for the webinar mechanism, they are already enumerated and recorded in a passing test, and two of
 them (`problemAgitation`, `solutionIntro` on webinar) sit on the very page type just worked. No
 re-investigation needed — the list is in `server/landingPageBlankList.test.ts` under
@@ -263,11 +265,13 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
 
 ## 4. OPEN QUEUE — in priority order
 
-1. 🔴 **The 11 remaining blank-list desyncs**, recorded as `ACCEPTED_DESYNCS` in
-   `server/landingPageBlankList.test.ts`. Same defect class as §1.2 — a prompt blanking a field its
-   own template renders, so the section can never appear. **Includes `problemAgitation` and
-   `solutionIntro` on `webinar_registration` (both templates render both).** Also 8 on
-   `event_registration`, 1 on `lead_magnet_download`. The list may only SHRINK: a new desync fails
+1. 🔴 **The 13 remaining blank-list desyncs**, recorded as `ACCEPTED_DESYNCS` in
+   `server/landingPageBlankList.test.ts`. ⚠️ **CORRECTED 2026-09-05 — this heading originally read
+   "11", which was wrong; count the entries in `ACCEPTED_DESYNCS`, never this prose.** Same defect class as §1.2 — a prompt blanking a field its
+   own template renders, so the section can never appear. Breakdown, and it sums to the
+   total: **4 on `webinar_registration`** (`problemAgitation` + `solutionIntro`, each against BOTH
+   `webinarLight.ts` and `webinarRajsekar.ts`) · **8 on `event_registration`** · **1 on
+   `lead_magnet_download`** = **13**. The list may only SHRINK: a new desync fails
    the test, and so does a stale entry, so fixing one forces the record updated.
 2. 🟡 **The word-budget floor.** `validateScriptStructure` tests `totalWords > budget.max` and never
    `< budget.min`, so a 40-word 30-second script passes as cleanly as an 85-word one. All three
