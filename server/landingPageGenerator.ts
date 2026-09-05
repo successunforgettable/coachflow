@@ -4,6 +4,7 @@ import { invokeLLM } from "./_core/llm";
 import type { LandingPageContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, GUARANTEE_CLAIMS_RULE, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE, REGISTER_STANDARD, registerPersonGuidance, physicalSubjectGuidance, truncateQuote } from "./_core/copywritingRules";
 import { MECHANISM_CASCADE_MARKER } from "./_core/cascadeContext";
+import { buildCoachCorpus, buildProofSupplied } from "./_core/groundingCorpus";
 import { checkOutput } from "./_core/complianceAxis";
 import { validateLandingPageTestimonialsFabrication } from "./_core/validator";
 
@@ -418,7 +419,20 @@ export async function generateLandingPageAngle(
   cascadeContext: string = "",
   pageType: LpPageType = 'sales_page',
   /** Residual legacy-validator hits, so the persistence gate folds them into ONE verdict. */
-  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<LandingPageContent> {
+  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> },
+  /**
+   * THE COACH'S OWN COMMERCIAL TERMS (2026-09-05). `services.guaranteeType` / `guaranteeDuration`
+   * existed and were NEVER passed here, so the guarantee instruction's "if the operator provided
+   * one, use it exactly" branch could never fire and the "if not" branch — which told the model to
+   * invent a refund window — ran on every sales page ever generated.
+   */
+  operatorFacts?: { guaranteeType?: string | null; guaranteeDuration?: string | null; cohortLimit?: string | null; cohortCloseDate?: string | null } | null,
+  /**
+   * The coach corpus + supplied proof. Without it `checkOutput`'s fabrication half silently
+   * no-ops (complianceAxis.ts:1262), which is why `invented_guarantee` never fired on this path.
+   */
+  grounding?: { corpus: any; supplied: any } | null,
+): Promise<LandingPageContent> {
   // Social proof guidance (Issue 2 fix)
   const socialProofGuidance = socialProof.hasTestimonials || socialProof.hasCustomers || socialProof.hasPress
     ? `REAL SOCIAL PROOF AVAILABLE:
@@ -458,6 +472,18 @@ Every figure, publication, client name and quoted result on this page appears in
     : `14. **Shocking Statistic** (150-200 words)
     No population statistics or research figures are available for this offer, so this section is written WITHOUT numbers: name the pattern the coach keeps seeing in this work and why the standard approach leaves it in place. Qualitative and specific throughout — a precisely described pattern in place of a figure.`;
 
+  // The coach's real terms, or an explicit statement that there are none. Stating the absence is
+  // load-bearing: silence let the model treat the field as free prose.
+  const g = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : "");
+  const guaranteeSupplied = [g(operatorFacts?.guaranteeType), g(operatorFacts?.guaranteeDuration)].filter(Boolean).join(", ");
+  const cohortLimitSupplied = g(operatorFacts?.cohortLimit);
+  const cohortCloseSupplied = g(operatorFacts?.cohortCloseDate);
+  const operatorFactsBlock = `OPERATOR-SUPPLIED COMMERCIAL TERMS — the only source of truth for these:
+- Guarantee terms: ${guaranteeSupplied || "NOT SUPPLIED"}
+- Cohort size limit: ${cohortLimitSupplied || "NOT SUPPLIED"}
+- Cohort close date: ${cohortCloseSupplied || "NOT SUPPLIED"}
+Where a line reads NOT SUPPLIED, the coach has given nothing and there is nothing to state.`;
+
   const prompt = `
 You are a world-class direct response copywriter specializing in high-converting landing pages.
 
@@ -472,6 +498,8 @@ ${ANGLE_PROMPTS[angle]}
 ${PAGETYPE_PROMPTS[pageType]}
 
 ${socialProofGuidance}
+
+${operatorFactsBlock}
 
 ${registerPersonGuidance(hasRealProof && socialProof.hasTestimonials)}
 
@@ -522,8 +550,11 @@ ${testimonialsSection}
 12. **Insider Advantages** (what makes it different, 200-300 words)
     Example: "Built From Six Years Of Running These Calls Wrong, Then Right"
 
-13. **Scarcity / Urgency** (limited enrollment messaging, 200-300 words)
-    Example: "Enrolment for this cohort closes on [INSERT_DEADLINE]"
+13. **Scarcity / Urgency** (200-300 words)
+    ANCHOR ON [INSERT_COHORT_LIMIT] and [INSERT_COHORT_CLOSE_DATE] — the same canonical operator-fill tokens the email sales builder uses. A seat count, a cohort cap, a closing window and a price increase are all operator-supplied facts.
+    Do NOT invent a number of spots or seats (in digits or spelled out as words), a cohort size, a closing date, an enrolment window, a founding-member rate, a price increase, or a claim that a rate will not be offered again.
+    WHEN the OPERATOR-SUPPLIED COMMERCIAL TERMS block above gives a cohort size limit or close date: use them exactly, and emit the matching token where the other is NOT SUPPLIED.
+    WHEN both read NOT SUPPLIED: emit [INSERT_COHORT_LIMIT] and [INSERT_COHORT_CLOSE_DATE] verbatim where the count and the date would go, and carry the section on the REAL reason acting now matters to this reader — the ongoing cost of the problem continuing for another month, named concretely for this niche. That cost is a description of the reader's own situation, not a claim about the offer's availability.
 
 ${shockingStatSection}
 
@@ -534,10 +565,12 @@ ${shockingStatSection}
     The consultation outline must feel like a genuine agenda, not a marketing list. Each item must name the specific deliverable the client will have at the end of that segment — what they have after that step that they did not have before it. BANNED consultation outline patterns (do not use as titles or descriptions): "Introduction and welcome", "Q&A", "Next steps", "Strategy overview", "Getting to know you" — these are placeholders, not deliverables. Every item must name a specific analysis, assessment, calculation, or output. Example: "Revenue Gap Analysis — At the end of this segment you will have a precise number: the exact monthly gap between your current income and your target, and the three specific levers available to close it."
 
 17. **FAQ** (5-7 frequently asked questions with answers)
-    Generate 5-7 FAQ items that address: common objections to buying, logistics questions (how it works, what is included, how long it takes), what the guarantee covers and the window it runs for, and one question about who this is NOT for. Each item has a "question" and "answer". Answers are 2-3 sentences and conversational. An answer that reaches for the guarantee names the remedy and the period or number of uses it applies within, per the GUARANTEE AND REMEDY CLAIMS rule above. An answer that addresses doubt settles it with what the programme DOES and what the reader is handed — the concrete thing that meets the objection — rather than with an assurance about how the reader ends up.
+    Generate 5-7 FAQ items that address: common objections to buying, logistics questions (how it works, what is included, how long it takes), and one question about who this is NOT for. Do NOT cross-reference other sections of the page by name — never write "see the guarantee section below" or "the guarantee section covers this", because a section whose facts the coach has not supplied does not render and the reference would point at nothing. An answer that touches the guarantee follows the same rule as section 18: the coach's supplied terms, or [INSERT_GUARANTEE_TERMS] verbatim, never invented refund mechanics. Each item has a "question" and "answer". Answers are 2-3 sentences and conversational. An answer that reaches for the guarantee names ONLY the coach's supplied remedy and period; where none is supplied it emits [INSERT_GUARANTEE_TERMS] verbatim rather than naming a window. An answer that addresses doubt settles it with what the programme DOES and what the reader is handed — the concrete thing that meets the objection — rather than with an assurance about how the reader ends up.
 
 18. **Guarantee** (dedicated guarantee statement, 100-200 words)
-    Write a dedicated risk-reversal guarantee section. Format as: first line is the guarantee headline (e.g., "Our 90-Day Money-Back Guarantee"), remaining lines are the guarantee body explaining terms and building confidence. If the operator provided a specific guarantee type or duration in the cascade context above, use it exactly. If not, write a satisfaction guarantee built on a refund window suited to the offer type — the remedy named, and the period it runs for named with it, per the GUARANTEE AND REMEDY CLAIMS rule above. The terms state what the reader has to have done to use it and by when. Frame positively — what the customer gets or gets back, not what they lose, and not what the programme will have made of them.
+    ANCHOR ON [INSERT_GUARANTEE_TERMS] (ported verbatim in approach from the email sales builder's Sprint B guarantee-fabrication fix, and using the same canonical token so the two paths stay consistent): the operator-supplied guarantee terms specify refund duration, refund conditions, refund process. Do NOT invent guarantee specifics (refund duration, refund process, conditions for refund eligibility, money-back framing details, a support or contact address to claim through).
+    WHEN the OPERATOR-SUPPLIED COMMERCIAL TERMS block above gives guarantee terms: use them exactly, and write the section around them. Format as: first line is the guarantee headline, remaining lines are the body stating what the reader has to have done to use it and by when. Frame positively — what the customer gets or gets back.
+    WHEN that block reads NOT SUPPLIED: emit [INSERT_GUARANTEE_TERMS] verbatim wherever the section would otherwise enumerate refund mechanics, and reframe the section's job as "reduce risk through framing the safety of the decision" — describe what about the offer's structure makes it low-risk (e.g. the time-bound nature of the work, the coach's named track record, the fit-check process) without inventing refund mechanics.
 
 SPECIFICITY CHECK — apply this before returning the JSON:
 For every section, ask: does this section contain at least one phrase that could only appear on a landing page for THIS specific service in THIS specific niche? If any section contains only generic direct response language that could apply to any coaching programme, rewrite that section before returning. The test: mentally swap the product name for a different coaching product in a different niche. If the section still makes sense without any changes, it is not specific enough. Rewrite until it only makes sense for this product, this avatar, and this outcome.
@@ -787,8 +820,16 @@ Use direct response copywriting principles: pain agitation, unique mechanism, so
       ["problemAgitation", "body"], ["solutionIntro", "body"], ["whyOldFail", "body"],
       ["uniqueMechanism", "body"], ["insiderAdvantages", "body"], ["shockingStat", "body"],
       ["timeSavingBenefit", "body"], ["primaryCta", "cta"],
+      // ADDED 2026-09-05. Both were absent, so even with grounding wired the fabrication half
+      // would never have seen the two fields that were actually being invented.
+      ["guarantee", "body"], ["scarcityUrgency", "body"],
     ] as const).map(([k, role]) => ({ location: `landingPage.${k}`, text: p[k] as string | undefined, role }));
-    const gate = checkOutput(gateFields);
+    // GROUNDING WAS ABSENT HERE (fixed 2026-09-05). `checkOutput` runs its fabrication half only
+    // when a corpus is supplied (complianceAxis.ts:1262); this call passed none, so
+    // `invented_guarantee` — the class that exists for exactly this — could never fire on a
+    // landing page. Passed now. `requireGrounding` is deliberately NOT set: callers that supply
+    // no grounding keep today's behaviour rather than newly failing closed.
+    const gate = checkOutput(gateFields, grounding ?? undefined);
     if (!gate.ok) {
       if (leakAttempt < LP_SCHEMA_RETRY_MAX_ATTEMPTS) {
         validatorFailContext = gate.failContext;
@@ -850,7 +891,12 @@ export async function generateAllAngles(
   // compatible behavior for all existing callsites that don't pass pageType.
   pageType: LpPageType = 'sales_page',
   /** Residual legacy-validator hits, so the persistence gate folds them into ONE verdict. */
-  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> }): Promise<{
+  __sink?: { hits: Array<{ classId: string; matched: string; location: string }> },
+  /** The coach's own commercial terms — see generateLandingPageAngle. */
+  operatorFacts?: { guaranteeType?: string | null; guaranteeDuration?: string | null; cohortLimit?: string | null; cohortCloseDate?: string | null } | null,
+  /** Coach corpus + supplied proof, so the fabrication half of the output gate actually runs. */
+  grounding?: { corpus: any; supplied: any } | null,
+): Promise<{
   original: LandingPageContent;
   godfather: LandingPageContent;
   free: LandingPageContent;
@@ -876,10 +922,10 @@ export async function generateAllAngles(
   };
 
   const [original, godfather, free, dollar] = await Promise.all([
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
-    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, cascadeContext, pageType, __sink).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'original', socialProof, cascadeContext, pageType, __sink, operatorFacts, grounding).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'godfather', socialProof, cascadeContext, pageType, __sink, operatorFacts, grounding).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'free', socialProof, cascadeContext, pageType, __sink, operatorFacts, grounding).then(async r => { await notify(); return r; }),
+    generateLandingPageAngle(productName, productDescription, avatarName, avatarDescription, 'dollar', socialProof, cascadeContext, pageType, __sink, operatorFacts, grounding).then(async r => { await notify(); return r; }),
   ]);
   return { original, godfather, free, dollar };
 }
@@ -1133,6 +1179,28 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
   ].filter(Boolean).join('\n\n');
 
   const __lpSink = { hits: [] as Array<{ classId: string; matched: string; location: string }> };
+  // THE DEAD BRANCH, FED (2026-09-05). `services.guaranteeType` / `guaranteeDuration` have existed
+  // since the table was written and were never handed to the generator, so the guarantee
+  // instruction's "use the operator's terms" arm was unreachable and the "otherwise invent one" arm
+  // ran every time. `riskReversal` is deliberately NOT read here: the column is documented
+  // "Guarantee suggestion" and is LLM-generated, so treating it as coach-supplied would launder a
+  // generated line into a commercial promise.
+  const operatorFacts = {
+    guaranteeType: (service as any).guaranteeType ?? null,
+    guaranteeDuration: (service as any).guaranteeDuration ?? null,
+    // No column captures either of these yet — passed as null so the prompt states NOT SUPPLIED
+    // and emits the token, rather than the model filling the silence.
+    cohortLimit: null,
+    cohortCloseDate: null,
+  };
+
+  // The corpus the fabrication half needs. Built here because this is where the service row and the
+  // ICP's groundingMeta are both already loaded — no extra query.
+  const lpGrounding = {
+    corpus: buildCoachCorpus({ service, groundingMeta: (icp as any)?.groundingMeta ?? null }),
+    supplied: buildProofSupplied(service),
+  };
+
   const allAnglesRaw = await generateAllAngles(
     service.name,
     service.description || "",
@@ -1142,7 +1210,9 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
     input.onProgress,
     cascadeContext,
     input.pageType,
-    __lpSink
+    __lpSink,
+    operatorFacts,
+    lpGrounding
   );
 
   // Typed as LandingPageContent, not Record<string, unknown>. The old Record cast threw away
