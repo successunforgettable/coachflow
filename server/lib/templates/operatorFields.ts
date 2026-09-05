@@ -36,6 +36,12 @@ export const NA_SENTINEL = {
   EMAIL_CAPTURE: "__EMAIL_CAPTURE__",
   /** Event location answered as "it's online" → a graceful "Live online" (a complete answer). */
   ONLINE: "__ONLINE__",
+  /** Guarantee answered as "I don't offer one" → the guarantee section is removed, not hedged. */
+  NO_GUARANTEE: "__NO_GUARANTEE__",
+  /** Cohort size answered as "no limit" → the seat-count sentence is removed. */
+  NO_LIMIT: "__NO_LIMIT__",
+  /** Enrolment close answered as "no closing date" → the closing-date sentence is removed. */
+  NO_CLOSE_DATE: "__NO_CLOSE_DATE__",
 } as const;
 
 /**
@@ -158,6 +164,22 @@ export interface NaBranch {
   label: string;
   /** What replaces the copy token in prose for this N/A answer ("free"), never the raw sentinel. */
   copyText: string;
+  /**
+   * REMOVAL BRANCHES (2026-09-06). Some N/A answers have no inline wording that reads correctly —
+   * a coach who offers no guarantee cannot have "no guarantee" spliced into a sentence built to
+   * announce one. Measured on a real generated page, a plain substitution leaves:
+   *   guarantee   → an FAQ item {"question":"What is the guarantee?","answer":""}
+   *   cohortLimit → "is open to  copywriters"
+   *   closeDate   → "the cohort closes at ."
+   * So these branches REMOVE rather than substitute.
+   *   "section"  — blank `removesField` entirely; the template's real-or-omit guard drops the band.
+   *   "sentence" — drop only the sentence carrying the token, leaving the rest of the copy intact.
+   * Either way, any FAQ item whose question or answer carries the token is dropped too, because a
+   * question about a section that no longer exists is the same defect wearing different clothes.
+   */
+  removes?: "section" | "sentence";
+  /** For removes:"section" — the LandingPageContent field to blank. */
+  removesField?: string;
 }
 
 export interface OperatorTokenSpec {
@@ -200,6 +222,26 @@ export const OPERATOR_TOKEN_REGISTRY: Record<string, OperatorTokenSpec> = {
     token: "[INSERT_BOOKING_URL]", key: "booking", category: "hard-hold", scope: "coach", path: "bookingUrl",
     question: "How do people book a call with you — a calendar link, or do they email you?",
     na: [{ sentinel: NA_SENTINEL.EMAIL_CAPTURE, label: "By email", copyText: "using the form on this page" }],
+  },
+  // ── Commercial terms the coach alone can state (2026-09-06). Registered so they are HARD-HOLD:
+  // unregistered they fell through to the generic fail-safe as category "nudge", which offers a Skip
+  // chip, and skipping deleted the token and left the broken copy shown above. Hard-hold tokens carry
+  // no `skipText`, so no Skip chip is offered — the coach answers, or picks an N/A branch that removes
+  // the claim cleanly. ──
+  "[INSERT_GUARANTEE_TERMS]": {
+    token: "[INSERT_GUARANTEE_TERMS]", key: "guarantee_terms", category: "hard-hold", scope: "copy-only",
+    question: "What's your guarantee — the remedy, and the window it runs for? (e.g. \u201Cfull refund within 30 days if you complete the first four weeks\u201D)",
+    na: [{ sentinel: NA_SENTINEL.NO_GUARANTEE, label: "No guarantee", copyText: "", removes: "section", removesField: "guarantee" }],
+  },
+  "[INSERT_COHORT_LIMIT]": {
+    token: "[INSERT_COHORT_LIMIT]", key: "cohort_limit", category: "hard-hold", scope: "copy-only",
+    question: "Is there a limit on how many people can join this cohort? If so, how many?",
+    na: [{ sentinel: NA_SENTINEL.NO_LIMIT, label: "No limit", copyText: "", removes: "sentence" }],
+  },
+  "[INSERT_COHORT_CLOSE_DATE]": {
+    token: "[INSERT_COHORT_CLOSE_DATE]", key: "cohort_close_date", category: "hard-hold", scope: "copy-only",
+    question: "Is there a date enrolment closes? If so, when?",
+    na: [{ sentinel: NA_SENTINEL.NO_CLOSE_DATE, label: "No closing date", copyText: "", removes: "sentence" }],
   },
   "[INSERT_PRICE]": {
     token: "[INSERT_PRICE]", key: "price", category: "hard-hold", scope: "content", inputType: "price", path: "price.amount",
@@ -373,6 +415,65 @@ export interface AppliedAnswer {
  * the structured field; a coach-scoped field is returned as `coachColumn` for the mutation to persist on
  * the users row. Pure: returns new content, mutates nothing.
  */
+/** Drop the sentence carrying `token`, per paragraph, leaving the rest of the prose intact. */
+function removeSentenceWithToken(text: string, token: string): string {
+  return text
+    .split(/\n{2,}/)
+    .map((para) => {
+      if (!para.includes(token)) return para;
+      const kept = para
+        .split(/(?<=[.!?])\s+/)
+        .filter((sent) => !sent.includes(token))
+        .join(" ")
+        .trim();
+      return kept;
+    })
+    .filter((para) => para.trim() !== "")
+    .join("\n\n")
+    .trim();
+}
+
+function removeSentenceDeep<T>(node: T, token: string): T {
+  if (typeof node === "string") return removeSentenceWithToken(node, token) as unknown as T;
+  if (Array.isArray(node)) return node.map((n) => removeSentenceDeep(n, token)) as unknown as T;
+  if (node && typeof node === "object") {
+    const out: any = {};
+    for (const k in node as any) out[k] = removeSentenceDeep((node as any)[k], token);
+    return out;
+  }
+  return node;
+}
+
+/** An FAQ item that asks about a section which no longer exists is the same defect, relocated. */
+function dropFaqItemsMentioning<T extends Record<string, any>>(content: T, token: string): T {
+  const faq = (content as any).faq;
+  if (!Array.isArray(faq)) return content;
+  const kept = faq.filter((it: any) => !`${it?.question ?? ""} ${it?.answer ?? ""}`.includes(token));
+  return kept.length === faq.length ? content : ({ ...(content as any), faq: kept } as T);
+}
+
+/**
+ * Apply an N/A branch that REMOVES rather than substitutes. Returns null when the branch is an
+ * ordinary inline-copyText one, so the caller keeps its existing path.
+ */
+export function applyOperatorNaRemoval(
+  content: LandingPageContent,
+  token: string,
+  sentinel: string,
+): LandingPageContent | null {
+  const branch = OPERATOR_TOKEN_REGISTRY[token]?.na?.find((n) => n.sentinel === sentinel);
+  if (!branch?.removes) return null;
+  let next: any = dropFaqItemsMentioning(content as any, token);
+  if (branch.removes === "section" && branch.removesField) {
+    next = { ...next, [branch.removesField]: "" };
+    // The band is gone; any other prose still carrying the token would dangle.
+    next = removeSentenceDeep(next, token);
+  } else {
+    next = removeSentenceDeep(next, token);
+  }
+  return next as LandingPageContent;
+}
+
 export function applyOperatorAnswer(
   content: LandingPageContent,
   token: string,
@@ -381,7 +482,9 @@ export function applyOperatorAnswer(
   // item 2 — the single chokepoint: normalize a typed N/A phrase to its sentinel and canonicalize a
   // picker's raw date/time BEFORE resolving, so every caller (facts step, LP intake, edit flow) is covered.
   const resolution = resolveOperatorToken(token, normalizeOperatorAnswer(token, answer));
-  let next = substituteTokenDeep(content, resolution.copy.token, resolution.copy.text);
+  // A removal branch never splices wording in — see NaBranch.removes.
+  const removed = applyOperatorNaRemoval(content, token, normalizeOperatorAnswer(token, answer));
+  let next = removed ?? substituteTokenDeep(content, resolution.copy.token, resolution.copy.text);
   let coachColumn: { column: string; value: string } | undefined;
   if (resolution.structured) {
     if (resolution.structured.scope === "content") {
