@@ -69,16 +69,20 @@ CTA: "Claim Your FREE [Offer]!"
 Key phrase: Emphasize "FREE" and "no strings attached"
   `,
   dollar: `
-Generate a landing page with specific price positioning.
+Generate a landing page with VALUE positioning, anchored on the coach's own supplied price.
+
+⚠️ This angle used to instruct "Exact pricing / Cost breakdown / Limited-time pricing" with a
+CTA of "Get Started for $[Price]" — while nothing supplied a price. It could only invent one.
 
 Focus on:
-- Exact pricing
-- Value comparison
-- Cost breakdown
-- Limited-time pricing
+- What the reader receives, itemised concretely
+- Why the outcome is worth more than the effort of starting
+- The cost of the problem continuing, in the reader's own terms
 
-CTA: "Get Started for $[Price]"
-Key phrase: Emphasize specific price and value
+Pricing: use the OPERATOR-SUPPLIED COMMERCIAL TERMS block. Where Price reads NOT SUPPLIED, emit
+[INSERT_PRICE] verbatim and make the case without an amount. Never invent a figure, an anchor, a
+plan, a discount or a limited-time rate.
+CTA: an action, not a number — e.g. "Get Started" or "Book Your Consultation".
   `
 };
 
@@ -426,7 +430,7 @@ export async function generateLandingPageAngle(
    * one, use it exactly" branch could never fire and the "if not" branch — which told the model to
    * invent a refund window — ran on every sales page ever generated.
    */
-  operatorFacts?: { guaranteeType?: string | null; guaranteeDuration?: string | null; cohortLimit?: string | null; cohortCloseDate?: string | null } | null,
+  operatorFacts?: { guaranteeType?: string | null; guaranteeDuration?: string | null; cohortLimit?: string | null; cohortCloseDate?: string | null; price?: string | null; paymentPlan?: string | null; deliveryDuration?: string | null } | null,
   /**
    * The coach corpus + supplied proof. Without it `checkOutput`'s fabrication half silently
    * no-ops (complianceAxis.ts:1262), which is why `invented_guarantee` never fired on this path.
@@ -478,11 +482,23 @@ Every figure, publication, client name and quoted result on this page appears in
   const guaranteeSupplied = [g(operatorFacts?.guaranteeType), g(operatorFacts?.guaranteeDuration)].filter(Boolean).join(", ");
   const cohortLimitSupplied = g(operatorFacts?.cohortLimit);
   const cohortCloseSupplied = g(operatorFacts?.cohortCloseDate);
+  const priceSupplied = g(operatorFacts?.price);
+  const paymentPlanSupplied = g(operatorFacts?.paymentPlan);
+  const durationSupplied = g(operatorFacts?.deliveryDuration);
   const operatorFactsBlock = `OPERATOR-SUPPLIED COMMERCIAL TERMS — the only source of truth for these:
+- Price: ${priceSupplied || "NOT SUPPLIED"}
+- Payment plan: ${paymentPlanSupplied || "NOT SUPPLIED"}
+- Programme duration: ${durationSupplied || "NOT SUPPLIED"}
 - Guarantee terms: ${guaranteeSupplied || "NOT SUPPLIED"}
 - Cohort size limit: ${cohortLimitSupplied || "NOT SUPPLIED"}
 - Cohort close date: ${cohortCloseSupplied || "NOT SUPPLIED"}
-Where a line reads NOT SUPPLIED, the coach has given nothing and there is nothing to state.`;
+Where a line reads NOT SUPPLIED, the coach has given nothing and there is nothing to state.
+
+MONEY AND LENGTH — the same rule as the guarantee and the cohort, and it holds on EVERY angle including the price-positioning one.
+Use the coach's Price, Payment plan and Programme duration above exactly where they are supplied.
+Where Price or Programme duration reads NOT SUPPLIED, emit the token verbatim — [INSERT_PRICE], [INSERT_PROGRAMME_DURATION] — wherever the amount or the length would go. These are the same canonical tokens the email sales builder uses; do not coin new ones. Where Payment plan reads NOT SUPPLIED there is NO token and no instalment line at all — the page simply does not mention how payment is split.
+Do NOT invent: an amount in any currency, a figure spelled out in words (e.g. "two thousand", "twelve hundred"), an anchor or "total value" comparison, an instalment or monthly plan, a deposit, a discount, a founding-member or early-bird rate, a price increase, a "limited-time" price, or a programme length in weeks or months.
+A page with no supplied price makes its case on what the reader gets and what the problem is costing them — never on what it costs to buy.`;
 
   const prompt = `
 You are a world-class direct response copywriter specializing in high-converting landing pages.
@@ -893,7 +909,7 @@ export async function generateAllAngles(
   /** Residual legacy-validator hits, so the persistence gate folds them into ONE verdict. */
   __sink?: { hits: Array<{ classId: string; matched: string; location: string }> },
   /** The coach's own commercial terms — see generateLandingPageAngle. */
-  operatorFacts?: { guaranteeType?: string | null; guaranteeDuration?: string | null; cohortLimit?: string | null; cohortCloseDate?: string | null } | null,
+  operatorFacts?: { guaranteeType?: string | null; guaranteeDuration?: string | null; cohortLimit?: string | null; cohortCloseDate?: string | null; price?: string | null; paymentPlan?: string | null; deliveryDuration?: string | null } | null,
   /** Coach corpus + supplied proof, so the fabrication half of the output gate actually runs. */
   grounding?: { corpus: any; supplied: any } | null,
 ): Promise<{
@@ -1094,6 +1110,7 @@ export async function runLandingPageGeneration(input: {
 
   // campaignType from campaignKits (V2 SoT). Default course_launch when no kit.
   let campaignType: string = 'course_launch';
+  let kitCampaignFacts: any = null;
   if (icp?.id) {
     const [kit] = await db
       .select()
@@ -1101,6 +1118,9 @@ export async function runLandingPageGeneration(input: {
       .where(and(eq(campaignKits.userId, input.userId), eq(campaignKits.icpId, icp.id)))
       .limit(1);
     if (kit?.campaignType) campaignType = kit.campaignType;
+    // The coach's captured price lives on the KIT, not the service. Hoisted out so the generator
+    // can be told what it is — see the operatorFacts block below.
+    kitCampaignFacts = (kit?.campaignFacts ?? null) as any;
   }
 
   // Cascade context — upstream campaignKits selections for this ICP
@@ -1185,7 +1205,16 @@ ${icp.successMetrics ? `How they measure success: ${icp.successMetrics}` : ''}
   // ran every time. `riskReversal` is deliberately NOT read here: the column is documented
   // "Guarantee suggestion" and is LLM-generated, so treating it as coach-supplied would launder a
   // generated line into a commercial promise.
+  // Price is CAPTURED ON THE KIT (campaignFacts.price.amount), not on the service — services.price
+  // is a V1 legacy column the V2 intake never writes. `classifyPrice` distinguishes a real amount
+  // from the __FREE__ sentinel and from silence, so a free offer never reads as a price of zero.
+  const { classifyPrice: __classifyPrice } = await import("./lib/templates/operatorFields");
+  const __priceCls = __classifyPrice(kitCampaignFacts?.price);
   const operatorFacts = {
+    price: __priceCls.status === "value" ? String(kitCampaignFacts?.price?.amount ?? "") : null,
+    // Both columns exist on `services` and, like the guarantee pair, were never passed here.
+    paymentPlan: (service as any).paymentPlan ?? null,
+    deliveryDuration: (service as any).deliveryDuration ?? null,
     guaranteeType: (service as any).guaranteeType ?? null,
     guaranteeDuration: (service as any).guaranteeDuration ?? null,
     // No column captures either of these yet — passed as null so the prompt states NOT SUPPLIED
