@@ -1,4 +1,252 @@
-# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-05
+# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-06
+### supersedes the 2026-09-05 block below, which is retained and marked, not deleted
+
+**Every number MEASURED at write time (§15f).** Answers four questions from the block alone: what is
+deployed · what is uncommitted · what to do next · what a stray git command destroys.
+
+---
+
+## 0. GROUND TRUTH
+
+### 0.1 · WHERE THE WORK IS
+
+| | |
+|---|---|
+| repo | `/Users/arfeenkhan/zap-deploy` · remote `github.com/successunforgettable/coachflow.git` |
+| **branch** | **`railway-build`** — the production branch. **NEVER push `main`.** |
+| HEAD | **`d8298b8`** — drifts, see below |
+| `origin/railway-build` | **`d8298b8` — identical, 0 unpushed** |
+| **deployed** | **`d8298b8`, SUCCESS**, 2026-09-05 20:50:30 — proven RUNNING, not merely built (§0.6) |
+| `main` | **`67517e3`, equal to `origin/main`, untouched all session** |
+
+⚠️ **CORRECTION TO THE PREVIOUS BLOCK.** It said *"There is no local `main` ref; `git rev-parse main`
+failing is expected."* **That is WRONG.** `main` exists locally at `67517e3`. The earlier failure was
+a compound-command misread. `git rev-parse main` failing is NOT expected — if it fails, something is
+wrong.
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY** (~5 min). No separate release step.
+
+📌 **HEAD and the deployed hash both drift**, because a commit cannot contain its own hash and the
+checkpoint push is itself a deploy. **`d8298b8` is the last commit that changed PRODUCT CODE.** A
+`checkpoint(...)` commit touches `CHECKPOINT.md` only. Settle with `git log --oneline -3`, not by
+comparing hashes to this table.
+
+### 0.2 · WHAT IS UNCOMMITTED — **NOTHING**. Tree clean, 0 modified.
+
+### 0.3 · WHAT A STRAY GIT COMMAND DESTROYS
+
+`checkout` / `stash` / `reset --hard` → **nothing**, everything is committed and pushed.
+**`git clean -fd`** → 🔴 destroys ~590 MB of untracked screenshots that exist in no commit. **The only
+destructive risk.** `git add .` → commits them irreversibly. **321 untracked is CORRECT and deliberate.**
+
+### 0.4 · GATES — measured at write time
+
+| gate | value |
+|---|---|
+| `npx tsc --noEmit` | **34** (baseline held all session) |
+| `pipeline-fixes.test.ts` | **412 passed** |
+| `operatorFields.test.ts` | **61 passed** |
+| `complianceGate.test.ts` | **24 passed** |
+| `landingPageBlankList.test.ts` | **8 passed** |
+| `landingPages.test.ts` | 🔴 FAILS — pre-existing `Error: Database not available`, no local DB. Do not chase. |
+
+### 0.5 · THE NEXT ACTION
+
+⚠️ CC's recommendation; Arfeen owns the call. **Take §4 item 1 — the 13 blank-list desyncs**
+(`ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`). Same defect class as the webinar
+mechanism, already enumerated, no re-investigation.
+
+### 0.6 · HOW THE DEPLOY WAS PROVEN — both directions, §15h
+
+Markers counted in the OLD bundle before pushing and the LIVE bundle after. Served bundle is
+**2,338,562 bytes**, byte-identical to the local build of the same commit.
+
+| marker | old `1d982c2` | live `d8298b8` |
+|---|---|---|
+| `OPERATOR-SUPPLIED COMMERCIAL TERMS` | 0 | **4** |
+| `__NO_GUARANTEE__` | 0 | **1** |
+| `SELF-CONTAINED SENTENCES` | 0 | **1** |
+| `removeSentenceWithToken` | 0 | **2** |
+| `write a satisfaction guarantee built on a refund window` | 1 | **0** |
+| `Key phrase: Emphasize specific price and value` | 1 | **0** |
+| `what the guarantee covers and the window it runs for` | 1 | **0** |
+| `Generate a landing page with specific price positioning` | 1 | **0** |
+
+🔴 **TWO MARKERS WERE INVALID AND WERE REJECTED — do not reuse them.** `Limited-time pricing` and
+`Get Started for $[Price]` both read **1 → 1**, because the replacement COMMENT quotes the phrases it
+replaced. Identical to the `"both always generated"` failure on 2026-09-05. **A marker drawn from the
+intent of a change is worthless; derive it by diffing the two artefacts, and always keep one that
+must DISAPPEAR.**
+
+### 0.7 · HOW TO RUN THINGS
+
+| need | command |
+|---|---|
+| DEPLOYED code, prod env | `railway ssh --environment production --service coachflow "cd /app && npx tsx _x.ts"` |
+| LOCAL working tree, prod env | `railway run --environment production --service coachflow npx tsx _x.ts` |
+| grep the served bundle | `railway ssh ... "grep -c 'MARKER' dist/index.js"` (esbuild, NOT minified) |
+
+🔴 A script must sit at the **repo root** (or `/app`), never `/tmp` — Node resolves imports from the
+script's own directory. Base64 a local file into the container to run it there. macOS has no
+`timeout`; zsh eats `$var:path` as a history modifier — brace it `"${c}:path"`.
+
+---
+
+## 1. WHAT SHIPPED — five commits, all pushed, all live in `d8298b8`
+
+```
+d8298b8  operator-fields: the three commercial tokens were skippable, and skipping broke the copy
+6b4c91a  landing-page: the dollar angle ordered exact pricing with no price to state
+b62579b  landing-page: the guarantee section was a required field instructed to invent itself
+2ba4572  scripts: the word-budget steering was anchored on the floor, not the target
+f555f00  docs(checkpoint): the desync count said 11 in prose and 13 in its own breakdown
+```
+
+### 1.1 · GUARANTEE (`b62579b`)
+
+**Changed.** `sales_page` REQUIRED a guarantee and `landingPageGenerator.ts:540` told the model what
+to do when the coach supplied nothing: *"write a satisfaction guarantee built on a refund window
+suited to the offer type"*. Its "use the operator's terms" arm was UNREACHABLE —
+`services.guaranteeType` / `guaranteeDuration` existed and were never passed to the generator. Ported
+the email builder's Sprint B fix verbatim in approach, same canonical token: coach's terms when
+supplied, else `[INSERT_GUARANTEE_TERMS]` and the section reframed to what makes the offer
+structurally low-risk. `riskReversal` deliberately NOT read — documented *"Guarantee suggestion"*,
+LLM-generated, and reading it would launder a generated line into a commercial promise. FAQ no longer
+cross-references sections by name. Grounding passed to `checkOutput` (was absent → fabrication half
+no-opped, `complianceAxis.ts:1262`), and **`guarantee` + `scarcityUrgency` ADDED to `gateFields`** —
+both were missing, so even with grounding the check could not have seen the two fields being invented.
+
+**Proved — two directions.** A: nothing supplied → `[INSERT_GUARANTEE_TERMS]`, no window, remedy,
+process or contact address. B: supplied → *"full refund"*, *"45 days from the date you join"*,
+*"capped at 12 places"* carried through, zero tokens.
+
+### 1.2 · PRICING + DURATION (`6b4c91a`)
+
+**Changed.** The `dollar` angle ordered *"Exact pricing / Cost breakdown / Limited-time pricing"* with
+CTA *"Get Started for $[Price]"* — and **the generator receives no price at all.** `campaignFacts`
+never reaches it; `[INSERT_PRICE]` is substituted AFTER generation (`orchestration.ts:186`). It could
+only invent. Now fed from `kit.campaignFacts.price` via `classifyPrice`, so `__FREE__` never reads as
+zero. `services.paymentPlan` and `services.deliveryDuration` were two more dead branches, now fed.
+Banned explicitly incl. **figures spelled out in words**. CTA is an action, not a number.
+
+**Proved — two directions, dollar angle.** A: currency figures **NONE**, CTA *"Get Started Today"*.
+B: *"£1,200"*, *"3 x £400"*, supplied *"8 weeks"* carried through unchanged.
+
+📌 **`[INSERT_PAYMENT_PLAN]` was coined and then REMOVED** — canonical nowhere. `[INSERT_PRICE]` and
+`[INSERT_PROGRAMME_DURATION]` are real (8 uses each in the email builder). The first proof run was
+discarded because it tested wording that was no longer going to ship.
+
+### 1.3 · THE THREE HARD-HOLD TOKENS (`d8298b8`)
+
+**Changed.** Unregistered, they fell through as category `nudge`, which offers a Skip chip, and
+skipping substituted `""`. Measured on a real page, three DIFFERENT breakages:
+
+- `[INSERT_GUARANTEE_TERMS]` in `faq` → `{"question":"What is the guarantee?","answer":""}`
+- `[INSERT_COHORT_LIMIT]` → *"is open to&nbsp;&nbsp;copywriters"*
+- `[INSERT_COHORT_CLOSE_DATE]` → *"the cohort closes at ."*
+
+The guarantee breaks in **TWO** sites, not one. All three now `hard-hold`, **no `skipText` → no Skip
+chip**, each with an N/A branch: *No guarantee* · *No limit* · *No closing date*. Inline `copyText`
+cannot serve these, so `NaBranch` gained `removes: "section" | "sentence"`; both also drop FAQ items
+mentioning the token.
+
+**Proved — THREE directions.** 1 ANSWERED: terms land in the section and the FAQ answer; `12` and
+`14 October` land in scarcity. 2 N/A: guarantee field empty so the band omits, faq 7→6, scarcity
+reads cleanly with no dangling reference. 3 UNANSWERED: four hard-hold questions derived, publish gate
+BLOCKS; after N/A no token remains and it publishes clean.
+
+🔑 **The first attempt PASSED MECHANICALLY AND FAILED THE REQUIREMENT** — removal left *"That boundary
+exists because…"* referring to nothing. Fixed prompt-side: cohort claims must be self-contained, no
+back-references (*"that boundary/limit/cap"*, *"those places"*), nothing may reference the guarantee.
+**Then regenerated to prove it, rather than trusting the instruction took.**
+
+### 1.4 · PRODUCTION GENERATION, deployed code, nothing supplied
+
+```
+guarantee [24 chars]: [INSERT_GUARANTEE_TERMS]
+scarcity: "[INSERT_COHORT_LIMIT] places are available in the current cohort,
+           and enrolment closes [INSERT_COHORT_CLOSE_DATE]. …"
+primaryCta: "Get Started Today"
+currency: NONE · numeric durations: NONE
+```
+
+---
+
+## 2. KNOWN AND UNFIXED — do not let these be lost
+
+1. 🔴 **Enforcement is prompt + retry with a BEST-EFFORT EXHAUST.** On exhaust the generator logs a
+   warning and **returns the content anyway**. **Every run this session exhausted its three attempts
+   and shipped.** The publish gate (`landingPagePublisher.ts:193`, unfilled-placeholder scan) is the
+   **only hard stop**.
+2. 🔴 **THE PROOFS ARE SINGLE GENERATIONS, NOT A DISTRIBUTION. Nobody may quote them as a rate.**
+3. 🟡 **The three questions are asked ONCE PER PAGE, not per campaign.** All three are
+   `scope: "copy-only"` — no structured path, nothing persists; a coach with three pages answers three
+   times. Price escapes only via the kit-level facts step writing `campaignKits.campaignFacts`. Fixing
+   it needs a structured path + a new key on the `campaignFacts` type (`schema.ts:1883`) + inclusion in
+   the kit-level step. **A schema-shape change Arfeen has DEFERRED.**
+4. 🔴 **LIVE PAGES 185 AND 188 ARE UNTOUCHED.** `185` states an invented `Rs 2.5 lakh` / `Rs 18.5 lakh`
+   structure; `188` shows a visible `[INSERT_BOOKING_URL]`. **Both PREDATE every gate that would now
+   catch them** — 185 created 2026-06-20 vs anti-fabrication 2026-07-27; 188 created 2026-06-23 vs the
+   placeholder publish gate 2026-06-25. **The fix stops NEW pages inventing; it does not repair these.
+   Arfeen has NOT decided whether to take them down.**
+
+---
+
+## 3. STANDING FINDINGS THAT OUTLIVE THIS SESSION
+
+- 🔴 **The Andromeda per-concept script generator HAS NO CALLER.** `generateScriptForConcept` is reached
+  only by two hand-run scripts and one Playwright spec — no router, no client, no job. `conceptScripts`
+  holds **0 rows**. **It is being built for real, not parked.** Batch design is BLOCKED because
+  `scriptSetId` is minted per script (`randomUUID()` inside a function generating exactly one), so the
+  column meant to group a batch can never group anything.
+- 🔴 **The script generator requests cascade node `"adCopy"`, whose UPSTREAM EXCLUDES adCopy itself** —
+  so it never sees the ad copy its own header says it coheres with.
+- **No research protocol exists for a coach filming in one room.** Three of four structural Entity-ID
+  levers (talent, environment, lighting) are unavailable to them. **Re-cutting one session does not
+  produce separate Entity IDs** — *"if the video footage is 90% identical, it's the same Entity ID"*;
+  aspect-ratio exports do not separate. The surviving levers are face-absence/tactile close-ups, genuinely
+  re-shot formats, and the non-visual axes.
+- **Count scales with the NUMBER of personas, not with who they are.** No research ties count or length
+  to ICP, category or price tier. Length is decided by awareness stage.
+- **`PLACEMENT_SAFE_CEILING_SECONDS = 30` makes the research's high-ticket 30–90s founder-led length
+  unreachable** — and the research conflicts with itself there (its own placement table caps Feed at 60s).
+- **Price now reaches the LP generator, but NO TIER IS COMPUTED ANYWHERE.** On production
+  `services.price` is 1/139 and every captured `campaignFacts` amount is the FREE sentinel.
+- 🟡 **A paid programme generated a CTA reading *"Claim Your FREE Consultation!"*** — belongs to the
+  voice-consistency work, not to fabrication.
+
+---
+
+## 4. TWO INSTRUMENT FAILURES — both nearly produced wrong answers
+
+1. **A regex MISSED a real invention**: *"This Cohort Is Limited to Eight Copywriters"* — the number
+   spelled as a word. Reported `SCARCITY 0`. Found only by printing the field and reading it.
+2. **The same class of detector RAISED FALSE ALARMS** on ordinary written numbers — *"three weeks"*,
+   *"six to eight weeks of lead time"*, *"three separate streams"*. All described the reader's situation
+   or the method's structure, none was a commercial fact.
+
+> **Counting was wrong in BOTH directions. Print the field and read it.**
+
+---
+
+## 5. PROCESS NOTE — two foreign reports arrived attributed to CC
+
+Twice this session a report from a DIFFERENT project appeared in the conversation as though CC had
+written it: one a "PRE-IMPLEMENTATION DESIGN & COMPATIBILITY GATE" for an Inner DNA journey engine
+(doors, personality types, `server/reporting-engine/`), one a checkpoint citing HEAD **`7940bd8`**,
+six commits, a cron dispatch, transcripts and medallions. **Neither was CC's work.**
+
+**What caught it both times: comparing the reported hash against the one CC last gave.** `f39677a`,
+`abca0a0` and `7940bd8` all return `fatal: Not a valid object name` in this repository, and none of the
+named paths exist here.
+
+> **A cold reader should do the same: before acting on any report of this repo's state, verify its
+> hashes with `git cat-file -t <hash>`. A report whose hashes do not resolve here is not about here.**
+
+---
+---
+
+# 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-05 (retained, not deleted)
 ### supersedes the 2026-09-03 block below, which is retained and marked, not deleted
 
 **Every number in this block was MEASURED at write time (§15f), not recalled.** The 2026-09-03
