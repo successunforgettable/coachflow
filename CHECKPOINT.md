@@ -54,7 +54,8 @@ destructive risk.** `git add .` → commits them irreversibly. **321 untracked i
 
 ⚠️ CC's recommendation; Arfeen owns the call.
 
-🔴 **READ §6.0 FIRST, THEN §6.6. Campaign work is BLOCKING and outranks the product queue.**
+🔴 **READ §6.00 FIRST — it carries four retractions and the open 302-vs-94 finding. Then §6.0 and
+§6.6. Campaign work is BLOCKING and outranks the product queue.**
 The 6 Sept campaign spent **3,683 and recorded ZERO conversions** because the ad sets optimise for
 `SUBMIT_APPLICATION`, an event that never registers. **No ad spend should resume until that event is
 fixed, the pixel access is granted, and one registration is shown to produce one conversion event.**
@@ -262,11 +263,88 @@ named paths exist here.
 
 ---
 
-## 6. 📣 CAMPAIGN WORK — META ACCOUNT INVESTIGATION (2026-09-06)
+## 6. 📣 CAMPAIGN WORK — META ACCOUNT INVESTIGATION (2026-09-06, updated 2026-09-07)
 
 ⚠️ **THIS IS CAMPAIGN WORK, NOT ZAP DEVELOPMENT.** It is not the product queue (§4) and must not be
 merged into it. Nothing here is a code change; it is what was measured on Arfeen's live Meta
 accounts and landing pages.
+
+### 6.00 · 🔴 READ THIS BEFORE §6.0 — the open finding, and four retractions (2026-09-07)
+
+**Events Manager was opened directly tonight. Several conclusions below were overturned. This
+section supersedes them.**
+
+#### THE UNRESOLVED CORE FINDING — open, NOT diagnosed
+
+On pixel **`1904901060188047`**, Events Manager shows:
+
+| window | Lead events in Events Manager | actual leads reported by the ads team | ratio |
+|---|---|---|---|
+| 19–25 August | **302** | **94** | ~3 : 1 |
+| 27 Aug – 2 September | **142** | **43** | ~3 : 1 |
+
+**Two consecutive weeks, both at roughly 3 : 1.** The ads person states `Lead` is bound to form
+submission, and that the August campaigns optimised for `Lead`. **If both are true the numbers
+should match, and they do not. Nobody has explained this.**
+
+> **RECORD IT AS OPEN. IT IS NOT DIAGNOSED. Do not write a cause for it that has not been checked
+> against the screen.**
+
+#### CAMPAIGN FIGURES, for context
+
+| campaign | spend | leads | CPL |
+|---|---|---|---|
+| 19 August | **1,002.12 USD** | 94 | **10.66** |
+| 30 August | **992.38 USD** | 43 | **23.07** |
+| **6 September** (5 campaigns) | **3,683 AED** | — | **ZERO attributed conversions**, optimising `SUBMIT_APPLICATION` on pixel `1437419894943378` |
+
+#### VERIFIED IN EVENTS MANAGER — do not repeat the earlier claims
+
+- **Click ID is present on 93–97% of events.** It is NOT missing.
+- **Conversions API coverage is 100%**, against a goal of 75.
+- **`SubmitApplication` does fire correctly.**
+- **Event Match Quality is 6.1 / 10 on BOTH pixels.** Meta flags *"improve match quality"* as **high
+  priority** and reports **3,647 AED of spend affected by low data quality**.
+- **Email and phone are NOT passed as hashed parameters.** Advanced matching reaches only **1% of
+  PageView events**. **External ID coverage 10.22%.**
+
+#### 🔴 FOUR RETRACTIONS — do not resurrect these
+
+1. ❌ **"The confirmation message showed a wrong time."** **WRONG.** The time converts correctly by
+   phone country — verified with **both a UAE and a Mauritius number, each showing 2:00 PM.** Only
+   the **missing timezone label** remains, and the ads person has agreed to add it.
+2. ❌ **"The Meta click id was never captured."** **WRONG.** Present on 93–97% of events.
+3. ❌ **"CAPI was not sending the registration event."** **WRONG.** Coverage is 100%.
+4. ❌ **"`Lead` was bound to page view."** **This was an INFERENCE from an ambiguous reply, never
+   something the ads person stated.** He has since said `Lead` is bound to **form submission**.
+
+#### THE ADS PERSON'S STATED POSITIONS
+
+- The **new pixel was created deliberately**, to escape poor-quality learning on the old one.
+- **Sales are passed back through a GHL workflow with revenue.**
+- **Poor identification is not considered the problem.**
+
+#### WHAT REMAINS OPEN
+
+1. 🔴 **The 302 vs 94 discrepancy.** Unexplained.
+2. 🔴 **Why attendance dropped from a normal 35 to 15 on ~80 registrations** — **the timezone
+   explanation is now DEAD** and nothing has replaced it.
+3. 🔴 **Four or more consecutive weeks have produced no conversions at the event**, and lead quality
+   has been consistently poor.
+4. 🔴 **The thank-you pages and follow-up sequence CONTRADICT the landing pages.** The pages promise
+   education for people who have never touched crypto, with nothing sold in the room. The thank-you
+   pages promise *"early access to digital wealth"*, *"Passive Income Mastery"*, *"The Compound
+   Wealth Formula"*, and the confirmation names the paid programme. **That rewrite is Arfeen's to do
+   and needs nobody's permission.**
+
+#### 📌 PROCESS NOTE — the one that matters most
+
+> **Three of tonight's conclusions were overturned by looking at the actual screen — and EVERY ONE
+> was overturned in Arfeen's favour rather than against him.**
+>
+> **The standing rule holds: a live check beats any reasoning, including CC's.** This is the same
+> class as §4's instrument failures — confident output derived from an incomplete view. Where a
+> screen exists, open it before concluding.
 
 ### 6.0 · 🔴 THE 6 SEPT CAMPAIGN FAILED BECAUSE IT OPTIMISED FOR AN EVENT THAT RECORDED ZERO
 
@@ -302,8 +380,9 @@ identified — `act_736365731511264/customconversions` returns EMPTY, so it is d
 Madvertise portfolio ZAP cannot see. The link is inferred from the count, not read.
 
 **The pixel is alive** — last 7d `PageView` 4,555, `SubmitApplication` 191. Those events fire but
-are **not attributed to the ads**, consistent with §6.2: no `fbclid` captured on arrival and no
-`event_id`, so a server event cannot be tied back to an ad click.
+are **not attributed to the ads**. ⚠️ **THE STATED REASON HERE WAS WRONG — SEE §6.00.** Click ID is
+present on 93–97% of events and CAPI coverage is 100%. The non-attribution is real; the explanation
+given for it was not.
 
 **NOT an audience problem. EVERY ad set on every one of these campaigns is broad/interest only —
 not one custom audience or lookalike attached.** Segmentation is geography (UAE / Mauritius) and
@@ -358,8 +437,10 @@ page. **Ads must be pointed by CONTENT, never by reading the slug.**
 ### 6.2 · WHAT WAS MEASURED ON THE THREE PAGES
 
 - **Only `PageView` fires.** No conversion event is bound anywhere in the page.
-- **No `event_id` exists**, so browser and server events cannot be deduplicated.
-- **The Meta click id (`fbclid`) is never captured on arrival** — the spec requires capture and
+- **No `event_id` exists in the PAGE SOURCE**, so browser/server pairing could not be seen from the page.
+- 🔴 **RETRACTED — SEE §6.00. The Meta click id IS captured** (93–97% of events, verified in Events
+  Manager). The line below reflects what the page source showed, not what the pixel receives.
+- ~~**The Meta click id (`fbclid`) is never captured on arrival**~~ — the spec requires capture and
   persistence, and no page does it.
 
 **The ads person states:** `CompleteRegistration` is active, there is a thank-you page, and the
