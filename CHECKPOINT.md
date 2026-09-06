@@ -331,7 +331,8 @@ should match, and they do not. Nobody has explained this.**
    explanation is now DEAD** and nothing has replaced it.
 3. 🔴 **Four or more consecutive weeks have produced no conversions at the event**, and lead quality
    has been consistently poor.
-4. 🔴 **The thank-you pages and follow-up sequence CONTRADICT the landing pages.** The pages promise
+4. 🟡 **The thank-you pages and follow-up sequence CONTRADICT the landing pages.** ✅ **THE REWRITE
+   IS NOW WRITTEN — SEE §6.8. It is NOT yet implemented in GoHighLevel.** The pages promise
    education for people who have never touched crypto, with nothing sold in the room. The thank-you
    pages promise *"early access to digital wealth"*, *"Passive Income Mastery"*, *"The Compound
    Wealth Formula"*, and the confirmation names the paid programme. **That rewrite is Arfeen's to do
@@ -490,7 +491,12 @@ examined.** Lifetime 2023-08-06 → 2026-09-06, spend 52,869.81, 1,312,623 impre
 
 ### 6.6 · 🔴 BLOCKING — waiting on Arfeen, and nothing else should proceed
 
-0. 🔴 **FIX THE OPTIMISATION EVENT FIRST (§6.0).** The ad sets optimise for `SUBMIT_APPLICATION`,
+0a. 🔴 **REMOVE THE "NOTHING SOLD IN THE ROOM" CLAIM FROM THE THREE LIVE PAGES (§6.8).** It is
+   FALSE — there is a pitch at the end of the session — and it is live on all three pages plus the
+   entrepreneurs FAQ right now. Replacement wording exists in the professionals rev 2 document.
+   **This needs nobody's permission and does not wait on the pixel work.**
+
+0. 🔴 **FIX THE OPTIMISATION EVENT (§6.0).** The ad sets optimise for `SUBMIT_APPLICATION`,
    which records ZERO. Either point them at the event that is actually firing, or bind a real
    conversion event in the page. **Resuming spend without this repeats the 3,683 that bought nothing.**
 1. **Get VIEW ACCESS to the "Arfeen Webinar 2.0" pixel.**
@@ -510,6 +516,92 @@ examined.** Lifetime 2023-08-06 → 2026-09-06, spend 52,869.81, 1,312,623 impre
 | **CAPI** | 🔴 **NOT POSSIBLE for a coach's own funnel — ZAP is not in the request path.** Registration happens in the coach's funnel; ZAP never sees it and has no `fbp`/`fbc`/IP/UA to send. Pasted JavaScript cannot fix this; CAPI is server-to-server by definition. |
 | page checker | ✅ largely doable **from the rendered page** (not from served HTML — these pages render client-side) |
 | copy checker | 🟡 mostly reuses existing compliance machinery, **but needs an HTML→text extractor that does not exist in the repo** — there is no cheerio/jsdom dependency at all |
+
+---
+
+### 6.8 · ✅ THE PRE-EVENT SEQUENCE HAS BEEN REWRITTEN — 🟡 NOT YET IMPLEMENTED (2026-09-07)
+
+**The full pre-event sequence is rewritten for all three audiences and is ready to go into
+GoHighLevel. NOTHING HAS BEEN IMPLEMENTED. No workflow was created or modified.**
+
+**Four documents exist:**
+
+| document | covers |
+|---|---|
+| professionals emails **rev 2** | professionals sequence **+ the replacement landing-page wording (see the claim correction below)** |
+| entrepreneurs emails | entrepreneurs sequence |
+| women emails | women sequence |
+| shared WhatsApp set **rev 3** | one WhatsApp set across all three |
+
+#### What was wrong with the existing sequence — this is what the rewrite fixes
+
+- **The six daily emails were bare administrative confirmations** — date, time, link, and a line
+  saying to disregard the reminder if unable to attend. **No reason to attend, no continuation of
+  what the landing page promised.**
+- **Meanwhile the thank-you pages and WhatsApp promised "early access to digital wealth" and named
+  the paid programme.**
+
+> **So the emails said nothing and the WhatsApp said the opposite of the landing page.**
+
+#### The structural fix — anchor to the EVENT, not to signup
+
+**Emails now count DAYS BEFORE THE EVENT rather than days after signup.** The old sequence ran
+Day 1 → Day 6 counting forward from registration, so **a Saturday registrant received Day 1 and then
+the event happened.** **Campaigns run Tuesday to Saturday for a Sunday session**, so a registrant is
+anywhere from five days out to one day out.
+
+#### The WhatsApp decision, and why it changed twice
+
+- **Research standard:** one message per week for new opt-ins, two to three for active contacts.
+- **The existing workflow sent roughly EIGHTEEN.**
+- **First rewrite cut it to four.**
+- 🔑 **Arfeen then corrected that from his own observed data: when there are MORE reminders close to
+  the event, attendance RISES; when there are fewer, it DROPS. That observation outranks the general
+  standard.**
+
+**Final set is SIX:** registration · day before · one hour · fifteen minutes · **five minutes after
+start** · **ten minutes after start**.
+
+**The six days of daily WhatsApp are REMOVED** — they do not recover attendance on the day and they
+carry the block risk.
+
+🔴 **The last two messages MUST be filtered to people who have NOT joined the Zoom.** **If GoHighLevel
+cannot filter on join status, DROP the ten-minute message rather than send it unfiltered.**
+
+#### 🔴 THE CLAIM CORRECTION — this also affects LIVE pages
+
+**Arfeen identified that "nothing sold in the room" is FALSE — there is a pitch for a programme at
+the end of the session.** It appears on **all three landing pages** and in the **entrepreneurs FAQ**.
+
+> **DECISION: REMOVE the claim rather than replace it with a disclosure.** There is no obligation to
+> preview the agenda, but there IS an obligation not to promise the opposite.
+
+**Replacement wording for all three pages is in the professionals rev 2 document.**
+
+📌 **The same contradiction runs in reverse in the confirmation message, which describes the session
+as a PREVIEW OF THE PAID PROGRAMME. That should be changed too.**
+
+#### Standing constraints the copy was written to — do not lose these in a future rewrite
+
+1. **No income, returns, profit or wealth claims.**
+2. **The paid programme is NEVER named.**
+3. **No invented bonuses, seat counts, closing windows or price increases.**
+4. **Crypto is the VEHICLE, not the reason** — around nine in ten attendees have never bought any.
+5. **Every stated time carries its timezone.**
+
+#### Voice note — the women's sequence specifically
+
+> **The trap is writing down to her.** Every line locates the difficulty in **how things were
+> explained**, never in her ability to follow them.
+
+#### 🟡 THE EMAIL + WHATSAPP RESEARCH IS NOW HANDED OVER AND USED — bank it
+
+**Previously logged as not started; it has now been handed over and applied to this rewrite.**
+⚠️ **It is NOT in the repo** — `docs/andromeda/` currently holds copy, image, landing-page,
+prospecting and script research, and **no email or WhatsApp research directory exists.**
+
+**It should be added alongside the others** so the **ZAP email and WhatsApp generator nodes can draw
+on it — those two nodes have never had research behind them**, unlike every other generator.
 
 ---
 
