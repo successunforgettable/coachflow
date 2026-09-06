@@ -286,7 +286,29 @@ one document adjudicates the claim and rejects it, two others assert the opposit
 **c. Andromeda is still changing, so PRINCIPLES WILL AGE BETTER THAN SPECIFIC MECHANISMS.** Anything
 taught as a named threshold, model name or numeric rule should be expected to go stale.
 
-### 6.4 · UNDECIDED
+### 6.4 · THE EXISTING ANDROMEDA EDUCATION CONSOLE — keep the shell, rebuild the lessons
+
+Arfeen has already built one: a **fifteen-module gated course** with quizzes, hands-on tasks,
+self-marked written answers, progress export, and a **five-point scorecard for judging any agency**.
+
+> **DECISION: the shell is good and is kept. The CONTENT is rebuilt.**
+
+**Why the content cannot be kept.** It was built from a YouTube crash course rather than from ZAP's
+own research, and it reproduces the exact failure §6.3 warns about:
+
+- 🔴 **Teaches the 40% similarity threshold as fact** — the same unverified practitioner number the
+  alignment audit rejects (`ZAP_to_Andromeda_Alignment_Audit.md:110`).
+- 🔴 **Teaches and then QUIZZES three unsourced statistics** — a quiz makes an unsourced number
+  load-bearing, because the learner is marked wrong for doubting it.
+- 🔴 **A lesson and a steps section contradict each other, and the quiz sides with the outdated one.**
+- 🔴 **Aimed at e-commerce and the Sales event**, not at coaches and the Lead event — the wrong
+  vertical and the wrong conversion throughout.
+- 🔴 **The pixel module is the thinnest in the course** — and pixel/CAPI is where the live campaign
+  actually broke (§3 of this block, and the 2026-09-06 tracking finding).
+- 🔴 **Recommends anti-detect browsers. This is against Meta's terms and must not be taught.**
+  Removing it is not optional editing.
+
+### 6.5 · UNDECIDED
 
 **Whether this is free, a lead magnet, or something sold is NOT decided. That call is Arfeen's when
 the time comes** — it is not a technical decision and should not be made by default.
