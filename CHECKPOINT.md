@@ -244,6 +244,54 @@ named paths exist here.
 > hashes with `git cat-file -t <hash>`. A report whose hashes do not resolve here is not about here.**
 
 ---
+
+## 6. FUTURE IDEAS — 🔵 NOT STARTED, NOT SCHEDULED, NOT IN THE QUEUE
+
+⚠️ **This section is NOT §4's queue and must never be read as it.** Nothing here is approved,
+sized, designed or begun. It is Arfeen's idea, recorded on 2026-09-06 so it is not lost. **Do not
+start any of it without him saying so.**
+
+### 6.1 · TEACHING INSIDE THE PRODUCT — the primary shape
+
+**Each of the eleven nodes carries a short lesson explaining what that node is for and why it
+matters.** A coach reaches the ICP node and learns what an ICP is and how it feeds everything
+downstream — at the moment they need it, on their own campaign, not on a worked example.
+
+> **Learning and doing become the same action.**
+
+### 6.2 · A STANDALONE COURSE ON ANDROMEDA — the second shape, same material
+
+Andromeda explained plainly, and how to run a campaign under it. **Arfeen has looked and found
+nothing that explains it simply:** what exists is either Meta's own documentation or agency content
+whose purpose is to pitch a service.
+
+**The Digital Asset Blueprint campaign is the worked example** — it is real, and the reasoning
+behind every decision in it is already documented (`docs/andromeda/worked-examples/`).
+
+### 6.3 · THREE NOTES THAT TRAVEL WITH THE IDEA
+
+**a. The per-node version is ONBOARDING as much as teaching.** Arfeen finds the eleven-node wizard
+confusing **and he built it**. A coach arriving cold has no explanation of why each node exists.
+Lessons attached to nodes address a known product problem, not only a knowledge one.
+
+**b. 🔴 SOME OF THE ANDROMEDA MATERIAL IS CONTESTED, AND TEACHING MUST SEPARATE WHAT IS ESTABLISHED
+FROM WHAT IS PRACTITIONER INFERENCE.** The worked case is the **60% creative-similarity threshold**:
+repeated widely online, and **rejected by ZAP's own alignment audit**
+(`docs/andromeda/ZAP_to_Andromeda_Alignment_Audit.md:110`) as *"an unverified practitioner
+inference"*, on the grounds that Meta's own publications say thresholds are adjusted dynamically.
+**Teaching it as fact would teach something ZAP has already found reason to doubt.** The same
+applies to the corpus's internal disagreement about whether landing pages are a retrieval signal —
+one document adjudicates the claim and rejects it, two others assert the opposite in passing.
+
+**c. Andromeda is still changing, so PRINCIPLES WILL AGE BETTER THAN SPECIFIC MECHANISMS.** Anything
+taught as a named threshold, model name or numeric rule should be expected to go stale.
+
+### 6.4 · UNDECIDED
+
+**Whether this is free, a lead magnet, or something sold is NOT decided. That call is Arfeen's when
+the time comes** — it is not a technical decision and should not be made by default.
+
+---
 ---
 
 # 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-05 (retained, not deleted)
