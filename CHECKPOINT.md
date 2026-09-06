@@ -54,8 +54,10 @@ destructive risk.** `git add .` → commits them irreversibly. **321 untracked i
 
 ⚠️ CC's recommendation; Arfeen owns the call.
 
-🔴 **BUT SEE §6.6 FIRST — campaign work is BLOCKING and outranks the product queue right now.** No
-ad spend should go out until the pixel access and the one-registration-one-event check pass.
+🔴 **READ §6.0 FIRST, THEN §6.6. Campaign work is BLOCKING and outranks the product queue.**
+The 6 Sept campaign spent **3,683 and recorded ZERO conversions** because the ad sets optimise for
+`SUBMIT_APPLICATION`, an event that never registers. **No ad spend should resume until that event is
+fixed, the pixel access is granted, and one registration is shown to produce one conversion event.**
 
 **Product-side, the next item is the 13 blank-list desyncs** — the authoritative list is
 `ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`, not prose. Same defect class as the
@@ -266,6 +268,75 @@ named paths exist here.
 merged into it. Nothing here is a code change; it is what was measured on Arfeen's live Meta
 accounts and landing pages.
 
+### 6.0 · 🔴 THE 6 SEPT CAMPAIGN FAILED BECAUSE IT OPTIMISED FOR AN EVENT THAT RECORDED ZERO
+
+**Measured 2026-09-06 after the worst result Arfeen has had: ~80 leads, 15 attendees against a
+normal 35, poor quality.** This is the cause, and it is not a targeting judgement — it is the
+absence of a target.
+
+**All five 6 Sept campaigns: `OFFSITE_CONVERSIONS` → `SUBMIT_APPLICATION` on pixel
+`1437419894943378`. Attributed SubmitApplication conversions: ZERO.** Not low. Absent.
+
+| | spend | attributed conversions |
+|---|---|---|
+| **19 + 30 Aug** (4 campaigns) | **3,646.15** | **42 leads** |
+| **6 Sept** (5 campaigns) | **3,683.49** | **0** |
+
+**Three things changed at once on 6 Sept:**
+
+| | Aug — worked | 6 Sept — failed |
+|---|---|---|
+| pixel | `1904901060188047` | **`1437419894943378`** |
+| optimisation event | **`LEAD`** | **`SUBMIT_APPLICATION`** |
+| destination | one page, `/crypto-wealth-webinar` | **the three new GHL pages** |
+
+**With zero conversions the ad sets never had a signal to learn from**, so Meta delivered against
+what it could measure. The largest campaign bought **663 link clicks and 377 landing page views for
+2,079 and recorded no conversion.** That is the whole mechanism behind "wrong people".
+
+📌 **THE REGISTRATIONS WERE HAPPENING.** The same campaigns show **74
+`offsite_conversion.fb_pixel_custom`** (36+17+13+5+3) against Arfeen's ~80 leads. A Custom
+Conversion is capturing registrations **while the campaigns optimise toward a standard event that
+gets nothing. Meta was watching the wrong counter.** ⚠️ The custom conversion could NOT be
+identified — `act_736365731511264/customconversions` returns EMPTY, so it is defined in the
+Madvertise portfolio ZAP cannot see. The link is inferred from the count, not read.
+
+**The pixel is alive** — last 7d `PageView` 4,555, `SubmitApplication` 191. Those events fire but
+are **not attributed to the ads**, consistent with §6.2: no `fbclid` captured on arrival and no
+`event_id`, so a server event cannot be tied back to an ad click.
+
+**NOT an audience problem. EVERY ad set on every one of these campaigns is broad/interest only —
+not one custom audience or lookalike attached.** Segmentation is geography (UAE / Mauritius) and
+creative (OLD/NEW video, OLD/NEW page). **All five show the same zero.** Uniform failure, not a bad
+segment.
+
+**KS 1 also ran one:** `[ME] CBO | Leads | UAE`, spend 804.14, `LEAD` on pixel `901117242361321`,
+destination `/crypto-wealth-workshop` — **also zero attributed leads** (152 clicks, 108 LPVs).
+
+**Nothing was spending on the day this was measured** — zero delivery today on both accounts. But
+**every one of those nine campaigns still reads ACTIVE at ad-set level.** If anything resumes on the
+current configuration it will spend against an event that records nothing.
+
+### 6.0b · THE FOLLOW-UP SYSTEM — NOT VERIFIED, AND NOT VERIFIABLE FROM HERE
+
+🔴 **The GHL connection is EXPIRED.** One token row (userId 1, location `yfK7u2subVFh1BJHPSyg`),
+expired **2026-07-10**; `/workflows/` returns **HTTP 401 Invalid JWT**. Nothing about confirmations
+or reminders is verified.
+
+📌 **Even with a valid token it would not fully answer.** Scopes are `workflows.readonly`,
+`locations.readonly`, `customValues.read/write` — enough to LIST workflows and see status, but
+**there is no scope for execution history**, so "did it send on the day" is out of reach either way.
+
+⚠️ **15 of ~80 is a 19% show rate. That is consistent with broken reminders OR with registrants who
+were never interested — which is exactly what unoptimised delivery produces. THIS DATA CANNOT
+SEPARATE THE TWO. Do not let anyone claim it does.**
+
+**Arfeen verifies it himself** by registering with his own email and phone, expecting: (1) email +
+WhatsApp confirmation **within 1–2 min** — the page promises "Instant email + WhatsApp confirmation",
+so a miss here breaks it at step one; (2) a reminder the day before; (3) ~1 hour before; (4) a "we're
+live" message at start. Then **GHL → Automation → Workflows**: confirm each is **Published**, and open
+one to read its **Enrollment History** — that shows whether ~80 people actually entered the sequence.
+
 ### 6.1 · THE ACCOUNTS AND PAGES
 
 | | |
@@ -315,7 +386,7 @@ minutes from the same HubSpot contact list, all `is_value_based: false`, alongsi
 one have ZERO spend and ZERO impressions.** They never ran. **A stored risk worth deleting, not a
 cause.**
 
-### 6.4 · WHAT IS STILL OPEN — the strongest remaining explanation
+### 6.4 · WHAT IS STILL OPEN — the HISTORICAL question (§6.0 supersedes this for the CURRENT campaign)
 
 - 🔴 **The crypto campaigns optimised against a COACHING pixel** — `SMB English Pixel 2`
   (`1467186850518247`), whose history is SMB webinar traffic, not crypto buyers. Where they used
@@ -338,6 +409,9 @@ examined.** Lifetime 2023-08-06 → 2026-09-06, spend 52,869.81, 1,312,623 impre
 
 ### 6.6 · 🔴 BLOCKING — waiting on Arfeen, and nothing else should proceed
 
+0. 🔴 **FIX THE OPTIMISATION EVENT FIRST (§6.0).** The ad sets optimise for `SUBMIT_APPLICATION`,
+   which records ZERO. Either point them at the event that is actually firing, or bind a real
+   conversion event in the page. **Resuming spend without this repeats the 3,683 that bought nothing.**
 1. **Get VIEW ACCESS to the "Arfeen Webinar 2.0" pixel.**
 2. **Then verify in Events Manager → Test Events that ONE registration produces ONE conversion
    event, not two.**
