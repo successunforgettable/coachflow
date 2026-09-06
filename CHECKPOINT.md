@@ -14,9 +14,9 @@ deployed · what is uncommitted · what to do next · what a stray git command d
 |---|---|
 | repo | `/Users/arfeenkhan/zap-deploy` · remote `github.com/successunforgettable/coachflow.git` |
 | **branch** | **`railway-build`** — the production branch. **NEVER push `main`.** |
-| HEAD | **`d8298b8`** — drifts, see below |
-| `origin/railway-build` | **`d8298b8` — identical, 0 unpushed** |
-| **deployed** | **`d8298b8`, SUCCESS**, 2026-09-05 20:50:30 — proven RUNNING, not merely built (§0.6) |
+| HEAD | **`339950e`** — drifts, see below. `d8298b8` is the last commit that changed PRODUCT CODE; everything after it is docs. |
+| `origin/railway-build` | **`339950e` — identical, 0 unpushed** |
+| **deployed** | **`339950e`, SUCCESS** — the product code in it is `d8298b8`, proven RUNNING not merely built (§0.6) |
 | `main` | **`67517e3`, equal to `origin/main`, untouched all session** |
 
 ⚠️ **CORRECTION TO THE PREVIOUS BLOCK.** It said *"There is no local `main` ref; `git rev-parse main`
@@ -52,9 +52,16 @@ destructive risk.** `git add .` → commits them irreversibly. **321 untracked i
 
 ### 0.5 · THE NEXT ACTION
 
-⚠️ CC's recommendation; Arfeen owns the call. **Take §4 item 1 — the 13 blank-list desyncs**
-(`ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`). Same defect class as the webinar
-mechanism, already enumerated, no re-investigation.
+⚠️ CC's recommendation; Arfeen owns the call.
+
+🔴 **BUT SEE §6.6 FIRST — campaign work is BLOCKING and outranks the product queue right now.** No
+ad spend should go out until the pixel access and the one-registration-one-event check pass.
+
+**Product-side, the next item is the 13 blank-list desyncs** — the authoritative list is
+`ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`, not prose. Same defect class as the
+webinar mechanism, already enumerated, no re-investigation needed. (The wider product queue lives
+in **§4 of the SUPERSEDED 2026-09-05 block below** — this block has no queue section of its own, so
+do not look for §4 here; §4 here is the instrument failures.)
 
 ### 0.6 · HOW THE DEPLOY WAS PROVEN — both directions, §15h
 
@@ -217,7 +224,7 @@ currency: NONE · numeric durations: NONE
 
 ---
 
-## 4. TWO INSTRUMENT FAILURES — both nearly produced wrong answers
+## 4. THREE INSTRUMENT FAILURES — all of one class, all nearly wrong
 
 1. **A regex MISSED a real invention**: *"This Cohort Is Limited to Eight Copywriters"* — the number
    spelled as a word. Reported `SCARCITY 0`. Found only by printing the field and reading it.
@@ -225,7 +232,15 @@ currency: NONE · numeric durations: NONE
    *"six to eight weeks of lead time"*, *"three separate streams"*. All described the reader's situation
    or the method's structure, none was a commercial fact.
 
-> **Counting was wrong in BOTH directions. Print the field and read it.**
+3. **A regex read `STEP 01` as `STEP 0`** and reported a working live page as broken — nine
+   "STEP 0" blocks that in fact render `STEP 01`–`STEP 06` correctly. A countdown was read as
+   zeroed when it was live at `00 DAYS / 01 HRS / 03 MIN / 20 SEC`.
+
+> # **STANDING RULE: PRINT THE FIELD AND READ IT. DO NOT COUNT MATCHES.**
+> **Three failures of this one class in a single day — one false negative, one false positive, one
+> false alarm on working output. Counting was wrong in BOTH directions every time, and reading the
+> actual value settled all three.** This sits alongside §15-PARENT: a regex that finds nothing and a
+> regex that finds the wrong thing are both *absence of signal read as signal*.
 
 ---
 
@@ -245,13 +260,111 @@ named paths exist here.
 
 ---
 
-## 6. FUTURE IDEAS — 🔵 NOT STARTED, NOT SCHEDULED, NOT IN THE QUEUE
+## 6. 📣 CAMPAIGN WORK — META ACCOUNT INVESTIGATION (2026-09-06)
+
+⚠️ **THIS IS CAMPAIGN WORK, NOT ZAP DEVELOPMENT.** It is not the product queue (§4) and must not be
+merged into it. Nothing here is a code change; it is what was measured on Arfeen's live Meta
+accounts and landing pages.
+
+### 6.1 · THE ACCOUNTS AND PAGES
+
+| | |
+|---|---|
+| **KS 1** `1254349025145319` | The OLD account. ~487 coaching campaigns + **13 crypto campaigns, all PAUSED**. **169 audiences.** Created 2022-12-23. |
+| **Arfeen Khan AD01** `736365731511264` | Where the **current webinar campaign runs**. |
+
+**The three live pages are on GoHighLevel at `invite.arfeenkhan.com`:**
+
+| URL | audience |
+|---|---|
+| `/wealth-blueprint-webinar` | **professionals** |
+| `/wealth-accomodation-workshop` | **entrepreneurs** |
+| `/women-wealth-webinar` | **women** |
+
+🔴 **THE URL NAMES DO NOT MATCH THE AUDIENCES.** "wealth-accomodation-workshop" is the entrepreneurs
+page. **Ads must be pointed by CONTENT, never by reading the slug.**
+
+### 6.2 · WHAT WAS MEASURED ON THE THREE PAGES
+
+- **Only `PageView` fires.** No conversion event is bound anywhere in the page.
+- **No `event_id` exists**, so browser and server events cannot be deduplicated.
+- **The Meta click id (`fbclid`) is never captured on arrival** — the spec requires capture and
+  persistence, and no page does it.
+
+**The ads person states:** `CompleteRegistration` is active, there is a thank-you page, and the
+Conversions API is active on all three. 🔴 **NONE OF THAT IS VERIFIED**, because Arfeen does not
+have access to the pixel.
+
+📌 **The pixel — "Arfeen Webinar 2.0", `1437419894943378` — is owned by a business portfolio called
+Madvertise, which Arfeen is NOT a user on. THIS IS DELIBERATE.** A previous campaign by the same
+person got one of Arfeen's business managers blocked, so keeping the risk outside his own portfolio
+is a **considered decision, not an oversight.** Do not "fix" it.
+
+### 6.3 · TWO HYPOTHESES THAT FAILED — do not re-run them
+
+**a. "The pixel history was built on a page view rather than a real conversion."** ❌ **FAILED at the
+configuration layer.** Across KS 1: **484 of 500 ad sets optimised for `OFFSITE_CONVERSIONS`**, and
+**469 for the `LEAD` event**. Only 4 ever used `LINK_CLICKS`. The ad sets were configured correctly.
+
+**b. "Lookalikes seeded from income-band lists poisoned the account."** ❌ **FAILED on usage.** The
+lists are **almost certainly income-based rather than spend-based** — judged from naming and
+structure, since the API exposes no field that says which: the band series runs *"Jobless And
+Seeking Opportunities & Less Than $500"* → *"$500-$1000"* → *"$1000 +"*, all created within 17
+minutes from the same HubSpot contact list, all `is_value_based: false`, alongside a matrix of
+`Employed / Self employed / Jobless × Low / High income.csv`. **But both ad sets that ever targeted
+one have ZERO spend and ZERO impressions.** They never ran. **A stored risk worth deleting, not a
+cause.**
+
+### 6.4 · WHAT IS STILL OPEN — the strongest remaining explanation
+
+- 🔴 **The crypto campaigns optimised against a COACHING pixel** — `SMB English Pixel 2`
+  (`1467186850518247`), whose history is SMB webinar traffic, not crypto buyers. Where they used
+  audiences at all (6 of 26 ad sets), they used **coaching website-visitor** audiences.
+- 🔴 **What `Lead` actually MEANT when it fired historically cannot be determined.** The pixel stats
+  API caps at **~28 days** — 7/30/90/180/365-day windows all return the same buckets. **This is now
+  the strongest remaining explanation for years of poor lead quality, and it is only answerable by
+  Arfeen in Events Manager with the date range opened up.**
+- ⚠️ **The API returns a maximum of 500 ad sets and KS 1 has at least that many.** There is history
+  that was NOT read. Any "never happened" conclusion is bounded by that.
+
+### 6.5 · AD01 — clean on audiences, NOT clean on signal
+
+**Clean:** 15 audiences (vs 169 on KS 1). **Zero shared with KS 1** — not one audience id appears on
+both. Its lookalike seeds are the sound ones: `SCIO - Above $1k.csv` and `instagram_followers_rt`.
+
+**Not clean:** it runs **four pixels across 56 ad sets**, and **Webinar 2.0 is the LEAST used at 5 of
+56**. The account's weight is on pixel **`1208640173915276` (17 of 56), which has NOT been
+examined.** Lifetime 2023-08-06 → 2026-09-06, spend 52,869.81, 1,312,623 impressions.
+
+### 6.6 · 🔴 BLOCKING — waiting on Arfeen, and nothing else should proceed
+
+1. **Get VIEW ACCESS to the "Arfeen Webinar 2.0" pixel.**
+2. **Then verify in Events Manager → Test Events that ONE registration produces ONE conversion
+   event, not two.**
+
+> 🔴 **NO MONEY SHOULD BE SPENT UNTIL THAT PASSES.** Unpaired browser and server events would make
+> cost per lead read as **half** the real figure — the campaign would look twice as good as it is.
+
+### 6.7 · STANDING DECISION — ZAP NEVER TOUCHES A COACH'S GHL ACCOUNT
+
+**The shape is: ZAP GENERATES TRACKING CODE THE COACH PASTES THEMSELVES.** Sizing already done:
+
+| piece | verdict |
+|---|---|
+| pixel side | ✅ **generatable** — base pixel, fbclid capture, event id, audience parameter |
+| **CAPI** | 🔴 **NOT POSSIBLE for a coach's own funnel — ZAP is not in the request path.** Registration happens in the coach's funnel; ZAP never sees it and has no `fbp`/`fbc`/IP/UA to send. Pasted JavaScript cannot fix this; CAPI is server-to-server by definition. |
+| page checker | ✅ largely doable **from the rendered page** (not from served HTML — these pages render client-side) |
+| copy checker | 🟡 mostly reuses existing compliance machinery, **but needs an HTML→text extractor that does not exist in the repo** — there is no cheerio/jsdom dependency at all |
+
+---
+
+## 7. FUTURE IDEAS — 🔵 NOT STARTED, NOT SCHEDULED, NOT IN THE QUEUE
 
 ⚠️ **This section is NOT §4's queue and must never be read as it.** Nothing here is approved,
 sized, designed or begun. It is Arfeen's idea, recorded on 2026-09-06 so it is not lost. **Do not
 start any of it without him saying so.**
 
-### 6.1 · TEACHING INSIDE THE PRODUCT — the primary shape
+### 7.1 · TEACHING INSIDE THE PRODUCT — the primary shape
 
 **Each of the eleven nodes carries a short lesson explaining what that node is for and why it
 matters.** A coach reaches the ICP node and learns what an ICP is and how it feeds everything
@@ -259,7 +372,7 @@ downstream — at the moment they need it, on their own campaign, not on a worke
 
 > **Learning and doing become the same action.**
 
-### 6.2 · A STANDALONE COURSE ON ANDROMEDA — the second shape, same material
+### 7.2 · A STANDALONE COURSE ON ANDROMEDA — the second shape, same material
 
 Andromeda explained plainly, and how to run a campaign under it. **Arfeen has looked and found
 nothing that explains it simply:** what exists is either Meta's own documentation or agency content
@@ -268,7 +381,7 @@ whose purpose is to pitch a service.
 **The Digital Asset Blueprint campaign is the worked example** — it is real, and the reasoning
 behind every decision in it is already documented (`docs/andromeda/worked-examples/`).
 
-### 6.3 · THREE NOTES THAT TRAVEL WITH THE IDEA
+### 7.3 · THREE NOTES THAT TRAVEL WITH THE IDEA
 
 **a. The per-node version is ONBOARDING as much as teaching.** Arfeen finds the eleven-node wizard
 confusing **and he built it**. A coach arriving cold has no explanation of why each node exists.
@@ -286,7 +399,7 @@ one document adjudicates the claim and rejects it, two others assert the opposit
 **c. Andromeda is still changing, so PRINCIPLES WILL AGE BETTER THAN SPECIFIC MECHANISMS.** Anything
 taught as a named threshold, model name or numeric rule should be expected to go stale.
 
-### 6.4 · THE EXISTING ANDROMEDA EDUCATION CONSOLE — keep the shell, rebuild the lessons
+### 7.4 · THE EXISTING ANDROMEDA EDUCATION CONSOLE — keep the shell, rebuild the lessons
 
 Arfeen has already built one: a **fifteen-module gated course** with quizzes, hands-on tasks,
 self-marked written answers, progress export, and a **five-point scorecard for judging any agency**.
@@ -294,7 +407,7 @@ self-marked written answers, progress export, and a **five-point scorecard for j
 > **DECISION: the shell is good and is kept. The CONTENT is rebuilt.**
 
 **Why the content cannot be kept.** It was built from a YouTube crash course rather than from ZAP's
-own research, and it reproduces the exact failure §6.3 warns about:
+own research, and it reproduces the exact failure §7.3 warns about:
 
 - 🔴 **Teaches the 40% similarity threshold as fact** — the same unverified practitioner number the
   alignment audit rejects (`ZAP_to_Andromeda_Alignment_Audit.md:110`).
@@ -308,7 +421,7 @@ own research, and it reproduces the exact failure §6.3 warns about:
 - 🔴 **Recommends anti-detect browsers. This is against Meta's terms and must not be taught.**
   Removing it is not optional editing.
 
-### 6.5 · UNDECIDED
+### 7.5 · UNDECIDED
 
 **Whether this is free, a lead magnet, or something sold is NOT decided. That call is Arfeen's when
 the time comes** — it is not a technical decision and should not be made by default.
