@@ -468,8 +468,13 @@ page. **Ads must be pointed by CONTENT, never by reading the slug.**
   persistence, and no page does it.
 
 **The ads person states:** `CompleteRegistration` is active, there is a thank-you page, and the
-Conversions API is active on all three. 🔴 **NONE OF THAT IS VERIFIED**, because Arfeen does not
-have access to the pixel.
+Conversions API is active on all three. ~~🔴 **NONE OF THAT IS VERIFIED**, because Arfeen does not
+have access to the pixel.~~
+
+⚠️ **CORRECTED 2026-09-07 — the REASON above is dead; the struck wording is retained, not deleted.**
+**The pixel access IS now granted (§6.6 item 1).** Of the three claims, **the Conversions API one is
+CONFIRMED — coverage measured 100%** (§6.00). **`CompleteRegistration` being active, and the
+thank-you page, remain UNVERIFIED — but now for want of someone looking, NOT for want of access.**
 
 📌 **The pixel — "Arfeen Webinar 2.0", `1437419894943378` — is owned by a business portfolio called
 Madvertise, which Arfeen is NOT a user on. THIS IS DELIBERATE.** A previous campaign by the same
@@ -514,6 +519,10 @@ examined.** Lifetime 2023-08-06 → 2026-09-06, spend 52,869.81, 1,312,623 impre
 
 ### 6.6 · 🔴 BLOCKING — waiting on Arfeen, and nothing else should proceed
 
+📌 **ITEM NUMBERS ARE STABLE AND ARE NEVER REUSED.** Items are closed **in place**, not renumbered,
+because other sections cite them by number (§0.5 cites *item 2*). **LIVE AS AT 2026-09-07: 0a, 0 and
+2. Item 1 is CLOSED.**
+
 0a. 🔴 **REMOVE THE "NOTHING SOLD IN THE ROOM" CLAIM FROM THE THREE LIVE PAGES (§6.8).** It is
    FALSE — there is a pitch at the end of the session — and it is live on all three pages plus the
    entrepreneurs FAQ right now. Replacement wording exists in the professionals rev 2 document.
@@ -522,7 +531,11 @@ examined.** Lifetime 2023-08-06 → 2026-09-06, spend 52,869.81, 1,312,623 impre
 0. 🔴 **FIX THE OPTIMISATION EVENT (§6.0).** The ad sets optimise for `SUBMIT_APPLICATION`,
    which records ZERO. Either point them at the event that is actually firing, or bind a real
    conversion event in the page. **Resuming spend without this repeats the 3,683 that bought nothing.**
-1. **Get VIEW ACCESS to the "Arfeen Webinar 2.0" pixel.**
+1. ✅ ~~**Get VIEW ACCESS to the "Arfeen Webinar 2.0" pixel.**~~ **CLOSED 2026-09-07 — GRANTED.**
+   Original wording retained above, not deleted. **Evidence: Arfeen has been in Events Manager on
+   the "Arfeen Webinar 2.0" dataset**, and that is where the **Event Match Quality reading of
+   6.1 / 10**, the **click ID coverage of 93–97%** and the **CAPI coverage of 100%** recorded in
+   §6.00 all came from. **Those readings could not exist without the access.**
 2. 🔴 **WATCH ONE COMPLETED REGISTRATION END TO END. NOBODY HAS EVER DONE THIS.** It is **not a
    double-counting question** — it is **the question of whether the conversion signal works at
    all.** Three things must be observed on one real registration, in order:
