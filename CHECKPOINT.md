@@ -54,11 +54,21 @@ destructive risk.** `git add .` → commits them irreversibly. **321 untracked i
 
 ⚠️ CC's recommendation; Arfeen owns the call.
 
-🔴 **READ §6.00 FIRST — it carries four retractions and the open 302-vs-94 finding. Then §6.0 and
-§6.6. Campaign work is BLOCKING and outranks the product queue.**
+🔴 **READ §6.00 FIRST — it carries FIVE retractions, and they are the reason several confident
+conclusions elsewhere in this file are wrong. Then §6.9, which CLOSES the tracking thread. Then §6.0
+and §6.6. Campaign work is BLOCKING and outranks the product queue.**
+
+⚠️ **CORRECTED 2026-09-07.** This line previously read *"it carries four retractions and the open
+302-vs-94 finding"*. **That finding is CLOSED** — pixel/CAPI overlap, §6.9 — **and the old wording is
+recorded here rather than deleted so the correction is visible.**
+
 The 6 Sept campaign spent **3,683 and recorded ZERO conversions** because the ad sets optimise for
 `SUBMIT_APPLICATION`, an event that never registers. **No ad spend should resume until that event is
-fixed, the pixel access is granted, and one registration is shown to produce one conversion event.**
+fixed and ONE COMPLETED REGISTRATION HAS BEEN WATCHED END TO END** — which event fires, whether it
+attributes to the originating ad, and whether it reaches the campaigns as a usable conversion signal
+(**§6.6 item 2**). ⚠️ **The old form of that condition — *"the pixel access is granted, and one
+registration is shown to produce one conversion event"* — is superseded: the access is now granted,
+and the one-not-two framing is RETRACTED (§6.00 retraction 5).**
 
 **Product-side, the next item is the 13 blank-list desyncs** — the authoritative list is
 `ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`, not prose. Same defect class as the
@@ -313,7 +323,9 @@ should match, and they do not. Nobody has explained this.**
 - **Email and phone are NOT passed as hashed parameters.** Advanced matching reaches only **1% of
   PageView events**. **External ID coverage 10.22%.**
 
-#### 🔴 FOUR RETRACTIONS — do not resurrect these
+#### 🔴 FIVE RETRACTIONS — do not resurrect these
+
+⚠️ **This heading read "FOUR" until 2026-09-07. Retraction 5 was added when §6.6 item 2 closed.**
 
 1. ❌ **"The confirmation message showed a wrong time."** **WRONG.** The time converts correctly by
    phone country — verified with **both a UAE and a Mauritius number, each showing 2:00 PM.** Only
@@ -322,6 +334,12 @@ should match, and they do not. Nobody has explained this.**
 3. ❌ **"CAPI was not sending the registration event."** **WRONG.** Coverage is 100%.
 4. ❌ **"`Lead` was bound to page view."** **This was an INFERENCE from an ambiguous reply, never
    something the ads person stated.** He has since said `Lead` is bound to **form submission**.
+5. ❌ **"Unpaired browser and server events would make cost per lead read as HALF the real
+   figure."** **WRONG ON TWO COUNTS — and this one was CC's own warning, not anything the ads person
+   claimed.** (a) **Event coverage on the dataset measured 100%**, so the events were never
+   unpaired. (b) **The CPL figures of 10.66 and 23.07 came from the ADS TEAM'S OWN LEAD COUNTS, not
+   from Events Manager**, so the duplication never touched them. **§6.6 item 2 was written entirely
+   on this warning; it is why that item is now CLOSED and replaced.**
 
 #### THE ADS PERSON'S STATED POSITIONS
 
@@ -505,11 +523,26 @@ examined.** Lifetime 2023-08-06 → 2026-09-06, spend 52,869.81, 1,312,623 impre
    which records ZERO. Either point them at the event that is actually firing, or bind a real
    conversion event in the page. **Resuming spend without this repeats the 3,683 that bought nothing.**
 1. **Get VIEW ACCESS to the "Arfeen Webinar 2.0" pixel.**
-2. **Then verify in Events Manager → Test Events that ONE registration produces ONE conversion
-   event, not two.**
+2. 🔴 **WATCH ONE COMPLETED REGISTRATION END TO END. NOBODY HAS EVER DONE THIS.** It is **not a
+   double-counting question** — it is **the question of whether the conversion signal works at
+   all.** Three things must be observed on one real registration, in order:
+   - **WHICH EVENT FIRES** when the registration completes;
+   - **WHETHER IT ATTRIBUTES to the originating ad**;
+   - **WHETHER IT REACHES THE CAMPAIGNS as a usable conversion signal.**
 
-> 🔴 **NO MONEY SHOULD BE SPENT UNTIL THAT PASSES.** Unpaired browser and server events would make
-> cost per lead read as **half** the real figure — the campaign would look twice as good as it is.
+   **How: Arfeen registers on a live page with Test Events open on the "Arfeen Webinar 2.0" pixel.**
+   ✅ **The pixel access this needs is now GRANTED.** **THIS IS THE ITEM THAT GATES RESUMING SPEND.**
+
+   ⚠️ **THIS REPLACED A CLOSED ITEM ON 2026-09-07 — retained, not deleted.** It previously read
+   *"verify in Events Manager → Test Events that ONE registration produces ONE conversion event, not
+   two"*, on the warning *"unpaired browser and server events would make cost per lead read as HALF
+   the real figure."* **Both are RETRACTED: coverage measured 100% so the events were never
+   unpaired, and the CPL figures came from the ads team's own lead counts, never from Events
+   Manager. See §6.00 retraction 5.**
+
+> 🔴 **NO MONEY SHOULD BE SPENT UNTIL ITEM 0 AND ITEM 2 BOTH PASS.** The 6 Sept campaigns optimised
+> toward an event that recorded zero. Until a real registration has been watched producing a signal
+> the campaigns can actually learn from, resuming spend repeats the 3,683 that bought nothing.
 
 ### 6.7 · STANDING DECISION — ZAP NEVER TOUCHES A COACH'S GHL ACCOUNT
 
