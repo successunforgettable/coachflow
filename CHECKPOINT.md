@@ -276,6 +276,11 @@ section supersedes them.**
 
 #### THE UNRESOLVED CORE FINDING — open, NOT diagnosed
 
+✅ **CLOSED 2026-09-07 — SEE §6.9.** The duplicate `Lead` events are explained by the pixel
+running on the site with CAPI for page views AND on the form for submissions; the overlap produces
+the multiple. **That explanation is accepted and this finding is no longer open.** The record below
+is retained as history, not as a live question.
+
 On pixel **`1904901060188047`**, Events Manager shows:
 
 | window | Lead events in Events Manager | actual leads reported by the ads team | ratio |
@@ -326,7 +331,7 @@ should match, and they do not. Nobody has explained this.**
 
 #### WHAT REMAINS OPEN
 
-1. 🔴 **The 302 vs 94 discrepancy.** Unexplained.
+1. ✅ ~~**The 302 vs 94 discrepancy.** Unexplained.~~ **CLOSED 2026-09-07 — pixel/CAPI overlap, §6.9.**
 2. 🔴 **Why attendance dropped from a normal 35 to 15 on ~80 registrations** — **the timezone
    explanation is now DEAD** and nothing has replaced it.
 3. 🔴 **Four or more consecutive weeks have produced no conversions at the event**, and lead quality
@@ -602,6 +607,118 @@ prospecting and script research, and **no email or WhatsApp research directory e
 
 **It should be added alongside the others** so the **ZAP email and WhatsApp generator nodes can draw
 on it — those two nodes have never had research behind them**, unlike every other generator.
+
+---
+
+### 6.9 · ✅ THE TRACKING THREAD IS CLOSED — AND THE CREATIVE IS THE EXPLANATION (2026-09-07)
+
+**The signal question is settled. The lead-quality question now has its strongest answer, and it is
+not tracking — it is what the videos said and how few of them ran.**
+
+#### 6.9a · ✅ TRACKING — CLOSED. The duplicate `Lead` events are explained.
+
+**The ads person's explanation, given and ACCEPTED:** the pixel is on the site **with CAPI for page
+views**, and is **also on the form so submissions can be tracked**. The **overlap between the two
+produces the multiples.** He states this is **expected behaviour and does not affect lead quality.**
+
+🔴 **THE 302-vs-94 DISCREPANCY IS NO LONGER OPEN.** It is explained by the pixel/CAPI overlap.
+**This supersedes §6.00's "UNRESOLVED CORE FINDING" and item 1 of its "WHAT REMAINS OPEN".**
+
+**Two theories were raised against the tracking and BOTH FAILED. Neither is to be revived:**
+
+| theory | verdict |
+|---|---|
+| the Meta click id was never captured | ❌ **FAILED** — present on **93–97%** of events |
+| `Lead` was bound to page view | ❌ **FAILED** — it is bound to **form submission** |
+
+> **The tracking thread is finished. Do not reopen it, and do not spend another session on it.**
+
+#### 6.9b · 🔴 CREATIVE DIVERSITY COLLAPSED ACROSS THREE WEEKS WHILE CPL ROSE
+
+**This is the strongest explanation yet for the lead-quality problem.**
+
+| date | distinct videos running | leads | CPL | outcome |
+|---|---|---|---|---|
+| **19 August** | **8** | **94** | **10.66 USD** | the good week |
+| **30 August** | **3** | **43** | **23.07 USD** | CPL more than doubles |
+| **6 September** | **mostly ONE** old video — *"crypto is a scam"*, run across **all three audiences** | — | — | **ZERO attributed conversions, and the worst lead quality Arfeen has recorded** |
+
+**8 → 3 → 1 as cost per lead more than doubled.**
+
+#### 6.9c · 🔴 WHAT THE SURVIVING VIDEO ACTUALLY SAYS — this is who it attracted
+
+Read from the transcripts, not inferred from performance.
+
+- **`"crypto is a scam"` (the one that carried 6 Sept)** — promises **financial freedom repeatedly**,
+  describes the speaker as a **hardcore die-hard believer in cryptocurrency**, and closes with
+  ***"you may become financially free"***.
+- **A second old video** opens with ***"if your salary disappeared tomorrow"*** and promises
+  **additional income streams using crypto**.
+
+> 🔑 **Under Andromeda THE CREATIVE SELECTS THE AUDIENCE.** That messaging found **opportunity
+> seekers.** The delivery did what it was asked to do.
+
+#### 6.9d · BY CONTRAST — the August videos filtered for the right person, and so do the new ones
+
+- **August creative** led with **disciplined professionals who have something to lose**, wanting **a
+  framework rather than guessing.** That is the filter, and it is why that week worked.
+- ✅ **The new videos Arfeen supplied are CORRECT for the ICP.** The **professionals** one **does not
+  mention crypto at all** and leads with ***"nobody building a pension behind you"***.
+
+#### 6.9e · THE 6 SEPT SPEND SPLIT — and the consequence, stated as consequence not blame
+
+| | spend |
+|---|---|
+| **OLD-video campaigns** | **~2,900 AED** |
+| **NEW videos** | **544 AED** |
+
+**The reason given, and ACCEPTED:** the new videos **arrived Friday night for a Sunday event**, and
+spend could not be held.
+
+🔴 **THE CONSEQUENCE:** the **NEW pixel now carries a week of learning built mostly on people who
+responded to financial-freedom messaging** — **which is the exact audience the pixel switch was made
+to escape.**
+
+❓ **OPEN, with the ads person: is that learning recoverable, or should the pixel be restarted?**
+
+#### 6.9f · THE SAME VIDEO ACROSS ALL THREE AUDIENCES IS THE ENTITY ID COLLAPSE
+
+**The Andromeda research names this directly:** near-identical creative **clusters under one
+retrieval ticket** and **competes with itself** rather than reaching separate audiences. Running one
+video against professionals, entrepreneurs and women is that failure exactly.
+
+#### 6.9g · 🔴 TWO COMPLIANCE EXPOSURES IN THE AUGUST CREATIVE — UNADDRESSED
+
+1. **Repeated financial-freedom and wealth-building claims.**
+2. **Endorsement claims** — the speaker stated to be **personally endorsed by and vetted by Tony
+   Robbins.**
+
+**Both are Meta financial-claims risks, and the UAE regulates financial promotions on top of that.**
+Neither has been addressed.
+
+#### 6.9h · 🔴 THE WORKFLOW TEMPLATES EXPORT — three published workflows that have DRIFTED APART
+
+- **`Manual Webinar New LP` has NO PRE-EVENT SEQUENCE AT ALL** — registration confirmation, then
+  **silence until three hours before the event.** The main workflow sends **six days of daily
+  messages.** **Same campaign, different experience depending on which page they registered on.**
+- **The Manual workflow sends SIX messages in the ten minutes after start.**
+- **At two hours and one hour out, email and WhatsApp fire SIMULTANEOUSLY carrying the same
+  content** — **the research names this a direct driver of blocks.**
+- 🔴 **The registration message still NAMES THE PAID PROGRAMME**, promises **building life-changing
+  wealth through cryptocurrency**, and offers **live bonuses to "a few selected individuals"** —
+  breaking §6.8's standing constraints 1, 2 and 3.
+
+#### 6.9i · 🟡 ONE THING TO VERIFY — the sending domain
+
+**The workflow owner is listed against a gmail address.** **If any email sends from a free consumer
+domain rather than an authenticated one, Gmail and Yahoo route it to spam regardless of content.**
+
+#### 6.9j · THE OPERATIONAL LESSON — and it is the fixable one
+
+**The creative arrived two days before the event. That is why old creative carried the spend.**
+
+> **CREATIVE MUST BE DELIVERED BEFORE THE CAMPAIGN WINDOW OPENS ON TUESDAY.**
+> **That is Arfeen's side to fix.**
 
 ---
 
