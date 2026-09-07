@@ -768,6 +768,92 @@ domain rather than an authenticated one, Gmail and Yahoo route it to spam regard
 
 ---
 
+### 6.10 · 📄 TWO MORE DOCUMENTS WRITTEN AND HANDED OVER — 🟡 NONE OF IT IMPLEMENTED (2026-09-08)
+
+**Written and given to the agency. NOTHING IS CONFIRMED LIVE. Do not read any of this as shipped.**
+
+#### 6.10a · WHAT WAS WRITTEN
+
+| document | covers |
+|---|---|
+| **thank-you page copy** | **all three audiences** — replaces the **IDENTICAL copy currently on all FOUR pages** |
+| **thank-you page video scripts** | **three, one per audience, ~55 seconds each** — to replace, or sit in place of, whatever video is in those players now |
+
+**The copy being replaced** promises **early access to digital wealth**, **Crypto Wealth Mindset**,
+**Passive Income Mastery**, **Exclusive Investment Strategies** and **The Compound Wealth Formula.**
+
+#### 6.10b · 🔴 WHY THE THANK-YOU PAGES MATTER — the sharpest contradiction in the funnel
+
+> **A visitor is qualified by a landing page about WHY THEY HAVE NEVER STARTED, and then ONE SECOND
+> AFTER REGISTERING reads that they have EARLY ACCESS TO DIGITAL WEALTH.**
+
+**The new copy continues each audience's own conversation instead** — the same conversation the
+landing page opened, not a different product's.
+
+📌 **AND SEPARATELY, POSSIBLY THE BIGGER ATTENDANCE FACTOR THAN ANY WORDING:** **all four pages
+currently state NO DATE AND NO TIME AT ALL.** The venue field reads **"Online"** and nothing else.
+**The new copy puts the DATE, TIME AND TIMEZONE at the top of every page.**
+
+#### 6.10c · THE DESIGN PRINCIPLE BEHIND THE VIDEOS — so nobody later substitutes the ad scripts
+
+**The ad's job was to make a stranger click. THAT JOB IS DONE.** The thank-you video answers **four
+different questions**:
+
+1. **did that work?**
+2. **is this person real?**
+3. **is this legitimate?**
+4. **is it worth two hours?**
+
+🔴 **IT MUST NOT REPEAT THE AD HOOK.** Repeating it is **being sold to after having already bought.**
+
+**Filming notes:**
+
+- **Shoot all three in ONE session, but CHANGE POSITION AND SHIRT between them.**
+- **No music. No cuts. No graphics. Straight to camera.**
+- **Say the time SLOWLY, with its timezone.**
+
+#### 6.10d · WHAT HAS BEEN SENT TO THE AGENCY — all handed over, NONE confirmed implemented
+
+1. **The three email sequences** (§6.8)
+2. **The WhatsApp set** (§6.8)
+3. **The landing-page corrections** (§6.8 / §6.6 item 0a)
+4. **The thank-you page copy** (§6.10a)
+5. **The thank-you page video scripts** (§6.10a)
+
+**The agency has said it will check the events and perform all other points tonight.** ⚠️ **That is a
+statement of intent, not a verification. Nothing here moves to done on the strength of it.**
+
+#### 6.10e · 🔴 OUTSTANDING 1 — THE END-TO-END CONVERSION TEST. ARFEEN'S. IT BLOCKS SPEND.
+
+**It has NOT been run.** Arfeen **has the pixel access** (§6.6 item 1, closed) but **has not yet
+registered on a live page with Test Events open on the "Arfeen Webinar 2.0" dataset.**
+
+**Until that shows all three of** — **which event fires** · **whether it attributes to the
+originating ad** · **whether it reaches the campaigns as a usable signal** — **NO FURTHER SPEND.**
+Full item at **§6.6 item 2**.
+
+**Two conditions on the timing, and they are not the same condition:**
+
+- ✅ **Run it AFTER the agency reports its fixes are complete**, so **the fixed version is what gets
+  tested.**
+- 🔴 **RUN IT REGARDLESS OF WHAT THE AGENCY REPORTS.** *"Fixed"* and *"verified working"* **have been
+  different things all week.**
+
+#### 6.10f · 🔴 OUTSTANDING 2 — THE CREATIVE DEADLINE. ARFEEN'S, AND NEEDS NOBODY'S COOPERATION.
+
+**An operational deadline, not a defect.** **Creative must reach the agency BEFORE THE CAMPAIGN
+WINDOW OPENS ON TUESDAY.**
+
+**The 6 September failure traces directly to it:** the new videos **arrived Friday night for a Sunday
+event**, which is why **old creative carried 2,900 AED of the 3,683 spend** (§6.9e).
+
+#### 6.10g · ⚠️ ONE THING NOBODY HAS VERIFIED — the video already on the thank-you pages
+
+**Nobody in this thread has ever watched it.** **If it carries the digital-wealth framing it will
+contradict the new page copy placed around it.** **Check it before the new copy goes live.**
+
+---
+
 ## 7. FUTURE IDEAS — 🔵 NOT STARTED, NOT SCHEDULED, NOT IN THE QUEUE
 
 ⚠️ **This section is NOT §4's queue and must never be read as it.** Nothing here is approved,
