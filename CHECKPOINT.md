@@ -546,6 +546,12 @@ because other sections cite them by number (§0.5 cites *item 2*). **LIVE AS AT 
    **How: Arfeen registers on a live page with Test Events open on the "Arfeen Webinar 2.0" pixel.**
    ✅ **The pixel access this needs is now GRANTED.** **THIS IS THE ITEM THAT GATES RESUMING SPEND.**
 
+   **WHEN — two conditions, and they are NOT the same condition (fuller record at §6.10e):**
+   - ✅ **Run it AFTER the agency reports its fixes are complete**, so **the FIXED version is what
+     gets tested.**
+   - 🔴 **RUN IT REGARDLESS OF WHAT THE AGENCY REPORTS.** *"Fixed"* and *"verified working"* **have
+     been different things all week.**
+
    ⚠️ **THIS REPLACED A CLOSED ITEM ON 2026-09-07 — retained, not deleted.** It previously read
    *"verify in Events Manager → Test Events that ONE registration produces ONE conversion event, not
    two"*, on the warning *"unpaired browser and server events would make cost per lead read as HALF
@@ -838,6 +844,9 @@ Full item at **§6.6 item 2**.
   tested.**
 - 🔴 **RUN IT REGARDLESS OF WHAT THE AGENCY REPORTS.** *"Fixed"* and *"verified working"* **have been
   different things all week.**
+
+📌 **These two conditions are ALSO carried in §6.6 item 2**, so a cold reader acting from the blocker
+list has them without reaching this section. **Change both together or they will drift.**
 
 #### 6.10f · 🔴 OUTSTANDING 2 — THE CREATIVE DEADLINE. ARFEEN'S, AND NEEDS NOBODY'S COOPERATION.
 
