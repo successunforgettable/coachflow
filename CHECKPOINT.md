@@ -2177,8 +2177,10 @@ hand-tune campaigns two or three.
 
 ---
 
-# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-01
-### supersedes the 2026-08-31 block below, which is retained and marked, not deleted
+# 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-01 (retained, not deleted)
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 RESTART BLOCK at the top of this file**.
+### This block superseded the 2026-08-31 one below it; it was itself superseded on 2026-09-02.
+### Its content is kept for the record — its ground truth and its next-actions are stale.
 
 **A fresh terminal with no memory of this session can restart from this block alone. Every number
 below was MEASURED at write time (§15f), not recalled. The measurement is repeated at the foot of
@@ -2594,7 +2596,12 @@ TS errors             34
 
 ---
 
-# ⚪️ SUPERSEDED COLD-START BLOCK — written 2026-08-31. **Kept for its detail, NOT for its next-actions.** The live block is the 2026-09-01 one above. Its §0/§0a/§0b corrections and its instrument results still stand; its ordering does not.
+# 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-08-31 (retained, not deleted)
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 RESTART BLOCK at the top of this file**.
+### **Kept for its detail, NOT for its next-actions.** Its §0/§0a/§0b corrections and its instrument
+### results still stand; its ordering does not.
+### ⚠️ **CORRECTED 2026-09-10** — this heading previously read *"The live block is the 2026-09-01 one
+### above"*, a pointer to a block that is now itself superseded. Old wording recorded, not deleted.
 
 **A fresh terminal with no memory of this session can restart from this block alone. Every number
 below was MEASURED at write time, not recalled.**
@@ -5309,7 +5316,9 @@ around it does not.
 
 ---
 
-# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-08-30 end of session
+# 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-08-30, end of session (retained, not deleted)
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 RESTART BLOCK at the top of this file**.
+### Its content is kept for the record — its ground truth and its next-actions are stale.
 
 **A fresh terminal with no memory of this session can restart from this block alone. Everything
 below was verified in-session against git, the filesystem and production — not recalled.**
