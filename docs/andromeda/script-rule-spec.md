@@ -40,6 +40,10 @@ guarantee, because the absence of a visible failure gets read as compliance.
 | `[DIST]` | `prospecting-research/Meta Ads 2026_ Prospecting Campaign Ad Concept Distribution.md` |
 | `[PROSPECT]` | `prospecting-research/Meta Ads 2026_ The Definitive B2C Prospecting & Creative Architecture Playbook.md` |
 | `[STRUCT-VIS]` | `image-research/Structural Visual Distinctness under Meta Andromeda.md` |
+| `[SAME-TALENT]` | `image-research/Meta Ads 2026_ Visual Distinctness and Entity ID Architecture in Same-Talent Campaigns.md` ⚠️ **not** the file `image-rule-spec.md` binds to `[VISUAL-SIM]` — different document, deliberately different code |
+| `[COHERENCE]` | `image-research/Image-and-Copy Coherence_ The Matched-Pair Principle & Visual Composition for B2C Transformation Sellers in Meta Andromeda.md` |
+| `[HOOK-ENCODERS]` | `image-research/Meta Ads 2026_ Ad Copy Hook Optimization for Andromeda's Language Encoders.md` |
+| `[TECH]` | `image-research/Meta Ad Image Technical Specifications & Rendering Guide (2026 Edition).md` |
 | `[TESTING-MATRIX]` | `image-research/Meta Ads 2026_ The B2C Creative Testing Matrix & Andromeda Architecture Playbook.md` |
 | `[GUARD]` | `image-research/Meta Ad Image Compliance Guardrails 2026_ The Do-Not-Do List for Transformation Sellers.md` |
 | `[DESIGN-BRIEF]` | `image-research/Programmatic Design Brief_ Separation of Variables & Visual Layout Rules (Meta Andromeda 2026).md` |
@@ -56,9 +60,13 @@ guarantee, because the absence of a visible failure gets read as compliance.
 
 ### The evidence base
 
-Four revisions of nine cold-audience scripts for a free live event, each graded by independent
+**Five** revisions of nine cold-audience scripts for a free live event, each graded by independent
 recomputation of every stated figure. Where a rule below cites "rev N", that is the revision in
 which the violation was measured. **All figures in this document were recomputed, not quoted.**
+
+Rev 5 was the final pass before filming and was signed off. Its remaining defects are recorded here
+anyway — a signed-off draft is the most dangerous place for a defect to hide, because nothing after
+it will look again.
 
 ---
 
@@ -250,6 +258,87 @@ state. **Scan all three, every time.** See §2.4 for why.
 text**, while `[SPEECH] §3` and `[STRUCTURE] §5` **mandate** "you/your" in spoken copy without
 qualification. The corpus contradicts itself here. §4.3.
 
+## 1.12 · Tier 1 baked-in visual text — FOUR requirements, not one
+
+✅ **CORPUS.** `[FUSION] §6` Tier 1, *Rosetta Visual Hook (The "Attention Anchor")*, and the
+Architectural Blueprint at `[FUSION] §4`.
+
+> 🔴 **A generator that checks only the character count PASSES VACUOUSLY.** Three of the four
+> requirements are invisible to a length check, and the one that matters most is the one furthest
+> from it.
+
+| # | requirement | source |
+|---|---|---|
+| 1 | **30–50 characters**, *"bounded by visual layout safe zones… to prevent visual overlap with platform UI"* | `[FUSION] §6` T1 |
+| 2 | **Maximum 10 words** | `[FUSION] §6` T1 |
+| 3 | **Two or more high-frequency semantic category tokens**, *"to serve as a topological anchor for the hierarchical index"* | `[FUSION] §6` T1 |
+| 4 | **Semantic objective: a high-salience EMOTIONAL HOOK** — *"Pain Agitation, Desire, Identity, or Aspirational Outlier"*; the Blueprint adds it *"must act as the primary, high-impact **attention hook**"* | `[FUSION] §6` T1, `[FUSION] §4` |
+
+📌 **On requirement 3, read the corpus's own examples.** They are *"Sleep," "Back Pain," "Focus"* —
+**subject-matter nouns, not qualifiers.** A line reading `CATEGORY · FROM ZERO · SUNDAY` carries
+**one** category token; "from zero" and "Sunday" are qualifiers. Count nouns of the subject, not
+words.
+
+### Evidence — rev 5, the first revision in which Tier 1 existed at all
+
+| requirement | rev 5 |
+|---|---|
+| 30–50 chars | ✅ **30–36** across all nine |
+| ≤10 words | ✅ 4–6 words |
+| ≥2 category tokens | 🟡 **generous** — four of nine carry one subject noun plus qualifiers |
+| emotional hook | 🔴 **missed entirely** — all nine are category labels |
+
+### 🔴 The consequence is structural, not cosmetic
+
+`[FUSION] §4`'s Blueprint assigns Tier 2 exactly one job: *"the 'structural proof' or 'mechanism'
+that **validates the baked-in hook**."*
+
+> **With Tier 1 written as a label there is no hook for Tier 2 to validate.**
+> **The headline ends up validating a category tag, the architecture reads complete, and the actual
+> hook lives in the spoken script — where OCR cannot read it.**
+
+The corpus's worked pair shows the intended shape: baked-in *"Wake Up Without Back Pain!"* (the
+hook) against headline *"Orthopedic Doctor-Approved"* (the mechanism that proves it). A label in
+slot one inverts that relationship while satisfying every countable constraint — **the §15c shape,
+inside the tier architecture itself.**
+
+**Rule.** Validate Tier 1 on all four requirements, and reject on requirement 4 the same way as on
+requirement 1. A generator that cannot classify a line as hook-versus-label must at minimum emit the
+classification as an open question rather than a pass.
+
+## 1.13 · Production constraints on the baked-in text
+
+✅ **CORPUS — all four, and all four were absent from rev 5**, which specified character counts and
+content and nothing else.
+
+| constraint | source |
+|---|---|
+| **High-contrast fonts** — *"Use high-contrast fonts for text overlays to assist Rosetta in extracting intent"* | `[HOOK-ENCODERS]` |
+| **Sans-serif typography, strict ~20% text-to-grid ratio** — *"ensures Andromeda's OCR scanners can match the theme **without flagging for 'low visual quality'**"* | `[TESTING-MATRIX]` |
+| **Shallow depth of field** — *"Bokeh Engineering: use a shallow depth-of-field to blur background elements, **creating high-legibility zones for typography**"* | `[COHERENCE]` |
+| **Platform safe zones** — *"As of March 2026, safe zones across Facebook and Instagram Stories and Reels have been **synchronized** to prevent UI collision"* | `[TECH]` |
+
+🔷 **INFERRED — the card must be on screen inside the first three seconds.** `[LENGTHS] §5`:
+*"Andromeda assigns separate scoring to the first three seconds of a video."* `[CTA]` says
+superimpositions and lower thirds *"captures attention within the first three seconds."* **Neither
+states a required on-screen time for baked-in text.** But a card that appears at second twelve is
+not anchoring at the moment the window is scored. **Marked as inference; do not cite it as a rule.**
+
+📌 **Why this section is not cosmetic either.** If contrast is too low for Rosetta to extract the
+text, Tier 1 does nothing **and reports nothing** — no error, no flag, no difference in the ad
+manager. It is a check that cannot fail, and the practical failure case is real: an outdoor,
+high-key shoot with light text over a bright background.
+
+### ⚠️ Dominant overlays reposition the ad's branch
+
+`[SAME-TALENT]`: *"Meta's Rosetta system prioritizes high-contrast, text-heavy grids. Using
+**dominant** text overlays acts as a specific trigger for OCR-based repositioning, **moving an ad
+from an 'Emotional' branch to a 'Utility' branch**."*
+
+**The protection is keeping the card modest, not avoiding text.** A small lower-third held for a few
+seconds is not a text-heavy grid. An emotional Problem-Aware narrative carrying a dominant text card
+can be re-branched away from the audience it was written for.
+
 ---
 
 # PART TWO — failure patterns that recur, and must be tested for
@@ -401,15 +490,51 @@ therefore passed **vacuously**, having nothing to compare against. A check that 
 **The generator must emit all three tiers or declare Tier 1 absent; it must never validate Tier 2
 against an empty Tier 1 and report a pass.**
 
+## 2.7 · Fixing within-ad redundancy by rewriting to argument splits the voice
+
+**The fix:** rev 4's primary texts were prose retellings of the scripts — 60.0% mean overlap
+(§2.6). Rev 5 rewrote all nine as **contextual depth on persona and pain**, which is precisely what
+`[FUSION] §6` Tier 3 asks for. **Within-ad overlap fell 60.0% → 16.1%.** The largest single
+improvement across five revisions, and the right fix.
+
+**The side effect, measured across all nine:**
+
+| | scripts | primary texts |
+|---|---|---|
+| contractions / 100 words | **6.3** | **0.0** |
+| median sentence | 6.7w | 9.6w |
+| longest sentence (mean) | 15.6w | **26.2w** |
+| longest sentence anywhere | 18w (capped) | **38w** |
+| fragments ≤4 words | ~5 per script | ~1 |
+
+**Zero contractions across 862 words.** Not one, in nine documents.
+
+🔷 **INFERRED, and it cuts both ways.** The split is **defensible** — Tier 3 is read, not spoken,
+and `[SPEECH]` and `[MIDDLE]` are explicitly standards for writing for the ear. A read surface has
+no obligation to obey them.
+
+**But zero out of 862 is not a decision. It is a different drafting mode**, uniform to a degree that
+reads as machine-produced rather than written, and nothing in the revision records it as a choice. A
+viewer who reads the primary text and then hears the video meets two different people.
+
+**The test.** Measure register on every surface — contraction density, median and maximum sentence
+length, fragment count — and **emit the delta between surfaces**. A generator producing both surfaces
+must either hold one voice across them or declare, per surface, which register it is targeting and
+why. Silence on the question is what produced this.
+
+📌 **Same shape as the rest of Part Two:** a correct fix, applied to the correct target, whose side
+effect landed in a dimension nobody was measuring.
+
 ---
 
 # PART THREE — the process finding
 
 **This is the most important section and the least technical.**
 
-Across four revisions, **every draft reported itself complete while being measurably less so.**
-Rev 2 was roughly two-thirds finished. Rev 3 was roughly nine-tenths. Rev 4 was closer still. In
-every case the gap was found only by **independent recomputation**, and in every case —
+Across five revisions, **every draft reported itself complete while being measurably less so.**
+Rev 2 was roughly two-thirds finished. Rev 3 was roughly nine-tenths. Rev 4 was closer still. Rev 5
+got every computed figure right and still shipped two false sentences. In every case the gap was
+found only by **independent recomputation**, and in every case —
 
 > ## The error was in the SELF-REPORT, not in the work.
 
@@ -424,13 +549,26 @@ every case the gap was found only by **independent recomputation**, and in every
 | rev 3 | overlap *"29.0% / 23.7%"* | unreproducible — **no method stated** |
 | rev 4 | *"No phrase now repeats across more than two scripts"* | **three scripts share a verbatim six-word phrase** |
 | rev 4 | *"Tier 2 — applied across all nine"* | **eight of nine carry logistics** in tokens 6–10 |
+| rev 5 | *"P2 and W2 both converted to positive assertions"* | **both still negate** — *"has never been one of them"*, *"was never the subject"*. Reworded, not converted |
+| rev 5 | *"Zero tokens shared between any on-screen text and its headline"* | **true under the document's own published stoplist; false literally** — E3 shares *"the"*. Trivial in effect, false as written |
 
 Rev 4 got **54 of 54 computed figures exactly right** — word counts, hooks, contraction densities,
 longest sentences, standard deviations, headline characters. The numbers it *computed* were flawless.
 **The two claims it failed were the two it asserted rather than ran.**
 
-> ## That is the whole finding. Computed figures were reliable. Asserted verifications were not.
-> ## The difference is not care. It is whether a machine produced the number.
+Rev 5 got **72 of 72 computed figures exactly right**, and — **for the first time in the series —
+its overlap figures reproduced to the decimal**: 22.5% script-to-script, 17.8% primary-text-to-
+primary-text, 16.1% within-ad, all three matching an independent recomputation exactly. **What made
+that possible was publishing the stoplist**, not naming the method. Rev 4 had named the method and
+still ran ~1 point off, because the stoplist is a parameter of the method and was withheld.
+
+**And rev 5 still shipped two false sentences, both typed, both in the fix table rather than the
+measurement table.** That is now **three consecutive revisions with the identical signature.**
+
+> ## That is the whole finding, and five revisions have not dented it.
+> ## Computed figures: reliable, every time, in every revision.
+> ## Asserted verifications: unreliable, every time, in every revision.
+> ## The difference is not care, and it is not competence. It is whether a machine produced the number.
 
 ## 3.2 · The rules this imposes on the generator
 
@@ -456,9 +594,20 @@ indistinguishable from a validation report where the checks never ran (§15c, §
 generator's report must name what it checked, what the value was, and what the threshold was — for
 every check, passing or not.
 
-**6. A self-report is not evidence about itself.** The four documents were written by a competent
-author holding the standard in mind. That was not sufficient, four times running. **Build the
+**6. A self-report is not evidence about itself.** The five documents were written by a competent
+author holding the standard in mind. That was not sufficient, five times running. **Build the
 grader into the generator, or the generator will grade itself generously.**
+
+**7. A method is not checkable until its PARAMETERS are published, not merely its name.** This
+sharpens rule 2 and it was learned the expensive way. Rev 3 gave overlap figures with no method —
+unreproducible. Rev 4 named the method — *stopword-filtered content-word Jaccard* — and the figures
+still ran **consistently ~1 point low**, because the stoplist and the minimum token length are
+parameters of that method and neither was given. Rev 5 published the stoplist verbatim and the
+figures **reproduced to the decimal**.
+
+> **"Jaccard" is not a method. "Jaccard over content words, with this stoplist, dropping tokens
+> under three characters, apostrophes retained" is a method.** Emit every parameter alongside every
+> figure, or the figure is an assertion wearing a number's clothes.
 
 ---
 
@@ -507,6 +656,49 @@ and 67% is concentration.
 stage separated only three assets from six. All fifteen two-variable collisions in that grid included
 stage. **A near-constant is not a separation variable.**
 
+## 4.3 ⚠️ Second-person address — mandated by one half of the corpus, banned by the other
+
+**Referenced at §1.11 and written up here.**
+
+- **Mandated:** `[SPEECH] §3` and `[STRUCTURE] §5` require personal pronouns without qualification —
+  *"Use personal pronouns: speak directly to the viewer using 'you' and 'your'."* `[CTA] §2`'s
+  Relatability Hook is built on *"If you struggle with X, watch this."*
+- **Rated inferior:** `[LENGTHS] §7` — *"Pattern Naming is superior to generic Persona Callouts."*
+- **Banned in combination:** `[DESIGN-BRIEF] §5`, the **Pronoun Trap** — *"no combination of
+  'You/Your' with protected attributes (health, **finance**, beliefs)"*; `[GUARD]` treats the
+  *"Second-Person Personal Attribute"* as a suppression trigger and prescribes **Community Framing**
+  instead: *"focus on the system's presence"* rather than the user's lack.
+
+**Unresolved, and the scope is the load-bearing part.** Both anti-second-person sources are scoped to
+**images and rendered text**; the pro-second-person sources are about **spoken copy**. That reading
+would reconcile them — spoken transcript permissive, headline and baked-in text strict — but **no
+document says so.** It is available as a working rule, not as a finding.
+
+📌 **Rev 5 arrived at that split empirically and it worked**: second person runs 4–8% in the scripts,
+**0–2.2% in the primary texts and zero in the headlines**, with every diagnosis put in the third
+person about a group. That is `[GUARD]`'s Community Framing executed, whether or not it was reached
+through the conflict.
+
+## 4.4 ⚠️ May Tier 1 and Tier 3 share opening content?
+
+- **Banned:** `[FUSION] §4` — *"Pure Replication (Duplicate Copy): Reusing the exact same hook across
+  **the image, headline, and primary text fields** creates severe semantic redundancy… allocating
+  only a single 'auction ticket' and triggering retrieval suppression."*
+- **Required:** `[TOKENS] §4`, Tier 3 of the Opening Token Validation Gate — *"Cross-check that the
+  first 10 tokens **match** or directly reinforce the high-salience text baked into image/video
+  frames (OCR)."*
+
+**One document bans the duplication the other requires, and neither acknowledges the other.**
+
+**Evidence that this is live rather than theoretical.** In rev 5, **two of nine** ads have baked-in
+text that is a near-verbatim slice of their own primary text's opening — `DIGITAL ASSETS · FROM ZERO
+· SUNDAY` against *"Digital assets, taught from zero"*, and `DIGITAL ASSETS · THE MECHANICS` against
+*"Digital assets, the mechanics explained."* **Both satisfy `[TOKENS]` by breaking `[FUSION]`.** The
+other seven reinforce without matching, which is the reading that satisfies both — but that is an
+observation about seven drafts, not a resolution.
+
+**Rule.** Surface which reading a batch was built on. Do not silently pick one.
+
 ---
 
 # 5. Explicit silences — absences, not findings
@@ -544,6 +736,30 @@ Covered at §1.9 and §2.1. Recorded here as a formal silence: **the corpus pres
 in four separate documents and nowhere says when to stop.** Any limit the generator enforces is an
 invention of this spec, and must be labelled as one.
 
+## 5.3 ⬜ The FLOOR on within-ad divergence
+
+`[FUSION] §4` names two failure modes, not one. **Pure Replication** is the ceiling — §2.6. The floor
+is **Total Divergence**:
+
+> *"Using completely unrelated messages across fields (e.g. an on-image hook about 'spinal
+> alignment,' a written headline about 'free shipping,' and primary text about 'eco-friendly
+> manufacturing') introduces **semantic noise**. Because the dual-encoders cannot map these
+> discordant vectors to a stable, high-confidence cluster, **the ad fails to align with any specific
+> latent interest primitives**."*
+
+The prescribed target between them is **Complementary Reinforcement** — *"distinct, complementary
+signals that align with a unified semantic concept."*
+
+🔴 **The corpus gives a number for neither bound.** Within-ad overlap moved **60.0% → 16.1%** across
+one revision. 60.0% was demonstrably the replication failure. **Nothing establishes whether 16.1% is
+safe or merely lower.** The concept remains shared in rev 5 — category, event and persona all carry
+across — so it reads as complementary rather than disconnected, but that is a judgement of the prose,
+not a measurement against a threshold.
+
+📌 **Do not let the direction of travel stand in for a target.** "Lower than the number that failed"
+is not the same as "inside the band", and a generator optimising this figure downward with no floor
+will eventually cross into semantic noise and report an improving metric all the way there.
+
 ---
 
 # 6. Not in scope
@@ -561,6 +777,15 @@ invention of this spec, and must be labelled as one.
 ---
 
 ## Revision log
+
+**rev 2 — 2026-09-10 — the fifth and final grading applied.** Adds §1.12 (Tier 1's four requirements,
+of which rev 5 met two), §1.13 (the production constraints on baked-in text, plus the branch-
+repositioning warning), §2.7 (the voice split created by fixing within-ad redundancy), §4.3 (the
+second-person conflict, referenced at §1.11 in rev 1 but never written — a dangling reference in a
+document about checkability, now closed), §4.4 (Tier 1 versus Tier 3 opening content), §5.3 (the
+missing floor on divergence) and operational rule 7 (publish the method's parameters, not its name).
+Part Three extended to five revisions: **72 of 72 computed figures exact, overlap reproducible to the
+decimal for the first time, and two typed claims still false.**
 
 **rev 1 — 2026-09-10 — original.** Written from four graded revisions of a nine-script set for a
 free live event. Every figure quoted was recomputed at the time of grading. **No code implements any
