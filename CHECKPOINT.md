@@ -1,5 +1,106 @@
-# 🟢 RESUME HERE — COLD-START BLOCK, written 2026-09-06
-### supersedes the 2026-09-05 block below, which is retained and marked, not deleted
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-10
+### supersedes the 2026-09-06 block below, which is retained and marked, not deleted
+
+**Written for a fresh terminal with no conversational memory.** Every number below was MEASURED at
+write time (§15f). Answers four questions from this block alone: what is deployed · what is
+uncommitted · what to do next · what a stray git command destroys.
+
+---
+
+## 0. GROUND TRUTH
+
+### 0.1 · WHERE THE WORK IS
+
+| | |
+|---|---|
+| repo | `/Users/arfeenkhan/zap-deploy` · remote `github.com/successunforgettable/coachflow.git` |
+| **branch** | **`railway-build`** — the production branch. **NEVER push `main`.** |
+| HEAD | **`a60df1a`** at write time — **drifts, see below** |
+| `origin/railway-build` | **identical, 0 unpushed** |
+| **deployed** | **`a60df1a`, SUCCESS** |
+| `main` | **`67517e3`**, equal to `origin/main`, untouched |
+| tracked changes | **0. Tree clean.** |
+| untracked | **321 — CORRECT AND DELIBERATE.** Excluded screenshots, ~590 MB, in no commit |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY** (~5 min). No separate release step.
+
+📌 **HEAD and the deployed hash BOTH DRIFT**, because a commit cannot contain its own hash and a
+checkpoint push is itself a deploy. **`d8298b8` is the last commit that changed PRODUCT CODE** —
+verified at write time: `git diff --name-only d8298b8..HEAD` touches **only** `CHECKPOINT.md` and
+`docs/`. Settle the current position with `git log --oneline -3`, never by comparing to this table.
+
+### 0.2 · WHAT A STRAY GIT COMMAND DESTROYS
+
+`checkout` / `stash` / `reset --hard` → **nothing**, everything is committed and pushed.
+🔴 **`git clean -fd` destroys ~590 MB of untracked screenshots that exist in no commit.** The only
+destructive risk. **`git add .` commits them irreversibly. NEVER `git add .`; add named paths.**
+
+### 0.3 · GATES — measured at write time
+
+| gate | value |
+|---|---|
+| `npx tsc --noEmit 2>&1 \| grep -c "error TS"` | **34** — the baseline, must not regress |
+| `landingPages.test.ts` | 🔴 pre-existing `Database not available`, no local DB. **Do not chase.** |
+
+### 0.4 · THE NEXT ACTION
+
+⚠️ CC's recommendation; Arfeen owns the call.
+
+🔴 **CAMPAIGN WORK IS BLOCKING AND OUTRANKS THE PRODUCT QUEUE. Read §6.12 first — four open items.**
+The single one that gates money: **the end-to-end conversion test has not been run** (§6.6 item 2).
+No ad spend should resume until it passes. **The 6 Sept campaign spent 3,683 AED and recorded ZERO
+attributed conversions** because the ad sets optimise for an event that never registers (§6.0).
+
+✅ **The nine ad scripts are DONE — rev 5, signed off for filming (§6.11). Nothing in them breaks in
+production.** One instruction cannot be fixed after the shoot: **the three outdoor videos need a dark
+or plain region framed for the text card**, or OCR cannot read it and the ad silently loses its
+category anchor. Everything else on that job is an edit-stage change.
+
+**Product-side, the next item is the 13 blank-list desyncs** — authoritative list is
+`ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`, **not prose**. The wider product queue
+is **§4 of the SUPERSEDED 2026-09-05 block** further down this file.
+
+### 0.5 · WHERE THINGS ARE
+
+| | |
+|---|---|
+| campaign state, in order | **§6.00 → §6.9 → §6.10 → §6.11 → §6.12** |
+| what still gates spend | **§6.6**, items 0a, 0 and 2 (item 1 closed) |
+| the nine ad scripts | **§6.11** · spec at `docs/andromeda/script-rule-spec.md` |
+| crew briefs | `~/Downloads/arf latest shoot files/*.md` and `~/Downloads/arf latest shoot andomeda/*.pdf` ⚠️ **not in git** |
+| product queue | §4 of the 2026-09-05 block below |
+| protected prod rows / not-a-defect list | §5 of the 2026-09-05 block below |
+
+### 0.6 · HOW TO RUN THINGS
+
+| need | command |
+|---|---|
+| DEPLOYED code, prod env | `railway ssh --environment production --service coachflow "cd /app && npx tsx _x.ts"` |
+| LOCAL working tree, prod env | `railway run --environment production --service coachflow npx tsx _x.ts` |
+| grep the served bundle | `railway ssh ... "grep -c 'MARKER' dist/index.js"` (esbuild, NOT minified) |
+| deployment status, cheaply | `railway deployment list --environment production --service coachflow --json \| python3 -c "import sys,json;d=json.load(sys.stdin)[0];print(d['status'],d['meta']['commitHash'][:7])"` |
+
+🔴 A script must sit at the **repo root** (or `/app`), never `/tmp` — Node resolves imports from the
+script's own directory. macOS has no `timeout`; zsh eats `$var:path` as a history modifier — brace
+it `"${c}:path"`. **Never pipe a bare `railway … --json` into context: ~24,000 tokens for one status
+check.**
+
+### 0.7 · THE HARD GATES THAT DO NOT RELAX
+
+1. **ALL prod-table writes** (INSERT/UPDATE/DELETE/ALTER/migrations/backfills) require Arfeen's
+   explicit "execute" or "go ahead" **in the immediately preceding message**. Showing the statement
+   and holding is the only correct pattern. No exceptions for small, safe or obvious.
+2. **Never push `main`.**
+3. **Never `git add .`** — §0.2.
+4. **A deploy marker must be proven to differ between the two builds** before it proves anything
+   (§15h).
+5. **Screenshots come from Arfeen's browser.** CC never fabricates screenshots or Railway logs.
+
+---
+
+# 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-06 (retained, not deleted)
+### ⚠️ The LIVE block is the 2026-09-10 RESTART BLOCK above. This one's §6 campaign sections are
+### still current and still referenced; its §0 ground truth and §0.5 next-action are SUPERSEDED.
 
 **Every number MEASURED at write time (§15f).** Answers four questions from the block alone: what is
 deployed · what is uncommitted · what to do next · what a stray git command destroys.
@@ -860,6 +961,86 @@ event**, which is why **old creative carried 2,900 AED of the 3,683 spend** (§6
 
 **Nobody in this thread has ever watched it.** **If it carries the digital-wealth framing it will
 contradict the new page copy placed around it.** **Check it before the new copy goes live.**
+
+---
+
+### 6.11 · ✅ THE NINE AD SCRIPTS ARE FINISHED — rev 5, SIGNED OFF FOR FILMING (2026-09-10)
+
+**Five revisions, each graded by independent recomputation of every stated figure. Rev 5 is the
+final pass and it is approved to shoot.**
+
+#### 🟢 NOTHING IN IT BREAKS IN PRODUCTION
+
+Checked specifically for the four things that would stop a shoot, and **none is present**:
+
+| | |
+|---|---|
+| **Compliance breach** | ❌ none. Zero hits across scripts, on-screen text, headlines and primary texts for returns, income, wealth, profit, freedom, guarantees, scarcity, urgency or seat counts. No endorsement claims. Every diagnosis is third-person about a group — `[GUARD]`'s Community Framing, executed |
+| **Character limit exceeded** | ❌ none. Headlines **20–27** (limit 27) · on-screen text **30–36** (band 30–50) · price and hook inside the first 125 characters on all nine |
+| **Unfilmable** | ❌ nothing. The baked-in text is a post-production burn-in, not a physical prop — practical on hands-only, full-face and landscape alike |
+| **Rejected or suppressed** | ❌ no mechanism for it found |
+
+**Rev 5's own figures were verified, not accepted: 72 of 72 exact**, and its three overlap figures
+reproduced **to the decimal** once it published its stoplist. Two typed claims were still false —
+recorded in `docs/andromeda/script-rule-spec.md` §3.1, not here.
+
+#### 🔴 THE ONE INSTRUCTION THAT CANNOT BE FIXED AFTER THE SHOOT
+
+> **The three OUTDOOR videos — P3, E3, W3 — must be framed with a DARK or PLAIN LOW-DETAIL REGION
+> for the text card to sit on.** Bokeh, shadow, or a flat surface.
+
+**Why it is a shoot-day instruction and not an edit note:** white text over a bright background
+**cannot be read by OCR**. If Rosetta cannot extract the card, the ad **silently loses its category
+anchor** — and **nothing reports the failure.** No error, no flag, no visible difference in Ads
+Manager. It is a check that cannot fail (§15c), and the only place to prevent it is in front of the
+camera. **W3 and P3 run High-key and Natural; the risk is highest on those two.**
+
+#### 🟢 FIXABLE AT THE EDIT — no reshoot needed
+
+1. **Card inside the first three seconds.** Andromeda scores that window separately. ⚠️ Inference,
+   not a stated rule — see `script-rule-spec.md` §1.13.
+2. **Sans-serif, high contrast**, roughly a 20% text-to-grid ratio.
+3. **Modest, not dominant.** A dominant overlay triggers OCR repositioning from an *Emotional*
+   branch to a *Utility* branch, which is wrong for six of the nine.
+4. **Inside platform safe zones** (Feed / Stories / Reels, synchronised since March 2026).
+5. 🔑 **OPTIONAL AND HIGHEST-VALUE: change the card text from a CATEGORY LABEL to a PAIN or IDENTITY
+   LINE.** All nine currently read as captions (`DIGITAL ASSETS · FROM ZERO · SUNDAY`). Tier 1's
+   stated objective is a **high-salience emotional hook**, so as written the headline validates a
+   category tag rather than a hook. **This is a text change in post — it does not touch the footage.**
+
+#### 📄 THREE CREW BRIEFS EXIST — camera, editor, on-camera
+
+**Written so each reader needs only their own.** Markdown and PDF, both sets:
+
+| | markdown | pdf |
+|---|---|---|
+| camera | `~/Downloads/arf latest shoot files/brief-camera.md` | `~/Downloads/arf latest shoot andomeda/brief-camera.pdf` |
+| editor | `…/brief-editor.md` | `…/brief-editor.pdf` |
+| on-camera | `…/brief-on-camera.md` | `…/brief-on-camera.pdf` |
+
+⚠️ **They live in `~/Downloads`, not in the repo.** Not backed up by git.
+
+#### 📌 THE SPEC THAT CAME OUT OF THIS
+
+`docs/andromeda/script-rule-spec.md` — the rule for the Andromeda script generator, written from all
+five revisions so the build does not repeat them. Three parts: mechanical rules to enforce in code
+rather than in a prompt, failure patterns recorded as fix-and-side-effect pairs, and the process
+finding. **Every mechanical rule in it was violated by a draft written with that rule in mind.**
+
+---
+
+### 6.12 · 🔴 CAMPAIGN ITEMS STILL OPEN — unchanged, none closed by the script work
+
+1. 🔴 **The end-to-end conversion test has NOT been run.** Arfeen has the pixel access and has not
+   yet registered on a live page with **Test Events open on the "Arfeen Webinar 2.0" dataset**.
+   Full item at **§6.6 item 2**, including both timing conditions. **This still gates resuming spend.**
+2. 🔴 **Creative must reach the agency BEFORE the campaign window opens on TUESDAY.** The 6 Sept
+   failure traces directly to new videos arriving Friday night for a Sunday event (§6.9e).
+   **Arfeen's side, needs nobody's cooperation.**
+3. 🔴 **The three thank-you pages and the rewritten email/WhatsApp sequences are NOT implemented in
+   GoHighLevel.** Written and handed over; nothing confirmed live (§6.8, §6.10d).
+4. 🔴 **The agency's fixes are NOT verified.** It said it would check the events and perform all
+   other points; **that is a statement of intent, not a verification** (§6.10d).
 
 ---
 
