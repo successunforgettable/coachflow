@@ -63,6 +63,36 @@ the ad sets optimise for an event that never registers (§6.0).
 `ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`, **not prose**. Wider product queue is
 §4 of the **2026-09-05** block further down.
 
+### 0.4a · 🔧 2026-09-10 NIGHT — two public magnet defects closed; TWO CODE COMMITS HELD, NOT PUSHED
+
+**Production actions, each on Arfeen's explicit approval, each verified by fetching:**
+
+| | what was done | verified |
+|---|---|---|
+| **magnet 7293 taken down** | KV `magnet-magnet-7293` + `magnet-get-7293` deleted from `ZAP_PAGES`; `hvcoTitles` 7293 `magnetHtmlUrl` / `magnetPdfUrl` → NULL (15:52 UTC) | both URLs **404 `Page not found`**; KV reads back `key not found` |
+| 🔴 **its PDF was NOT deleted** — not in the approval | `https://res.cloudinary.com/dunshei0y/image/upload/v1788108327/lead-magnets_1_7293.pdf.pdf` | **still 200**, and still carries `[INSERT_OFFER_LINK]` as text. Nothing in ZAP links to it |
+| **magnet 7233 republished**, existing code, run on the deployed `a1ab84e` container (files proven byte-identical to HEAD) | bridge resolved `target-unpublished` → honest text card, no button | both pages and the new PDF (`…/v1789055696/lead-magnets_1_7233.pdf.pdf`) carry **0** links to page 240. The OLD versioned PDF URL now serves the new file — Cloudinary serves by public id |
+
+**Why 239 / 240 / 241 are 404:** the 2026-09-02 takedown of pages carrying fabricated testimonials
+(§4 of the 2026-09-03 block) — 17 rows share `updatedAt` 2026-09-02 19:08:20. It checked each target
+returned 404 and never checked what linked to them. Now CLAUDE.md **§15l**.
+
+**Committed locally, NOT pushed — pushing `railway-build` is the deploy:**
+- **`1def3b9`** — `findLeftoverOperatorTokens` (`_core/leftoverOperatorTokens.ts`) is the one definition of a
+  leftover `[INSERT_*]`; the landing-page gate and the magnet publish core both call it. A magnet or bonus
+  carrying one is refused before any write, with a named `held` result. A held REPUBLISH leaves what is
+  already live untouched.
+- **`23587bf`** — the next-step button on the deliverable and opt-in pages re-checks its target when viewed
+  and becomes the text card if the target is not live. Removes only. 🔴 **Covers only pages published after
+  the change, does NOT fix PDFs, does NOT cover the quiz page.**
+
+**Not touched, deliberately:** the lead-magnet offer mode, which is the root that put `[INSERT_OFFER_LINK]`
+into 7293's next step (separate package). 7233's text card still reads *"Download The Repeating Argument
+Reset Free"* — that wording is the offer-mode defect's, not the bridge's.
+
+🔴 **New queue item, recorded not fixed — §4 item 7 of the 2026-09-05 block: the rewrite engine republishes
+landing pages with NO publish guard, and it is switched on in production.**
+
 ### 0.5 · WHERE THINGS ARE
 
 | | |
@@ -1686,6 +1716,15 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
 6. 🟡 **§7.6 carried items** (in the superseded block below): `asSeenIn` / `proofMetrics` read by
    NONE of the five templates · the cold-weighted distribution `3/3/1/1/0` vs `2/3/2/1/0` open
    three-way conflict · orphaned services 320–323.
+7. 🔴 **THE REWRITE ENGINE IS A LIVE PATH THAT BYPASSES EVERY PUBLISH GUARD** — added 2026-09-10,
+   recorded, NOT fixed. `republishLandingPageToKv` (`server/routers/complianceRewrites.ts:278–354`,
+   reached from `complianceRewrites.accept`) renders a landing page and writes it straight to KV with
+   **no leftover-token gate, no operator-field hold and no compliance gate** — all three of which
+   `runLandingPagePublish` applies. **`ENABLE_COMPLIANCE_REWRITES=true` in production**, and it has
+   **never run**: `complianceRewrites` holds 10 rows, all `adCopy`, latest 2026-04-22, **zero** for a
+   landing page. The first coach to accept a landing-page rewrite publishes past every guard. Same
+   path as item 5's unexercised `injectRealTestimonials` caller (`complianceRewrites.ts:335`). **Put
+   it on the queue before it fires.**
 
 ---
 

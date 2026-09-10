@@ -520,7 +520,7 @@ want to surface." A one-line `?? ""` is not clutter, and surfacing an upstream b
 is for — not what an unguarded crash in production is for. **If you want the omission visible, log
 it AND default it. Never default-by-crashing.**
 
-## 15-PARENT. ABSENCE IS NOT EVIDENCE (STANDING LAW — the parent of §15c, §15f, §15h–§15k, locked 2026-08-31)
+## 15-PARENT. ABSENCE IS NOT EVIDENCE (STANDING LAW — the parent of §15c, §15f, §15h–§15l, locked 2026-08-31)
 
 **Nine numbered laws are a list. One sentence is teachable. This is the shape all of them share:**
 
@@ -537,6 +537,7 @@ sentence survives into a future session, make it this one.**
 | **§15i** | a guarantee nothing enforces — *no error seen* read as *the value is guaranteed* |
 | **§15j** | a free runtime check deleted — *never observed to fire* read as *cannot fire* |
 | **§15k** | a control that passes on silence — *nothing found* read as *correctly found nothing* |
+| **§15l** | a takedown verified by the target's 404 — *target gone* read as *nothing left pointing at it* |
 | **the conditional-field measurement rule** | a key never written — *count of zero* read as *nobody did it* |
 | **the swallowed enrichment error** | no log line — *no failure* read as *it ran* |
 | **`created = 0` reading as a pass** | no rows created — *no blanks* read as *no blanks produced* |
@@ -587,3 +588,31 @@ machinery that would detect X is broken. **Assert the observation, not the non-o
 *corrected, more rigorous* successor to 3.3% — a cleaner number from a filtered, better-instrumented
 build. **It would have read as PROGRESS. It was a broken run**, and the extractor had silently lost
 the only traced specific in the corpus.
+
+## 15l. A TAKEDOWN MUST CHECK INBOUND REFERENCES, NOT ONLY THAT THE TARGET IS GONE (STANDING LAW — locked 2026-09-10)
+
+**A removed page returning 404 proves the page is gone. It says nothing about what still points at it.**
+
+**The instance.** The 2026-09-02 takedown of 17 landing pages carrying fabricated testimonials
+deleted each page's KV entry, cleared its row, and re-fetched every URL to confirm 404. A correct
+check, and it passed. Page 240 was on the list. **Magnet 7233's deliverable page, its opt-in page
+and its PDF all carried a button to page 240**, baked in at publish. Nothing looked, so the magnet
+sat live with a button to a 404 for eight days, and was found by a later investigation, not by the
+takedown.
+
+### The rule
+
+> **Every takedown — a KV delete, a row cleared, a page unpublished or deleted — enumerates what
+> REFERENCES the target, and deals with each one: republish it, unlink it, or record why it may
+> stay.** "The target returns 404" proves the removal happened. "Nothing live points at it" is a
+> second, separate check, and it is the one that protects the reader.
+
+📌 **Find baked links by FETCHING the live pages, not by reading pointers.** A pointer can be cleared
+while the published HTML still carries the link: `ON DELETE SET NULL` on
+`hvcoTitles.nextStepLandingPageId` clears the column and republishes nothing. For a landing page
+today the known inbound references are the magnet bridge (deliverable page, opt-in page and PDF, all
+baked at publish) and any other published page linking to its `/p/` URL. A PDF cannot be unbaked
+except by re-rendering it.
+
+📌 **Family: §15-PARENT.** The 404 was a real finding; what it was read to mean — *nothing left
+pointing at it* — was not.
