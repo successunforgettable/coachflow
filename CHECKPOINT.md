@@ -71,7 +71,7 @@ the ad sets optimise for an event that never registers (§6.0).
 |---|---|---|
 | **magnet 7293 taken down** | KV `magnet-magnet-7293` + `magnet-get-7293` deleted from `ZAP_PAGES`; `hvcoTitles` 7293 `magnetHtmlUrl` / `magnetPdfUrl` → NULL (15:52 UTC) | both URLs **404 `Page not found`**; KV reads back `key not found` |
 | **its PDF deleted** — on a second, separate approval | `lead-magnets_1_7293.pdf` via `storageDelete` (`invalidate: true`) | Cloudinary API reads **404 Resource not found**; both the versioned and unversioned URLs return **404** |
-| **magnet 7233 republished**, existing code, run on the deployed `a1ab84e` container (files proven byte-identical to HEAD) | bridge resolved `target-unpublished` → honest text card, no button | both pages and the new PDF (`…/v1789055696/lead-magnets_1_7233.pdf.pdf`) carry **0** links to page 240. The OLD versioned PDF URL now serves the new file — Cloudinary serves by public id |
+| **magnet 7233 republished**, existing code, run on the deployed `a1ab84e` container (files proven byte-identical to HEAD) | bridge resolved `target-unpublished` → honest text card, no button | both pages and the new PDF (`…/v1789055696/lead-magnets_1_7233.pdf.pdf`) carry **0** links to page 240. ⚠️ **CORRECTED 20:26 UTC:** the OLD versioned PDF URL (`v1788007578`) returned the new file straight after the republish, but a few hours later it served the OLD file — 274,507 bytes, the `campaign-240` link annotation — from the CDN cache (`immutable, max-age` 30 days). The dead link is NOT gone from every Cloudinary URL. Queue item 11 |
 
 **Why 239 / 240 / 241 are 404:** the 2026-09-02 takedown of pages carrying fabricated testimonials
 (§4 of the 2026-09-03 block) — 17 rows share `updatedAt` 2026-09-02 19:08:20. It checked each target
@@ -176,6 +176,36 @@ new free-asset offer → selected on the kit → the magnet body → republish.
   and launching their offer"* and profile 291 *"three paying clients within 90 days of launching my offer"* —
   but the name borrows the paid programme's outcome window for a free download, and nothing in the block
   keeps an UNSUPPLIED interval out. The offer validator still catches invented guarantee timeframes.
+
+### 0.4c · 🔁 REGENERATIONS (approved 2026-09-10) — 5686 DONE; 7173 and 7233 NOT STARTED
+
+**Magnet 5686 / kit 177 — done, verified from the live responses.** Every step was bracketed by a
+database-wide snapshot with `CHECKSUM TABLE` on all 58 tables:
+1. **Offer 223** "The Cold Outreach Toolkit for Freelance Graphic Designers" — no live-event wording (one "live"
+   hit is "a live cold outreach sequence", i.e. active), no `[INSERT_OFFER_LINK]`; selected on kit 177 (was 192).
+   Wrote `offers` +1, `campaignKits` 177, `nodeStatuses` +8 stale — AND an unapproved `jobs` row
+   `concepts-icp-239`: `ensureCampaignKit` fires concept generation on every `autoSelectBest`
+   (`campaignKits.ts:154-189`); the script's exit killed the work (0 concepts), the 60-second reaper marked it
+   failed, and it was deleted on approval. **Lesson: product functions run from a script lose their
+   fire-and-forget work — and the `jobs` change was invisible to a count/updatedAt diff; checksums catch it.**
+2. **Magnet body** — only `hvcoTitles` changed. The persistence screen flagged 3 items, all read in context:
+   the title's pre-existing "$6,000 Branding Client" claim, a bracketed fill-in example, and a case-study
+   checklist criterion. The previous live body carried 11 flags and the funnel.
+3. **Republish** — only `hvcoTitles` changed; bridge `no-pointer`; new PDF `…/v1789071852/…`.
+4. **Magnet stale row cleared** — only `nodeStatuses` changed (98 → 97).
+
+Live, fetched: both pages 200, **0 leftover tokens, 0 call-funnel phrases**, text card with no button; the
+close is *"Is your portfolio built for designers — or for buyers?"* ending on *"Rewrite your best case
+study's opening line"*. New PDF: 0 tokens, 0 funnel phrases. Kit 177 keeps 7 TRUE stale marks (mechanism,
+headlines, ad copy, landing page, email, WhatsApp, ad creatives — all built against the paid offer).
+
+⚠️ **The magnet's TITLE still reads "…That Booked a $6,000 Branding Client in 11 Days…"** — an unverified
+proof claim in a July title, untouched by regeneration (a title change is a separate write).
+🔴 **The OLD 5686 PDF URL still serves the funnel from the CDN cache — queue item 11.**
+
+**For kit 222 (7173):** its profile has no concept set, so selection will create `concepts-icp-288` the same
+way — delete it; do NOT run concept generation (Arfeen, 2026-09-10). **Kit 223 (7233)** already has 8 concepts,
+so no job is created.
 
 ### 0.5 · WHERE THINGS ARE
 
@@ -1843,6 +1873,17 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    rule**: the model happened to find a real figure. A coach whose material carries no timeframe gets no
    protection from the naming block, and the name also borrows the paid programme's outcome window for a free
    download. The offer validator still catches invented GUARANTEE timeframes; nothing checks one in a name.
+11. 🔴 **AN OVERWRITTEN PDF STAYS PUBLIC FOR UP TO 30 DAYS AT ITS OLD URL** — added 2026-09-10, recorded,
+   NOT fixed. `storagePut` (`server/storage.ts`) uploads with `overwrite: true` and no `invalidate`, and
+   Cloudinary's CDN caches every exact URL as `immutable, max-age=2592000`. So a republish replaces the
+   file at the public id but the OLD versioned URL keeps serving the old bytes from any cache that holds
+   them. Measured 20:26 UTC: **5686's old PDF** (`v1787860054`) still serves the discovery-call funnel ("Book
+   My Free Pipeline Diagnosis Call", 3 hits); **7233's old PDF** (`v1788007578`) serves the dead `campaign-240`
+   link — although it returned the new file straight after that republish, which is how the first reading
+   was wrong. Neither live page links to an old URL; both are public to anyone holding them. `storageDelete`
+   already passes `invalidate: true` (7293's URLs went 404 at once). Two separate decisions: purge the two
+   cached old URLs now (a production CDN action), and whether `storagePut` should invalidate on overwrite
+   (a code change touching every PDF the product republishes).
 
 ---
 
