@@ -35,7 +35,7 @@ export async function runBonusPdfGeneration(input: { userId: number; bonusSetId:
   const { bonuses: bonusesTable } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   const { generateLeadMagnetContent } = await import("./leadMagnetContentGenerator");
-  const { publishDeliverableBody } = await import("./leadMagnetPublisher");
+  const { publishDeliverableBody, isPublishHeld } = await import("./leadMagnetPublisher");
   const { getCoachLogoUrl } = await import("./lib/coachLogo");
 
   const db = await getDb();
@@ -74,7 +74,7 @@ export async function runBonusPdfGeneration(input: { userId: number; bonusSetId:
       }
       await db.update(bonusesTable).set({ assetBody: body as any }).where(eq(bonusesTable.id, b.id));
 
-      let published: { deliverableUrl: string; pdfUrl: string } | null = null;
+      let published: Awaited<ReturnType<typeof publishDeliverableBody>> = null;
       try {
         published = await publishDeliverableBody(body, {
           userId: input.userId,
@@ -85,7 +85,9 @@ export async function runBonusPdfGeneration(input: { userId: number; bonusSetId:
       } catch (pubErr) {
         console.warn(`[bonusPdf] publish failed for bonus ${b.id}: ${pubErr instanceof Error ? pubErr.message : String(pubErr)}`);
       }
-      if (published) {
+      if (isPublishHeld(published)) {
+        console.warn(`[bonusPdf] bonus ${b.id} publish HELD: leftover operator token(s) ${published.tokens.join(", ")} — not published`);
+      } else if (published) {
         await db.update(bonusesTable)
           .set({ magnetHtmlUrl: published.deliverableUrl, magnetPdfUrl: published.pdfUrl || null })
           .where(eq(bonusesTable.id, b.id));

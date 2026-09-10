@@ -472,8 +472,11 @@ export async function runOrchestrationStep(
                 if (deferForReview) {
                   console.log(`[orchestration.hvco] quiz hvco ${generatedId} held for coach review (first quiz — not published)`);
                 } else {
-                  const { publishLeadMagnet } = await import("../leadMagnetPublisher");
-                  await publishLeadMagnet({ hvcoId: generatedId });
+                  const { publishLeadMagnet, isPublishHeld } = await import("../leadMagnetPublisher");
+                  const pub = await publishLeadMagnet({ hvcoId: generatedId });
+                  if (isPublishHeld(pub)) {
+                    console.warn(`[orchestration.hvco] lead-magnet publish HELD for hvco ${generatedId}: leftover operator token(s) ${pub.tokens.join(", ")} — not published`);
+                  }
                 }
               } catch (pubErr) {
                 console.warn(`[orchestration.hvco] lead-magnet publish skipped: ${pubErr instanceof Error ? pubErr.message : String(pubErr)}`);
@@ -843,11 +846,12 @@ export async function runOrchestrationStep(
               // renderer change since it was last published. Within one cascade run that is zero
               // (step 3 published it minutes ago on this same build); on a RESUMED run whose step 3
               // predates a later deploy it is not. `renderedBuild` (0106) is what makes that visible.
-              const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+              const { publishLeadMagnet, isPublishHeld } = await import("../leadMagnetPublisher");
               const rp = await publishLeadMagnet({ hvcoId: magnetId });
+              const rpState = !rp ? "publish-failed" : isPublishHeld(rp) ? `held(${rp.tokens.join(",")})` : rp.bridge;
               console.log(
                 `[orchestration.freeNextStep] page ${freeStepPageId} published ${freeStepUrl}; ` +
-                  `magnet ${magnetId} republished, bridge=${rp?.bridge ?? "publish-failed"}`,
+                  `magnet ${magnetId} republished, bridge=${rpState}`,
               );
             }
           } catch (fsErr) {

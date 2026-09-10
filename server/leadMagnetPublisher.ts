@@ -24,6 +24,7 @@ import { renderDeliverableHtml, renderOptInHtml, renderQuizPage } from "./leadMa
 import { storagePut } from "./storage";
 import { getCoachLogoUrl } from "./lib/coachLogo";
 import { resolveNextStep, type BridgeOutcome } from "./_core/nextStepBridge";
+import { findLeftoverOperatorTokens } from "./_core/leftoverOperatorTokens";
 
 const BASE = "https://zapcampaigns.com";
 
@@ -47,6 +48,28 @@ export type PublishLeadMagnetResult = {
 };
 
 /**
+ * A publish REFUSED because the artefact still carries leftover operator tokens. Nothing was
+ * written — no KV page, no PDF, no row update — so on a republish the version already live is
+ * unchanged. Named rather than folded into `null`, which already means "no body / out of scope /
+ * failed", so a caller can say WHY and name the tokens.
+ */
+export type PublishHeld = { status: "held"; reason: "leftover_operator_tokens"; tokens: string[] };
+
+export function isPublishHeld(r: unknown): r is PublishHeld {
+  return !!r && typeof r === "object" && (r as PublishHeld).status === "held";
+}
+
+/** Coach-facing wording for a held publish. A lead magnet has no fill-in step, so it says so plainly. */
+export function heldPublishMessage(tokens: string[]): string {
+  return `This lead magnet still contains ${tokens.length} unfilled placeholder${tokens.length === 1 ? "" : "s"} ` +
+    `(${tokens.join(", ")}), so it was not published. Nothing that is already live was changed.`;
+}
+
+function held(tokens: string[]): PublishHeld {
+  return { status: "held", reason: "leftover_operator_tokens", tokens };
+}
+
+/**
  * Row-agnostic deliverable-publish core (extracted for reuse by bonus PDFs, step 2 Layer 2).
  * renderDeliverableHtml → writeKvPage → renderPdfFromUrl → storagePut. Returns null when the format has no
  * deliverable HTML (e.g. quiz), matching publishLeadMagnet's prior early-return. PDF failure is non-fatal
@@ -56,9 +79,16 @@ export type PublishLeadMagnetResult = {
 export async function publishDeliverableBody(
   body: LeadMagnetBody,
   opts: { userId: number; slug: string; storageKey: string; coachLogoUrl: string | null; namespaceId?: string; nextStepUrl?: string | null },
-): Promise<{ deliverableUrl: string; pdfUrl: string } | null> {
+): Promise<{ deliverableUrl: string; pdfUrl: string } | PublishHeld | null> {
   const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl: opts.coachLogoUrl, nextStepUrl: opts.nextStepUrl });
   if (!deliverableHtml) return null;
+  // Token gate BEFORE the write. This core also publishes bonus deliverables, so the check lives
+  // here and not only in publishLeadMagnet. It scans the rendered page, as the landing-page gate does.
+  const tokens = findLeftoverOperatorTokens(deliverableHtml);
+  if (tokens.length > 0) {
+    console.warn(`[publishDeliverableBody] HELD ${opts.slug}: leftover operator token(s) ${tokens.join(", ")} — nothing written`);
+    return held(tokens);
+  }
   const { ensureKvNamespace, writeKvPage, renderPdfFromUrl } = await import("./lib/cloudflare");
   const namespaceId = opts.namespaceId ?? (await ensureKvNamespace());
   await writeKvPage(namespaceId, opts.slug, deliverableHtml);
@@ -79,7 +109,7 @@ export async function publishDeliverableBody(
  * Returns null if there is no body, the format is out of scope (quiz), or a
  * fatal publish error occurs (KV write). PDF failure is non-fatal (logged).
  */
-export async function publishLeadMagnet(input: { hvcoId: number }): Promise<PublishLeadMagnetResult | null> {
+export async function publishLeadMagnet(input: { hvcoId: number }): Promise<PublishLeadMagnetResult | PublishHeld | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -87,6 +117,15 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
   if (!hvco || hvco.assetBody == null) return null;
 
   const body = hvco.assetBody as unknown as LeadMagnetBody;
+
+  // ── TOKEN GATE, before ANY write. The opt-in page and the quiz page are rendered from this same
+  // body and never pass through publishDeliverableBody, so the body is checked here, whole. The
+  // renderer emits no tokens of its own, so the body is the only place one can come from.
+  const tokens = findLeftoverOperatorTokens(JSON.stringify(body));
+  if (tokens.length > 0) {
+    console.warn(`[leadMagnetPublisher] HELD hvco ${input.hvcoId}: leftover operator token(s) ${tokens.join(", ")} — nothing written`);
+    return held(tokens);
+  }
 
   // Brand slot for the deliverable + opt-in. The magnet is the coach's asset, so it
   // carries the coach's own logo when one exists — never a ZAP wordmark. Resolved
@@ -164,6 +203,7 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     namespaceId,
     nextStepUrl: bridge.url,
   });
+  if (isPublishHeld(published)) return published;
   if (!published) {
     console.log(`[leadMagnetPublisher] format "${(body as any)?.format}" not deliverable this sprint (hvco ${input.hvcoId}) — skipped`);
     return null;

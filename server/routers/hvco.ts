@@ -177,9 +177,10 @@ export const hvcoRouter = router({
       if ((row.assetBody as { format?: string } | null)?.format !== "quiz") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Not a quiz" });
       }
-      const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+      const { publishLeadMagnet, isPublishHeld, heldPublishMessage } = await import("../leadMagnetPublisher");
       const result = await publishLeadMagnet({ hvcoId: input.id });
       if (!result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Publish failed" });
+      if (isPublishHeld(result)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: heldPublishMessage(result.tokens) });
       return { magnetHtmlUrl: result.deliverableUrl };
     }),
 
@@ -216,9 +217,10 @@ export const hvcoRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This lead magnet has not been published yet." });
       }
 
-      const { publishLeadMagnet } = await import("../leadMagnetPublisher");
+      const { publishLeadMagnet, isPublishHeld, heldPublishMessage } = await import("../leadMagnetPublisher");
       const result = await publishLeadMagnet({ hvcoId: input.id });
       if (!result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Republish failed" });
+      if (isPublishHeld(result)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: heldPublishMessage(result.tokens) });
 
       // The three outcomes, named for the caller rather than flattened into `success: true`.
       const message =

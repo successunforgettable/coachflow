@@ -190,10 +190,11 @@ export async function runLandingPagePublish(
     );
   }
 
-  // 6b. B5 hard publish gate: block publish if unfilled placeholders remain.
-  const unfilledTokens = html.match(/\[INSERT_[A-Z_0-9]+\]/g);
-  if (unfilledTokens && unfilledTokens.length > 0) {
-    const unique = Array.from(new Set(unfilledTokens));
+  // 6b. B5 hard publish gate: block publish if unfilled placeholders remain. The definition of a
+  // leftover token is shared with the lead-magnet publish core — one regex, one meaning.
+  const { findLeftoverOperatorTokens } = await import("./_core/leftoverOperatorTokens");
+  const unique = findLeftoverOperatorTokens(html);
+  if (unique.length > 0) {
     throw new Error(
       `Landing page has ${unique.length} unfilled placeholder${unique.length === 1 ? "" : "s"}: ${unique.slice(0, 5).join(", ")}${unique.length > 5 ? ` and ${unique.length - 5} more` : ""}. Fill them in the Campaign Kit before publishing.`
     );
