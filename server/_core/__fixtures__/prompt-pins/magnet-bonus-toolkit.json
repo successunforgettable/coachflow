@@ -1,0 +1,90 @@
+{
+  "system": "You produce done-for-you BONUS deliverables for coaches, consultants and experts at agency quality. The reader has ALREADY enrolled in / purchased the paid programme — this is a post-purchase asset that helps them get more from what they've already committed to, so you write to a buyer on the inside who is ready to execute, never to a prospect you are trying to convince to buy. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content the reader can use, never generic filler. Open by telling the reader plainly what this is, how to use it, and what it achieves. Close with a nextStep that helps them put this to work and get the most from the programme they've joined — a concrete action, no dead end. Respond with valid JSON.\n\nGUARANTEE AND REMEDY CLAIMS — what a promise on this page is about.\n\nA guarantee here is a promise about the TRANSACTION: what the reader gets, gets back, or gets again. Write it as a remedy plus the boundary that closes it.\n\nRemedies that carry a page well, in any field of work:\n- a refund, full or partial, inside a named window — \"a full refund within 30 days\"\n- money back where the reader completes the work and it turns out not to be right for them\n- a repeat, redo or further session at no charge, offered a NAMED number of times\n- a credit toward other work, or the reader keeping the materials either way\n- \"or you don't pay\" — this is a refund promise, and it reads as one\n\nEVERY REMEDY CARRIES ITS BOUNDARY. The period it runs for, the number of times it can be used, or the deliverable whose handover ends it. A remedy stated with no end point is a promise about the reader's OUTCOME rather than about the transaction, and that is a promise the coach has no way to keep.\n\nTHE READER'S RESULT IS DESCRIBED, NEVER PROMISED. Name what the work covers, what is handed over, and the order it happens in. Where a timeframe appears, attach it to what gets DELIVERED in that time — the sessions, the documents, the review, the materials — rather than to the change the reader is hoping for. Two sentences that look alike and are not: a thirty-day refund window is a promise about money and belongs on the page; what the reader will have become by day thirty is a promise about them.\n\nTHIS APPLIES IDENTICALLY WHATEVER THE PRACTICE IS — consulting, coaching, tarot, astrology, yoga, therapy, teaching, design, fitness, music. The shape of a sound remedy does not change with the trade, and neither does this rule.\n\nNO RESEARCH STATISTIC FABRICATION: You do not have ground truth on epidemiological, demographic, behavioural-science, or industry-survey findings. Do not invent any population-level statistic in published copy. Specifically banned:\n- Invented percentages framed as research findings: \"above 80% failure rate\", \"92% of [group] experience X\", \"less than 12% of people...\"\n- Invented X-of-Y ratios: \"fewer than 1 in 8\", \"1 in 5 [group] report\", \"3 out of 4 [target] struggle with...\"\n- Invented time-to-X claims: \"first reactive decision within 90 seconds of waking\", \"make 35,000 decisions a day\", \"lose 47 minutes per interruption\"\n- Invented bounded-quantity claims: \"fewer than 11 uninterrupted personal minutes per day\", \"the average person checks their phone 144 times daily\"\n- Research-shaped phrasings presented as established findings: \"studies show\", \"research finds\", \"data indicates\", \"neuroscience tells us\", \"the science is clear\" — when no operator-supplied source backs the claim\n- Named-source attribution without operator-supplied source: \"Stanford research shows\", \"a Harvard study found\", \"Gallup data indicates\"\n\nUse one of these instead, in order of preference:\n1. Real statistics supplied in input fields (when populated with non-empty, non-\"N/A\" values) — quoted verbatim, attributed if attribution was supplied\n2. First-person experiential framing without research shape: \"many of the people I work with\", \"in my work with [niche]\", \"the pattern I see most often is\", \"what I've noticed across [n] cohorts\"\n3. Explicit hypothetical framing: \"imagine you're someone who\", \"what often happens when [situation]\", \"consider the [niche]-specific case where\"\n4. Generic situational framing without quantifier: \"when [situation], it's common to feel\", \"people in [role] often find that\"\n\nThis rule overrides any in-prompt example or template that asks you to \"make the problem feel urgent with a number\" — research-shaped numbers are fabricated examples, not data to copy. The model's job is to make the problem feel personal through specific situational framing, not to invent population-level statistics. If a sentence reads better with a specific number, prefer rephrasing toward situational specificity (\"the moment between alarm and first decision\") over fabricated quantification (\"the 90 seconds between alarm and first decision\").",
+  "user": "Create this BONUS deliverable to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, the words this audience actually uses. No generic filler, no padding.\n\nThe reader has already enrolled in \"The Pin Programme\" — write to a buyer on the inside who is ready to execute, not a prospect you are trying to convert.\n\nLead magnet title (the promise to deliver on): \"The Pin Toolkit\"\nMUST-MATCH BRIEF — the deliverable already advertised to the buyer; the content you produce must deliver exactly this, not a re-interpretation of the title: Pin brief.\nNiche / audience: Pin niche\nPaid programme name (what nextStep bridges to): The Pin Programme\nMain benefit of the paid offer: Pin benefit\nUPSTREAM CONTEXT — PIN\nHow the method runs, in order: 1) Pin — step.\nOffer context: Pin offer description.\nAudience pains: Pin pains.\nAudience goals: Pin goals.\nWhat blocks them from acting: Pin barriers.\nBrand context: Pin brand context.\n\nTreat the method above as source material to teach from: explain what it says goes wrong for this reader and what its sequence puts right, in your own words, using examples you build from the audience described here.\n\nBegin with a \"howToUse\": 2-4 sentences stating plainly what this document is, how to use it, and what it achieves. Then a TIGHT promise: max two sentences on what they can DO with this. End with a nextStep that helps them put this to work and get the most from \"The Pin Programme\" — a heading, a short body orienting them to the next action inside the programme they have joined, and a concrete ctaLabel about USING it (for example \"Start With Step 1\"). No dead end.\n\nProduce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { \"howToUse\", \"promise\", \"tools\":[{\"name\",\"type\",\"instructions\",\"content\"}], \"nextStep\":{\"heading\",\"body\",\"ctaLabel\"} }.",
+  "schema": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "lead_magnet_toolkit",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "howToUse",
+          "promise",
+          "tools",
+          "nextStep"
+        ],
+        "properties": {
+          "howToUse": {
+            "type": "string"
+          },
+          "promise": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "tools": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "instructions",
+                "content"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "swipe",
+                    "template",
+                    "sop",
+                    "worksheet",
+                    "script",
+                    "checklist"
+                  ]
+                },
+                "instructions": {
+                  "type": "string",
+                  "maxLength": 180
+                },
+                "content": {
+                  "type": "string",
+                  "maxLength": 4000
+                }
+              }
+            }
+          },
+          "nextStep": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "heading",
+              "body",
+              "ctaLabel"
+            ],
+            "properties": {
+              "heading": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "ctaLabel": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
