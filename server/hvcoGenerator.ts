@@ -120,7 +120,7 @@ The titles will name a product or tool. Format: short, distinctive product names
     discovery_call: `CAMPAIGN CONTEXT: Discovery Call
 The titles will name a free strategy call or audit. Format examples: "The [Topic] Audit", "[Outcome] Strategy Call", "Free [Niche] Diagnostic". Reference the 1:1 nature and the specific framework being applied during the call.`,
     lead_magnet: `CAMPAIGN CONTEXT: Lead Magnet
-The titles will name a downloadable asset (PDF, guide, training, swipe file). This is HVCO's native use case — every existing title rule applies fully. Reference the asset format in the framing.`,
+The titles will name a downloadable asset (PDF, guide, training, swipe file). This is HVCO's native use case — every existing title rule applies fully. Reference the asset format in the framing. The selected offer above describes this same free asset: every title names the asset that keeps that promise.`,
     in_person_event: `CAMPAIGN CONTEXT: In-Person Event
 The titles will name a live in-person workshop, mastermind, or training day. Format examples: "[Topic] Intensive", "[Period] [Topic] Live Training", "The [Topic] Workshop". LOCATION LOCK: you are NOT told the city or venue — if a title would name WHERE it is, write the literal token [INSERT_EVENT_VENUE]; never invent a city, venue, or "[City]" placeholder.`,
   };

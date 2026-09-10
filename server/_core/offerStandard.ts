@@ -323,8 +323,135 @@ real parts of the offer and belong on the page.
    One clear action, in the angle's own language.
 `;
 
+// ── The lead magnet: a free ASSET, not a free event (2026-09-10) ─────────────────────────────
+/**
+ * `free_asset` is the lead magnet. Per `docs/lead-magnet-research/LEAD_MAGNET_STANDARD.md` the offer
+ * IS the free asset a stranger trades an email for: it solves one acute symptom fast and it does
+ * not sell. The shared naming and urgency blocks above teach seat capacity, live dates and
+ * "Masterclass", so this mode carries its own versions, and `paid` and `free_event` keep theirs
+ * byte for byte (`promptPins.test.ts`).
+ *
+ * ⚠️ EVERY WORD COUNT BELOW IS ONE A FREE ASSET CAN FILL WITH TRUE CONTENT. The standard's closing
+ * finding: a count with nothing true to spend it on is filled with invention, whatever else the
+ * prompt forbids. These descend from the free-event counts and were cut where a free download has
+ * less that is true to say — pricing 25-45 → 15-30, guarantee 50-75 → 20-35, urgency 30-50 →
+ * 15-30, cta 20-30 → 10-20.
+ */
+export const FREE_ASSET_NAMING_BLOCK = `
+NAMING — the name is what a stranger scrolling past reads first, so it carries the whole promise.
+
+A reader must know what the asset is and what it fixes within about three seconds of reading the
+name. Build it from the parts that genuinely apply:
+  - the one specific problem it solves, in this field's own words
+  - who it is for ("for solo consultants", "for new mums back at work")
+  - the format word that tells them what they are getting: Audit, Checklist, Template, Scorecard,
+    Script, Worksheet, Guide, Toolkit, Cheat Sheet
+
+Specific beats general: a name that states one problem and one format ("The Discovery Call Script
+for First-Time Coaches") does work that "The Complete Guide to Coaching" cannot. Test every
+candidate by asking whether it could sit on a different coach's page in a different field — if it
+could, it is a category, not a name.
+
+Names stay under about ten words and name what the asset actually contains.
+`;
+
+export const FREE_ASSET_URGENCY_BLOCK = `
+URGENCY — for a free asset, the real urgency is the cost of waiting.
+
+The asset is free, open to everyone and in the reader's hands the moment they ask for it, so its
+urgency comes from one place: what another week of this problem costs the reader, described as
+the coach has watched it happen — the same argument had again, the same opening missed, the same
+Sunday-night dread. That is true for every reader it describes, and it needs no date and no number.
+`;
+
+export const FREE_ASSET_ANGLE_PROMPTS: Record<"godfather" | "free" | "dollar", string> = {
+  godfather: `
+ANGLE — THE REAL TOOL, NOT A TASTE OF IT.
+
+This free asset is a working tool the reader uses today, not a trailer for one. Write it so a
+reader understands they are getting the actual thing — the script, the template, the checklist —
+and can put it to work on their own problem straight away.
+
+Build it this way:
+  - Name the one tool inside that does the most work, and what the reader does with it.
+  - Say what the reader can DO once they have used it that they could not do before opening it.
+  - Make the generosity the argument: a reader who wonders "why is this free?" finds the answer
+    is that it genuinely solves one thing.
+`,
+  free: `
+ANGLE — THE QUICK WIN, DELIVERED FIRST.
+
+Let the reader feel the coach's competence through one fast, real result. This angle wins by
+demonstration rather than by promise.
+
+Build it this way:
+  - Name the specific symptom it relieves and how soon the reader sees the first change, in
+    plain words such as "the same day" or "in one sitting".
+  - Say who it is genuinely FOR, concretely enough that the wrong reader passes it by.
+  - Name the one thing in it a reader will not find in a generic article: the coach's own angle
+    on the problem.
+`,
+  dollar: `
+ANGLE — WHAT THE PROBLEM COSTS.
+
+Anchor against the cost of the reader's current situation. The asset is free, so the only number
+that matters is what another week of this problem takes from them.
+
+Build it this way:
+  - Describe concretely what the problem takes out of a week — the repeated effort, the missed
+    opening, the same conversation had again — as the coach has watched it happen.
+  - Set the few minutes it takes to use the asset against that cost.
+  - Name the first thing that changes once they use it.
+`,
+};
+
+export const FREE_ASSET_SECTION_SPEC = `
+Produce seven sections. The offer is the free asset itself — the one thing a stranger receives in
+exchange for their email — so every section is about that asset and what it does for the reader.
+The coach's paid programme is sold later, in conversation, away from this page.
+
+1. **offerName** (up to 10 words)
+   The asset's own name, built per the naming rules above: the problem it solves and the format
+   it comes in.
+
+2. **valueProposition** (20-40 words)
+   The one specific problem it solves and how soon the reader feels the difference. A situation,
+   not a feeling.
+
+3. **pricing** — ACCESS (15-30 words)
+   What it takes to get it, stated plainly: that it is free, that it arrives straight away, and
+   what the reader has in hand the moment it does.
+
+4. **bonuses** (EXACTLY 3)
+   What comes with the asset. Emit ONLY the name slot for each, one per line:
+   "BONUS #1: [INSERT_BONUS_1_NAME]" then "BONUS #2: [INSERT_BONUS_2_NAME]" then
+   "BONUS #3: [INSERT_BONUS_3_NAME]". The real names are filled from the campaign's own bonus
+   stack immediately after this step, so the line stays at the name slot. Carry no monetary value
+   on any line.
+
+5. **guarantee** — WHAT THEY KEEP (20-35 words)
+   What the reader keeps: the asset is theirs, usable today, whether or not they ever speak to
+   the coach. Write it about what is given and what is kept.
+
+6. **urgency** (15-30 words)
+   The cost of waiting, per the urgency rule above: what another week of this problem costs.
+
+7. **cta** (10-20 words)
+   One clear action: getting the free asset.
+`;
+
 /** Assemble the full standard for a mode. Order matters: levers, then framing, then shape. */
 export function offerStandardBlock(mode: OfferMode): string {
+  if (mode === "free_asset") {
+    return [
+      VALUE_EQUATION_BLOCK,
+      NEW_OPPORTUNITY_BLOCK,
+      DESIRE_IDENTITY_BLOCK,
+      FREE_ASSET_NAMING_BLOCK,
+      FREE_ASSET_URGENCY_BLOCK,
+      FREE_ASSET_SECTION_SPEC,
+    ].join("\n");
+  }
   return [
     VALUE_EQUATION_BLOCK,
     NEW_OPPORTUNITY_BLOCK,
@@ -336,5 +463,6 @@ export function offerStandardBlock(mode: OfferMode): string {
 }
 
 export function offerAngleBlock(mode: OfferMode, angle: "godfather" | "free" | "dollar"): string {
+  if (mode === "free_asset") return FREE_ASSET_ANGLE_PROMPTS[angle];
   return mode === "free_event" ? FREE_EVENT_ANGLE_PROMPTS[angle] : PAID_ANGLE_PROMPTS[angle];
 }

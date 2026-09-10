@@ -76,17 +76,26 @@ USAGE RULES:
   // refund" / "90 days"), supplying the facts put the price in faq[4] and the money-back promise
   // in faq[5] of a FREE webinar page, on three of four angles. The fix is to not supply them.
   const isFreeEvent = mode === "free_event";
-  const suppliedPriceLine = isFreeEvent
+  // ── FREE-ASSET MODE: the lead magnet. The offer IS the free asset, so there is no price, no refund
+  // and no programme duration to state; each line says what is true of a free download instead.
+  const isFreeAsset = mode === "free_asset";
+  const suppliedPriceLine = isFreeAsset
+    ? `- This is a FREE ${freeStepNoun} the reader receives in exchange for their email. It has no price, so no section carries one. Emit no price token.`
+    : isFreeEvent
     ? `- This campaign converts on a FREE ${freeStepNoun}. It has no price, so no section carries one. Where the paid programme is referred to at all, it is referred to as something discussed later, never with a figure. Emit no price token.`
     : supplied.price
     ? `- The operator HAS supplied a price: ${supplied.price}. Use this exact number in pricing. Do not invent additional anchor prices or alternative tiers.`
     : `- The operator has NOT supplied a price. Emit the placeholder [INSERT_PRICE] verbatim wherever the price would appear. Do NOT invent a currency amount.`;
-  const suppliedGuaranteeLine = isFreeEvent
+  const suppliedGuaranteeLine = isFreeAsset
+    ? `- A free ${freeStepNoun} takes no money, so there is nothing to refund. The guarantee field says what the reader keeps: the ${freeStepNoun} is theirs to use, today and afterwards. Emit no guarantee token and no refund language.`
+    : isFreeEvent
     ? `- A free ${freeStepNoun} takes no money, so there is nothing to refund and no guarantee section in the money sense. The guarantee field carries the ATTENDANCE PROMISE instead: what the reader walks away holding, and that nothing is sold in the room. Emit no guarantee token and no refund language.`
     : (supplied.guaranteeType || supplied.guaranteeDuration)
     ? `- The operator HAS supplied guarantee terms: ${[supplied.guaranteeDuration, supplied.guaranteeType].filter(Boolean).join(", ")}. Use these terms verbatim in the guarantee section.`
     : `- The operator has NOT supplied a guarantee. Emit the placeholder [INSERT_GUARANTEE_TERMS] verbatim in the guarantee section. Do NOT invent refund mechanics, timeframes, or "pay nothing" / "full refund" / "money-back" language.`;
-  const suppliedDurationLine = supplied.deliveryDuration
+  const suppliedDurationLine = isFreeAsset
+    ? `- The ${freeStepNoun} is used in one short sitting. Describe how quickly it works in plain words such as "in one sitting" or "the same day".`
+    : supplied.deliveryDuration
     ? `- The operator HAS supplied a delivery duration: ${supplied.deliveryDuration}. Use this verbatim wherever programme duration is mentioned.`
     : `- The operator has NOT supplied a delivery duration. Emit the placeholder [INSERT_PROGRAMME_DURATION] verbatim wherever programme duration would appear. Do NOT invent "N-minute session", "N-week sprint", or similar durations.`;
   const suppliedBonusesLine = supplied.bonuses
@@ -95,6 +104,42 @@ USAGE RULES:
 
   const canonicalTokensList = getCanonicalOfferTokens().join(", ");
 
+  // The examples of an unsupplied fact. A free asset has no cohort and no programme duration.
+  const unsuppliedFactExamples = isFreeAsset
+    ? `(price, guarantee terms, bonus values, etc.)`
+    : `(price, guarantee terms,
+cohort size, programme duration, bonus values, etc.)`;
+
+  // The rule list the validator enforces. A free asset has no cohort, no programme duration and no
+  // intake dates, so naming those inventions would only put seats and cohorts in front of the model;
+  // in that mode the list keeps the items that apply to a free download. Every other mode keeps the
+  // full list exactly as it was (promptPins.test.ts). The validator itself is unchanged.
+  const prohibitionLines = isFreeAsset
+    ? `- Inventing currency amounts when no price is supplied
+- Inventing anchor price ranges (£X – £Y)
+- Inventing bonus values (£N value)
+- Inventing a total bonus value summation
+- Inventing guarantee timeframes (within N days)
+- Inventing refund mechanics (pay nothing, full refund, money-back) when no guarantee is supplied
+- Emitting any [INSERT_X] token NOT in the canonical allow-list above`
+    : `- Inventing currency amounts when no price is supplied
+- Inventing anchor price ranges (£X – £Y)
+- Inventing bonus values (£N value)
+- Inventing a total bonus value summation
+- Inventing cohort sizes (maximum of N seats/leaders/places)
+- Inventing programme durations (N-week sprint, N-minute session)
+- Inventing guarantee timeframes (within N days)
+- Inventing refund mechanics (pay nothing, full refund, money-back) when no guarantee is supplied
+- Inventing next-cohort opening/closing dates
+- Emitting any [INSERT_X] token NOT in the canonical allow-list above`;
+
+  // A free asset has no cohort and no dates: it is open to everyone, straight away. Every other mode
+  // keeps the two cohort lines exactly as they were (promptPins.test.ts).
+  const cohortLines = isFreeAsset
+    ? `- The ${freeStepNoun} is open to everyone, straight away, for as long as they want it — describe access in exactly those terms.`
+    : `- No fixture field exists for cohort size. Always emit [INSERT_COHORT_LIMIT] verbatim when cohort scarcity is mentioned. Never invent "8 leaders" / "maximum of 12 founders" / etc.
+- No fixture field exists for cohort dates. Always emit [INSERT_COHORT_CLOSE_DATE] or [INSERT_PROGRAMME_START_DATE] verbatim. Never invent "next cohort opens" / "enrolment closes" framing.`;
+
   const operatorFillBlock = `
 CANONICAL TOKEN ALLOW-LIST — operator-fill seam:
 
@@ -102,8 +147,7 @@ ZAP separates two layers:
   1. The asset-generation layer (you, the LLM) — produces structure + copy
   2. The operator-fill layer (the user) — fills in specific facts ZAP cannot know
 
-When the operator has not supplied a specific fact (price, guarantee terms,
-cohort size, programme duration, bonus values, etc.), you MUST emit one of
+When the operator has not supplied a specific fact ${unsuppliedFactExamples}, you MUST emit one of
 the canonical operator-fill placeholder tokens listed below VERBATIM at the
 position where the fact would appear. The placeholders are surfaced to the
 operator in the UI for inline editing before publication.
@@ -113,27 +157,27 @@ ${suppliedPriceLine}
 ${suppliedGuaranteeLine}
 ${suppliedDurationLine}
 ${suppliedBonusesLine}
-- No fixture field exists for cohort size. Always emit [INSERT_COHORT_LIMIT] verbatim when cohort scarcity is mentioned. Never invent "8 leaders" / "maximum of 12 founders" / etc.
-- No fixture field exists for cohort dates. Always emit [INSERT_COHORT_CLOSE_DATE] or [INSERT_PROGRAMME_START_DATE] verbatim. Never invent "next cohort opens" / "enrolment closes" framing.
+${cohortLines}
 - No fixture field exists for first-result timing. Emit [INSERT_FIRST_RESULT_TIMEFRAME] verbatim if naming a specific timeframe. Never invent "within 7 days" / "in the first 14 days".
 
 CANONICAL TOKENS (use ONLY these — never invent variants like [INSERT_LAUNCH_DATE], [INSERT_SPOTS_REMAINING], [INSERT_START_DATE], [INSERT_BOOKING_LINK], [INSERT_CART_CLOSE]):
 ${canonicalTokensList}
 
 ABSOLUTE PROHIBITIONS — these are zero-tolerance fabrications that will trigger retry:
-- Inventing currency amounts when no price is supplied
-- Inventing anchor price ranges (£X – £Y)
-- Inventing bonus values (£N value)
-- Inventing a total bonus value summation
-- Inventing cohort sizes (maximum of N seats/leaders/places)
-- Inventing programme durations (N-week sprint, N-minute session)
-- Inventing guarantee timeframes (within N days)
-- Inventing refund mechanics (pay nothing, full refund, money-back) when no guarantee is supplied
-- Inventing next-cohort opening/closing dates
-- Emitting any [INSERT_X] token NOT in the canonical allow-list above
+${prohibitionLines}
 `;
 
-  const modeHeader = mode === "free_event"
+  // A free lead magnet has no tier — "High-ticket offer with maximum value" means nothing on a free
+  // download — so the Offer Type line is left out in that mode only.
+  const offerTypeLine = isFreeAsset ? "" : `Offer Type: ${offerTypeInstructions[offerType]}\n`;
+
+  const modeHeader = isFreeAsset
+    ? `THIS CAMPAIGN GIVES AWAY A FREE ${freeStepNoun.toUpperCase()} — the lead magnet itself. The offer you are
+writing IS that ${freeStepNoun}: the one specific thing a stranger receives in exchange for their
+email, and what it does for them within minutes of opening it. The coach's paid programme is real
+and is sold LATER, in conversation, away from this page, so this offer is about the free
+${freeStepNoun} alone. It carries no price and makes no refund promise, because nothing is being bought.`
+    : mode === "free_event"
     ? `THIS CAMPAIGN CONVERTS ON A FREE NEXT STEP — a ${freeStepNoun} the reader registers for at no cost.
 The coach's paid programme is real and is sold LATER, in conversation, away from this page. So the
 offer you are writing is the PROGRAMME CONTEXT that makes attending worth an hour of someone's
@@ -141,6 +185,18 @@ life: the transformation, the mechanism, and the value equation. It carries no p
 refund promise, because nothing is being bought here.`
     : `THIS CAMPAIGN CONVERTS ON A PURCHASE. The price and the guarantee are real parts of the offer
 and belong in it, written from the operator's supplied facts.`;
+
+  // The bonus-credibility examples are event- and programme-shaped ("recorded workshop, live group
+  // call"). A free asset's bonus lines stay at their name slots, filled from the bonus stack.
+  const bonusRuleBlock = isFreeAsset
+    ? `BONUS SLOTS:
+Each bonus line stays at its name token. The names are filled from the campaign's own bonus stack
+straight after this step.`
+    : `BONUS CREDIBILITY RULE:
+Every bonus reads as something that took real effort to make. Name the format explicitly:
+recorded workshop, live group call, private community access, custom assessment, done-for-you
+template, annotated swipe file. Name what the buyer can DO after using it that they could not do
+before. For bonus values, use the operator-fill placeholders specified above.`;
 
   const prompt = `
 You are an expert B2C offer creator for coaches, speakers, consultants and practitioners —
@@ -152,8 +208,7 @@ Product: ${productName}
 Description: ${productDescription}
 Target Customer: ${targetCustomer}
 Main Benefit: ${mainBenefit}
-Offer Type: ${offerTypeInstructions[offerType]}
-Angle: ${angle}
+${offerTypeLine}Angle: ${angle}
 
 ${modeHeader}
 
@@ -179,11 +234,7 @@ names a number or a timeframe that number or timeframe comes from operator-suppl
 carries its canonical token. Not "better results" — "3 new clients in 60 days" where 60 days is
 supplied, or "3 new clients in [INSERT_FIRST_RESULT_TIMEFRAME]" where it is not.
 
-BONUS CREDIBILITY RULE:
-Every bonus reads as something that took real effort to make. Name the format explicitly:
-recorded workshop, live group call, private community access, custom assessment, done-for-you
-template, annotated swipe file. Name what the buyer can DO after using it that they could not do
-before. For bonus values, use the operator-fill placeholders specified above.
+${bonusRuleBlock}
 
 Return ONLY valid JSON with these exact keys: offerName, valueProposition, pricing, bonuses, guarantee, urgency, cta
 `;
@@ -195,6 +246,14 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
   // (same shape as LP exhaust path).
   let validatorFailContext = "";
   let lastParsed: OfferContent | null = null;
+  // A free asset has no cohort and no programme duration, so its list names only what can apply.
+  const neverInventList = isFreeAsset
+    ? `currency amounts, bonus values, or guarantee timeframes`
+    : `currency amounts, bonus values, cohort sizes, programme durations, or guarantee timeframes`;
+  // The system line teaches price anchoring. A free asset has no price to anchor.
+  const systemOpening = isFreeAsset
+    ? `You are an expert at writing the offer for a coach's free lead magnet — the one useful asset a stranger receives in exchange for their email.`
+    : `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes.`;
 
   for (let attempt = 1; attempt <= OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS; attempt++) {
     const failContextInjection = validatorFailContext
@@ -206,7 +265,7 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
         {
           role: "system",
           content:
-            `You are an expert offer creator specializing in irresistible, loss-aversion-driven offers for coaches, speakers, and consultants. You apply anchoring to make the price feel like a fraction of the value, and you make saying no feel more expensive than saying yes. You write specific outcomes — but you NEVER invent currency amounts, bonus values, cohort sizes, programme durations, or guarantee timeframes that the operator has not supplied. When such facts are unavailable, you emit the canonical operator-fill placeholder tokens listed in the user prompt verbatim. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${REGISTER_STANDARD}`,
+            `${systemOpening} You write specific outcomes — but you NEVER invent ${neverInventList} that the operator has not supplied. When such facts are unavailable, you emit the canonical operator-fill placeholder tokens listed in the user prompt verbatim. Always respond with valid JSON.\n\n${META_COMPLIANCE_NOTES}\n\n${NO_DATE_FABRICATION_RULE}\n\n${REGISTER_STANDARD}`,
         },
         { role: "user", content: cascadeContext + failContextInjection + prompt },
       ],

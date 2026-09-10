@@ -21,3 +21,16 @@ const LEFTOVER_OPERATOR_TOKEN = /\[INSERT_[A-Z_0-9]+\]/g;
 export function findLeftoverOperatorTokens(text: string): string[] {
   return Array.from(new Set(String(text ?? "").match(LEFTOVER_OPERATOR_TOKEN) ?? []));
 }
+
+/**
+ * `text` with every leftover operator token removed and the spacing it leaves tidied. For CONTEXT
+ * handed to a generator that has no way to fill a token — never for a published artefact, which the
+ * publish gates refuse instead of repairing.
+ */
+export function stripLeftoverOperatorTokens(text: string): string {
+  return String(text ?? "")
+    .replace(LEFTOVER_OPERATOR_TOKEN, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .trim();
+}

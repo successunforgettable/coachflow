@@ -54,6 +54,7 @@
 
 import { eq, and } from "drizzle-orm";
 import { resolveOfferMode } from "./campaignFraming";
+import { stripLeftoverOperatorTokens } from "./leftoverOperatorTokens";
 import { getDb } from "../db";
 import {
   campaignKits,
@@ -285,6 +286,20 @@ const hasPlaceholder = (v: string | null | undefined): boolean =>
 export { hasPlaceholder as _hasPlaceholder };
 export { CASCADE_NODE_TO_KIT_FIELD as _CASCADE_NODE_TO_KIT_FIELD };
 
+/**
+ * The cascade's description of a lead magnet's offer — which IS the free asset. Pure and exported so
+ * the test and the acceptance harness run this function rather than a copy of it. Carries the name
+ * and the promise only: no call to action, no bonuses, no urgency, and no operator token.
+ */
+export function describeFreeAssetOfferText(
+  content: { offerName?: string; valueProposition?: string },
+  angleKey: string,
+): string {
+  const name = stripLeftoverOperatorTokens(content.offerName ?? "");
+  const promise = stripLeftoverOperatorTokens(content.valueProposition ?? "");
+  return `Selected offer — the free lead magnet this campaign gives away: "${name}" (${angleKey} angle). What it does for the reader: "${promise}".`;
+}
+
 async function describeOffer(
   db: Db,
   id: number,
@@ -310,6 +325,16 @@ async function describeOffer(
   // Core fields (always included when present)
   const valueProp = content.valueProposition ?? "";
   const cta = content.cta ?? "";
+
+  // ── THE LEAD MAGNET: the offer IS the free asset (2026-09-10) ──────────────────────────────────
+  // Downstream nodes are told what the asset is and what it does for the reader — and nothing else:
+  // no call to action, no bonuses, no urgency, no "worth attending". The CTA line is the channel
+  // that carried magnet 7293's `[INSERT_OFFER_LINK]` into its own next step, and a token cannot be
+  // filled by any node downstream, so none crosses here.
+  if (resolveOfferMode({ campaignType, campaignFacts }) === "free_asset") {
+    return describeFreeAssetOfferText(content, angleKey);
+  }
+
   let desc = `Selected offer: "${offer.productName}" (${angleKey} angle). Value proposition: "${valueProp}". Offer CTA: "${cta}".`;
 
   // ── THE FREE-EVENT FENCE ────────────────────────────────────────────────────────────────────

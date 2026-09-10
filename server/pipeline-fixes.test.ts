@@ -4137,9 +4137,28 @@ describe("resolveOfferMode — free-event vs paid", () => {
   });
 
   it("every one of the seven campaign types resolves to a mode", () => {
+    // Widened DELIBERATELY on 2026-09-10 from two modes to three: a lead magnet is a free ASSET.
     for (const t of Object.keys(CAMPAIGN_TO_PAGE_TYPE)) {
-      expect(["free_event", "paid"]).toContain(resolveOfferMode({ campaignType: t }));
+      expect(["free_event", "paid", "free_asset"]).toContain(resolveOfferMode({ campaignType: t }));
     }
+  });
+
+  it("a lead magnet is a free ASSET — including when the coach answered 'free'", () => {
+    expect(resolveOfferMode({ campaignType: "lead_magnet" })).toBe("free_asset");
+    expect(resolveOfferMode({ campaignType: "lead_magnet", campaignFacts: { price: { amount: "__FREE__" } } }))
+      .toBe("free_asset");
+    // The operator's own real price still outranks the campaign type, exactly as for every other type.
+    expect(resolveOfferMode({ campaignType: "lead_magnet", campaignFacts: { price: { amount: "49" } } }))
+      .toBe("paid");
+  });
+
+  it("the other six campaign types resolve exactly as before", () => {
+    // Read off CAMPAIGN_TO_PAGE_TYPE: a sales_page type is paid, every other non-magnet type is a free event.
+    const expected: Record<string, string> = {
+      webinar: "free_event", discovery_call: "free_event", in_person_event: "free_event",
+      course_launch: "paid", product_launch: "paid", challenge: "paid",
+    };
+    for (const [t, mode] of Object.entries(expected)) expect(resolveOfferMode({ campaignType: t })).toBe(mode);
   });
 });
 

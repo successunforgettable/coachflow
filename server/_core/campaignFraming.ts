@@ -61,8 +61,14 @@ export function pageTypeForCampaign(campaignType?: string | null): LpPageTypeNam
  *
  * `paid` is the genuinely-paid case — a course or product launch, or an event the coach has
  * given a real price. It gets the full paid offer.
+ *
+ * `free_asset` is the lead magnet (2026-09-10). Its offer IS the free asset a stranger trades an
+ * email for — `docs/lead-magnet-research/LEAD_MAGNET_STANDARD.md` — not an event they attend and
+ * not the paid programme. Before it existed a lead magnet fell into `free_event` and inherited a
+ * prompt written for a live session: on kit 225's real inputs, 4 of 4 offers came out as a live
+ * session or a masterclass, with or without a service name.
  */
-export type OfferMode = "free_event" | "paid";
+export type OfferMode = "free_event" | "paid" | "free_asset";
 
 /**
  * The default when a campaign carries no type at all. Deliberately `course_launch` — the same
@@ -88,6 +94,9 @@ export const DEFAULT_CAMPAIGN_TYPE: CampaignType = "course_launch";
  *   - the explicit `__FREE__`    → `free_event` (even on a type that usually charges)
  * Silence never implies either — it falls through to the campaign-type default, which is the
  * same three-state discipline `operatorFields.classifyPrice` already enforces at publish.
+ *
+ * A lead-magnet campaign is `free_asset`, and that check runs BEFORE the explicit `__FREE__`
+ * answer — otherwise "it's free" on a lead magnet would route it back into `free_event`.
  */
 export function resolveOfferMode(input: {
   campaignType?: string | null;
@@ -95,9 +104,10 @@ export function resolveOfferMode(input: {
 }): OfferMode {
   const priced = classifyPrice(input.campaignFacts?.price);
   if (priced.status === "value") return "paid";
-  if (priced.status === "na" && priced.kind === "free") return "free_event";
 
   const type = (input.campaignType ?? DEFAULT_CAMPAIGN_TYPE) as CampaignType;
+  if (pageTypeForCampaign(type) === "lead_magnet_download") return "free_asset";
+  if (priced.status === "na" && priced.kind === "free") return "free_event";
   return pageTypeForCampaign(type) === "sales_page" ? "paid" : "free_event";
 }
 
@@ -217,6 +227,16 @@ CTA language: Save my seat / Join the session / Register for the session`;
 export const FREE_NEXT_STEP_REPLAY_TEXT = "This session runs live, once, at the stated date and time.";
 
 /** Framing for one campaign type, with the shared default for an unknown/absent value. */
+/**
+ * The email and WhatsApp generators carry their own framing for four campaign types and used to fall
+ * back to COURSE LAUNCH for the other three — enrolment deadlines and cohort limits on a free
+ * download, on every lead-magnet campaign (2026-09-10). The fallback is now this one framing source,
+ * which covers all seven. Their four own entries are unchanged (promptPins.test.ts).
+ */
+export function campaignTypeContextFor(map: Record<string, string>, campaignType: string): string {
+  return map[campaignType] ?? lpFramingForCampaign(campaignType);
+}
+
 export function lpFramingForCampaign(campaignType?: string | null): string {
   const type = (campaignType ?? DEFAULT_CAMPAIGN_TYPE) as CampaignType;
   return LP_CAMPAIGN_FRAMING[type] ?? LP_CAMPAIGN_FRAMING[DEFAULT_CAMPAIGN_TYPE];
