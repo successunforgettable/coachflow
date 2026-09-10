@@ -177,7 +177,7 @@ new free-asset offer → selected on the kit → the magnet body → republish.
   but the name borrows the paid programme's outcome window for a free download, and nothing in the block
   keeps an UNSUPPLIED interval out. The offer validator still catches invented guarantee timeframes.
 
-### 0.4c · 🔁 REGENERATIONS (approved 2026-09-10) — 5686 DONE; 7173 and 7233 NOT STARTED
+### 0.4c · 🔁 REGENERATIONS (approved 2026-09-10) — 5686 DONE; 7173 DONE; 7233 NOT STARTED (held by Arfeen)
 
 **Magnet 5686 / kit 177 — done, verified from the live responses.** Every step was bracketed by a
 database-wide snapshot with `CHECKSUM TABLE` on all 58 tables:
@@ -203,9 +203,37 @@ headlines, ad copy, landing page, email, WhatsApp, ad creatives — all built ag
 proof claim in a July title, untouched by regeneration (a title change is a separate write).
 🔴 **The OLD 5686 PDF URL still serves the funnel from the CDN cache — queue item 11.**
 
-**For kit 222 (7173):** its profile has no concept set, so selection will create `concepts-icp-288` the same
-way — delete it; do NOT run concept generation (Arfeen, 2026-09-10). **Kit 223 (7233)** already has 8 concepts,
-so no job is created.
+**5686 TITLE — NOT CHANGED (2026-09-11, stopped as instructed).** The claim's source is found: service 262's
+`hvcoTopic` holds *"The 5-Line Cold Email That Booked Me a $6,000 Branding Client in 11 Days…"*, written by
+`expandProfile` 69 s after the service was created, from a model field whose instruction REQUIRES *"a specific
+number or timeframe"* (queue item 12). The title node reads it as the topic whenever `hvcoTopic` is passed blank —
+which orchestration always does. A `persist:false` dry run of the title node (checksum diff on all 58 tables:
+zero change) reproduced the claim: long title #1 *"…Books $6,000 Brand Identity Clients in 11 Days"*, short
+*"5-Line Email, $6K Branding Client"*, *"11-Day Cold Outreach Sequence"*; 34 of 60 carry a figure. The product's
+pick (first `short`) happened to be clean — *"The Cold Inbox Toolkit for Designers"* — by position, not by rule.
+Grounding: `$6,000` appears in profile 239 only as the buyer's hoped-for rate (`hopesDreams`, not a field the
+title prompt reads); `11 days` appears in nothing the coach supplied. Applying any title also needs writes not yet
+approved: the product path (`runHvcoGeneration`) inserts 60 rows, bumps quota and re-selects the kit to a NEW
+row; the in-place alternative is `hvcoTitles.title` + `assetBody.title` + republish + purge.
+
+**Magnet 7173 / kit 222 — done 2026-09-11, verified from the live responses** (checksum diff per step):
+1. **Offer 224** *"The Hard Conversation Script for Couples Who Keep Circling"* — 0 event words (offer 215 had
+   session/cohort/register/attend). Wrote `offers` +1, `campaignKits` 222 (215 → 224), `nodeStatuses` +2 stale
+   (227 uniqueMethod, 228 freeOptIn), `jobs` +1 `concepts-icp-288` — deleted on approval (1 row; only `jobs`).
+2. **Body** — first attempt died at the 60 s idle cut (no write, no surviving process); rerun with a 20 s
+   heartbeat succeeded; only `hvcoTitles` changed. Screen: 6 advisory hits, all pattern false positives on
+   reading ("fix … weight" from *"carrying the weight of every previous conversation"*, the tool's own name,
+   second-person lines).
+3. **Republish** — only `hvcoTitles`; bridge `no-pointer`; new PDF `…/v1789074179/…` (0 tokens, 0 event words).
+4. **freeOptIn stale row 228 deleted** — only `nodeStatuses` (99 → 98).
+
+Live: both pages 200, 0 tokens, text card with no link; close asks *"Is the signal the real problem — or what it
+stands for?"*, label *"Track what the signal reminds you of"*. Kit 222 keeps 1 TRUE stale mark (uniqueMethod
+1241, built against offer 215). The title *"The 90-Second Shutdown Fix"* comes from service 315's `hvcoTopic`
+(*"The 90-Second Window…"*), written by the same `expandProfile` field. Old PDF `v1787948313` still served from
+cache (old bytes, 0 tokens, 0 event words) — not purged, not approved.
+
+**Kit 223 (7233)** already has 8 concepts, so no job is created.
 
 ### 0.5 · WHERE THINGS ARE
 
@@ -1884,6 +1912,21 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    already passes `invalidate: true` (7293's URLs went 404 at once). Two separate decisions: purge the two
    cached old URLs now (a production CDN action), and whether `storagePut` should invalidate on overwrite
    (a code change touching every PDF the product republishes).
+   **Purge run 2026-09-10 20:31 UTC** (`uploader.explicit(publicId, {invalidate:true})`, approved; no
+   content or version change). **7233's old URL: CLEARED** — fetch 1 (20:32) old 274,507 B `hit`; fetch 2
+   (20:36) new 272,744 B `miss`; fetch 3 (20:48) new, `hit`. **5686's old URL: NOT CLEARED** — old 415,099 B
+   `hit` at 20:32, 20:36, 20:48 and 21:04 (33 min on). The same call DID purge 5686's CURRENT URL
+   (`v1789071852` flipped `hit` → `miss`), so the request reached the public id; why one old versioned URL
+   survives is unexplained (only one of the two did). Not retried.
+12. 🔴 **THE SERVICE PROFILE FABRICATES A PROOF CLAIM AND FEEDS IT TO THE TITLE NODE** — added 2026-09-11,
+   recorded, NOT fixed. `expandProfile` (`server/routers/services.ts:390`) asks the model for
+   `hvcoTopicSuggestion`: *"Must contain a specific number or timeframe, a named enemy or obstacle…"*, and
+   `services.ts:569` writes it to `services.hvcoTopic` unconditionally. The title node
+   (`hvcoGenerator.ts:152`) falls back to that field whenever `hvcoTopic` is blank — orchestration always
+   passes `""`. So a first-person result the coach never stated (*"Booked Me a $6,000 Branding Client in 11
+   Days"*, service 262) becomes the topic every title is written about, and regeneration reproduces it. Seen on
+   two of two services checked (262, 315). The title prompts' own *"every title must contain at least ONE of"*
+   rules add the same pressure. Fix is at the source — the field instruction and its fallback — not a retry.
 
 ---
 
