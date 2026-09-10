@@ -95,15 +95,33 @@ Reset Free"* — that wording is the offer-mode defect's, not the bridge's.
 🔴 **New queue item, recorded not fixed — §4 item 7 of the 2026-09-05 block: the rewrite engine republishes
 landing pages with NO publish guard, and it is switched on in production.**
 
-### 0.4b · 🔨 2026-09-10/11 — THE LEAD-MAGNET OFFER-MODE BUILD: built and verified locally, 🔴 NOT PUSHED
+### 0.4b · ✅ 2026-09-10/11 — THE LEAD-MAGNET OFFER-MODE BUILD: PUSHED, DEPLOYED, VERIFIED ON PRODUCTION (`9156875`, 19:46:50 UTC)
 
 **Authority:** `docs/lead-magnet-research/LEAD_MAGNET_STANDARD.md` (now in the repo, verbatim) · **brief:**
 `docs/handovers/BRIEF_2026-09-10_LEAD_MAGNET_OFFER_MODE.md`. The lead-magnet offer mode, the root cause of
 both public defects closed on 2026-09-10.
 
-**Local commits, none pushed — pushing `railway-build` deploys all of them:** `2a9ab5c` (Cloudinary note, held
-for a code push) · `59616ac` prompt pins, recorded on the unmodified code · `0c649c4` offer mode (parts A-D) ·
-`38b6957` the magnet's close (part E) · the commit carrying this record: email/WhatsApp framing (part F).
+**Pushed together on Arfeen's go-ahead:** `2a9ab5c` (Cloudinary note) · `59616ac` prompt pins, recorded on the
+unmodified code · `0c649c4` offer mode (parts A-D) · `38b6957` the magnet's close (part E) · `9156875`
+email/WhatsApp framing (part F) and this record.
+
+**Verified against production after the deploy (2026-09-10, measured, not assumed):**
+- **Live build:** Railway `SUCCESS 9156875`; the container reports `91568759…`. Markers derived from the diff and
+  counted in BOTH builds before the push, then in the served `dist/index.js`: four appear
+  (`describeFreeAssetOfferText` 0→3, `nextStepLinked` 0→7, `campaignTypeContextFor` 0→3, `GIVES AWAY A FREE`
+  0→1) and three must fall (`Book My Free Call` 1→0, `bridges to the paid programme` 1→0,
+  `campaignTypeContextMap["course_launch"]` 5→3). All seven match (§15h).
+- **83 public URLs** (25 landing pages, 3 magnets × 2 pages + PDF, 23 bonuses × page + PDF, and 7293's three),
+  baseline measured immediately before the push: **0 status changes, 0 content-hash changes, 0 missing** (§15f).
+- **The token gate fires on the live path.** Deployed code, production container, every Cloudflare and
+  Cloudinary credential removed from that one process (the process reported `[]`): `publishLeadMagnet(7293)`
+  and `publishDeliverableBody` with 7293's stored body both returned `held` with `[INSERT_OFFER_LINK]` and
+  logged "nothing written". Afterwards: both 7293 pages, both 7293 PDF URLs, and the scratch slug and PDF the
+  bonus path would have written all **404**; 7293's row **unchanged** (URLs NULL, `updatedAt` 2026-09-10
+  15:52:34, body md5 `7466ea0f…`, identical to the pre-push read).
+- **The offer, through the deployed code, no writes:** kit 225, four samples — **0 live-event words in 4 of
+  4** and no `[INSERT_OFFER_LINK]` in any CTA, matching the local measurement.
+- **tsc 34** on the deployed HEAD.
 
 | measured — kit 225, production inputs, nothing written | before (deployed code, same day) | after |
 |---|---|---|
@@ -128,7 +146,7 @@ free lead magnet this campaign gives away". Kit 177's selected offer (192) is pa
 Pay"* — and kits 222/223's offers (215, 216) name a different guide from their own magnets. Order, per kit: a
 new free-asset offer → selected on the kit → the magnet body → republish.
 
-**Still pending:** the token gate's live-path proof (approved design; runs after this build deploys).
+**The token gate's live-path proof is DONE** — see the verification list above.
 
 **Bonus evidence, for Arfeen's separate decision — bonus generation NOT changed in this build:**
 - Kits 223 and 225 each produced a three-bonus stack (checklist, SOP, script); 5 of the 6 are public pages
@@ -152,6 +170,12 @@ new free-asset offer → selected on the kit → the magnet body → republish.
   careers to raise a family and"* (`resolveServiceName`).
 - Coach-described methods carry an `ump` field that `renderMethodDetail` does not pass to the magnet.
 - The quiz page's next step is not covered by the page-side liveness check.
+- **The free-asset naming block carries no timeframe rule** (the paid/free-event MAGIC block allows an interval
+  only where it is a supplied fact; `FREE_ASSET_NAMING_BLOCK` drops the interval entirely). Two of four live
+  offer names for kit 225 read "90-Day…". Those are GROUNDED — service 318 says *"within 90 days of building
+  and launching their offer"* and profile 291 *"three paying clients within 90 days of launching my offer"* —
+  but the name borrows the paid programme's outcome window for a free download, and nothing in the block
+  keeps an UNSUPPLIED interval out. The offer validator still catches invented guarantee timeframes.
 
 ### 0.5 · WHERE THINGS ARE
 
@@ -1785,6 +1809,30 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    landing page. The first coach to accept a landing-page rewrite publishes past every guard. Same
    path as item 5's unexercised `injectRealTestimonials` caller (`complianceRewrites.ts:335`). **Put
    it on the queue before it fires.**
+8. 🟡 **THE DATE-FABRICATION RULE TEACHES COHORT SCARCITY TO EVERY GENERATOR** — added 2026-09-11,
+   recorded, NOT fixed. `NO_DATE_FABRICATION_RULE` (`server/_core/copywritingRules.ts`) exists to stop
+   invented dates, and it illustrates the allowed alternatives with its own examples — *"before the next
+   cohort opens"*, *"30-day enrolment window"*, *"limited to 8 places per cohort"*, *"January cohort"*.
+   Every generator that imports it therefore receives cohort, enrolment and seat-cap vocabulary as
+   sanctioned phrasing, whatever it is writing — including a free lead magnet, which has no cohort, no
+   enrolment and no places. A rule written to prevent one fabrication is priming another (§14: the model
+   reproduces what a prompt shows it). Found by the lead-magnet offer-mode build's event-vocabulary check,
+   which had to exclude the shared compliance blocks to test its own prompt. Changing the rule touches
+   every generator, so it needs its own package, with a before/after measurement on each.
+9. 🟡 **BONUSES ON A LEAD-MAGNET CAMPAIGN — the evidence for Arfeen's separate decision** — added
+   2026-09-11, recorded, NOT fixed; bonus generation deliberately untouched by the offer-mode build.
+   Measured on production 2026-09-10:
+   - **A lead-magnet campaign ships FOUR free assets**, not one: kits 223 and 225 each produced the magnet
+     plus a three-bonus stack (checklist, SOP, script); 5 of the 6 bonuses are public pages (`bonus-39` to
+     `bonus-44`, all but 40). The standard names this the over-generosity trap — *"one audience, one
+     problem, one quick win — breadth dilutes"*.
+   - **The bonuses are written to a buyer who does not exist.** They are generated in bonus mode, whose
+     prompt tells the model the reader *"has ALREADY enrolled in / purchased the paid programme"*. On a
+     lead-magnet campaign nobody has bought anything.
+   - **An outcome claim on a free download.** Offer 216's filled bonus line promises *"a real result
+     within 7 days"* — a timeframe result claim the magnet itself does not make.
+   - Offers 215 and 217 still hold unfilled `[INSERT_BONUS_N_NAME]` slots; their kits never reached the
+     bonus step.
 
 ---
 
