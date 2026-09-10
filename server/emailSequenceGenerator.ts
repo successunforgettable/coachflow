@@ -26,6 +26,7 @@ import {
 } from "./_core/copywritingRules";
 import { validateEmailSequenceShape, validateEmailFabricationPatterns, type EmailSuppliedData } from "./_core/validator";
 import { getCascadeContext } from "./_core/cascadeContext";
+import { campaignTypeContextFor } from "./_core/campaignFraming";
 
 function stripMarkdownJson(content: string): string {
   return content.replace(/^```json\s*|^```\s*|\s*```$/gm, "").trim();
@@ -1014,7 +1015,7 @@ Framing: Early access and founding member status. First to experience something 
 Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
 CTA language: Get early access / Become a founding member / Lock in launch pricing`,
   };
-  const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+  const campaignTypeContext = campaignTypeContextFor(campaignTypeContextMap, campaignType);
 
   // Social proof + guidance
   const socialProof = {

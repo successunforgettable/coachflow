@@ -70,14 +70,16 @@ the ad sets optimise for an event that never registers (§6.0).
 | | what was done | verified |
 |---|---|---|
 | **magnet 7293 taken down** | KV `magnet-magnet-7293` + `magnet-get-7293` deleted from `ZAP_PAGES`; `hvcoTitles` 7293 `magnetHtmlUrl` / `magnetPdfUrl` → NULL (15:52 UTC) | both URLs **404 `Page not found`**; KV reads back `key not found` |
-| 🔴 **its PDF was NOT deleted** — not in the approval | `https://res.cloudinary.com/dunshei0y/image/upload/v1788108327/lead-magnets_1_7293.pdf.pdf` | **still 200**, and still carries `[INSERT_OFFER_LINK]` as text. Nothing in ZAP links to it |
+| **its PDF deleted** — on a second, separate approval | `lead-magnets_1_7293.pdf` via `storageDelete` (`invalidate: true`) | Cloudinary API reads **404 Resource not found**; both the versioned and unversioned URLs return **404** |
 | **magnet 7233 republished**, existing code, run on the deployed `a1ab84e` container (files proven byte-identical to HEAD) | bridge resolved `target-unpublished` → honest text card, no button | both pages and the new PDF (`…/v1789055696/lead-magnets_1_7233.pdf.pdf`) carry **0** links to page 240. The OLD versioned PDF URL now serves the new file — Cloudinary serves by public id |
 
 **Why 239 / 240 / 241 are 404:** the 2026-09-02 takedown of pages carrying fabricated testimonials
 (§4 of the 2026-09-03 block) — 17 rows share `updatedAt` 2026-09-02 19:08:20. It checked each target
 returned 404 and never checked what linked to them. Now CLAUDE.md **§15l**.
 
-**Committed locally, NOT pushed — pushing `railway-build` is the deploy:**
+**PUSHED AND DEPLOYED — `2f2efde` live 2026-09-10 16:34 UTC**, verified against production: the container
+reports `2f2efde`; four deploy markers counted in the served bundle, one of them one that had to disappear;
+all 83 public URLs unchanged in status and content hash across the deploy; tsc 34:
 - **`1def3b9`** — `findLeftoverOperatorTokens` (`_core/leftoverOperatorTokens.ts`) is the one definition of a
   leftover `[INSERT_*]`; the landing-page gate and the magnet publish core both call it. A magnet or bonus
   carrying one is refused before any write, with a named `held` result. A held REPUBLISH leaves what is
@@ -92,6 +94,64 @@ Reset Free"* — that wording is the offer-mode defect's, not the bridge's.
 
 🔴 **New queue item, recorded not fixed — §4 item 7 of the 2026-09-05 block: the rewrite engine republishes
 landing pages with NO publish guard, and it is switched on in production.**
+
+### 0.4b · 🔨 2026-09-10/11 — THE LEAD-MAGNET OFFER-MODE BUILD: built and verified locally, 🔴 NOT PUSHED
+
+**Authority:** `docs/lead-magnet-research/LEAD_MAGNET_STANDARD.md` (now in the repo, verbatim) · **brief:**
+`docs/handovers/BRIEF_2026-09-10_LEAD_MAGNET_OFFER_MODE.md`. The lead-magnet offer mode, the root cause of
+both public defects closed on 2026-09-10.
+
+**Local commits, none pushed — pushing `railway-build` deploys all of them:** `2a9ab5c` (Cloudinary note, held
+for a code push) · `59616ac` prompt pins, recorded on the unmodified code · `0c649c4` offer mode (parts A-D) ·
+`38b6957` the magnet's close (part E) · the commit carrying this record: email/WhatsApp framing (part F).
+
+| measured — kit 225, production inputs, nothing written | before (deployed code, same day) | after |
+|---|---|---|
+| event terms in the offer, 4 samples | 21 · 20 · 14 · 15 | **0 · 0 · 0 · 0** |
+| `[INSERT_OFFER_LINK]` in the offer's CTA | 4 of 4 | 1 of 4 — and no longer passed downstream |
+| the magnet's close | a bridge to a paid call ("Book My Free Call") | 4 of 4 a diagnostic question; no destination, pitch or paid word |
+| session close, kit 223 (all three facts) | — | 2 of 2 carry the coach's own date and time |
+
+- **Paid and free-event prompts byte-identical:** the 21 pins recorded before the build pass unchanged.
+- **Word counts cut so each field can be filled truthfully** (the standard's closing finding): pricing 25-45 →
+  15-30, guarantee 50-75 → 20-35, urgency 30-50 → 15-30, cta 20-30 → 10-20. Observed: urgency ran 34-41 in
+  4 of 5 offers; close bodies 75-120 against 40-80. Ceilings overshot, not floors strained.
+- **Prohibitions only removed, never added:** in `free_asset` mode the offer prompt drops the cohort,
+  programme-duration and intake-date items; the validator is unchanged.
+- ⚠️ **Measurement transport:** this machine's network drops a connection idle for 60 s; a magnet body takes
+  longer, so the close samples ran over a streamed replica of `invokeLLM`'s request (same model, prompts,
+  schema). Production is unaffected — it generates magnet bodies normally.
+
+**🔴 REGENERATING 5686, 7173, 7233 — approved in principle, each production write needs its own go-ahead —
+MUST REGENERATE THE OFFER FIRST.** After this build the cascade tells the magnet the selected offer IS "the
+free lead magnet this campaign gives away". Kit 177's selected offer (192) is paid-shaped — *"…Or You Don't
+Pay"* — and kits 222/223's offers (215, 216) name a different guide from their own magnets. Order, per kit: a
+new free-asset offer → selected on the kit → the magnet body → republish.
+
+**Still pending:** the token gate's live-path proof (approved design; runs after this build deploys).
+
+**Bonus evidence, for Arfeen's separate decision — bonus generation NOT changed in this build:**
+- Kits 223 and 225 each produced a three-bonus stack (checklist, SOP, script); 5 of the 6 are public pages
+  (`bonus-39` to `bonus-44`, all but 40). A lead-magnet campaign therefore ships **four** free assets — the
+  over-generosity trap the standard names ("breadth dilutes").
+- Bonus bodies are written in bonus mode, which tells the model the reader *"has ALREADY enrolled in /
+  purchased the paid programme"*. On a lead-magnet campaign there is no buyer.
+- Filled bonus lines carry claims the magnet does not: offer 216's first bonus promises *"a real result
+  within 7 days"*.
+- Offers 215 and 217 still hold unfilled `[INSERT_BONUS_N_NAME]` slots — their kits never reached the bonus step.
+
+**Recorded, not fixed:**
+- `NO_DATE_FABRICATION_RULE` (`_core/copywritingRules.ts`), imported by every generator, carries as its own
+  examples *"before the next cohort opens"*, *"30-day enrolment window"*, *"limited to 8 places per cohort"*,
+  *"January cohort"* — cohort language in every prompt that imports it (§14). The new offer-mode test excludes
+  the three shared compliance blocks from its event-vocabulary check, and says so.
+- A close sample repeated *"twelve years of professional expertise"*. Not in kit 225's profile or service; it
+  comes from the selected mechanism (hero mechanism 1271, `sourceTier: extracted`, generated) — an upstream
+  grounding question for Node 4, not introduced here.
+- The name ladder's tier-2 cut leaves a trailing conjunction: *"Coaching for Women who paused professional
+  careers to raise a family and"* (`resolveServiceName`).
+- Coach-described methods carry an `ump` field that `renderMethodDetail` does not pass to the magnet.
+- The quiz page's next step is not covered by the page-side liveness check.
 
 ### 0.5 · WHERE THINGS ARE
 

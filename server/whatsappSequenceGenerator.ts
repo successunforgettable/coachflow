@@ -25,6 +25,7 @@ import {
   REGISTER_STANDARD,
 } from "./_core/copywritingRules";
 import { getCascadeContext } from "./_core/cascadeContext";
+import { campaignTypeContextFor } from "./_core/campaignFraming";
 import { validateWhatsappSequenceShape, validateWhatsappFabricationPatterns, type WhatsappSuppliedData } from "./_core/validator";
 
 function stripMarkdownJson(content: string): string {
@@ -898,7 +899,7 @@ Framing: Early access and founding member status. First to experience something 
 Urgency mechanism: Launch day price increase. Founding member pricing closes on launch day.
 CTA language: Get early access / Become a founding member / Lock in launch pricing`,
   };
-  const campaignTypeContext = campaignTypeContextMap[campaignType] || campaignTypeContextMap['course_launch'];
+  const campaignTypeContext = campaignTypeContextFor(campaignTypeContextMap, campaignType);
 
   const socialProof = {
     hasCustomers: !!service.totalCustomers && service.totalCustomers > 0,
