@@ -1,5 +1,221 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-10 (evening)
-### supersedes the earlier 2026-09-10 block below, which is retained and marked, not deleted
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-11
+### supersedes the 2026-09-10 (evening) block below, which is retained and marked, not deleted
+
+**Written for a fresh terminal with no conversational memory.** Every number was MEASURED at write time
+(§15f) unless it says otherwise. Answers from this block alone: what is deployed · what is held locally ·
+what is approved and outstanding · what the next decision is · what a stray command destroys.
+
+---
+
+## 0. GROUND TRUTH
+
+### 0.1 · WHERE THE WORK IS
+
+| | |
+|---|---|
+| repo | `/Users/arfeenkhan/zap-deploy` · remote `github.com/successunforgettable/coachflow.git` |
+| **branch** | **`railway-build`** — production. **NEVER push `main`.** |
+| HEAD | the commit that adds this block · parent **`f81c52c`** |
+| `origin/railway-build` | **`9156875`** |
+| **deployed** | **`9156875`, SUCCESS** (deployment created 2026-09-10 19:44 UTC) |
+| `main` | **`67517e3`**, equal to `origin/main`, untouched |
+| last PRODUCT-CODE commit | **`9156875`** — `git diff --name-only 9156875..HEAD` touches only `CHECKPOINT.md`, `CLAUDE.md`, `docs/` |
+| tracked changes | 0 after this commit |
+| untracked | **321 — CORRECT AND DELIBERATE.** Excluded screenshots, ~590 MB, in no commit |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY** (~5 min). No separate release step.
+
+### 0.2 · HELD LOCALLY, NOT PUSHED — five documentation commits, and why
+
+`7c555bd` · `589e689` · `f35b4bd` · `f81c52c` · and the commit adding this block. **All documentation**
+(`CHECKPOINT.md`, `CLAUDE.md`, `docs/`). **Why held:** pushing `railway-build` deploys production, and
+Arfeen's standing rule is that documentation-only commits stay off `main` and off production — they go out
+**with the next code push**, never on their own. No code push is needed now.
+
+### 0.3 · WHAT A STRAY COMMAND DESTROYS
+
+🔴 **`git reset --hard origin/railway-build` (or re-cloning) destroys the five held commits** — they exist
+only on this machine. Plain `checkout` / `stash` / `reset --hard` (to HEAD) destroy nothing.
+🔴 **`git clean -fd` destroys ~590 MB of untracked screenshots in no commit.** **NEVER `git add .`** — add
+named paths. 🟡 Still outside git: `~/Downloads/nine-creator-scripts-attendee.md` (§6.16).
+
+### 0.4 · GATES
+
+| gate | value |
+|---|---|
+| `npx tsc --noEmit 2>&1 \| grep -c "error TS"` | **34** — measured 2026-09-11, the baseline |
+| `landingPages.test.ts` | 🔴 pre-existing `Database not available`, no local DB. **Do not chase.** |
+
+---
+
+### 0.5 · 🧭 THE STRATEGIC POSITION — read this before choosing work
+
+**Inspection is generating work faster than it removes it.** Arfeen's count for the night: three defects
+closed, three new ones recorded. Counted across the whole 2026-09-10/11 session: **3 closed** — the raw
+operator token on a live magnet, the next-step button pointing at a taken-down page, and lead-magnet offers
+described as a live event — **and 6 added** (queue items 7–12), every one found by inspecting something
+already being fixed.
+
+**The August launch plan's STEP SIX has never happened**: Arfeen runs one full campaign for his own
+business through ZAP, publishes it to his own account, and judges the output. It was meant to be the
+measurement that decides which defects matter. (No written copy of the launch plan was found in the repo,
+memory or git history on 2026-09-11 — searched "launch plan", "step six", "own business". Recorded here
+from Arfeen's statement.)
+
+> **THE RECOMMENDATION ON THE TABLE: finish the three outstanding regeneration items (§0.6 A–C), then run
+> that campaign — rather than continue fixing by inspection.** CC concurs: only a real campaign can rank
+> twelve queue items, and the queue has grown every time it was inspected.
+
+### 0.6 · ✅ APPROVED AND OUTSTANDING — run in this order, then STOP
+
+Approved by Arfeen on 2026-09-11 so a fresh session can resume without re-asking WHAT to do. ⚠️ **§0.10
+gate 1 still binds EACH write**: show the statement and wait for "go ahead" in the message immediately
+before it. A restart message that says "go ahead" on these items satisfies it. Scripts, SQL and the run
+pattern: **`docs/handovers/REGEN_RUNBOOK_2026-09-11.md`**.
+
+**A. Magnet 5686 — the in-place title write. NOT the product path.**
+1. Re-measure that 5686's body mentions the claim only inside `$.title`. Then write `hvcoTitles.title` and
+   `assetBody.$.title` = **"The Cold Inbox Toolkit for Designers"** (runbook §4). The product path
+   (`runHvcoGeneration`) is excluded: it inserts 60 rows, bumps the quota and re-selects kit 177 to a NEW
+   magnet row.
+2. Republish 5686 (runbook §3, step 3) — KV pages, a new PDF version, the URL columns.
+3. Invalidate `lead-magnets_1_5686.pdf` ONCE (runbook §5). That one call is BOTH "clear the current address"
+   (`v1789071852`, whose PDF carries the old title) AND the **one further attempt** on the old address
+   (`v1787860054`). Two fetches of each, minutes apart. **If `v1787860054` still returns 415,099 B, sha
+   `3eb37b0fc011`, record it UNRESOLVED and do not retry.**
+4. §15l before calling it done: the title flows into kit 177's headlines, landing page and email (all
+   stale-marked, possibly live). Fetch any published page of kit 177 for "$6,000" / "11 Days" and report
+   it — changing one is NOT approved.
+5. Report the title as clean **by position, not by a gate** (queue item 12).
+
+**B. Magnet 7173 — clear the old address `v1787948313`** (serves the 28 Aug file: 282,521 B, sha
+`b656b92de609`, clean but stale). Invalidate `lead-magnets_1_7173.pdf`; two fetches minutes apart.
+
+**C. Magnet 7233 / kit 223 — the full regeneration**, the same four steps as 5686 and 7173 (runbook §3),
+with a whole-database comparison before and after each. Measured 2026-09-11:
+
+| | |
+|---|---|
+| kit 223 | `complete`, `lead_magnet`, profile **289**, service **316**, offer **216**, mechanism **1256** |
+| magnet 7233 | *"The 90-Second Spiral Stopper"* · PDF `v1789055696` · `nextStepLandingPageId = 240` (page taken down 2026-09-02 → expect bridge `target-unpublished`, a text card) |
+| stale rows now | 1 — `187 adCopy` |
+| concepts for profile 289 | **8** |
+
+- **The concept job must be CONFIRMED, not assumed.** `ensureConceptsForIcp` returns `"exists"` before
+  touching `jobs` when the profile has any concept (`server/conceptGenerator.ts:628-633`), and profile 289
+  has 8 — so no job is expected. **The step-1 diff must show `jobs` unchanged.** If a job appears anyway:
+  stop, report, and delete it on approval (runbook §3).
+- Kit 223 is `complete`, so step 1 upserts a stale row for EVERY populated downstream node (kit 177, also
+  complete, got 8) and does not change the status. Step 4 deletes ONLY the magnet's `freeOptIn` stale row.
+- Report exactly as for 5686: offer name · live-event wording · whether the next step names a destination
+  or asks a question · leftover tokens, by FETCHING both live pages and the new PDF · stale rows remaining.
+- After republish, `v1789055696` becomes an OLD address. **Clearing it is NOT approved** — fetch it twice
+  and record what it serves.
+
+**D. Then STOP.** Next is §0.5's decision, not more inspection.
+
+### 0.7 · THE WORKING RULE — it produced the session's three stops
+
+> **Any write beyond what was explicitly approved → STOP AND REPORT before proceeding.**
+> **A whole-database comparison (all 58 tables, with `CHECKSUM TABLE`) runs before and after EVERY step.**
+
+The stops it produced: **(1)** 5686 step 1 — `autoSelectBest` → `ensureCampaignKit` inserted a `jobs` row
+`concepts-icp-239` that nobody had approved (reported, deleted on approval; a count/updatedAt diff could not
+see the later status change — the checksum could). **(2)** 5686's title — the product path would have
+inserted 60 rows, bumped the quota and re-selected the kit to a new magnet. **(3)** 5686's title — the title
+node reproduced the ungrounded claim; per Arfeen, *"a defect in the title node, not a bad roll"* — stop,
+never re-roll. Same standard for instruments: **two fetches minutes apart for any cached address** (queue 11).
+
+### 0.8 · REGENERATION STATE — partly done
+
+| magnet / kit | state |
+|---|---|
+| **5686 / kit 177** | ✅ **Regenerated, live pages clean.** Offer **223** *"The Cold Outreach Toolkit for Freelance Graphic Designers"*, no live-event wording. The next step asks a diagnostic question (*"Is your portfolio built for designers — or for buyers?"*) and names no destination. 0 leftover tokens. The discovery-call funnel is gone from both live pages and the new PDF. **7 stale rows remain, all accurate** (mechanism, headlines, ad copy, landing page, email, WhatsApp, ad creatives — built against the paid offer). 🔴 **The title still carries the unverified result claim** — the in-place fix is approved, NOT written (§0.6 A). 🔴 **The old cached PDF address still serves the old file with the funnel — UNRESOLVED.** |
+| **7173 / kit 222** | ✅ **Regenerated, live pages clean.** Offer **224** *"The Hard Conversation Script for Couples Who Keep Circling"*, no live-event wording. The next step asks a question (*"Is the signal the real problem — or what it stands for?"*) and names no destination. 0 leftover tokens. **1 stale row remains, `uniqueMethod`, accurate.** Its concept job `concepts-icp-288` was created and deleted. 🟡 The old cached PDF address still serves the 28 Aug file — clean but stale (§0.6 B). |
+| **7233 / kit 223** | ⏸ **Not started** (§0.6 C). Its profile has 8 concepts, so selection should NOT create a concept job — **confirm it, do not assume it.** |
+
+Step-by-step records, with every diff: §0.4c of the 2026-09-10 (evening) block below.
+
+### 0.9 · ✅ SHIPPED AND VERIFIED — THE LEAD-MAGNET OFFER-MODE PACKAGE
+
+**Production is on `9156875`.** The five commits — `2a9ab5c` (Cloudinary note), `59616ac` (prompt pins for the
+paid and free-event prompts), `0c649c4` (a lead magnet's offer is the free asset), `38b6957` (the loop-splice
+close; a session is promised only when it is live), `9156875` (email and WhatsApp stop inheriting
+course-launch framing) — **are live, and every post-deploy check passed.** **The token gate is proven on
+the live path:** the lead-magnet and bonus paths both HELD on 7293's stored body, with nothing written.
+**Kit 225's offer generates through the deployed code with ZERO live-event words in 4 of 4 samples.**
+Shipped earlier the same night: `1def3b9` (one definition of a leftover token; the magnet path refuses one),
+`23587bf` (a dead next-step button becomes the text card when viewed), `2f2efde` (§15l). Detail: §0.4a and
+§0.4b of the block below.
+
+### 0.10 · THE QUEUE — one list, in the order things stand
+
+**CAMPAIGN — blocks spend, outranks the product queue, untouched by any product work** (full text §6.17):
+- **C1** 🔴 The end-to-end conversion test has NOT been run with Test Events open on the "Arfeen Webinar 2.0"
+  dataset (§6.6 item 2). **Gates resuming spend.**
+- **C2** 🔴 Creative must reach the agency before the campaign window opens (§6.9e).
+- **C3** 🔴 The three thank-you pages and the rewritten email/WhatsApp sequences are NOT in GoHighLevel
+  (§6.8, §6.10d).
+- **C4** 🔴 The agency's tracking fixes are NOT verified.
+
+**PRODUCT — §4 of the 2026-09-05 block, in its recorded order** (full diagnosis there):
+1. 🔴 The 13 blank-list desyncs (`ACCEPTED_DESYNCS` — count the entries, never prose).
+2. 🟡 The word-budget floor is never tested.
+3. ✅ **CLOSED** — `lead_magnet` offers resolved to `free_event`; fixed by `0c649c4`.
+4. 🟡 The six-field intake confirm screen is unreachable (§15d).
+5. 🟡 Two of three `injectRealTestimonials` callers are unexercised.
+6. 🟡 §7.6 carried items.
+7. 🔴 The rewrite engine is a live path that bypasses every publish guard.
+8. 🟡 The date-fabrication rule teaches cohort scarcity to every generator.
+9. 🟡 Bonuses on a lead-magnet campaign — evidence for Arfeen's separate decision.
+10. 🟡 The lead-magnet naming rules have no timeframe rule.
+11. 🔴 **A Cloudinary address does not serve the version it names; one fetch proves nothing** — invalidation
+    cleared two of three addresses.
+12. 🔴 **The product manufactures the fabrication** — the service profile's lead-magnet topic MUST contain a
+    figure, nothing grounds it, the title node carries it into every title (34 of 60 in the dry run), 112 of
+    115 production topics carry a figure. **Affects every service.** 5686's replacement is clean by position.
+
+The **three approved regeneration items** in §0.6 (A–C) are run first only because they are already
+approved and partly done; then §0.5 decides.
+
+### 0.11 · WHERE THINGS ARE
+
+| | |
+|---|---|
+| **regeneration scripts, SQL, run pattern** | **`docs/handovers/REGEN_RUNBOOK_2026-09-11.md`** |
+| regeneration records, every diff | §0.4c of the 2026-09-10 (evening) block below |
+| the night's defect fixes · the offer-mode build | §0.4a · §0.4b of the same block |
+| the lead-magnet standard · the build brief | `docs/lead-magnet-research/LEAD_MAGNET_STANDARD.md` · `docs/handovers/BRIEF_2026-09-10_LEAD_MAGNET_OFFER_MODE.md` |
+| product queue · protected rows | §4 and §5 of the 2026-09-05 block below |
+| open campaign items · what gates spend | §6.17 · §6.6 items 0a, 0 and 2 |
+| ad creative, live | §6.13 · `docs/andromeda/worked-examples/final-shoot-2026-09-10/` |
+
+### 0.12 · HOW TO RUN THINGS
+
+| need | command |
+|---|---|
+| DEPLOYED code, prod env | `railway ssh --environment production --service coachflow "cd /app && npx tsx _x.ts"` — **with the 20 s heartbeat for anything long** (runbook §1) |
+| LOCAL tree, prod env | `railway run --environment production --service coachflow npx tsx _x.ts` |
+| whole-database comparison | `railway run … python3 dbsnap2.py out.tsv`, before and after, then `diff` (runbook §2) |
+| deployment status, cheaply | `railway deployment list --environment production --service coachflow --json \| python3 -c "import sys,json;d=json.load(sys.stdin)[0];print(d['status'],d['meta']['commitHash'][:7])"` |
+
+🔴 Scripts sit at the **repo root** or **`/app`**. `nohup … &` on the container dies with the SSH session; a
+silent foreground step drops at ~50 s. **Never pipe a bare `railway … --json` into context.**
+
+### 0.13 · THE HARD GATES THAT DO NOT RELAX
+
+1. **ALL prod-table writes** require Arfeen's explicit "execute" or "go ahead" **in the immediately
+   preceding message**. Show the statement and hold. No exceptions for small, safe or obvious.
+2. **Never push `main`.** Documentation-only commits never go to production on their own (§0.2).
+3. **Never `git add .`** — §0.3.
+4. **A deploy marker must be proven to differ between the two builds** (§15h).
+5. **Screenshots come from Arfeen's browser.** CC never fabricates screenshots or Railway logs.
+6. **Any write beyond what was approved → stop and report** (§0.7).
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-10 (evening), retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-11 RESTART BLOCK at the top of this file**. Its §0.4a–§0.4c remain the detailed record of the night's fixes, the offer-mode build and the regenerations.
 
 **Written for a fresh terminal with no conversational memory.** Every number MEASURED at write time
 (§15f). Answers four questions from this block alone: what is deployed · what is uncommitted · what
@@ -276,7 +492,7 @@ directory. macOS has no `timeout`; zsh eats `$var:path` — brace it. **Never pi
 ---
 
 # 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-10 (morning), retained not deleted
-### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 (evening) RESTART BLOCK above**.
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-11 RESTART BLOCK at the top of this file**.
 ### It superseded the 2026-09-06 block below; its §0 ground truth and next-action are now stale.
 
 **Written for a fresh terminal with no conversational memory.** Every number below was MEASURED at
@@ -377,7 +593,7 @@ check.**
 ---
 
 # 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-06 (retained, not deleted)
-### ⚠️ The LIVE block is the 2026-09-10 RESTART BLOCK above. This one's §6 campaign sections are
+### ⚠️ The LIVE block is the 2026-09-11 RESTART BLOCK at the top of this file. This one's §6 campaign sections are
 ### still current and still referenced; its §0 ground truth and §0.5 next-action are SUPERSEDED.
 
 **Every number MEASURED at write time (§15f).** Answers four questions from the block alone: what is
@@ -1846,8 +2062,10 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    `< budget.min`, so a 40-word 30-second script passes as cleanly as an 85-word one. All three
    banked 30s scripts are BELOW the 75-word floor while documented as compliant. The constant
    already exists in `WORD_BUDGET_TABLE`; it is roughly two lines.
-3. 🟡 **`lead_magnet` offers resolve to `free_event`** — a downloadable guide described as a live
-   event. **Carried forward and NOT re-measured since 2026-09-03. Re-measure before acting (§15f).**
+3. ✅ **CLOSED 2026-09-10 — `lead_magnet` offers resolved to `free_event`.** Fixed at the root by
+   `0c649c4` (`OfferMode` gains `free_asset`, checked before `__FREE__`), live since `9156875`. Verified on
+   production: kit 225's offer through the deployed code, 0 live-event words in 4 of 4 samples; the
+   regenerated offers 223 (5686) and 224 (7173), 0 each. Kept in place so item numbers still resolve.
 4. 🟡 **The six-field intake confirm screen has been unreachable since `a3e83d6` (June).** A §15d
    instance: the screen exists, nothing routes to it. (The commonly-repeated detail that "a coach
    sees only two of six fields" is NOT verified — check it before quoting it.)
@@ -1901,8 +2119,8 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    rule**: the model happened to find a real figure. A coach whose material carries no timeframe gets no
    protection from the naming block, and the name also borrows the paid programme's outcome window for a free
    download. The offer validator still catches invented GUARANTEE timeframes; nothing checks one in a name.
-11. 🔴 **AN OVERWRITTEN PDF STAYS PUBLIC FOR UP TO 30 DAYS AT ITS OLD URL** — added 2026-09-10, recorded,
-   NOT fixed. `storagePut` (`server/storage.ts`) uploads with `overwrite: true` and no `invalidate`, and
+11. 🔴 **A CLOUDINARY ADDRESS DOES NOT SERVE THE VERSION IT NAMES — AN OVERWRITTEN PDF STAYS PUBLIC FOR
+   UP TO 30 DAYS, AND ONE FETCH PROVES NOTHING** — added 2026-09-10, widened 2026-09-11, recorded, NOT fixed. `storagePut` (`server/storage.ts`) uploads with `overwrite: true` and no `invalidate`, and
    Cloudinary's CDN caches every exact URL as `immutable, max-age=2592000`. So a republish replaces the
    file at the public id but the OLD versioned URL keeps serving the old bytes from any cache that holds
    them. Measured 20:26 UTC: **5686's old PDF** (`v1787860054`) still serves the discovery-call funnel ("Book
@@ -1918,15 +2136,56 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    `hit` at 20:32, 20:36, 20:48 and 21:04 (33 min on). The same call DID purge 5686's CURRENT URL
    (`v1789071852` flipped `hit` → `miss`), so the request reached the public id; why one old versioned URL
    survives is unexplained (only one of the two did). Not retried.
-12. 🔴 **THE SERVICE PROFILE FABRICATES A PROOF CLAIM AND FEEDS IT TO THE TITLE NODE** — added 2026-09-11,
-   recorded, NOT fixed. `expandProfile` (`server/routers/services.ts:390`) asks the model for
-   `hvcoTopicSuggestion`: *"Must contain a specific number or timeframe, a named enemy or obstacle…"*, and
-   `services.ts:569` writes it to `services.hvcoTopic` unconditionally. The title node
-   (`hvcoGenerator.ts:152`) falls back to that field whenever `hvcoTopic` is blank — orchestration always
-   passes `""`. So a first-person result the coach never stated (*"Booked Me a $6,000 Branding Client in 11
-   Days"*, service 262) becomes the topic every title is written about, and regeneration reproduces it. Seen on
-   two of two services checked (262, 315). The title prompts' own *"every title must contain at least ONE of"*
-   rules add the same pressure. Fix is at the source — the field instruction and its fallback — not a retry.
+   **THE FINDING, STATED ON ITS OWN.** A versioned Cloudinary address does not pin the version it names.
+   On a cache MISS it serves the CURRENT file under the public id — 7233's `v1788007578` and 5686's
+   `v1789071852` both returned the newest bytes once purged. On a cache HIT it serves whatever bytes that
+   cache holds, for up to 30 days. And invalidation is not proven by the call: one `explicit` per public id
+   cleared two addresses and not the third. **So one fetch of a previously-cached address proves nothing
+   about what it will serve later, and any check resting on one is unproven** — the first 7233 reading
+   ("serves the new file") was exactly that, and was wrong within hours. The standard from now: two
+   fetches minutes apart, reading bytes, hash and the `server-timing` `desc=hit|miss` header; record a hash
+   of what was published, never the address alone (CLAUDE.md §4). Approved and outstanding: one further
+   invalidate on 5686 (if the old bytes persist, record UNRESOLVED and stop), and clearing 7173's
+   `v1787948313`. Runbook: `docs/handovers/REGEN_RUNBOOK_2026-09-11.md` §5.
+12. 🔴 **THE PRODUCT MANUFACTURES THE FABRICATION — the service profile writes an invented proof claim into
+   the lead-magnet topic, and the title node carries it into every title** — added 2026-09-11, recorded, NOT
+   fixed. **The most consequential finding of the 2026-09-10/11 session.**
+   - **The source.** `expandProfile` (`server/routers/services.ts:322`, prompt at `:390`) asks the model for
+     `hvcoTopicSuggestion`: *"A lead magnet title… Must contain a specific number or timeframe, a named enemy
+     or obstacle, and a concrete promised insight."* `services.ts:569` writes it to `services.hvcoTopic`
+     unconditionally. **Nothing ties the number to anything the coach supplied.** The model is required to
+     produce a figure, usually has none, and so invents one. The stored value carries no provenance — the
+     `services` table marks where `name` came from (`nameSource`) and nothing for `hvcoTopic` — so it sits
+     beside the coach's own material looking like it.
+   - **Reach — every service, not only these kits.** Both intake screens call it for every new service:
+     `client/src/v2/V2TrailIntake.tsx:535` and `V2AutoModeIntakeConfirm.tsx:303`. Measured on production
+     2026-09-11: **139 services, 115 with a topic, 112 of those 115 carry a figure**; 58 carry a time unit,
+     13 a dollar amount; 11 coaches. ⚠️ A figure is not by itself an invented result (*"3-Step"* is a
+     structure), and some topics may have been edited by a coach (`services.ts:614`), so **the invention
+     rate is not counted** — the MANDATE to include a figure is universal.
+   - **The carry.** The title node (`hvcoGenerator.ts:152`) uses `service.hvcoTopic` whenever the caller
+     passes a blank topic, and orchestration always passes `""` (`orchestration.ts:418`). It enters all four
+     title prompts as *"HVCO Topic:"* (`:164`, `:232`, `:291`, `:342`), whose own rules add *"every title must
+     contain at least ONE of"* a specific number and the like. **A zero-write dry run on service 262**
+     (`persist:false`; 58-table checksum diff, no change) **returned 60 titles, 34 carrying a figure, and
+     reproduced the claim**: *"…Books $6,000 Brand Identity Clients in 11 Days"*, *"5-Line Email, $6K
+     Branding Client"*, *"11-Day Cold Outreach Sequence"*.
+   - **Why it is the product's fabrication and not the coach's.** Service 262's topic reads *"The 5-Line Cold
+     Email That Booked **Me** a $6,000 Branding Client in 11 Days…"* — first person, the coach's voice, a
+     result the coach never stated — written 69 s after the service was created. `$6,000` exists in profile
+     239 only as the BUYER's hoped-for rate (`hopesDreams`; a generated profile with no `groundingMeta`, and
+     not a field the title prompt reads). `11 days` exists in nothing the coach supplied. Service 315 has
+     the same shape (*"The 90-Second Window…"*), and 7173's live title *"The 90-Second Shutdown Fix"*
+     descends from it. **ZAP invents the claim upstream, stores it as if it were the coach's, and then
+     propagates it faithfully.**
+   - **Why regeneration cannot fix it.** Every run reads the same field. **5686's replacement title, "The
+     Cold Inbox Toolkit for Designers", is clean because of its POSITION in the list** — the pick rule takes
+     the first `short` title (`_core/pickSelected.ts`, `hvco` case) — **not because any gate checked it.** The
+     next run can land on *"5-Line Email, $6K Branding Client"*.
+   - **The fix is at the source**: the field instruction (a figure only where the coach supplied one),
+     provenance on the stored value, and the title node's fallback — each with a before/after measurement.
+     Not a retry, and not a filter on titles after the fact. Related: item 10 (naming has no timeframe rule),
+     item 8 (a rule's own examples priming the output).
 
 ---
 
@@ -2699,7 +2958,7 @@ hand-tune campaigns two or three.
 ---
 
 # 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-09-01 (retained, not deleted)
-### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 RESTART BLOCK at the top of this file**.
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-11 RESTART BLOCK at the top of this file**.
 ### This block superseded the 2026-08-31 one below it; it was itself superseded on 2026-09-02.
 ### Its content is kept for the record — its ground truth and its next-actions are stale.
 
@@ -3118,7 +3377,7 @@ TS errors             34
 ---
 
 # 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-08-31 (retained, not deleted)
-### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 RESTART BLOCK at the top of this file**.
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-11 RESTART BLOCK at the top of this file**.
 ### **Kept for its detail, NOT for its next-actions.** Its §0/§0a/§0b corrections and its instrument
 ### results still stand; its ordering does not.
 ### ⚠️ **CORRECTED 2026-09-10** — this heading previously read *"The live block is the 2026-09-01 one
@@ -5838,7 +6097,7 @@ around it does not.
 ---
 
 # 🗄️ SUPERSEDED COLD-START BLOCK — written 2026-08-30, end of session (retained, not deleted)
-### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 RESTART BLOCK at the top of this file**.
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-11 RESTART BLOCK at the top of this file**.
 ### Its content is kept for the record — its ground truth and its next-actions are stale.
 
 **A fresh terminal with no memory of this session can restart from this block alone. Everything
