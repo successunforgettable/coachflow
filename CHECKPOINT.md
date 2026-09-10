@@ -1,5 +1,110 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-10
-### supersedes the 2026-09-06 block below, which is retained and marked, not deleted
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-10 (evening)
+### supersedes the earlier 2026-09-10 block below, which is retained and marked, not deleted
+
+**Written for a fresh terminal with no conversational memory.** Every number MEASURED at write time
+(§15f). Answers four questions from this block alone: what is deployed · what is uncommitted · what
+to do next · what a stray command destroys.
+
+---
+
+## 0. GROUND TRUTH
+
+### 0.1 · WHERE THE WORK IS
+
+| | |
+|---|---|
+| repo | `/Users/arfeenkhan/zap-deploy` · remote `github.com/successunforgettable/coachflow.git` |
+| **branch** | **`railway-build`** — production. **NEVER push `main`.** |
+| HEAD | **`1cbd242`** at write time — **drifts, see below** |
+| `origin/railway-build` | identical, **0 unpushed** |
+| **deployed** | **`1cbd242`, SUCCESS** |
+| `main` | **`67517e3`**, equal to `origin/main`, untouched |
+| tracked changes | **0. Tree clean.** |
+| untracked | **321 — CORRECT AND DELIBERATE.** Excluded screenshots, ~590 MB, in no commit |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY** (~5 min). No separate release step.
+
+📌 **HEAD and the deployed hash BOTH DRIFT.** **`d8298b8` is the last commit that changed PRODUCT
+CODE** — verified at write time: `git diff --name-only d8298b8..HEAD` touches only `CHECKPOINT.md`
+and `docs/`. Settle position with `git log --oneline -3`, never against this table.
+
+### 0.2 · WHAT A STRAY COMMAND DESTROYS
+
+`checkout` / `stash` / `reset --hard` → **nothing**, all committed and pushed.
+🔴 **`git clean -fd` destroys ~590 MB of untracked screenshots in no commit.** **`git add .` commits
+them irreversibly. NEVER `git add .` — add named paths.**
+🔴🔴 **AND OUTSIDE GIT ENTIRELY: emptying the Trash destroys the only markdown copies of the shoot
+briefs (§6.13). The surviving PDFs sit in `~/Downloads/final shoot/` and are one folder deletion
+from gone.**
+
+### 0.3 · GATES
+
+| gate | value |
+|---|---|
+| `npx tsc --noEmit 2>&1 \| grep -c "error TS"` | **34** — the baseline, must not regress |
+| `landingPages.test.ts` | 🔴 pre-existing `Database not available`, no local DB. **Do not chase.** |
+
+### 0.4 · THE NEXT ACTION
+
+⚠️ CC's recommendation; Arfeen owns the call.
+
+✅ **THE AD CREATIVE IS DONE. Nine scripts, four crew briefs, signed off for filming — §6.13.**
+Nothing in it breaks in production. **One instruction cannot be fixed after the shoot: §6.14** — the
+three outdoor videos need a dark or plain region framed for the text card, or OCR cannot read it and
+the ad silently loses its category anchor.
+
+🔴 **CAMPAIGN WORK IS BLOCKING AND OUTRANKS THE PRODUCT QUEUE. Read §6.17 — four open items**, none
+closed by the creative work. The one that gates money: **the end-to-end conversion test has not been
+run** (§6.6 item 2). The 6 Sept campaign spent **3,683 AED for ZERO attributed conversions** because
+the ad sets optimise for an event that never registers (§6.0).
+
+**Product-side, the next item is the 13 blank-list desyncs** — authoritative list is
+`ACCEPTED_DESYNCS` in `server/landingPageBlankList.test.ts`, **not prose**. Wider product queue is
+§4 of the **2026-09-05** block further down.
+
+### 0.5 · WHERE THINGS ARE
+
+| | |
+|---|---|
+| **ad creative, live** | **§6.13** · deliverables `~/Downloads/final shoot/*.pdf` ⚠️ **not in git** |
+| shoot-day instruction | **§6.14** · edit-stage list **§6.15** |
+| creator scripts (parked) | **§6.16** · `~/Downloads/nine-creator-scripts-attendee.md` ⚠️ not in git |
+| open campaign items | **§6.17** |
+| what still gates spend | **§6.6**, items 0a, 0 and 2 |
+| campaign history, in order | §6.00 → §6.9 → §6.10 (§6.11 and §6.12 are SUPERSEDED, marked) |
+| the script generator spec | `docs/andromeda/script-rule-spec.md` — rules, failure patterns, process finding, 4 conflicts, 4 silences |
+| the research corpus | `docs/andromeda/{script,copy,image,landing-page,prospecting,performance}-research/` |
+| product queue · protected rows | §4 and §5 of the 2026-09-05 block below |
+
+### 0.6 · HOW TO RUN THINGS
+
+| need | command |
+|---|---|
+| DEPLOYED code, prod env | `railway ssh --environment production --service coachflow "cd /app && npx tsx _x.ts"` |
+| LOCAL tree, prod env | `railway run --environment production --service coachflow npx tsx _x.ts` |
+| grep the served bundle | `railway ssh ... "grep -c 'MARKER' dist/index.js"` (esbuild, NOT minified) |
+| deployment status, cheaply | `railway deployment list --environment production --service coachflow --json \| python3 -c "import sys,json;d=json.load(sys.stdin)[0];print(d['status'],d['meta']['commitHash'][:7])"` |
+
+🔴 Scripts must sit at the **repo root** (or `/app`) — Node resolves imports from the script's own
+directory. macOS has no `timeout`; zsh eats `$var:path` — brace it. **Never pipe a bare
+`railway … --json` into context: ~24,000 tokens for one status check.**
+
+### 0.7 · THE HARD GATES THAT DO NOT RELAX
+
+1. **ALL prod-table writes** require Arfeen's explicit "execute" or "go ahead" **in the immediately
+   preceding message**. Show the statement and hold. No exceptions for small, safe or obvious.
+2. **Never push `main`.**
+3. **Never `git add .`** — §0.2.
+4. **A deploy marker must be proven to differ between the two builds** before it proves anything (§15h).
+5. **Screenshots come from Arfeen's browser.** CC never fabricates screenshots or Railway logs.
+6. **Computed figures are reliable; typed claims are not.** Five graded revisions, three consecutive
+   with the same signature. **Recompute before trusting any stated number, including this file's.**
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-10 (morning), retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-10 (evening) RESTART BLOCK above**.
+### It superseded the 2026-09-06 block below; its §0 ground truth and next-action are now stale.
 
 **Written for a fresh terminal with no conversational memory.** Every number below was MEASURED at
 write time (§15f). Answers four questions from this block alone: what is deployed · what is
@@ -964,7 +1069,13 @@ contradict the new page copy placed around it.** **Check it before the new copy 
 
 ---
 
-### 6.11 · ✅ THE NINE AD SCRIPTS ARE FINISHED — rev 5, SIGNED OFF FOR FILMING (2026-09-10)
+### 6.11 · 🗄️ SUPERSEDED — rev 5 and the three earlier crew briefs (2026-09-10, retained not deleted)
+
+> 🔴 **SUPERSEDED BY §6.13 the same day.** Rev 5 of the nine scripts and the three crew briefs
+> recorded below are **history**. The live deliverables are the FOUR-file set in
+> `~/Downloads/final shoot/`. **Do not shoot from anything in this section.** Its findings about the
+> outdoor text card and the edit-stage list still stand and are restated at §6.14 and §6.15.
+
 
 **Five revisions, each graded by independent recomputation of every stated figure. Rev 5 is the
 final pass and it is approved to shoot.**
@@ -1029,7 +1140,12 @@ finding. **Every mechanical rule in it was violated by a draft written with that
 
 ---
 
-### 6.12 · 🔴 CAMPAIGN ITEMS STILL OPEN — unchanged, none closed by the script work
+### 6.12 · 🗄️ SUPERSEDED BY §6.17 — retained, not deleted
+
+> ⚠️ **The live open-items list is §6.17.** This one carried the same four items and is kept only so
+> the supersession is visible. **Two identical lists is how a reader ends up acting on the stale
+> one — read §6.17.**
+
 
 1. 🔴 **The end-to-end conversion test has NOT been run.** Arfeen has the pixel access and has not
    yet registered on a live page with **Test Events open on the "Arfeen Webinar 2.0" dataset**.
@@ -1041,6 +1157,159 @@ finding. **Every mechanical rule in it was violated by a draft written with that
    GoHighLevel.** Written and handed over; nothing confirmed live (§6.8, §6.10d).
 4. 🔴 **The agency's fixes are NOT verified.** It said it would check the events and perform all
    other points; **that is a statement of intent, not a verification** (§6.10d).
+
+---
+
+### 6.13 · ✅ AD CREATIVE COMPLETE — the four-file set, signed off for filming (2026-09-10)
+
+🔴 **SUPERSEDES ALL FIVE EARLIER REVISIONS of the nine Arfeen scripts AND the three earlier crew
+briefs recorded at §6.11.** Those are history. Do not shoot from them.
+
+#### 🔴🔴 WHERE THE DELIVERABLES ACTUALLY ARE — CORRECTED, AND URGENT
+
+| | |
+|---|---|
+| ✅ **surviving** | **`~/Downloads/final shoot/`** — `1-script-and-talent-brief.pdf` · `2-camera-brief.pdf` · `3-editor-brief.pdf` · `4-production-brief.pdf` |
+| 🔴 **the markdown originals are IN THE TRASH** | `~/.Trash/1-script-and-talent-brief.md`, `~/.Trash/4-production-brief.md`, and copies under `~/.Trash/ads/` and `~/.Trash/final ads shoot/`. **Verified 2026-09-10, not recalled.** |
+
+⚠️ **Corrects the instruction that produced this entry**, which said both formats were in
+`~/Downloads`. **They are not.** The `.md` files are in the Trash and the PDFs are in a subfolder.
+
+> 🔴 **NOTHING HERE IS IN GIT. Emptying the Trash destroys the markdown. The PDFs are one folder
+> deletion from gone. If they are lost they are lost — there is no other copy.**
+
+📌 **The PDFs carry the corrected text**, despite a 00:46 file timestamp — verified by extraction,
+not assumed. They are the version to shoot from.
+
+#### WHAT THE FINAL REWRITE DID
+
+**The mechanism — the four patterns — moved from roughly second 28 into the first ten seconds of all
+nine scripts, per `docs/andromeda/script-rule-spec.md` §4.5.**
+
+**Verified by recomputation at 2.7 words/second, where twelve seconds is word 32:**
+
+| | named at | | | named at |
+|---|---|---|---|---|
+| E1 · E2 | **3.7s** | | P3 | 6.3s |
+| W1 | 4.4s | | W2 | 8.1s |
+| P2 · E3 | 4.8s | | W3 | 8.5s |
+| | | | P1 | **8.9s** — the slowest |
+
+**All nine inside twelve seconds.** Every other figure recomputed against the published stoplist:
+
+- **112–114 words** across all nine, inside the 112–127 band · **declared counts exact, 9 of 9**
+- **hooks 4–10 words** · **longest sentence 18** anywhere · **sentence-length SD 3.9–5.8** (better
+  than the previous set's 3.5–4.8 — the flattening reversed)
+- **zero six-word sequences repeated across more than two scripts** — the formula defect absent from
+  a first draft for the first time in the project
+- **compliance clean** across scripts, cards and headlines: no returns, income, wealth, guarantees,
+  scarcity or urgency; no endorsement claims; Shez's seven years is the only credential, in three of nine
+
+#### THE TWO HARD LIMITS BREACHED AT GRADING, AND FIXED — verified fixed in the PDFs
+
+| | was | now |
+|---|---|---|
+| **P1 headline** | *"Four patterns. One is yours."* — **28 chars against a 27 limit** | *"Four patterns. **One's** yours."* — **27** ✅ |
+| **E3 card** | `CRYPTO · THE DOWNSIDE FIRST` — **duplicated its own headline** *"The downside, first."* | `CRYPTO DUE DILIGENCE · SUNDAY LIVE` ✅ (and 34 chars, now inside the 30–50 band; it had been 27) |
+| **P3 headline** | *"A sequence, not a tip."* — shared *"sequence"* with its card | *"Run it before you act."* ✅ |
+
+✅ **Re-verified across all nine pairs from the surviving PDF: zero shared tokens between any card
+and its headline, every headline ≤27 characters, every card inside 30–50.**
+
+#### 📌 THE CITATION CORRECTION — same class of error the spec exists to prevent
+
+The front-loading numbers had been attributed to the **578,750-ad Motion dataset**. That dataset
+belongs to the **Tier 1 hook-rate-versus-ROAS finding**, not to this one. **The front-loading
+evidence is Tier 2** — controlled audits at **over 100,000 impressions per variant**, limited
+because landing-page and offer effects cannot be isolated (`performance-research/`'s own audit).
+
+**Corrected in the script file, verified present in the PDF.** It now also states the trade in both
+directions: **front-loading costs 10–14 points of hook rate and 23–30 points of hold rate.** Quoting
+only the gains was quoting half the table.
+
+> **A Tier 2 finding had been given a Tier 1 dataset's authority.** That is exactly what
+> `script-rule-spec.md` rule 7 and the tiering convention exist to stop.
+
+---
+
+### 6.14 · 🔴 THE ONE INSTRUCTION THAT CANNOT BE FIXED AFTER THE SHOOT
+
+> **On the three OUTDOOR videos — P3, E3 and W3 — frame a DARK or PLAIN LOW-DETAIL REGION for the
+> text card.** Bokeh, deep shadow, a plain wall, a flat surface. Anything except bright sky or busy
+> sunlit background.
+
+**Why it is a shoot-day instruction and nothing else:** white text over a bright background **cannot
+be read by OCR**. If Rosetta cannot extract the card, the ad **silently loses its category anchor** —
+**and nothing reports the failure.** No error, no flag, no visible difference in Ads Manager. A check
+that cannot fail (§15c), and the only place to prevent it is in front of the camera.
+
+🔴 **W3 is the hardest — bright outdoor shot with hands in frame.** Find the shadow before rolling.
+
+✅ Stated prominently in **both** the camera brief and the production brief, with the reason attached
+in each.
+
+---
+
+### 6.15 · 🟢 FIXABLE AT THE EDIT — no reshoot
+
+1. **Card inside the first three seconds** — Andromeda scores that window separately. ⚠️ inference,
+   not a stated rule (`script-rule-spec.md` §1.13).
+2. **Sans-serif, high contrast**, roughly a 20% text-to-grid ratio.
+3. **Modest, not dominant** — a dominant overlay repositions the ad from an *Emotional* branch to a
+   *Utility* branch, wrong for most of the set.
+4. **Inside platform safe zones** (Feed / Stories / Reels).
+5. 🔑 **STANDING OPTION, §1.12 — change the cards from CATEGORY LABELS to PAIN or IDENTITY LINES.**
+   All nine currently read as captions; Tier 1's stated objective is a high-salience emotional hook,
+   so as written the headline validates a category tag rather than a hook. **A text change in post.
+   It does not touch the footage.**
+
+---
+
+### 6.16 · 🟡 THE NINE CREATOR SCRIPTS — exist, graded, DELIBERATELY NOT UPDATED
+
+**File: `~/Downloads/nine-creator-scripts-attendee.md`.** ⚠️ **Not named `-rev2`** — verified
+2026-09-10; that filename does not exist. Also outside git.
+
+**Attendee voice, for hired UGC creators who have genuinely completed one of Arfeen's programmes.**
+Graded and **passed everything it was measured against**: overlap reproduced exactly (max 26.0%,
+mean 17.0%), compliance clean across 27 surfaces, no false attendance claims, and the three lo-fi
+Unaware pieces genuinely sit at Unaware — the coverage the Arfeen set cannot produce.
+
+🔴 **But it was written BEFORE the front-loading research arrived and still carries the mechanism
+late. It is not wrong. It is built on the losing side of §4.5.**
+
+> ✅ **DECISION TAKEN: leave it until the Arfeen nine have run and produced numbers.** Do not rewrite
+> it on the strength of a Tier 2 finding before there is first-party evidence from this account.
+
+#### 🔴 FOUR CHECKABLE PERSONAL SPECIFICS — confirm IN WRITING before any booking
+
+**These are the only items in that set that cost a re-record**, because the creators are external and
+a line a creator cannot truthfully say is discovered on set.
+
+| | the line | what it asserts |
+|---|---|---|
+| **CP2** | *"Mine was the second one"* | four patterns shown on a screen, and theirs specifically the second |
+| **CE2** | *"mine was the first"* | same, and a different pattern |
+| **CW2** | *"the one he said comes up most"* | that Arfeen said that, about that pattern |
+| **CE1** | *"the one thing he would not let go of **all week**"* | a **week-long** programme |
+
+📌 Each is a *swappable* specific — replace it with what is actually true and the script still works.
+**The brief's own instruction is the right control** (*"ask each one what they actually recognised;
+if their real moment differs, use theirs"*) — but it is written as advice, and a creator who does not
+want to make trouble will deliver the line as written.
+
+---
+
+### 6.17 · 🔴 CAMPAIGN ITEMS STILL OPEN — unchanged, none closed by any of this work
+
+1. 🔴 **The end-to-end conversion test has NOT been run.** Arfeen has the pixel access and has not
+   registered on a live page with **Test Events open on the "Arfeen Webinar 2.0" dataset**. Full item
+   and both timing conditions at **§6.6 item 2**. **This still gates resuming spend.**
+2. 🔴 **Creative must reach the agency BEFORE the campaign window opens on TUESDAY.** The 6 Sept
+   failure traces directly to new videos arriving Friday night for a Sunday event (§6.9e).
+3. 🔴 **The three thank-you pages and the rewritten email/WhatsApp sequences are NOT implemented in
+   GoHighLevel** (§6.8, §6.10d).
+4. 🔴 **The agency's tracking fixes are NOT verified.** A statement of intent, not a verification.
 
 ---
 
