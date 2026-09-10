@@ -33,9 +33,10 @@ and `docs/`. Settle position with `git log --oneline -3`, never against this tab
 `checkout` / `stash` / `reset --hard` → **nothing**, all committed and pushed.
 🔴 **`git clean -fd` destroys ~590 MB of untracked screenshots in no commit.** **`git add .` commits
 them irreversibly. NEVER `git add .` — add named paths.**
-🔴🔴 **AND OUTSIDE GIT ENTIRELY: emptying the Trash destroys the only markdown copies of the shoot
-briefs (§6.13). The surviving PDFs sit in `~/Downloads/final shoot/` and are one folder deletion
-from gone.**
+✅ **RESOLVED 2026-09-10 evening: the four shoot briefs are now IN GIT** at
+`docs/andromeda/worked-examples/final-shoot-2026-09-10/` (§6.13). The PDFs in
+`~/Downloads/final shoot/` are rendered output — regenerate from the markdown if lost.
+🟡 **Still outside git:** `~/Downloads/nine-creator-scripts-attendee.md` (§6.16).
 
 ### 0.3 · GATES
 
@@ -66,7 +67,7 @@ the ad sets optimise for an event that never registers (§6.0).
 
 | | |
 |---|---|
-| **ad creative, live** | **§6.13** · deliverables `~/Downloads/final shoot/*.pdf` ⚠️ **not in git** |
+| **ad creative, live** | **§6.13** · **`docs/andromeda/worked-examples/final-shoot-2026-09-10/`** — in git, the source of truth. PDFs in `~/Downloads/final shoot/` are rendered output |
 | shoot-day instruction | **§6.14** · edit-stage list **§6.15** |
 | creator scripts (parked) | **§6.16** · `~/Downloads/nine-creator-scripts-attendee.md` ⚠️ not in git |
 | open campaign items | **§6.17** |
@@ -1165,21 +1166,31 @@ finding. **Every mechanical rule in it was violated by a draft written with that
 🔴 **SUPERSEDES ALL FIVE EARLIER REVISIONS of the nine Arfeen scripts AND the three earlier crew
 briefs recorded at §6.11.** Those are history. Do not shoot from them.
 
-#### 🔴🔴 WHERE THE DELIVERABLES ACTUALLY ARE — CORRECTED, AND URGENT
+#### ✅ WHERE THE DELIVERABLES ARE — IN GIT, resolved 2026-09-10 evening
 
 | | |
 |---|---|
-| ✅ **surviving** | **`~/Downloads/final shoot/`** — `1-script-and-talent-brief.pdf` · `2-camera-brief.pdf` · `3-editor-brief.pdf` · `4-production-brief.pdf` |
-| 🔴 **the markdown originals are IN THE TRASH** | `~/.Trash/1-script-and-talent-brief.md`, `~/.Trash/4-production-brief.md`, and copies under `~/.Trash/ads/` and `~/.Trash/final ads shoot/`. **Verified 2026-09-10, not recalled.** |
+| ✅ **SOURCE OF TRUTH, in the repo** | **`docs/andromeda/worked-examples/final-shoot-2026-09-10/`** — `1-script-and-talent-brief.md` · `2-camera-brief.md` · `3-editor-brief.md` · `4-production-brief.md`, plus a README |
+| 🟡 **PDFs — outside git** | `~/Downloads/final shoot/*.pdf`. **Rendered output, not the master.** **If lost, REGENERATE them from the markdown above** rather than treating a PDF as the source |
 
-⚠️ **Corrects the instruction that produced this entry**, which said both formats were in
-`~/Downloads`. **They are not.** The `.md` files are in the Trash and the PDFs are in a subfolder.
+**Copied SHA-256 verified byte-identical to source**, and the three post-grading fixes were
+confirmed present **before** committing — a stale copy would have been rejected:
 
-> 🔴 **NOTHING HERE IS IN GIT. Emptying the Trash destroys the markdown. The PDFs are one folder
-> deletion from gone. If they are lost they are lost — there is no other copy.**
+| | verified |
+|---|---|
+| P1 headline | *"Four patterns. One's yours."* — **exactly 27 characters** ✅ |
+| E3 card | `CRYPTO DUE DILIGENCE · SUNDAY LIVE` ✅ |
+| P3 headline | *"Run it before you act."* ✅ |
 
-📌 **The PDFs carry the corrected text**, despite a 00:46 file timestamp — verified by extraction,
-not assumed. They are the version to shoot from.
+Re-verified across the whole set at commit time: **all nine card-and-headline pairs share zero
+tokens, every headline ≤27, every card 30–50, and the nine scripts are unchanged from the graded
+version** (112–114 words, hooks 4–10, longest sentence 18, mechanism at 3.7–8.9s).
+
+⚠️ **HISTORY, recorded so the near-miss is not forgotten.** Earlier on 2026-09-10 this section read
+that both formats were in `~/Downloads`. **They were not** — the markdown had gone to the Trash
+(four copies across three Trash folders) and only the PDFs survived, in a subfolder. The markdown
+was re-downloaded and is now in git. **The lesson stands: a deliverable that exists only in
+`~/Downloads` is one Trash-empty from gone.**
 
 #### WHAT THE FINAL REWRITE DID
 

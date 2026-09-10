@@ -1,5 +1,12 @@
 # Worked examples — the Digital Asset Blueprint campaign (banked 2026-09-03)
 
+> 🔴 **UPDATED 2026-09-10 — the VIDEO documents in this folder are SUPERSEDED.**
+> `video-ad-scripts.md`, `shooting-guide.md` and `editing-guide.md` were the 2026-09-02/03 version.
+> **The live set is `final-shoot-2026-09-10/`** — four briefs, nine rewritten scripts with the
+> mechanism front-loaded per `../script-rule-spec.md` §4.5. **Shoot from that folder, not from the
+> three files here.** The landing pages, `ad-copy-brief.md` and `image-brief.md` are a different
+> asset class and are NOT superseded.
+
 Eight documents, **copied verbatim** from Arfeen's `~/Downloads` on the night of 2026-09-02/03.
 They are the first complete hand-built campaign for a single offer: three landing pages, eighteen
 ad concepts with their image prompts, six video scripts, and the two production guides that turn
