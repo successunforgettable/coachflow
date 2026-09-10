@@ -263,6 +263,11 @@ function resolvedDestination(url?: string | null): string | null {
  *
  * The replacement keeps the anchor's id, because the opt-in page's submit handler labels whichever
  * element carries `next_cta` — so a card demoted before the reader submits still gets its label.
+ *
+ * When the button carries `data-next-fallback` (a linked close, 2026-09-10), the demotion swaps in
+ * that close's heading, body and label too: the linked close promises the coach's free session, and
+ * a page whose session has gone must stop promising it. Still removal only — the fallback is the
+ * close that names no destination.
  */
 export const NEXT_STEP_LIVENESS_SCRIPT = `(function(){
   var els = document.querySelectorAll('[data-next-step-check]');
@@ -272,54 +277,71 @@ export const NEXT_STEP_LIVENESS_SCRIPT = `(function(){
     if (u.origin !== location.origin) return;
     fetch(u.href, { method: 'HEAD', cache: 'no-store' }).then(function(r){
       if (r.ok || !a.parentNode) return;
+      var fb = null;
+      try { fb = JSON.parse(a.getAttribute('data-next-fallback') || 'null'); } catch (e) { fb = null; }
       var p = document.createElement('p');
       p.className = 'cta-text';
       if (a.id) p.id = a.id;
-      p.textContent = a.textContent;
+      p.textContent = fb && fb.ctaLabel ? fb.ctaLabel : a.textContent;
+      if (fb) {
+        var h = document.querySelector('[data-next-heading]'), b = document.querySelector('[data-next-body]');
+        if (h && fb.heading) h.textContent = fb.heading;
+        if (b && fb.body) b.textContent = fb.body;
+      }
       a.parentNode.replaceChild(p, a);
     }).catch(function(){});
   })(els[i]);
 })();`;
 
-function nextStepBlock(n: NextStep, nextStepUrl?: string | null): string {
+/** The no-destination close, carried as an attribute on a linked button so the page-side check can
+ *  swap it in if the session's page is taken down. Present only alongside a linked close. */
+function fallbackAttr(fb?: NextStep | null): string {
+  return fb ? ` data-next-fallback="${esc(JSON.stringify({ heading: fb.heading, body: fb.body, ctaLabel: fb.ctaLabel }))}"` : "";
+}
+
+function nextStepBlock(n: NextStep, nextStepUrl?: string | null, fallback?: NextStep | null): string {
   if (!n) return "";
   const dest = resolvedDestination(nextStepUrl);
+  const fb = dest ? fallback ?? null : null;
   // The label is the coach's copy either way. With a destination it is the button; without one it
   // stays on the page as the closing line, because dropping it would silently delete generated
   // content rather than degrade it.
   const tail = dest
-    ? `<a class="cta" href="${esc(dest)}" target="_blank" rel="noopener" data-next-step-check>${esc(n.ctaLabel)}</a>` +
+    ? `<a class="cta" href="${esc(dest)}" target="_blank" rel="noopener"${fallbackAttr(fb)} data-next-step-check>${esc(n.ctaLabel)}</a>` +
       `<script>${NEXT_STEP_LIVENESS_SCRIPT}</script>`
     : `<p class="cta-text">${esc(n.ctaLabel)}</p>`;
-  return `<section class="next"><p class="kick">Your next step</p><h2>${esc(n.heading)}</h2>` +
-    `<p>${esc(n.body)}</p>${tail}</section>`;
+  return `<section class="next"><p class="kick">Your next step</p><h2${fb ? " data-next-heading" : ""}>${esc(n.heading)}</h2>` +
+    `<p${fb ? " data-next-body" : ""}>${esc(n.body)}</p>${tail}</section>`;
 }
 
-function renderGuide(b: GuideBody, logo?: string | null, nextStepUrl?: string | null): string {
+function renderGuide(b: GuideBody, logo?: string | null, nextStepUrl?: string | null, fallback?: NextStep | null): string {
   const sections = (b.sections || []).map((s, i) =>
     `<section><h2>${esc(s.heading)}</h2>${paras(s.body)}</section>${i < b.sections.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Guide", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${sections}${nextStepBlock(b.nextStep, nextStepUrl)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Guide", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${sections}${nextStepBlock(b.nextStep, nextStepUrl, fallback)}${foot(logo)}</div>`;
 }
-function renderChecklist(b: ChecklistBody, logo?: string | null, nextStepUrl?: string | null): string {
+function renderChecklist(b: ChecklistBody, logo?: string | null, nextStepUrl?: string | null, fallback?: NextStep | null): string {
   const items = (b.items || []).map(i =>
     `<div class="check"><div class="box"></div><div><p class="label">${inlineMd(esc(i.label))}</p><p class="detail">${inlineMd(esc(i.detail))}</p></div></div>`).join("");
-  return `<div class="wrap">${cover("Checklist", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}<div>${items}</div>${nextStepBlock(b.nextStep, nextStepUrl)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Checklist", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}<div>${items}</div>${nextStepBlock(b.nextStep, nextStepUrl, fallback)}${foot(logo)}</div>`;
 }
-function renderToolkit(b: ToolkitBody, logo?: string | null, nextStepUrl?: string | null): string {
+function renderToolkit(b: ToolkitBody, logo?: string | null, nextStepUrl?: string | null, fallback?: NextStep | null): string {
   const tools = (b.tools || []).map((t, i) =>
     `<section class="tool"><div class="tag">${esc(TYPE_LABEL[t.type] || t.type)}</div><h2>${esc(t.name)}</h2>` +
     `<p class="inst">${esc(t.instructions)}</p><div class="toolbody">${mdToHtml(t.content)}</div></section>` +
     `${i < b.tools.length - 1 ? '<hr class="div">' : ""}`).join("");
-  return `<div class="wrap">${cover("Toolkit", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${tools}${nextStepBlock(b.nextStep, nextStepUrl)}${foot(logo)}</div>`;
+  return `<div class="wrap">${cover("Toolkit", b.title, b.promise, logo)}${howToUseBlock(b.howToUse)}${tools}${nextStepBlock(b.nextStep, nextStepUrl, fallback)}${foot(logo)}</div>`;
 }
 
 export interface RenderDeliverableOpts {
   /** Coach logo URL for the brand slot. Absent today (brand-capture not shipped),
    *  so the wordmark is simply omitted rather than showing ZAP's name. */
   coachLogoUrl?: string | null;
-  /** Tier 1/2 of the destination chain land here. Nothing populates it today — see
-   *  `nextStepBlock`. Absent means the next-step card renders as text with no button. */
+  /** The resolved destination (`nextStepBridge.resolveNextStep`). Absent means the next-step card
+   *  renders as text with no button. */
   nextStepUrl?: string | null;
+  /** When the close rendered is the linked one, the close that names no destination — carried so the
+   *  page-side check can swap it in if the destination is taken down. */
+  nextStepFallback?: NextStep | null;
 }
 
 /**
@@ -329,9 +351,9 @@ export interface RenderDeliverableOpts {
 export function renderDeliverableHtml(body: LeadMagnetBody, opts: RenderDeliverableOpts = {}): string | null {
   const logo = opts.coachLogoUrl ?? null;
   switch (body.format) {
-    case "guide": return shell(body.title, renderGuide(body, logo, opts.nextStepUrl));
-    case "checklist": return shell(body.title, renderChecklist(body, logo, opts.nextStepUrl));
-    case "toolkit": return shell(body.title, renderToolkit(body, logo, opts.nextStepUrl));
+    case "guide": return shell(body.title, renderGuide(body, logo, opts.nextStepUrl, opts.nextStepFallback));
+    case "checklist": return shell(body.title, renderChecklist(body, logo, opts.nextStepUrl, opts.nextStepFallback));
+    case "toolkit": return shell(body.title, renderToolkit(body, logo, opts.nextStepUrl, opts.nextStepFallback));
     case "quiz": return null; // next sprint (interactive scored surface)
     default: return null;
   }
@@ -350,9 +372,11 @@ export interface OptInPageOpts {
   privacyPolicyUrl: string;
   apiBase: string;            // same-origin fetch base
   nextStep: NextStep;         // tailored next step on the bridge
-  /** Destination chain tier 1/2 land here; nothing populates it today. Absent means the bridge
-   *  card renders as text with no button rather than looping back to the magnet. */
+  /** The resolved destination. Absent means the bridge card renders as text with no button rather
+   *  than looping back to the magnet. */
   nextStepUrl?: string | null;
+  /** See RenderDeliverableOpts.nextStepFallback. */
+  nextStepFallback?: NextStep | null;
   testimonial?: OptInTestimonial | null; // social-proof slot (hidden if absent)
   coachLogoUrl?: string | null; // brand slot; omitted (no ZAP stamp) until brand-capture
 }
@@ -398,6 +422,10 @@ export function renderOptInHtml(o: OptInPageOpts): string {
 
   const nextData = JSON.stringify({ heading: o.nextStep?.heading || "", body: o.nextStep?.body || "", ctaLabel: o.nextStep?.ctaLabel || "" });
   const nextDest = resolvedDestination(o.nextStepUrl);
+  const optFb = nextDest ? o.nextStepFallback ?? null : null;
+  const fallbackData = optFb
+    ? JSON.stringify({ heading: optFb.heading || "", body: optFb.body || "", ctaLabel: optFb.ctaLabel || "" })
+    : "null";
 
   const inner = `<div class="wrap">
   <p class="kick">Free ${esc(noun)}</p>
@@ -425,10 +453,10 @@ export function renderOptInHtml(o: OptInPageOpts): string {
     </div>
     <div class="nextcard" id="nextcard" style="display:none">
       <p class="kick">Your next step</p>
-      <h3 id="next_heading"></h3>
-      <p id="next_body"></p>
+      <h3 id="next_heading"${optFb ? " data-next-heading" : ""}></h3>
+      <p id="next_body"${optFb ? " data-next-body" : ""}></p>
       ${nextDest
-        ? `<a class="dl primary" id="next_cta" href="${esc(nextDest)}" target="_blank" rel="noopener" data-next-step-check></a>` +
+        ? `<a class="dl primary" id="next_cta" href="${esc(nextDest)}" target="_blank" rel="noopener"${fallbackAttr(optFb)} data-next-step-check></a>` +
           `<script>${NEXT_STEP_LIVENESS_SCRIPT}</script>`
         : `<p class="cta-text" id="next_cta_text"></p>`}
     </div>
@@ -436,7 +464,7 @@ export function renderOptInHtml(o: OptInPageOpts): string {
   ${foot(o.coachLogoUrl)}</div>
 <script>
 (function(){
-  var CFG = ${cfg}; var NEXT = ${nextData};
+  var CFG = ${cfg}; var NEXT = ${nextData}; var NEXT_FALLBACK = ${fallbackData};
   var f = document.getElementById('optin'), err = document.getElementById('lm_err'), btn = document.getElementById('lm_submit');
   f.addEventListener('submit', function(e){
     e.preventDefault(); err.textContent = '';
@@ -457,14 +485,18 @@ export function renderOptInHtml(o: OptInPageOpts): string {
         var pdfEl = document.getElementById('lm_pdf');
         if (pdf) { pdfEl.href = pdf; } else { pdfEl.style.display = 'none'; }
         if (NEXT.heading) {
-          document.getElementById('next_heading').textContent = NEXT.heading;
-          document.getElementById('next_body').textContent = NEXT.body;
+          // If the page-side check has already demoted the button, the close that names no
+          // destination is the true one — use it.
+          var cEl = document.getElementById('next_cta') || document.getElementById('next_cta_text');
+          var N = (cEl && cEl.tagName !== 'A' && NEXT_FALLBACK) ? NEXT_FALLBACK : NEXT;
+          document.getElementById('next_heading').textContent = N.heading;
+          document.getElementById('next_body').textContent = N.body;
           // ⚠️ THIS USED TO SET c.href TO view — pointing the bridge at the magnet the reader
           // had just been handed. A CTA that loops back to what they are already holding is the
           // dead-end failure implemented as a button. With no destination the label stays as
           // text; the anchor only exists when one resolved at render.
           var c = document.getElementById('next_cta') || document.getElementById('next_cta_text');
-          if (c) { c.textContent = NEXT.ctaLabel || 'Learn more'; }
+          if (c) { c.textContent = N.ctaLabel || 'Learn more'; }
           document.getElementById('nextcard').style.display = 'block';
         }
         f.style.display = 'none';
@@ -499,6 +531,9 @@ export interface QuizPageOpts {
    *  next-step card renders as text with no button.
    *  ⚠️ pageUrl IS NOT A FALLBACK FOR THIS — see its own note above. */
   nextStepUrl?: string | null;
+  /** When the destination is linked and the body carries a linked close, its label — so the button
+   *  offers the free session rather than the band's do-it-yourself action. */
+  linkedCtaLabel?: string | null;
   testimonial?: OptInTestimonial | null; // social-proof slot on the result (hidden if absent)
   coachLogoUrl?: string | null;          // brand slot; omitted (no ZAP stamp) until brand-capture
 }
@@ -527,6 +562,7 @@ export function renderQuizPage(o: QuizPageOpts): string {
   });
   const cfg = jsData({
     slug: o.slug, hvcoId: o.hvcoId, endpoint: `${o.apiBase}/api/capture-lead`, pageUrl: o.pageUrl,
+    linkedCtaLabel: qzDest ? o.linkedCtaLabel ?? null : null,
   });
   const proof = o.testimonial && o.testimonial.quote
     ? `<figure class="proof"><blockquote>&ldquo;${esc(o.testimonial.quote)}&rdquo;</blockquote>` +
@@ -683,7 +719,9 @@ export function renderQuizPage(o: QuizPageOpts): string {
     // offered a button back to the quiz. The label is the coach's copy and stays either way; the
     // anchor exists only when a destination resolved at render.
     var a = $('qz_cta_a') || $('qz_cta_text');
-    if (a) { a.textContent = band.cta.ctaLabel || 'Learn more'; }
+    // A band's own close ends on something the reader does alone; the linked session's label goes on
+    // the button only when there is a live session to link to.
+    if (a) { a.textContent = (a.tagName === 'A' && CFG.linkedCtaLabel) ? CFG.linkedCtaLabel : (band.cta.ctaLabel || 'Learn more'); }
     show('qz_result');
     window.scrollTo(0, 0);
   }

@@ -17,6 +17,7 @@ import { services, idealCustomerProfiles, campaignKits, heroMechanisms, coachMet
 import { eq, and } from "drizzle-orm";
 import { GUARANTEE_CLAIMS_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE } from "./_core/copywritingRules";
 import { truncateAtSentence, truncateAtBlock } from "./_core/cascadeContext";
+import { hasAllEventFacts } from "./_core/nextStepBridge";
 
 export type LeadMagnetFormat = "guide" | "checklist" | "toolkit" | "quiz";
 export type ToolType = "swipe" | "template" | "sop" | "worksheet" | "script" | "checklist";
@@ -24,7 +25,9 @@ export type ToolType = "swipe" | "template" | "sop" | "worksheet" | "script" | "
 // ── Structured body shapes (stored as hvcoTitles.assetBody JSON) ──
 // New bar: usable tools first, ~80% actionable / 20% teaching. Every format
 // opens with a TIGHT two-sentence promise (no prose-heavy intro/takeaways) and
-// closes with a nextStep bridge to the paid programme (no dead end).
+// closes by opening the major loop — the loop-splice close of
+// docs/lead-magnet-research/LEAD_MAGNET_STANDARD.md (2026-09-10). A bonus closes inside
+// the programme the buyer has joined.
 export interface NextStep {
   heading: string;
   body: string;
@@ -41,6 +44,9 @@ export interface GuideBody {
   // Solution-focused, lean (not padded): each section is directly actionable.
   sections: { heading: string; body: string }[];
   nextStep: NextStep;
+  /** The same close plus the coach's free live session. Present only when the campaign held all
+   *  three event facts; the publisher uses it only when that session's page is live. */
+  nextStepLinked?: NextStep;
 }
 export interface ChecklistBody {
   format: "checklist";
@@ -49,6 +55,9 @@ export interface ChecklistBody {
   howToUse?: string;
   items: { label: string; detail: string }[];
   nextStep: NextStep;
+  /** The same close plus the coach's free live session. Present only when the campaign held all
+   *  three event facts; the publisher uses it only when that session's page is live. */
+  nextStepLinked?: NextStep;
 }
 export interface ToolkitBody {
   format: "toolkit";
@@ -58,6 +67,9 @@ export interface ToolkitBody {
   // Right-sized to 3-4 focused, immediately-usable tools (no padding).
   tools: { name: string; type: ToolType; instructions: string; content: string }[];
   nextStep: NextStep;
+  /** The same close plus the coach's free live session. Present only when the campaign held all
+   *  three event facts; the publisher uses it only when that session's page is live. */
+  nextStepLinked?: NextStep;
 }
 // Quiz = a weighted, single-axis READINESS SCORECARD (not a right/wrong knowledge
 // quiz). Each option carries a weight (higher = more advanced/ready); the taker's
@@ -79,7 +91,7 @@ export interface QuizBand {
   maxPercent: number; // inclusive, 0..100 — bands partition 0..100 with no gap/overlap
   teaser: string;     // one-line hook shown BEFORE the email gate
   meaning: string;    // the full personalised diagnostic shown AFTER the gate
-  cta: NextStep;      // this band's own bridge to the paid programme
+  cta: NextStep;      // this band's own close (the loop-splice shape in lead-magnet mode)
 }
 export interface QuizBody {
   format: "quiz";
@@ -87,7 +99,8 @@ export interface QuizBody {
   promise: string;
   questions: QuizQuestion[];   // ~7
   scoring: { bands: QuizBand[] }; // 3-4 contiguous bands covering 0..100
-  nextStep: NextStep;          // global fallback bridge (per-band cta takes precedence on the result)
+  nextStep: NextStep;          // global fallback close (per-band cta takes precedence on the result)
+  nextStepLinked?: NextStep;   // see GuideBody.nextStepLinked
 }
 export type LeadMagnetBody = GuideBody | ChecklistBody | ToolkitBody | QuizBody;
 
@@ -144,6 +157,9 @@ export interface MagnetContext {
   // Optional caller-supplied brief (step 2 Layer 2): a bonus's own advertised description + the ICP obstacle
   // it solves, so the generated body MATCHES what the offer/LP already promise (never a title-only re-derivation).
   contentBrief: string;
+  /** The coach's free live session, when the kit holds ALL THREE facts; otherwise null. Only then is a
+   *  close that names the session (`nextStepLinked`) requested at all. */
+  eventFacts?: { date: string; time: string; timezone: string } | null;
 }
 
 /** Exported so the A/B harness and tests build context through the real path rather than a copy. */
@@ -182,6 +198,7 @@ export async function gatherContext(userId: number, serviceId: number, icpId: nu
   let upstream = "";
   let hasMethod = false;
   let methodDetail = "";
+  let eventFacts: MagnetContext["eventFacts"] = null;
   if (icp?.id) {
     const { getCascadeContext } = await import("./_core/cascadeContext");
     // 1600 is the measured p90 of `mechanismDescription` across 1,095 production rows (100%
@@ -190,6 +207,11 @@ export async function gatherContext(userId: number, serviceId: number, icpId: nu
     upstream = await getCascadeContext(userId, icp.id, "hvco", { mechanismChars: 1600 });
     const [kit] = await db.select().from(campaignKits)
       .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icp.id))).limit(1);
+    // The close may name the coach's free live session only when all three facts exist.
+    if (hasAllEventFacts(kit?.campaignFacts as any)) {
+      const es = (kit!.campaignFacts as any).eventSchedule;
+      eventFacts = { date: String(es.date).trim(), time: String(es.time).trim(), timezone: String(es.timezone).trim() };
+    }
     if (kit?.selectedMechanismId) {
       const [m] = await db
         .select({ id: heroMechanisms.id, coachMethodId: heroMechanisms.coachMethodId })
@@ -216,6 +238,7 @@ export async function gatherContext(userId: number, serviceId: number, icpId: nu
     icpBarriers: (icp?.implementationBarriers ?? "").slice(0, 400),
     sot: sotLine.slice(0, 400),
     contentBrief: "",
+    eventFacts,
   };
 }
 
@@ -263,12 +286,18 @@ export function renderMethodDetail(m: CoachMethodLike | null | undefined): strin
   return lines.join("\n");
 }
 
-export function buildMagnetContextBlock(c: MagnetContext): string {
+export function buildMagnetContextBlock(c: MagnetContext, mode: DeliverableMode = "lead_magnet"): string {
   return [
     `Lead magnet title (the promise to deliver on): "${c.title}"`,
     c.contentBrief ? `MUST-MATCH BRIEF — the deliverable already advertised to the buyer; the content you produce must deliver exactly this, not a re-interpretation of the title: ${c.contentBrief}` : "",
     `Niche / audience: ${c.niche}`,
-    c.programme ? `Paid programme name (what nextStep bridges to): ${c.programme}` : "",
+    // A bonus is post-purchase and legitimately closes inside the programme. A lead magnet's close is
+    // the loop-splice one, so for a magnet the programme is context only.
+    c.programme
+      ? mode === "bonus"
+        ? `Paid programme name (what nextStep bridges to): ${c.programme}`
+        : `The coach's paid programme, for context only — it is sold later, off-page: ${c.programme}`
+      : "",
     c.mainBenefit ? `Main benefit of the paid offer: ${c.mainBenefit}` : "",
     // The cascade block sits in the slot the one-line method reference used to occupy.
     c.upstream ? c.upstream.trim() : "",
@@ -286,7 +315,7 @@ export function buildMagnetContextBlock(c: MagnetContext): string {
 export type DeliverableMode = "lead_magnet" | "bonus";
 
 const SYSTEM_PROMPT_LEAD_MAGNET =
-  "You produce done-for-you lead-magnet content for coaches, consultants and experts at agency quality. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content or real swipe copy the reader can copy and use, never generic filler that could belong to any coach. Open with a tight promise (max two sentences: what they can DO after using it). Close with a nextStep that bridges to the paid programme — a clear next action, no dead end. Respond with valid JSON.";
+  "You produce done-for-you lead-magnet content for coaches, consultants and experts at agency quality. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content or real swipe copy the reader can copy and use, never generic filler that could belong to any coach. Open with a tight promise (max two sentences: what they can DO after using it). Close with a nextStep that opens the bigger question this asset leaves behind: the root cause the reader had not considered, as a diagnostic question, ending on something they can do next. Respond with valid JSON.";
 
 const SYSTEM_PROMPT_BONUS =
   "You produce done-for-you BONUS deliverables for coaches, consultants and experts at agency quality. The reader has ALREADY enrolled in / purchased the paid programme — this is a post-purchase asset that helps them get more from what they've already committed to, so you write to a buyer on the inside who is ready to execute, never to a prospect you are trying to convince to buy. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content the reader can use, never generic filler. Open by telling the reader plainly what this is, how to use it, and what it achieves. Close with a nextStep that helps them put this to work and get the most from the programme they've joined — a concrete action, no dead end. Respond with valid JSON.";
@@ -492,7 +521,7 @@ export function applyBodyBounds(
 
 // ── Per-format response schemas (json_schema, strict) ──
 type ResponseFormat = { type: "json_schema"; json_schema: { name: string; strict: boolean; schema: Record<string, unknown> } };
-export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lead_magnet"): ResponseFormat {
+export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lead_magnet", opts: { linked?: boolean } = {}): ResponseFormat {
   const s = (name: string, schema: Record<string, unknown>): ResponseFormat => ({ type: "json_schema", json_schema: { name, strict: true, schema } });
   const str = { type: "string" } as const;
   const arr = (items: Record<string, unknown>) => ({ type: "array", items });
@@ -503,6 +532,9 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
   const strB = (maxLength: number) => ({ type: "string", maxLength });
   // Shared nextStep bridge — required on every format.
   const nextStep = { type: "object", additionalProperties: false, required: ["heading", "body", "ctaLabel"], properties: { heading: str, body: str, ctaLabel: str } };
+  // The linked close is part of the schema only when it was asked for — all three event facts held.
+  const withLinked = (g: { required: string[]; properties: Record<string, unknown> }) =>
+    opts.linked ? { required: [...g.required, "nextStepLinked"], properties: { ...g.properties, nextStepLinked: nextStep } } : g;
   const bonus = mode === "bonus";
   // Bonus mode adds a required howToUse orientation (what it is / how to use / what it achieves), rendered at the
   // top of the deliverable. Injected into the static-format schemas (guide/checklist/toolkit) only.
@@ -510,21 +542,21 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
     bonus
       ? { required: ["howToUse", ...required], properties: { howToUse: str, ...properties } }
       : { required, properties };
-  if (format === "guide") { const g = withHowTo(["promise", "sections", "nextStep"], {
+  if (format === "guide") { const g = withLinked(withHowTo(["promise", "sections", "nextStep"], {
       promise: strB(BOUNDS.guide.promise),
       sections: arrB({ type: "object", additionalProperties: false, required: ["heading", "body"],
         properties: { heading: strB(BOUNDS.guide.sections.heading), body: strB(BOUNDS.guide.sections.body) } },
         BOUNDS.guide.sections.minItems, BOUNDS.guide.sections.maxItems),
       nextStep,
-    }); return s("lead_magnet_guide", { type: "object", additionalProperties: false, ...g }); }
-  if (format === "checklist") { const g = withHowTo(["promise", "items", "nextStep"], {
+    })); return s("lead_magnet_guide", { type: "object", additionalProperties: false, ...g }); }
+  if (format === "checklist") { const g = withLinked(withHowTo(["promise", "items", "nextStep"], {
       promise: strB(BOUNDS.checklist.promise),
       items: arrB({ type: "object", additionalProperties: false, required: ["label", "detail"],
         properties: { label: strB(BOUNDS.checklist.items.label), detail: strB(BOUNDS.checklist.items.detail) } },
         BOUNDS.checklist.items.minItems, BOUNDS.checklist.items.maxItems),
       nextStep,
-    }); return s("lead_magnet_checklist", { type: "object", additionalProperties: false, ...g }); }
-  if (format === "toolkit") { const g = withHowTo(["promise", "tools", "nextStep"], {
+    })); return s("lead_magnet_checklist", { type: "object", additionalProperties: false, ...g }); }
+  if (format === "toolkit") { const g = withLinked(withHowTo(["promise", "tools", "nextStep"], {
       promise: strB(BOUNDS.toolkit.promise),
       tools: arrB({ type: "object", additionalProperties: false, required: ["name", "type", "instructions", "content"], properties: {
         name: strB(BOUNDS.toolkit.tools.name),
@@ -533,11 +565,11 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
         content: strB(BOUNDS.toolkit.tools.content),
       } }, BOUNDS.toolkit.tools.minItems, BOUNDS.toolkit.tools.maxItems),
       nextStep,
-    }); return s("lead_magnet_toolkit", { type: "object", additionalProperties: false, ...g }); }
+    })); return s("lead_magnet_toolkit", { type: "object", additionalProperties: false, ...g }); }
   const pct = { type: "integer", minimum: 0, maximum: 100 } as const;
   return s("lead_magnet_quiz", {
     type: "object", additionalProperties: false,
-    required: ["promise", "questions", "scoring", "nextStep"],
+    required: ["promise", "questions", "scoring", "nextStep", ...(opts.linked ? ["nextStepLinked"] : [])],
     properties: {
       promise: strB(BOUNDS.quiz.promise),
       // These mirror `validateQuizBody` exactly. Nothing new is invented: the validator is already
@@ -565,14 +597,42 @@ export function schemaFor(format: LeadMagnetFormat, mode: DeliverableMode = "lea
         },
       },
       nextStep,
+      ...(opts.linked ? { nextStepLinked: nextStep } : {}),
     },
   });
 }
 
 export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: DeliverableMode = "lead_magnet"): string {
-  const ctx = buildMagnetContextBlock(c);
+  const ctx = buildMagnetContextBlock(c, mode);
   const programme = c.programme || "the paid programme";
   const bonus = mode === "bonus";
+  // ── THE LOOP-SPLICE CLOSE (LEAD_MAGNET_STANDARD.md, 2026-09-10) ──────────────────────────────────
+  // The close used to bridge to the paid programme, with "Book My Free Call" as its example — what the
+  // standard rules out, and live on magnet 5686. It now opens the major loop: the root cause the
+  // reader had not considered, as a question, ending on something the reader does alone.
+  // `nextStepLinked` — the same loop plus the coach's free live session — is requested ONLY when the
+  // campaign holds all three event facts, and the publisher uses it ONLY when that session's page is
+  // live, so no page ever promises a session that does not exist.
+  //
+  // Every count below is one the output can meet with true content (the standard's closing finding).
+  const rootCause = c.hasMethod
+    ? "the structural reason the usual approach keeps failing people like them — the problem the method above exists to solve"
+    : "the structural reason the usual approach keeps failing people like them";
+  const closeSpec = `End with a "nextStep" that opens the bigger question this asset leaves behind:
+- "heading": the root cause the reader had not considered, written as a diagnostic question they can ask about their own situation (up to 12 words).
+- "body": 40-80 words. Say what this has just fixed, then name the deeper cause behind the symptom — ${rootCause} — as something the reader can now notice for themselves.
+- "ctaLabel": one thing the reader can do on their own this week to spot that cause in their own situation (3-8 words).
+The nextStep ends on something the reader does alone.`;
+  const linkedSpec = !bonus && c.eventFacts
+    ? `\n\nAlso write a "nextStepLinked" — the same close for when the coach's free live session is open for registration:
+- "heading": the same diagnostic question.
+- "body": 50-90 words. The same root cause, then the free live session on ${c.eventFacts.date} at ${c.eventFacts.time} ${c.eventFacts.timezone}, where the coach walks through how the method answers it.
+- "ctaLabel": registering for that free session (2-6 words).`
+    : "";
+  const linkedJson = !bonus && c.eventFacts ? `, "nextStepLinked":{"heading","body","ctaLabel"}` : "";
+  const bandCtaLine = bonus
+    ? `and its own "cta" bridging to "${programme}" (heading, short body connecting their result to the paid outcome, concrete ctaLabel). A low-band CTA meets them where they are; a high-band CTA matches their momentum.`
+    : `and its own "cta" in the same shape as the nextStep close — a heading naming the root cause as a question for THAT band, a short body, and a ctaLabel the reader acts on alone. A low-band CTA meets them where they are; a high-band CTA matches their momentum.`;
   // Two positive directives, one per branch. A prohibition primes the shape it forbids
   // (CLAUDE.md §14), so neither says what to avoid.
   //
@@ -590,7 +650,7 @@ export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: 
   // joined (no sales pitch); and it opens with a howToUse orientation. Lead magnet: unchanged conversion bridge.
   const common = bonus
     ? `Create this BONUS deliverable to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, the words this audience actually uses. No generic filler, no padding.\n\nThe reader has already enrolled in "${programme}" — write to a buyer on the inside who is ready to execute, not a prospect you are trying to convert.\n\n${ctx}\n\n${methodDirective}Begin with a "howToUse": 2-4 sentences stating plainly what this document is, how to use it, and what it achieves. Then a TIGHT promise: max two sentences on what they can DO with this. End with a nextStep that helps them put this to work and get the most from "${programme}" — a heading, a short body orienting them to the next action inside the programme they have joined, and a concrete ctaLabel about USING it (for example "Start With Step 1"). No dead end.\n\n`
-    : `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\n${methodDirective}Open with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). End with a nextStep that bridges to "${programme}" — a heading, a short body that connects this free win to the paid outcome, and a concrete ctaLabel (e.g. "Book My Free Call"). No dead end.\n\n`;
+    : `Create this lead magnet to the 80/20 bar — usable tools first, minimal teaching, right-sized to solve ONE specific problem. Everything specific to this exact niche and audience — real fill-in content, real swipe copy, the words this audience actually uses. No generic filler, no padding.\n\n${ctx}\n\n${methodDirective}Open with a TIGHT promise: max two sentences on what they can DO after using this (not teaching). ${closeSpec}${linkedSpec}\n\n`;
   const howToJson = bonus ? `"howToUse", ` : "";
   // ⚠️ THE LENGTH TARGET LIVES HERE, and this is the load-bearing half of the size work.
   // A schema cap can only remove text that has already been written, and removing it damages the
@@ -607,7 +667,7 @@ export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: 
   // example" — which reads as a template for a DOING step, and across five rows it pushed the
   // root-cause diagnosis out of the opening section that had held it in five of five before. The
   // shape is already stated in the line above; saying it twice cost a beat.
-  if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nWrite each section to about 200 words. Where a section carries a usable artefact — a fill-in template, a checklist, swipe copy — give the artefact the room and keep the teaching around it to a line or two.\nReturn JSON: { ${howToJson}"promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  if (format === "guide") return `${common}Produce a GUIDE: 3-6 solution-focused sections, each a clear heading and lean, directly-actionable content (steps, a mini-framework, an example the reader applies) — not padded prose. Useful beats comprehensive.\nWrite each section to about 200 words. Where a section carries a usable artefact — a fill-in template, a checklist, swipe copy — give the artefact the room and keep the teaching around it to a line or two.\nReturn JSON: { ${howToJson}"promise", "sections":[{"heading","body"}], "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
   // ⚠️ THE CHECKLIST DETAIL LENGTH. This line asked for a "one-to-two-sentence detail" and never
   // once received one: across every checklist body that exists — 20 items, 2 bodies — 4 of 20 were
   // within it, the median ran to 3.5 sentences, and the SHORTEST detail measured 309 characters
@@ -638,17 +698,17 @@ export function userPromptFor(format: LeadMagnetFormat, c: MagnetContext, mode: 
   // 📌 The cap on this field sits at 570 characters — the corpus outlier fence, more than the
   // target's own width over again. The target moves the centre; the cap catches a runaway. Putting
   // a cap ON the centre is the error the first section.body bound made. See BOUNDS.
-  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a detail of about 60 words that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"} }.`;
-  if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { ${howToJson}"promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"} }.`;
+  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a detail of about 60 words that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
+  if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { ${howToJson}"promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
   return `${common}Produce a READINESS SCORECARD — a weighted, single-axis self-assessment that diagnoses where this prospect stands on their journey toward the outcome "${programme}" delivers. Genuinely diagnostic, never a disguised pitch.
 
 Build it so the scoring is self-consistent and discriminating:
 - 7 questions (6-8 acceptable). Each question probes ONE real dimension of readiness for this niche, in the audience's own words.
 - Each question has 3-4 options laid out from least-ready to most-ready. Give each option a "weight" from 0 to 3: 0 = furthest from the outcome, 3 = strongest/most-ready position. Within each question the options MUST carry at least two different weights, and across the scorecard the full 0-3 range is used — so the total genuinely separates people.
 - The taker's chosen weights sum to a percentage of the maximum possible. Define 3-4 bands that PARTITION 0-100 exactly: the first band starts at 0, the last ends at 100, and each band begins one point above the previous band's end (contiguous, no gaps, no overlaps). Example spans: 0-33, 34-66, 67-100.
-- Each band is a complete diagnostic result: a "name" (the readiness stage, e.g. "Foundations", "Momentum", "Scale-Ready"), a one-line "teaser" (the hook a prospect sees before unlocking), a "meaning" (2-4 sentences reflecting where they are and what to focus on next — speaks to THAT band specifically), and its own "cta" bridging to "${programme}" (heading, short body connecting their result to the paid outcome, concrete ctaLabel). A low-band CTA meets them where they are; a high-band CTA matches their momentum.
+- Each band is a complete diagnostic result: a "name" (the readiness stage, e.g. "Foundations", "Momentum", "Scale-Ready"), a one-line "teaser" (the hook a prospect sees before unlocking), a "meaning" (2-4 sentences reflecting where they are and what to focus on next — speaks to THAT band specifically), ${bandCtaLine}
 
-Return JSON: { "promise", "questions":[{"question","options":[{"label","weight"}]}], "scoring":{"bands":[{"name","minPercent","maxPercent","teaser","meaning","cta":{"heading","body","ctaLabel"}}]}, "nextStep":{"heading","body","ctaLabel"} }.`;
+Return JSON: { "promise", "questions":[{"question","options":[{"label","weight"}]}], "scoring":{"bands":[{"name","minPercent","maxPercent","teaser","meaning","cta":{"heading","body","ctaLabel"}}]}, "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
 }
 
 /**
@@ -728,6 +788,8 @@ export async function generateLeadMagnetContent(input: {
   const c = await gatherContext(input.userId, input.serviceId, input.icpId ?? null, input.campaignId ?? null, input.title);
   if (!c) return null;
   if (input.contentBrief) c.contentBrief = input.contentBrief.slice(0, 800);
+  // The session-naming close is requested only for a lead magnet whose kit holds all three facts.
+  const linked = mode === "lead_magnet" && !!c.eventFacts;
 
   const { invokeLLM } = await import("./_core/llm");
   // Up to 2 attempts: the model occasionally returns a thin/empty array on the
@@ -740,11 +802,13 @@ export async function generateLeadMagnetContent(input: {
           { role: "system", content: systemPromptFor(mode) },
           { role: "user", content: userPromptFor(format, c, mode) },
         ],
-        response_format: schemaFor(format, mode),
+        response_format: schemaFor(format, mode, { linked }),
       });
       const content = response.choices[0].message.content;
       const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
       const raw = { format, title: input.title, ...parsed } as LeadMagnetBody;
+      // A session close that was not asked for is not kept: without all three facts there is no session.
+      if (!linked) delete (raw as any).nextStepLinked;
       // Repair, never reject. An upper bound must not become a new way to reach `return null`.
       const { body, repairs } = applyBodyBounds(raw, format);
       if (repairs.length > 0) {

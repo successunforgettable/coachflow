@@ -19,7 +19,7 @@
 import { getDb } from "./db";
 import { hvcoTitles, services, landingPages } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import type { LeadMagnetBody } from "./leadMagnetContentGenerator";
+import type { LeadMagnetBody, NextStep } from "./leadMagnetContentGenerator";
 import { renderDeliverableHtml, renderOptInHtml, renderQuizPage } from "./leadMagnetRenderer";
 import { storagePut } from "./storage";
 import { getCoachLogoUrl } from "./lib/coachLogo";
@@ -78,9 +78,9 @@ function held(tokens: string[]): PublishHeld {
  */
 export async function publishDeliverableBody(
   body: LeadMagnetBody,
-  opts: { userId: number; slug: string; storageKey: string; coachLogoUrl: string | null; namespaceId?: string; nextStepUrl?: string | null },
+  opts: { userId: number; slug: string; storageKey: string; coachLogoUrl: string | null; namespaceId?: string; nextStepUrl?: string | null; nextStepFallback?: NextStep | null },
 ): Promise<{ deliverableUrl: string; pdfUrl: string } | PublishHeld | null> {
-  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl: opts.coachLogoUrl, nextStepUrl: opts.nextStepUrl });
+  const deliverableHtml = renderDeliverableHtml(body, { coachLogoUrl: opts.coachLogoUrl, nextStepUrl: opts.nextStepUrl, nextStepFallback: opts.nextStepFallback });
   if (!deliverableHtml) return null;
   // Token gate BEFORE the write. This core also publishes bonus deliverables, so the check lives
   // here and not only in publishLeadMagnet. It scans the rendered page, as the landing-page gate does.
@@ -159,6 +159,15 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
   }
   const bridge = resolveNextStep(hvco.nextStepLandingPageId, nextStepPage);
 
+  // ── THE CLOSE MATCHES THE DESTINATION (2026-09-10). `nextStepLinked` promises the coach's free live
+  // session, so it is rendered ONLY when the bridge resolved `linked`; every other outcome gets the
+  // close that names no destination. When linked, that no-destination close travels with the page so
+  // the page-side check can swap it in if the session's page is taken down later. A body with no
+  // `nextStepLinked` (every body before this change) publishes exactly as it did.
+  const linkedClose: NextStep | undefined = bridge.outcome === "linked" ? (body as any).nextStepLinked : undefined;
+  const close: NextStep = linkedClose ?? body.nextStep;
+  const fallbackClose: NextStep | null = linkedClose ? body.nextStep : null;
+
   const deliverableSlug = `${base}-magnet-${input.hvcoId}`;
   const optInSlug = `${base}-get-${input.hvcoId}`;
 
@@ -180,6 +189,7 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
       apiBase: BASE,
       pageUrl: quizUrl,
       nextStepUrl: bridge.url,
+      linkedCtaLabel: linkedClose?.ctaLabel ?? null,
       testimonial,
       coachLogoUrl,
     });
@@ -195,13 +205,14 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
   // ── static formats (guide / checklist / toolkit): deliverable + opt-in + PDF ──
   // Steps 1-2 (deliverable KV + PDF) via the shared core. Pass the existing namespaceId so ensureKvNamespace
   // is still called exactly once here; slug + storageKey are byte-identical to the pre-extraction values.
-  const published = await publishDeliverableBody(body, {
+  const published = await publishDeliverableBody({ ...body, nextStep: close } as LeadMagnetBody, {
     userId: hvco.userId,
     slug: deliverableSlug,
     storageKey: `lead-magnets/${hvco.userId}/${input.hvcoId}.pdf`,
     coachLogoUrl,
     namespaceId,
     nextStepUrl: bridge.url,
+    nextStepFallback: fallbackClose,
   });
   if (isPublishHeld(published)) return published;
   if (!published) {
@@ -221,8 +232,9 @@ export async function publishLeadMagnet(input: { hvcoId: number }): Promise<Publ
     pdfUrl,
     privacyPolicyUrl: `${BASE}/privacy`,
     apiBase: BASE,
-    nextStep: body.nextStep,
+    nextStep: close,
     nextStepUrl: bridge.url,
+    nextStepFallback: fallbackClose,
     testimonial,
     coachLogoUrl,
   });
