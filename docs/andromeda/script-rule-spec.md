@@ -47,6 +47,14 @@ guarantee, because the absence of a visible failure gets read as compliance.
 | `[TESTING-MATRIX]` | `image-research/Meta Ads 2026_ The B2C Creative Testing Matrix & Andromeda Architecture Playbook.md` |
 | `[GUARD]` | `image-research/Meta Ad Image Compliance Guardrails 2026_ The Do-Not-Do List for Transformation Sellers.md` |
 | `[DESIGN-BRIEF]` | `image-research/Programmatic Design Brief_ Separation of Variables & Visual Layout Rules (Meta Andromeda 2026).md` |
+| `[AUDIT]` | `performance-research/evidence_and_data_gaps_audit_report.md` — **tiers the other seven; read before quoting any of them** |
+| `[STRUCT-CONV]` | `performance-research/script_structure_and_conversion_report.md` |
+| `[HOOKS-CONV]` | `performance-research/video_ad_opening_hooks_and_conversion_report.md` |
+| `[WEBINAR]` | `performance-research/webinar_attendance_predictors_report.md` |
+| `[RETENTION]` | `performance-research/video_ad_retention_curves_report.md` |
+| `[METRICS]` | `performance-research/meta_video_ads_metrics_report.md` |
+| `[PRESPEND]` | `performance-research/pre_spend_script_assessment_report.md` |
+| `[SCRIPT-MATRIX]` | `performance-research/script_matrix_and_custom_metrics_guide.md` ⚠️ deliberately **not** `[MATRIX]`, which `image-rule-spec.md` binds to a different (image) document |
 | `[CODE]` | `server/_core/conceptAxis.ts` — `LENGTH_BY_AWARENESS`, `WORD_BUDGET_TABLE`, `PLACEMENT_SAFE_CEILING_SECONDS`, `CANDIDATE_HOOK_AWARENESS_MAP` |
 
 ### How to read the marks
@@ -57,6 +65,7 @@ guarantee, because the absence of a visible failure gets read as compliance.
 | 🔷 **INFERRED** | drawn from the four revisions graded here, **not** a corpus finding. Held to the same standard as any other untested belief — if it is later contradicted by research, the research wins. |
 | ⚠️ **CONFLICT** | the corpus disagrees with itself. §4. The generator must surface it, never resolve it silently. |
 | ⬜ **SILENT** | the corpus says nothing. §5. An absence, not a finding. |
+| 🔢 **TIERED** | from `performance-research/`, which audits its own evidence. **Carry the tier with the number** — `[AUDIT]` sorts every finding into Tier 1 / Tier 2 / Tier 3 / No-Data, and a Tier 2 claim is not a Tier 1 one. |
 
 ### The evidence base
 
@@ -339,6 +348,55 @@ from an 'Emotional' branch to a 'Utility' branch**."*
 seconds is not a text-heavy grid. An emotional Problem-Aware narrative carrying a dominant text card
 can be re-branched away from the audience it was written for.
 
+## 1.14 · Two Tier 1 findings that change what the rules above are FOR
+
+🔢 **TIERED — both Tier 1 by `[AUDIT]`'s own classification.** These are not generator rules. They
+constrain **how the generator's output is judged**, which is upstream of every rule in Part One.
+
+### 🔑 1 · Hook rate does not predict revenue. R² ≈ 0.003.
+
+`[HOOKS-CONV]`, and `[AUDIT]` §1.1 rates it **Tier 1, "Very High" rigour**:
+
+> *"3-second Hook Rates (Thumbstop Rates) and Outbound Click-Through Rates do not correlate linearly
+> with downstream ROAS or CAC in high-consideration and B2B funnels… Linear regression analysis
+> yielded a coefficient of determination (**R² ≈ 0.003**) between Thumbstop Rate and conversion
+> efficiency."*
+
+**Evidence base: 578,750 ads across $1.29B of spend**, plus $1.47M of multi-account attribution
+audits. `[AUDIT]`: *"Sample sizes exceed 500,000 ad units. The statistical independence of
+top-of-funnel scroll-stopping versus bottom-of-funnel intent qualification is confirmed across
+multiple independent datasets."*
+
+🔴 **Why this matters here.** `[LENGTHS] §5` calls the 3-second hook *"the primary signal for
+retrieval"*, and §1.4 of this spec caps the hook at ten words on that basis. **Both may still be
+true about RETRIEVAL and simultaneously false about REVENUE** — the two claims are about different
+outcomes, and nothing in either corpus reconciles them. **Do not let a generator optimise hook rate
+as a proxy for performance.** `[AUDIT]`'s own operational line: *"Optimize for Terminal Conversion
+Yield, not 3s Plays."*
+
+### 🔑 2 · Registration and attendance are separate outcomes. Show-up rate is the lever.
+
+`[WEBINAR]`, and `[AUDIT]` §1.4 rates it **Tier 1, "Very High"** — deterministic modelling against
+Livestorm's **33,786 webinar sessions / 7M+ registrants**.
+
+`[WEBINAR]`'s worked pair, on an **identical $5,000 budget** and identical 8% live sales conversion:
+
+| | low-CPR creative | pre-qualifying creative |
+|---|---|---|
+| cost per registration | $12.50 | $20.00 (**+60%**) |
+| registrants | 400 | 250 (**−37.5%**) |
+| **live show-up rate** | **25.0%** | **56.0%** |
+| **live attendees** | 100 | **140 — +40%** |
+| cost per attendee | — | **−28.6%** |
+
+> **Fewer registrants, more attendees, on the same spend.** `[AUDIT]`: *"Show-up rate is the primary
+> economic leverage point."*
+
+🔴 **The consequence for judging creative: a script that lowers registrations can be the better
+script.** Any assessment that scores on cost-per-registration will rank these backwards. This bears
+directly on **§6.6 item 2** of `CHECKPOINT.md` — the end-to-end conversion test — because it decides
+which event is worth optimising toward in the first place.
+
 ---
 
 # PART TWO — failure patterns that recur, and must be tested for
@@ -609,6 +667,33 @@ figures **reproduced to the decimal**.
 > under three characters, apostrophes retained" is a method.** Emit every parameter alongside every
 > figure, or the figure is an assertion wearing a number's clothes.
 
+#### 🔴 THE STOPLIST, PUBLISHED — this rule applied to this document
+
+**Recorded 2026-09-10.** Until now this section demanded parameters and gave none, which made rev 1
+of this spec an instance of the rule it states. **Every overlap figure quoted anywhere in this
+document, and every one in `CHECKPOINT.md` §6.11, was computed with exactly these parameters:**
+
+```
+METHOD      content-word Jaccard over set intersection / set union
+TOKENIZER   [a-z']+ on the lower-cased text — APOSTROPHES RETAINED
+             ("haven't" is one token, not two)
+MIN LENGTH  tokens under 3 characters are dropped BEFORE stoplisting
+STOPLIST    a an and the of to in on is it its that this those these for with as at by from
+            or but not no so if then than they them their there here what who whom which
+            when where how why you your yours i me my we us our he she his her him been be
+            being was were are am do does did done have has had will would can could should
+SCOPE       computed on the SPOKEN SCRIPT only unless the figure says otherwise; primary-text
+            and within-ad figures use the same parameters over the stated field
+```
+
+⚠️ **Apostrophe handling is not cosmetic.** On the same nine scripts, stripping apostrophes instead
+of retaining them moved the maximum pair from **22.5% to 24.3%** and changed which pair was top.
+**A parameter that changes the answer is part of the method.**
+
+📌 **The figures are a PROXY, not the Creative Similarity Score.** See §5.4 — no such score is
+published by Meta, and none can be read back. This number measures lexical overlap between two texts
+and nothing else.
+
 ---
 
 # 4. Conflicts the generator must surface, never silently resolve
@@ -699,6 +784,75 @@ observation about seven drafts, not a resolution.
 
 **Rule.** Surface which reading a batch was built on. Do not silently pick one.
 
+## 4.5 ⚠️ WHERE THE MECHANISM GOES — beat 3 or beat 2
+
+**The sharpest conflict in either corpus, because it changes the shape of every script the generator
+will emit.** Recorded 2026-09-10 on the banking of `performance-research/`.
+
+### The two structures
+
+| | **ZAP corpus** | **`performance-research`** |
+|---|---|---|
+| beats | **5** | **4, or 5 with an optional risk-reversal** |
+| shape | Hook → **Problem** → **Turn** → Solution → CTA | Hook → **Mechanism** → Proof → Offer & CTA |
+| mechanism lands at | **beat 3**, the Turn | **beat 2, seconds 3–12** |
+| a "Problem" beat | **required** | 🔴 **does not exist** |
+| source | `[STRUCTURE] §2` | `[STRUCT-CONV]` §2 |
+
+🔴 **This is not only a reordering. The new research has no Problem beat at all** — the slot the ZAP
+corpus fills with pain agitation is filled with the mechanism. Two structures, not one structure
+shuffled.
+
+### The evidence tier on each side — state it whenever you state the conflict
+
+| side | tier | basis |
+|---|---|---|
+| **ZAP corpus — mechanism at the Turn** | **untiered.** `[STRUCTURE]`, `[HOOKS-COLD]`, `[MIDDLE]` are NotebookLM syntheses of agency and copywriting sources. **No sample size, no control, no effect size is stated anywhere for the five-beat order.** It is a craft convention, well-attested and never measured | agency / copywriting practice |
+| **`performance-research` — mechanism at beat 2** | 🔢 **Tier 2** by `[AUDIT]`'s own classification: *"Comparative A/B testing of script structures… controlled account audits (100K+ impressions per variant)"*, limited because *"interaction effects with landing page quality and offer positioning cannot be completely isolated"* | controlled A/B, constrained |
+
+📌 **Tier 2 beats untiered, but it is not Tier 1, and the audit does not claim it is.** Do not
+promote it in the retelling.
+
+### The measured effect — and BOTH halves of it
+
+`[STRUCT-CONV]` §2, front-loaded (sec 3–12) against delayed (sec 30+):
+
+| | front-loaded | delayed | delta |
+|---|---|---|---|
+| 3s hook rate | 24.5–28.0% | 34.0–42.0% | 🔴 **−10 to −14 pp** |
+| 15s hold rate | 22.0–28.0% | 45.0–58.0% | 🔴 **−23 to −30 pp** |
+| outbound CTR | 1.85–2.40% | 0.80–1.10% | ✅ **+105% to +130%** |
+| landing-page CVR | 4.20–6.50% | 1.10–1.80% | ✅ **+210% to +260%** |
+| effective CPA | $32–45 | $78–110 | ✅ **45–58% reduction** |
+
+> **Front-loading LOSES engagement and GAINS conversion.** Anyone quoting only the second half is
+> quoting half the table. Delaying the mechanism costs roughly **half** the outbound CTR and about
+> **two-thirds** of the landing-page conversion rate.
+
+⚠️ **State the CPA figure in the direction the source states it.** The table reads *"45% to 58%
+**Reduction** in CPA"* moving from delayed to front-loaded. Expressed the other way — the cost of
+delaying — it is an **increase of roughly 80% to 140%**, since $32–45 against $78–110 is more than a
+doubling. **"Delaying raises CPA by 45–58%" understates it and is not what the source says.**
+
+### Why the two sides may both be right, stated as an observation and not a resolution
+
+🔷 The two structures optimise **different metrics**, and the ZAP corpus's chosen metric is the one
+**§1.14** reports as uncorrelated with revenue. `[LENGTHS] §5` treats hook rate and hold rate as the
+scored signals; the delayed structure wins on exactly those two and loses on CTR, CVR and CPA. **So
+the conflict may be a disagreement about what to optimise rather than about how scripts work.**
+`[STRUCT-CONV]` also argues front-loading feeds Andromeda *"immediate, high-fidelity semantic
+signals"* in the first 12 seconds, which would make it a retrieval argument as well as a conversion
+one — the ZAP corpus never addresses that claim.
+
+🔴 **DO NOT RESOLVE THIS.** The generator must surface which structure a batch was built on, and
+say so in its output. **Nine scripts already shipped on the five-beat structure** (`CHECKPOINT.md`
+§6.11) — that is a fact about what exists, not a vote.
+
+### ⚠️ One internal inconsistency in the source, so nobody quotes the wrong figure
+
+`[STRUCT-CONV]`'s ASCII timeline gives Beat 2 as **3–15s**; its prose list gives **3–12s**; its
+comparison table header gives **Sec 3–12**. **Two of three say 3–12. Quote 3–12.**
+
 ---
 
 # 5. Explicit silences — absences, not findings
@@ -759,6 +913,41 @@ not a measurement against a threshold.
 📌 **Do not let the direction of travel stand in for a target.** "Lower than the number that failed"
 is not the same as "inside the band", and a generator optimising this figure downward with no floor
 will eventually cross into semantic noise and report an improving metric all the way there.
+
+## 5.4 ⬜ ANDROMEDA ENTITY ID VECTOR THRESHOLDS — no public data exists
+
+**This settles the 60% figure as unverifiable, and it is now the SECOND independent source to say
+so.**
+
+`[AUDIT]` §4.1, filed under *"Empirical Data Gaps: What We Found No Reliable Data On"*:
+
+> *"While Meta discloses that Andromeda groups semantically similar creatives into 'Entity IDs,'
+> there is **zero public data** on the exact mathematical thresholds (e.g. visual cosine similarity
+> scores, audio embedding distances, or text parser vector limits) that trigger Entity ID
+> clustering."*
+>
+> *"**Implication:** Marketers cannot precisely define the exact degree of visual or audio alteration
+> required to force Meta's system to assign a new Entity ID."*
+
+Its summary matrix files the row as **"Vector Similarity Thresholds — No Data (Empirical Gap) —
+Black-box Meta System"**, with the operational line *"Test fundamentally distinct visual/narrative
+concepts."*
+
+### What this retires, and what it does not
+
+🔴 **RETIRED as a measurable threshold:** the **60% suppression / <40% target** figures from
+`[GUARD]` §2 and `[LENGTHS] §4`. They cannot be verified, cannot be read back, and no Meta surface
+reports a Creative Similarity Score. **Any figure computed against them — including every overlap
+percentage in this document and in `CHECKPOINT.md` §6.11 — is a PROXY, and must be labelled one.**
+
+✅ **NOT retired:** the mechanism. `[AUDIT]` §1.3 rates the **two-stage retrieval architecture and
+Entity ID clustering itself Tier 1**, on Meta's own engineering disclosures. Semantically similar
+creatives do cluster and do share a retrieval ticket. **What is unknowable is where the line sits.**
+
+📌 **`image-rule-spec.md` §9 had already reached this independently** — *"Meta publishes no Creative
+Similarity Score, so the <40% target is engineered by construction and verified by observed delivery
+behaviour, never by reading a number back."* Two sources, one conclusion. **Engineer distinctness by
+construction; never claim a score.**
 
 ---
 
