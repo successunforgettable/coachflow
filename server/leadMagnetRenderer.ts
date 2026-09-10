@@ -237,15 +237,49 @@ function cover(kicker: string, title: string, promise: string, coachLogoUrl?: st
  * and a button that loops the reader back to what they are already holding is worse than either.
  *
  * `nextStepUrl` is the seam the higher tiers land on — tier 1 a free-type sibling campaign in the
- * same service, tier 2 an operator-captured URL asked for at publish. NEITHER IS BUILT, and
- * nothing populates this parameter today: every caller omits it, so every surface currently takes
- * the text-only path. That is correct rather than provisional — it is the true state of the data
- * for 100% of production rows.
+ * same service, tier 2 an operator-captured URL asked for at publish. NEITHER IS BUILT. Since
+ * df5adca the magnet → free-event-page pointer (`_core/nextStepBridge.ts`) does populate it, but
+ * only when the paired page is published at the moment the magnet is.
  */
 function resolvedDestination(url?: string | null): string | null {
   const u = typeof url === "string" ? url.trim() : "";
   return u === "" ? null : u;
 }
+
+/**
+ * NEXT-STEP LIVENESS — the page-side half of the bridge (2026-09-10).
+ *
+ * The destination is resolved ONCE, at publish, and baked into the page. If the target is taken
+ * down afterwards the button keeps pointing at it — which is how magnet 7233 carried a button to a
+ * 404 from 2 September until it was republished. This script re-checks the target when the page is
+ * VIEWED and, if it is not live, swaps the button for the honest text card: same label, no link.
+ *
+ * REMOVES ONLY. It never creates a button, never changes a destination, never invents one. It runs
+ * only against same-origin targets — a cross-origin HEAD is opaque, so there is nothing true to act
+ * on and the button is left exactly as published. A network error leaves it as published too.
+ *
+ * ⚠️ It covers ONLY pages published after this change — the check is baked in at publish, like
+ * everything else on these pages. It CANNOT fix a PDF: the PDF is a frozen snapshot of the page.
+ *
+ * The replacement keeps the anchor's id, because the opt-in page's submit handler labels whichever
+ * element carries `next_cta` — so a card demoted before the reader submits still gets its label.
+ */
+export const NEXT_STEP_LIVENESS_SCRIPT = `(function(){
+  var els = document.querySelectorAll('[data-next-step-check]');
+  for (var i = 0; i < els.length; i++) (function(a){
+    var u;
+    try { u = new URL(a.getAttribute('href') || '', location.href); } catch (e) { return; }
+    if (u.origin !== location.origin) return;
+    fetch(u.href, { method: 'HEAD', cache: 'no-store' }).then(function(r){
+      if (r.ok || !a.parentNode) return;
+      var p = document.createElement('p');
+      p.className = 'cta-text';
+      if (a.id) p.id = a.id;
+      p.textContent = a.textContent;
+      a.parentNode.replaceChild(p, a);
+    }).catch(function(){});
+  })(els[i]);
+})();`;
 
 function nextStepBlock(n: NextStep, nextStepUrl?: string | null): string {
   if (!n) return "";
@@ -254,7 +288,8 @@ function nextStepBlock(n: NextStep, nextStepUrl?: string | null): string {
   // stays on the page as the closing line, because dropping it would silently delete generated
   // content rather than degrade it.
   const tail = dest
-    ? `<a class="cta" href="${esc(dest)}" target="_blank" rel="noopener">${esc(n.ctaLabel)}</a>`
+    ? `<a class="cta" href="${esc(dest)}" target="_blank" rel="noopener" data-next-step-check>${esc(n.ctaLabel)}</a>` +
+      `<script>${NEXT_STEP_LIVENESS_SCRIPT}</script>`
     : `<p class="cta-text">${esc(n.ctaLabel)}</p>`;
   return `<section class="next"><p class="kick">Your next step</p><h2>${esc(n.heading)}</h2>` +
     `<p>${esc(n.body)}</p>${tail}</section>`;
@@ -393,7 +428,8 @@ export function renderOptInHtml(o: OptInPageOpts): string {
       <h3 id="next_heading"></h3>
       <p id="next_body"></p>
       ${nextDest
-        ? `<a class="dl primary" id="next_cta" href="${esc(nextDest)}" target="_blank" rel="noopener"></a>`
+        ? `<a class="dl primary" id="next_cta" href="${esc(nextDest)}" target="_blank" rel="noopener" data-next-step-check></a>` +
+          `<script>${NEXT_STEP_LIVENESS_SCRIPT}</script>`
         : `<p class="cta-text" id="next_cta_text"></p>`}
     </div>
   </div>
