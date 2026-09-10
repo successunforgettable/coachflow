@@ -1833,6 +1833,16 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
      within 7 days"* — a timeframe result claim the magnet itself does not make.
    - Offers 215 and 217 still hold unfilled `[INSERT_BONUS_N_NAME]` slots; their kits never reached the
      bonus step.
+10. 🟡 **THE LEAD-MAGNET NAMING RULES HAVE NO TIMEFRAME RULE** — added 2026-09-11, recorded, NOT fixed.
+   The paid and free-event offer prompts name through `MAGIC_NAMING_BLOCK`, whose *Interval* component is
+   allowed *"ONLY where the timeframe is a supplied fact"*. The lead-magnet prompt (`free_asset`, shipped in
+   `0c649c4`) names through `FREE_ASSET_NAMING_BLOCK`, which drops the interval entirely — it neither permits
+   nor forbids one, so nothing in it keeps an unsupplied timeframe out of a name. On production, two of four
+   kit-225 offer names read "90-Day…". Those are grounded — service 318 *"within 90 days of building and
+   launching their offer"*, profile 291 *"three paying clients within 90 days"* — **but by luck, not by
+   rule**: the model happened to find a real figure. A coach whose material carries no timeframe gets no
+   protection from the naming block, and the name also borrows the paid programme's outcome window for a free
+   download. The offer validator still catches invented GUARANTEE timeframes; nothing checks one in a name.
 
 ---
 
