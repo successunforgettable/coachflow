@@ -56,7 +56,7 @@ pnpm install --frozen-lockfile                  # must pass
 - **Backend:** Express 4, tRPC 11, Drizzle ORM
 - **DB:** **MySQL Community Server 9.4.0** on Railway — `@@version_comment` = `MySQL Community Server - GPL`. **NOT TiDB.** (Corrected 2026-08-28. The old line read "MySQL/TiDB"; a Stage B target guard that checked for TiDB to identify production could therefore never fire — see §15c.) ⚠️ Local Homebrew MySQL reports the **same** `VERSION()` string, `9.4.0`, so **VERSION() does not distinguish local from production.** `@@version_comment` does: production `MySQL Community Server - GPL` vs local `Homebrew`.
 - **AI:** Anthropic Claude API (Sonnet for generation)
-- **Storage/media:** Cloudinary, Remotion Lambda (us-east-1)
+- **Storage/media:** Cloudinary, Remotion Lambda (us-east-1). ⚠️ **A Cloudinary URL is not a stable reference to a version of an asset.** Cloudinary serves by public id and ignores the `v<number>` segment, so a versioned URL serves the CURRENT file, not the version it names — observed 2026-09-10, when magnet 7233's PDF was re-uploaded under the same public id and its old `v1788007578` URL served the new file byte-for-byte. Never treat a Cloudinary URL as evidence of what was published at a point in time; record a hash or keep a copy.
 - **Integrations:** Stripe (live mode), Meta Ads API, GoHighLevel marketplace OAuth (workflows.readonly + locations/customValues.write scopes)
 
 ## 5. Architectural Invariants (never reverse)
