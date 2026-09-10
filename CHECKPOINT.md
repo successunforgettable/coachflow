@@ -25,16 +25,16 @@ what is approved and outstanding · what the next decision is · what a stray co
 
 🔴 **PUSHING `railway-build` IS THE DEPLOY** (~5 min). No separate release step.
 
-### 0.2 · HELD LOCALLY, NOT PUSHED — five documentation commits, and why
+### 0.2 · HELD LOCALLY, NOT PUSHED — six documentation commits, and why
 
-`7c555bd` · `589e689` · `f35b4bd` · `f81c52c` · and the commit adding this block. **All documentation**
+`7c555bd` · `589e689` · `f35b4bd` · `f81c52c` · `eb42eb0` (this block) · and the commit adding §0.6a. **All documentation**
 (`CHECKPOINT.md`, `CLAUDE.md`, `docs/`). **Why held:** pushing `railway-build` deploys production, and
 Arfeen's standing rule is that documentation-only commits stay off `main` and off production — they go out
 **with the next code push**, never on their own. No code push is needed now.
 
 ### 0.3 · WHAT A STRAY COMMAND DESTROYS
 
-🔴 **`git reset --hard origin/railway-build` (or re-cloning) destroys the five held commits** — they exist
+🔴 **`git reset --hard origin/railway-build` (or re-cloning) destroys the six held commits** — they exist
 only on this machine. Plain `checkout` / `stash` / `reset --hard` (to HEAD) destroy nothing.
 🔴 **`git clean -fd` destroys ~590 MB of untracked screenshots in no commit.** **NEVER `git add .`** — add
 named paths. 🟡 Still outside git: `~/Downloads/nine-creator-scripts-attendee.md` (§6.16).
@@ -114,6 +114,71 @@ with a whole-database comparison before and after each. Measured 2026-09-11:
 
 **D. Then STOP.** Next is §0.5's decision, not more inspection.
 
+### 0.6a · 🕳️ THE HOLE IN THE DELIVERABLE — VIDEO SCRIPTS. The next package, and NOT a queue item.
+
+**The cascade does not produce a complete campaign.** It has eleven nodes and none of them produces a
+video script. A coach running Meta ads needs video scripts and a way to shoot them — exactly what Arfeen
+needed on 2026-09-10, and got only by hand (§6.13). This is a gap in what ZAP delivers, not a defect in
+something it delivers, so it sits outside §0.10's queue.
+
+📌 **Measured 2026-09-11: the generator that exists is unreachable.** `server/conceptScriptGenerator.ts`
+(Andromeda, DRAFT-only) is called only by `server/scripts/pdaf-step1-proof.ts` and
+`server/scripts/verify-concept-script.ts` — **zero** callers in `server/routers`, `orchestration.ts` or
+`client/src`. No coach can reach it (§15d).
+
+**THE GOVERNING RULE — Arfeen's, 2026-09-11. It settles the open conflicts.**
+
+> **Where the corpus and the external research disagree, the decision goes to whichever side the evidence
+> supports — judged on SAMPLE SIZE, CONTROL and EFFECT SIZE — not to whichever document is ours or
+> older. Where neither side has evidence, that is recorded as UNEVIDENCED, never decided silently.**
+
+**What the rule implies for the conflicts already in `docs/andromeda/script-rule-spec.md` — the STARTING
+POSITION for the scoping work, not a resolution:**
+
+| conflict | corpus side | the other side | starting position under the rule |
+|---|---|---|---|
+| **§4.5 · where the mechanism goes** | beat 3, the Turn — **untiered** NotebookLM synthesis; no sample size, control or effect size stated | beat 2, seconds 3–12 — **Tier 2** controlled A/B, **100K+ impressions per variant** (`[STRUCT-CONV]` §2, tiered by `[AUDIT]`) | beat 2, the only side with evidence — carrying BOTH halves: front-loading loses 10–14 pp of hook rate and 23–30 pp of 15 s hold, and gains 105–130% outbound CTR and 210–260% landing-page CVR. Tier 2, not Tier 1 |
+| **the 60% creative-similarity threshold** | `[GUARD]` §2, `[LENGTHS]` §4 — above 60% suppresses | **two independent audits find no public data**: `[AUDIT]` files it *"No Data (Empirical Gap)"*; `ZAP_to_Andromeda_Alignment_Audit.md` lists it as a speculative claim to exclude | **unevidenced.** Already retired as a measurable threshold in the spec; any overlap percentage is a proxy and is labelled one |
+| **§4.2 · the awareness distribution** | three versions: `3/3/1/1/0` · `2/3/2/1/0` · `2/2/2/1/1` | — | no side states evidence → **unevidenced** unless scoping finds a controlled comparison. `image-rule-spec.md` §5.7 already calls it Arfeen's open question |
+| **hook-rate emphasis** | the corpus treats hook rate as the thing to win | **Tier 1: R² ≈ 0.003** between thumbstop rate and conversion, **578,750 ads**, $1.29B spend (spec §1.14) | hook rate is an attention diagnostic, not a revenue target |
+
+**THE OUTPUT STANDARD — `docs/andromeda/worked-examples/final-shoot-2026-09-10/`.** Nine scripts, their
+on-screen text, headlines and shoot grid, across four briefs (script and talent · camera · editor ·
+production). Built to `script-rule-spec.md` — the four patterns in the first ten seconds, the Tier 2 side
+of §4.5 — and independently verified: recomputed at banking, not accepted (112–114 words, hooks 4–10
+words), files SHA-256 byte-identical to source. **Generated output is judged against these nine, not
+against the generator's own validator.**
+
+**THE KNOWN BLOCKERS — start scoping from these; do not rediscover them.** Each re-checked against the code
+2026-09-11:
+1. **No batch can form.** `scriptSetId = randomUUID()` is minted inside `generateScriptForConcept`
+   (`conceptScriptGenerator.ts:296`), one call per script, so every script is its own set and
+   Generate-More-Show-Less has nothing to choose among.
+2. **It requests a cascade node that excludes its own output.** `getCascadeContext(…, "adCopy")` (`:182`)
+   returns `adCopy`'s upstream — offer, mechanism, hvco, headlines — and so leaves out the ad copy itself,
+   the primary text a script ships beside.
+3. **A 30-second ceiling against a 42-second standard.** `PLACEMENT_SAFE_CEILING_SECONDS = 30`
+   (`server/_core/conceptAxis.ts:306`) caps every awareness stage; the worked example runs about 41–42 s.
+   The generator cannot produce the standard's length.
+4. **Output is the hook and the scenes, nothing else.** `RawScript` is `hookPattern` + `scenes[]` (spoken
+   line, per-scene `onScreenText`, delivery note); `conceptScripts` has no headline, no primary text and no
+   on-screen card to the spec's four Tier 1 requirements (§1.12). ⚠️ A per-scene `onScreenText` field does
+   exist — it is not the card the standard specifies.
+5. **Four checks implemented where the spec requires eleven** — Arfeen's count, **not reproduced in the repo
+   on 2026-09-11**: no written "eleven" was found. What the code has: `validateScriptStructure` emits 7 hit
+   classes — 5 structural (≥3 scenes · a spoken line in every scene · the first scene is the hook · the
+   hook pattern matches · not over the word budget) plus a compliance reject and fabricated scarcity — which
+   touch only a few of the spec's Part One rules (§1.1–§1.13). **Recount rule by rule at scoping.**
+
+**STATUS: THE SCOPING WORK HAS NOT BEEN DONE. The first move on this package is to scope it —
+investigation and a recommendation, no code — not to build.**
+
+⚠️ **ORDER NOT SETTLED — ask at session start.** Arfeen's 2026-09-11 note says the first move in the next
+session is to scope this package. §0.6 says run the approved items A–C first, and §0.5 recommends the
+step-six campaign after them. The two were not reconciled. CC's recommendation: A–C first (approved,
+partly done, short), then scoping — scoping is reading and a recommendation, and does not compete with
+Arfeen running the campaign.
+
 ### 0.7 · THE WORKING RULE — it produced the session's three stops
 
 > **Any write beyond what was explicitly approved → STOP AND REPORT before proceeding.**
@@ -178,6 +243,9 @@ Shipped earlier the same night: `1def3b9` (one definition of a leftover token; t
 The **three approved regeneration items** in §0.6 (A–C) are run first only because they are already
 approved and partly done; then §0.5 decides.
 
+📌 **Not in this list, by design: video scripts** — a hole in the deliverable rather than a defect, and the
+next package (§0.6a).
+
 ### 0.11 · WHERE THINGS ARE
 
 | | |
@@ -188,7 +256,9 @@ approved and partly done; then §0.5 decides.
 | the lead-magnet standard · the build brief | `docs/lead-magnet-research/LEAD_MAGNET_STANDARD.md` · `docs/handovers/BRIEF_2026-09-10_LEAD_MAGNET_OFFER_MODE.md` |
 | product queue · protected rows | §4 and §5 of the 2026-09-05 block below |
 | open campaign items · what gates spend | §6.17 · §6.6 items 0a, 0 and 2 |
-| ad creative, live | §6.13 · `docs/andromeda/worked-examples/final-shoot-2026-09-10/` |
+| ad creative, live · **the video-script output standard** | §6.13 · `docs/andromeda/worked-examples/final-shoot-2026-09-10/` |
+| the video-script rule and its conflicts | `docs/andromeda/script-rule-spec.md` (§4 conflicts · §1.14 Tier 1 findings) |
+| the script generator (unreachable) | `server/conceptScriptGenerator.ts` · `server/_core/conceptScriptValidator.ts` · cap in `server/_core/conceptAxis.ts` |
 
 ### 0.12 · HOW TO RUN THINGS
 
