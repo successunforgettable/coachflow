@@ -74,7 +74,8 @@ from Arfeen's statement.)
 > session. DO NOT RE-RUN ANY OF THEM.** A and B: **§0.6b**. C (7233 regenerated): **§0.6d**. Also approved and
 > **STOPPED before any write, twice**: regenerating landing page `campaign-211` in place — first on timeframes
 > (ruled not to count), then on outcome promises that the offer prompt instructs (§0.6d, queue item 15). The
-> page is still live with the claim. Next is Arfeen's call on queue item 15, then §0.5's decision.
+> page is still live with the claim and is **BLOCKED on item 15** (resolved as a rule, CLAUDE.md §14b; the
+> prompt change is not built). Next: the queue item 14 scoping report, then §0.5's decision.
 
 Approved by Arfeen on 2026-09-11 so a fresh session can resume without re-asking WHAT to do. ⚠️ **§0.10
 gate 1 still binds EACH write**: show the statement and wait for "go ahead" in the message immediately
@@ -236,6 +237,9 @@ writing if anything appears.
   `[INSERT_GUARANTEE_TERMS]` came back in 2 of 12. **The promise is INSTRUCTED upstream (queue item 15), so a
   re-roll cannot remove it — a defect in the generator, not a bad roll.** Stopped as instructed.
   **`campaign-211` is still live with the claim** in three passages; nothing written.
+- 🛑 **BLOCKED ON QUEUE ITEM 15 — NOT OUTSTANDING.** Arfeen, 2026-09-11: leave it alone. It cannot pass until the
+  offer prompt changes, and forcing it would write a page that fails the rule just set (CLAUDE.md §14b). When
+  item 15 ships: regenerate offer 223 first, then the page.
 
 **C — magnet 7233 / kit 223 — DONE.** Each step bracketed by the 58-table checksum snapshot.
 
@@ -399,7 +403,8 @@ Shipped earlier the same night: `1def3b9` (one definition of a leftover token; t
     21 of the 25 published ones, all outside the `original` angle. A class (§4 item 14).
 15. 🔴 **The lead-magnet path is instructed to promise speed** — the free-asset offer prompt (`0c649c4`) asks for
     "the same day" / "in one sitting", following the approved standard's "quick win". Every offer, magnet PDF and
-    page angle produced 2026-09-10/11 carries it. Conflicts with the 2026-09-11 rule — Arfeen's call (§4 item 15).
+    page angle produced 2026-09-10/11 carries it. **RESOLVED AS A RULE 2026-09-11 — CLAUDE.md §14b** (what the
+    promise attaches to). The prompt and the standard must change; NOT BUILT. Six instances counted (§4 item 15).
 
 The **three approved regeneration items** in §0.6 (A–C) are run first only because they are already
 approved and partly done; then §0.5 decides.
@@ -2518,13 +2523,33 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
      (`cascadeContext.ts:326-334`) and comes back verbatim.
    - **§14.** The prompt's own example phrases are reproduced word for word. A positive example, allowed by §14a,
      but the output is the example.
-   - 🟠 **A CONFLICT FOR ARFEEN, NOT A FIX CC CHOOSES.** The approved lead-magnet standard asks for a fast quick
-     win and tells the model to say how quickly it works; the rule set 2026-09-11 counts a speed promise attached
-     to an outcome as a claim. As written, both cannot hold. One reading that might reconcile them — unconfirmed:
-     a property of the asset (*"a one-page checklist"*, *"one short script"*) versus a promise about the reader's
-     outcome (*"ready to send the same day"*).
-   - **Consequence already on record:** the three magnet PDFs regenerated and published 2026-09-10/11 carry the
-     shape in their opening promise, and a published PDF cannot be retracted.
+   - ✅ **RESOLVED AS A RULE — Arfeen, 2026-09-11. Now a standing definition: CLAUDE.md §14b.** *The test is what
+     the promise attaches to.* A property of the asset is a description and is always allowed (*"a one-page
+     checklist"*, *"one short script"*, *"a two-page template"*). A time attached to the reader's outcome is a
+     claim and is barred unless the coach supplied it (*"ready to send the same day"*, *"results in one
+     sitting"*, *"works tonight"*). By that line *"built and ready to send in one sitting"* fails ("ready to send"
+     is the reader's outcome), *"a one-sitting tool"* fails, *"a one-page checklist"* passes. **It supersedes
+     Arfeen's earlier rule, which barred only promises carrying a figure.**
+   - **What the resolution requires — NOT BUILT; its own sprint:** (1) the free-asset offer prompt
+     (`offerStandard.ts:371`, `:382-389`; `offersGenerator.ts:97`) must describe the asset, not the reader's
+     outcome and its timing; (2) **the approved `LEAD_MAGNET_STANDARD.md` needs the same edit** — *"resolve one
+     acute symptom fast"* (:10) and *"within minutes"* (:16) describe what the asset does FOR THE READER and must
+     be rewritten to describe the asset instead; (3) a check on generated copy that applies §14b.
+   - **INSTANCES — measured 2026-09-11, so the sprint's scope is counted, not estimated:**
+
+     | instance | where it lives | the words | why it fails §14b |
+     |---|---|---|---|
+     | offer 223 (kit 177) | `offers.godfatherAngle.valueProposition` (active angle) | *"…from blank inbox to a live cold outreach sequence … — built and ready to send in one sitting"* | "ready to send" is the reader's outcome, timed |
+     | offer 224 (kit 222) | same | *"A word-for-word script that opens the one conversation … — and closes it the same day without the wall going up"* | the reader's outcome, "the same day" |
+     | offer 225 (kit 223) | same | *"A one-sitting tool that gives both of you one agreed interruption protocol — so … one of you can actually stop it before the spiral completes"* | "a one-sitting tool"; the reader's outcome |
+     | magnet 5686 PDF | opening promise; current `v1789141529` | *"Use these tools to write and send your first cold outreach sequence to premium brand identity clients today"* | the reader's outcome, "today" |
+     | magnet 7173 PDF | opening promise; current `v1789074179` | *"…and install a 90-second interrupt you can use tonight"* | the reader's outcome, "tonight" |
+     | magnet 7233 PDF | opening promise; current `v1789144605` | *"Use this guide in one sitting to build a real, jointly agreed interruption signal … a working protocol you can introduce to your partner tonight"* | the reader's outcome, timed twice |
+
+     And landing page 211's regeneration: 12 of 12 angle samples failed, 11 of 12 on *"in one sitting"* (§0.6d).
+     Earlier PDF versions of these magnets were not measured for this shape.
+   - 🔴 **THE THREE PDFs ARE PERMANENT at their addresses whatever is decided** (§0.6c). Regenerating after the
+     prompt fix replaces the live page and the current address; the addresses above keep serving these words.
 
 ---
 

@@ -181,6 +181,31 @@ built to fix a real intermittent failure class. The distinction that makes both 
 
 **The test: could the model reproduce this text as output? If yes, it does not belong in a prompt.**
 
+## 14b. WHAT A PROMISE ATTACHES TO — STANDING DEFINITION (Arfeen, settled 2026-09-11)
+
+**The test is what the promise attaches to.**
+
+| | it attaches to | rule | examples |
+| :--- | :--- | :--- | :--- |
+| **A property of the asset** | what the thing IS | ✅ **always allowed** — it is a description | "a one-page checklist" · "one short script" · "a two-page template" |
+| **A time attached to the reader's outcome** | what happens to the READER, and WHEN | 🔴 **a claim — barred unless the coach supplied it** | "ready to send the same day" · "results in one sitting" · "works tonight" |
+
+> **What the thing is: always allowed. What happens to the reader and when: never — unless grounded in
+> something the coach gave us.**
+
+**Worked by this line:** *"built and ready to send in one sitting"* FAILS — "ready to send" is the reader's
+outcome. *"A one-sitting tool"* FAILS. *"A one-page checklist"* PASSES.
+
+- **With or without a figure.** This supersedes the earlier 2026-09-11 rule, which barred only promises carrying a
+  number. *"Ready to send the same day you download it"* has no figure and is the same shape as *"booked a $6,000
+  client in 11 days"*.
+- **Not a promise:** a duration inside scene-setting prose (*"she spends about twelve seconds on it"*). It never
+  bars a write.
+- **Where it applies:** generated copy, and every check that judges copy. How the rule is expressed INSIDE a
+  prompt is still governed by §14 / §14a (positive-only; no failure exemplar in a prompt).
+- **Known to contradict it today:** the free-asset offer prompt and the approved `LEAD_MAGNET_STANDARD.md` both
+  instruct speed attached to the reader's outcome (CHECKPOINT queue item 15).
+
 ## 15. Marketing Content Default
 
 - For ALL wire sprints, design decisions, content audits, copy reviews: authorize researching the marketingskills repo (github.com/mysticaltech/marketingskills.git) + web as the PRIMARY industry-grounded reference frame, BY DEFAULT without Arfeen prompting
