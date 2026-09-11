@@ -25,16 +25,18 @@ what is approved and outstanding · what the next decision is · what a stray co
 
 🔴 **PUSHING `railway-build` IS THE DEPLOY** (~5 min). No separate release step.
 
-### 0.2 · HELD LOCALLY, NOT PUSHED — six documentation commits, and why
+### 0.2 · HELD LOCALLY, NOT PUSHED — eight documentation commits (as at 2026-09-11 afternoon), and why
 
-`7c555bd` · `589e689` · `f35b4bd` · `f81c52c` · `eb42eb0` (this block) · and the commit adding §0.6a. **All documentation**
+`7c555bd` · `589e689` · `f35b4bd` · `f81c52c` · `eb42eb0` (this block) · `6712b93` (§0.6a) · `cd4a671` (startup
+pointer → this block; `STATE.md` marked superseded) · and the commit recording the 2026-09-11 item-11
+re-measurement. Count them with `git log --oneline origin/railway-build..HEAD`. **All documentation**
 (`CHECKPOINT.md`, `CLAUDE.md`, `docs/`). **Why held:** pushing `railway-build` deploys production, and
 Arfeen's standing rule is that documentation-only commits stay off `main` and off production — they go out
 **with the next code push**, never on their own. No code push is needed now.
 
 ### 0.3 · WHAT A STRAY COMMAND DESTROYS
 
-🔴 **`git reset --hard origin/railway-build` (or re-cloning) destroys the six held commits** — they exist
+🔴 **`git reset --hard origin/railway-build` (or re-cloning) destroys every held commit** (§0.2) — they exist
 only on this machine. Plain `checkout` / `stash` / `reset --hard` (to HEAD) destroy nothing.
 🔴 **`git clean -fd` destroys ~590 MB of untracked screenshots in no commit.** **NEVER `git add .`** — add
 named paths. 🟡 Still outside git: `~/Downloads/nine-creator-scripts-attendee.md` (§6.16).
@@ -234,8 +236,11 @@ Shipped earlier the same night: `1def3b9` (one definition of a leftover token; t
 8. 🟡 The date-fabrication rule teaches cohort scarcity to every generator.
 9. 🟡 Bonuses on a lead-magnet campaign — evidence for Arfeen's separate decision.
 10. 🟡 The lead-magnet naming rules have no timeframe rule.
-11. 🔴 **A Cloudinary address does not serve the version it names; one fetch proves nothing** — invalidation
-    cleared two of three addresses.
+11. 🔴 **A Cloudinary address does not serve the version it names; no single fetch proves what it
+    serves.** More than one cache answers: on 2026-09-11 the same address returned the current file on a
+    miss and the old file on a hit within four minutes, and 7233's old address — recorded CLEARED —
+    served the dead page-240 link again. A purge is proven neither by the call nor by one later fetch.
+    Standard: ≥3 spaced fetches, every result reported. Full text and the table: §4 item 11 below.
 12. 🔴 **The product manufactures the fabrication** — the service profile's lead-magnet topic MUST contain a
     figure, nothing grounds it, the title node carries it into every title (34 of 60 in the dry run), 112 of
     115 production topics carry a figure. **Affects every service.** 5686's replacement is clean by position.
@@ -2217,6 +2222,35 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    of what was published, never the address alone (CLAUDE.md §4). Approved and outstanding: one further
    invalidate on 5686 (if the old bytes persist, record UNRESOLVED and stop), and clearing 7173's
    `v1787948313`. Runbook: `docs/handovers/REGEN_RUNBOOK_2026-09-11.md` §5.
+   **2026-09-11 — RE-MEASURED AT RESTART: THE 7233 "CLEARED" VERDICT DID NOT HOLD, AND FETCHES MINUTES
+   APART DISAGREE.** Three fetches from this machine, no write in between; each reports status, bytes,
+   SHA-256 and the `server-timing` `desc`:
+
+   | address | 15:11 UTC | 15:15 | 15:15:40 |
+   |---|---|---|---|
+   | 7233 old `v1788007578` — recorded CLEARED 2026-09-10 | current 272,744 B `e9b32810c643`, **miss** | **old 274,507 B `b56a82b82098`, carries the `campaign-240` link, hit** | same, hit |
+   | 5686 old `v1787860054` | current 615,289 B `3829e6b65c65`, **miss** | old 415,099 B `3eb37b0fc011` — "Book My Free" ×1, "Pipeline Diagnosis" ×2 — hit | same, hit |
+   | 7173 old `v1787948313` | current 294,919 B `e15dd7c7e2e9`, miss | current, miss | current, hit |
+
+   - **The same address returned the CURRENT file on a cache miss and the OLD file on a cache hit within
+     four minutes.** More than one cache answers each address and each holds its own copy: a miss is
+     filled from origin with the current bytes; a hit returns whatever that cache holds, for up to 30 days.
+   - **So no single fetch proves what an address serves.** It proves what one cache served, once.
+   - **This weakens every verification done by fetching a Cloudinary address once** — including several
+     recorded in this file. The weakness is sharpest for any address whose public id was overwritten or
+     deleted (every old versioned URL; every unversioned URL), because different caches can hold different
+     bytes. For a version URL first created by the upload being checked, every cache can only hold bytes
+     that upload wrote, so one fetch reads that content correctly — and still proves nothing about the
+     file's other addresses.
+   - **A purge is proven neither by the call nor by one subsequent fetch.** 7233's old address was purged
+     2026-09-10 20:31, read the new file at 20:36 (miss) and 20:48 (hit), and was recorded CLEARED. At 15:15
+     the next day it served the old file, with the dead link, from a cache. The 20:48 hit showed only that
+     ONE cache held the new file.
+   - 7173's 28 Aug file (282,521 B `b656b92de609`) did not appear in three fetches. That does not show it
+     is gone — only that the caches reached from this machine did not return it.
+   - **The standard from now:** at least three fetches spaced minutes apart; every result reported
+     (status, bytes, hash, `desc=hit|miss`), never a summary; a verdict names what the caches that were
+     seen returned, never "cleared". This supersedes "two fetches" wherever it is written above.
 12. 🔴 **THE PRODUCT MANUFACTURES THE FABRICATION — the service profile writes an invented proof claim into
    the lead-magnet topic, and the title node carries it into every title** — added 2026-09-11, recorded, NOT
    fixed. **The most consequential finding of the 2026-09-10/11 session.**
