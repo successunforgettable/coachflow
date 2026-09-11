@@ -11,6 +11,13 @@
 > untouched and still open.** Restorable export (90 days, until 2026-12-11): `~/zap-wipe-export-2026-09-12/`.
 > 🔴 A Cloudinary DELETE does not retract a cached copy either — eight previously-probed PDF addresses still
 > served their old files after the delete (wipe record §7).
+>
+> 🟢 **RESUME POINT — `docs/handovers/CHECKPOINT_2026-09-12_SCOPING_COMPLETE.md`.** Scoping of queue items 7, 12,
+> 13, 14, 15 is COMPLETE; **nothing is built and nothing is authorised to build.** The "three-piece token fix" label
+> was wrong: **14 + 7** are the token family (7 latent), **12, 13, 15** are unsupported claims in lead-magnet copy.
+> Build order once resumed: **15 → 14 (closes 7) → 13 → 12 last (needs its own migration)**. 🔴 **One decision is
+> open and unanswered:** item 15 would edit `bonus-42/43/33`, which the wipe deliberately RETAINED — Arfeen's
+> explicit confirmation is required first.
 
 **Written for a fresh terminal with no conversational memory.** Every number was MEASURED at write time
 (§15f) unless it says otherwise. Answers from this block alone: what is deployed · what is held locally ·
