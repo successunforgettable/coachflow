@@ -72,8 +72,9 @@ from Arfeen's statement.)
 
 > 🟠 **STATUS 2026-09-11 16:40 UTC — A, B AND C HAVE ALL RUN, each on Arfeen's approval in the restart
 > session. DO NOT RE-RUN ANY OF THEM.** A and B: **§0.6b**. C (7233 regenerated): **§0.6d**. Also approved and
-> **STOPPED before any write**: regenerating landing page `campaign-211` in place — its check found timeframes
-> (§0.6d). Next is §0.5's decision.
+> **STOPPED before any write, twice**: regenerating landing page `campaign-211` in place — first on timeframes
+> (ruled not to count), then on outcome promises that the offer prompt instructs (§0.6d, queue item 15). The
+> page is still live with the claim. Next is Arfeen's call on queue item 15, then §0.5's decision.
 
 Approved by Arfeen on 2026-09-11 so a fresh session can resume without re-asking WHAT to do. ⚠️ **§0.10
 gate 1 still binds EACH write**: show the statement and wait for "go ahead" in the message immediately
@@ -225,8 +226,16 @@ writing if anything appears.
 - Also found: one leftover `[INSERT_GUARANTEE_TERMS]` in `godfather.guarantee` (an unrendered angle; the publish
   gate scans the rendered HTML, so it would not have blocked). The rendered subheadline reads *"…assembled in one
   sitting, ready to send the same day you download it"* — a speed statement with no figure.
-- **Open, for Arfeen:** whether durations in fields the page never renders count as timeframes under the rule.
-  **`campaign-211` is still live with the claim** in three passages. The generated angles were not retained.
+- **Ruled by Arfeen:** durations in prose do NOT count. Two things DO bar the write: an operator token stored in
+  ANY field, rendered or not (queue item 14); and **a promise attached to an outcome, with or without a figure** —
+  the subheadline *"ready to send the same day you download it"* is the same shape as the claim removed from 5686.
+- **SECOND STOP — three samples, 12 of 12 angles fail the tightened check.** Two more in-memory generations,
+  run in parallel (58-table diff: no change). Every angle carries an outcome or speed promise on a field the
+  template renders: 11 of 12 *"in one sitting"*, and also *"so your next cold email lands with a marketing
+  director"*, *"cold emails that generate real discovery calls"*, *"keeps prospects moving"*.
+  `[INSERT_GUARANTEE_TERMS]` came back in 2 of 12. **The promise is INSTRUCTED upstream (queue item 15), so a
+  re-roll cannot remove it — a defect in the generator, not a bad roll.** Stopped as instructed.
+  **`campaign-211` is still live with the claim** in three passages; nothing written.
 
 **C — magnet 7233 / kit 223 — DONE.** Each step bracketed by the 58-table checksum snapshot.
 
@@ -382,8 +391,15 @@ Shipped earlier the same night: `1def3b9` (one definition of a leftover token; t
     115 production topics carry a figure. **Affects every service.** 5686's replacement is clean by position.
 13. 🔴 **A live page's content depends on an undefined ordering** — the lead-magnet landing page takes its magnet
     name and cover from the newest `long` row for the SERVICE, ordered by `createdAt` alone, and a title set
-    shares one second. Service 262's page shows the clean title today by chance; 5689 would put an unverified
-    result claim ("4 Qualified Replies in 9 Days") on it. General — every service (§4 item 13).
+    shares one second. Service 262's page shows the clean title today by chance; three of the other four
+    candidates carry a fabrication of the same class (a result claim, an eleven-day timeframe, forty-eight hours
+    plus a promised outcome) — one of three fabrications, picked by an undefined sort. General (§4 item 13).
+14. 🔴 **An operator token stored in a field the template does not render is invisible to every gate** — the
+    publish gate scans rendered HTML only. Measured: 61 of 99 landing-page rows store an `[INSERT_*]` token,
+    21 of the 25 published ones, all outside the `original` angle. A class (§4 item 14).
+15. 🔴 **The lead-magnet path is instructed to promise speed** — the free-asset offer prompt (`0c649c4`) asks for
+    "the same day" / "in one sitting", following the approved standard's "quick win". Every offer, magnet PDF and
+    page angle produced 2026-09-10/11 carries it. Conflicts with the 2026-09-11 rule — Arfeen's call (§4 item 15).
 
 The **three approved regeneration items** in §0.6 (A–C) are run first only because they are already
 approved and partly done; then §0.5 decides.
@@ -2450,9 +2466,13 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    - **What the other candidates would put on the live page** (measured 2026-09-11): 5687 *"…Around One Industry
      in 48 Hours So Marketing Directors Stop Scanning Past You and Start Booking Discovery Calls"* · 5688 *"The
      3-Part Brief-to-Buyer Portfolio Audit…"* · 5689 *"…and the Sequence Fix That Generated 4 Qualified Replies
-     in 9 Days"* · 5690 *"The 11-Day Cold Outreach Starter System…"*. **5689 is an unverified result claim of the
-     same shape as the one removed from 5686** (a figure and a timeframe); 5690 carries the same "11-day"
-     timeframe; 5687 a timeframe and a promised outcome. None repeats "$6,000".
+     in 9 Days"* · 5690 *"The 11-Day Cold Outreach Starter System…"*. **THREE OF THE FOUR carry a fabrication of
+     the same class as the one removed from 5686**: 5689 an unverified result claim (a figure and a timeframe),
+     5690 an ungrounded eleven-day timeframe, 5687 forty-eight hours plus a promised outcome. None repeats
+     "$6,000". **So the tie does not merely risk an ungrounded title — it risks one of three different
+     fabrications on a live page, decided by an undefined sort order across rows sharing a creation second.**
+     (Measurement correction, 2026-09-11: the first note said "two of the others carry the same claim"; the
+     measured answer is worse.)
    - **Why it is general.** Every service whose titles were generated as a set has tied `long` rows — the tie
      is the normal case. The cover comes from the same row's `magnetPdfUrl`, so a different pick shows another
      magnet's cover, or none.
@@ -2463,6 +2483,48 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    - **The fix is at the source**: the page must name the magnet the kit actually selected, not the newest row
      for the service; a deterministic tiebreak alone would only make the wrong pick stable. Before/after on a
      service with tied rows. Related: item 12 (the titles carry figures in the first place).
+14. 🔴 **AN OPERATOR TOKEN STORED IN A FIELD THE TEMPLATE DOES NOT RENDER IS INVISIBLE TO EVERY GATE WE HAVE** —
+   added 2026-09-11, recorded, NOT fixed. **A class of defect, not one page.**
+   - **The instance.** Landing page 211's in-memory regeneration (§0.6d) produced `[INSERT_GUARANTEE_TERMS]` in
+     `godfather.guarantee`. The Burchard template renders eight content fields of ONE angle — the active one
+     (`mainHeadline`, `subheadline`, `primaryCta`, `consultationOutline`, `solutionIntro`, `featureHighlights`,
+     `testimonials`, `coachTestimonials`). The publish gate scans the RENDERED HTML
+     (`findLeftoverOperatorTokens(html)`, `landingPagePublisher.ts:195-201`). The generator resolves only the
+     tokens it has a fact for and leaves the rest *"for the gate to catch"* (`landingPageGenerator.ts:1279-1282`)
+     — and no gate can see a token in an unrendered field or an inactive angle. It is stored, and it passes.
+   - **Measured on production 2026-09-11: 61 of 99 landing-page rows store an `[INSERT_*]` token; 21 of the 25
+     PUBLISHED rows do; all 61 carry it in an angle other than `original`.** Every one passed every gate.
+   - **Why it matters though nothing shows it today.** A later template change that renders the field, or a coach
+     switching the active angle, puts the token on the page. Through `runLandingPagePublish` the gate would then
+     refuse that publish; through the rewrite engine (item 7), which republishes with NO token gate, it would go
+     live.
+   - **The fix is at the source**: check the STORED content — every field of every angle — before it is persisted,
+     not only the rendered HTML at publish. Related: item 7.
+15. 🔴 **THE LEAD-MAGNET PATH IS INSTRUCTED TO PROMISE SPEED — and every asset it produced on 2026-09-10/11 carries
+   it** — added 2026-09-11, recorded, NOT fixed. Found by applying Arfeen's tightened rule (*a promise attached to
+   an outcome counts, with or without a figure*) to landing page 211.
+   - **The instruction.** The free-asset offer prompt shipped in `0c649c4`: *"ANGLE — THE QUICK WIN, DELIVERED
+     FIRST … plain words such as "the same day" or "in one sitting""* (`server/_core/offerStandard.ts:382-389`);
+     *"The {asset} is used in one short sitting. Describe how quickly it works in plain words such as "in one
+     sitting" or "the same day""* (`server/offersGenerator.ts:97`); *"a working tool the reader uses today"*
+     (`offerStandard.ts:371`). It follows the approved standard, `LEAD_MAGNET_STANDARD.md`: *"resolve one acute
+     symptom fast"* (:10), *"within minutes"* (:16), *"one quick win"* (:62).
+   - **What it produced, measured 2026-09-11.** Offer value lines: 223 *"…built and ready to send in one
+     sitting"* · 224 *"…closes it the same day without the wall going up"* · 225 *"A one-sitting tool…"*. Magnet
+     promise lines, now inside PERMANENT PDFs (§0.6c): 5686 *"…send your first cold outreach sequence … today"* ·
+     7173 *"…a 90-second interrupt you can use tonight"* · 7233 *"Use this guide in one sitting … introduce to
+     your partner tonight"*. Landing page 211's regeneration: 12 of 12 angle samples carry an outcome or speed
+     promise on a rendered field, 11 of 12 *"in one sitting"* — the offer's value line reaches the page prompt
+     (`cascadeContext.ts:326-334`) and comes back verbatim.
+   - **§14.** The prompt's own example phrases are reproduced word for word. A positive example, allowed by §14a,
+     but the output is the example.
+   - 🟠 **A CONFLICT FOR ARFEEN, NOT A FIX CC CHOOSES.** The approved lead-magnet standard asks for a fast quick
+     win and tells the model to say how quickly it works; the rule set 2026-09-11 counts a speed promise attached
+     to an outcome as a claim. As written, both cannot hold. One reading that might reconcile them — unconfirmed:
+     a property of the asset (*"a one-page checklist"*, *"one short script"*) versus a promise about the reader's
+     outcome (*"ready to send the same day"*).
+   - **Consequence already on record:** the three magnet PDFs regenerated and published 2026-09-10/11 carry the
+     shape in their opening promise, and a published PDF cannot be retracted.
 
 ---
 
