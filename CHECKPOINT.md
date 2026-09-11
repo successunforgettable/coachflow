@@ -2498,7 +2498,21 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
      tokens it has a fact for and leaves the rest *"for the gate to catch"* (`landingPageGenerator.ts:1279-1282`)
      — and no gate can see a token in an unrendered field or an inactive angle. It is stored, and it passes.
    - **Measured on production 2026-09-11: 61 of 99 landing-page rows store an `[INSERT_*]` token; 21 of the 25
-     PUBLISHED rows do; all 61 carry it in an angle other than `original`.** Every one passed every gate.
+     PUBLISHED rows do.** ⚠️ **CORRECTED the same day:** the first version of this line said "all 61 carry it in
+     an angle other than `original`" — true only in the sense that each has one in SOME non-original angle, and it
+     was read as "only there". Measured properly: **40 of the 61 carry a token in the ACTIVE angle**; 21 only in
+     non-active angles. Of the 21 published: every published row is on `original`; **13 carry a token in that
+     active angle, 8 only in non-active angles.**
+   - 🔴 **13 OF THE 25 PUBLISHED PAGES SHOW A RAW TOKEN TO THE PUBLIC RIGHT NOW** — fetched 2026-09-11, the token
+     is in the served text, not filled by anything: pages 170, 171, 174, 178, 179, 181, 183, 184, 186, 187, 188,
+     190, 191. E.g. *"This webinar runs live once on [INSERT_EVENT_DATE] at [INSERT_EVENT_TIME]"*, *"Book your
+     place at [INSERT_BOOKING_URL]"*, *"during our [INSERT_BOOKING_DURATION] call"*, *"In this session,
+     [INSERT_HOST_NAME] named it"*. So this item is not only latent: it is live on public pages.
+     **All 13 were last written 2026-06-12 → 06-24 — before the publish-time token gate first landed (`3e0ade4`,
+     2026-06-25)** — and nothing has re-checked them since. **Two (187, 190) belong to user 1613, not Arfeen's
+     account 1** — another coach's public pages.
+     Most common stored tokens: event date/time/timezone, booking URL and duration, replay availability,
+     programme duration — mostly in `scarcityUrgency`, `subheadline`, `faq`, `timeSavingBenefit`.
    - **Why it matters though nothing shows it today.** A later template change that renders the field, or a coach
      switching the active angle, puts the token on the page. Through `runLandingPagePublish` the gate would then
      refuse that publish; through the rewrite engine (item 7), which republishes with NO token gate, it would go
