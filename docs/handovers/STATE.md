@@ -1,5 +1,9 @@
 # ZAP — STATE
 
+> 🗄️ **SUPERSEDED 2026-09-11 — NOT THE ENTRY POINT. Last updated 2026-07-28; nothing here is current.**
+> The live entry point is the RESTART BLOCK at the top of `CHECKPOINT.md` (heading `🟢 RESUME HERE`).
+> Retained in place as history, not deleted. The text below is as it stood on 2026-07-28.
+
 **The single handover a fresh session reads.** Everything dated is archived under
 `docs/handovers/archive/` and is history, not current truth. Read this file plus CLAUDE.md §1a and
 you are current.

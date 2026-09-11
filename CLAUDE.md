@@ -11,16 +11,22 @@
 
 ## 1a. Current State — pointer, not a narrative
 
-**👉 Read `docs/handovers/STATE.md`. That is the single source of current truth.**
+**👉 Read the RESTART BLOCK at the top of `CHECKPOINT.md` — the heading `🟢 RESUME HERE`. That is
+the single live entry point.** `grep -n "RESUME HERE" CHECKPOINT.md` must return exactly ONE hit, at
+line 1. Every older block in that file is retained and marked superseded / "NOT THE ENTRY POINT".
 
-It carries three sections and nothing else: **CURRENT STATE** (what is true now) · **THE QUEUE**
-(what's next, in order, with enough diagnosis to execute without re-investigating) · **TRAPS** (what
-will bite, including the protected prod rows and the not-a-defect list).
+It answers, from the block alone: what is deployed · what is held locally and unpushed · what is
+approved and outstanding · the queue · what a stray command destroys. `CHECKPOINT.md` is ~650 KB —
+read the restart block, then only the sections it points to, with `offset`/`limit`. Never whole.
+
+⚠️ **`docs/handovers/STATE.md` is SUPERSEDED** (last updated 2026-07-28; marked superseded in place
+2026-09-11). It knows nothing after July. Until 2026-09-11 this section and `MEMORY.md` still named it
+the single source of truth, so a fresh session following the startup files landed six weeks behind.
 
 This section is deliberately a pointer. State used to be appended here and grew to ~94k characters
 that loaded into every session automatically — the single largest cause of context exhaustion on
-this project. **Do not re-accumulate state here.** New findings go into `STATE.md`, replacing what
-they supersede rather than stacking on top of it.
+this project. **Do not re-accumulate state here.** New state goes into the restart block; a new
+restart block supersedes the old one, which is retained and marked, never deleted.
 
 Historical dated handovers live in `docs/handovers/archive/` — history, not current truth. Full
 narrative of any past decision is recoverable from git.
