@@ -110,7 +110,9 @@ encrypted integration tokens: never copy it into the repo.
 4. **`arfeen_pic`** — a real photo, not generated — HELD.
 5. **The Remotion AWS credentials can read EVERY S3 bucket on the account**, including other businesses'
    (`arfeenkhan.com`, `arfeenkhans3`, `innerdna`, a Discourse backup bucket). A security finding: the key should
-   be scoped to the Remotion bucket. Nothing outside `renders/` was touched.
+   be scoped to the Remotion bucket. Nothing outside `renders/` was touched. **✅ FIXED 2026-09-12** — the key now
+   holds only `zap-remotion-render-only`; verified live (other buckets denied, renders work):
+   `docs/handovers/REMOTION_KEY_SCOPEDOWN_2026-09-12.md`.
 6. **The deploy check `e2e/deploy-verify.spec.ts:69` asserts `/p/campaign-214` serves 200** — that page was
    unpublished on 2026-09-02, so the check already fails. It needs a page that exists (e.g. `bonus-42`).
 7. **Backblaze (Creatomate)** holds 2 generated videos; no credentials — not deletable from here.
