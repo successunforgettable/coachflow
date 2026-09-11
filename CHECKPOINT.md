@@ -70,9 +70,10 @@ from Arfeen's statement.)
 
 ### 0.6 · ✅ APPROVED AND OUTSTANDING — run in this order, then STOP
 
-> 🟠 **STATUS 2026-09-11 16:05 UTC — A and B HAVE RUN, and so has a clear of 7233's old address, each on
-> Arfeen's approval in the restart session. DO NOT RE-RUN A OR B. C IS NOT STARTED** — Arfeen wanted A and
-> B reported before 7233's regeneration begins. Results, every fetch: **§0.6b**.
+> 🟠 **STATUS 2026-09-11 16:40 UTC — A, B AND C HAVE ALL RUN, each on Arfeen's approval in the restart
+> session. DO NOT RE-RUN ANY OF THEM.** A and B: **§0.6b**. C (7233 regenerated): **§0.6d**. Also approved and
+> **STOPPED before any write**: regenerating landing page `campaign-211` in place — its check found timeframes
+> (§0.6d). Next is §0.5's decision.
 
 Approved by Arfeen on 2026-09-11 so a fresh session can resume without re-asking WHAT to do. ⚠️ **§0.10
 gate 1 still binds EACH write**: show the statement and wait for "go ahead" in the message immediately
@@ -195,13 +196,58 @@ only the caches reached.
 
 | address | what it serves |
 |---|---|
-| **7233 `v1788007578`** | 🔴 the 29 Aug PDF, 274,507 B `b56a82b82098`, whose next-step button links `/p/campaign-240` — a page taken down 2026-09-02 (404). The dead link. Also the current file on some fetches |
+| **7233 `v1788007578`** | 🔴 the 29 Aug PDF, 274,507 B `b56a82b82098`, whose next-step button links `/p/campaign-240` — a page taken down 2026-09-02 (404). The dead link. After C's republish (2026-09-11 16:36) it served the dead-link file at 16:38, then the 10 Sep file (the one described in the next row) at 16:41, 16:45 and 16:50 — never the new PDF |
+| **7233 `v1789055696`** — added by C | 🟡 the 10 Sep PDF, 272,744 B `e9b32810c643`: no dead link, 0 tokens, 0 event words, but its close sends the reader to *"The Repeating Argument Reset… a free next step"* — a next step that no longer exists. Not purged. Served at all five fetches after C's republish (16:38:19 · 16:39:05 · 16:41:22 · 16:45:19 · 16:50:21), every one a cache hit |
 | **5686 `v1787860054`** | 🔴 the July PDF, 415,099 B `3eb37b0fc011` — the discovery-call funnel, "Book My Free Pipeline Diagnosis Call" (×1 "Book My Free", ×2 "Pipeline Diagnosis"). Once, the pre-A file instead |
 | **5686 `v1789071852`** | 🔴 the 10 Sep PDF, 615,289 B `3829e6b65c65` — the pre-A title *"The 5-Line Cold Email Swipe File That Booked a $6,000 Branding Client in 11 Days…"*, an unverified result claim |
 | **7173 `v1787948313`** | 🟡 the 28 Aug PDF, 282,521 B `b656b92de609` — 0 tokens, 0 event words; stale, not harmful. Mostly the current file |
 
 Not enumerated, same class: every earlier version of every magnet and bonus PDF that has ever been overwritten.
 No inventory of them exists. Any address added by a later republish is appended here.
+
+### 0.6d · RESULTS 2026-09-11 (evening) — `campaign-211` STOPPED BEFORE ANY WRITE; C DONE
+
+**Landing page `campaign-211` (kit 177) — STOPPED, NOTHING WRITTEN.** Approved: regenerate in place — all four
+angles in memory on the production container, check for any claim, dollar figure or timeframe, and stop without
+writing if anything appears.
+- **No product path regenerates a page in place.** `runLandingPageGeneration` always inserts a new row
+  (`landingPageGenerator.ts:1319`), bumps the quota (`:1354`) and re-crowns the kit (`:1368`). The run therefore
+  replicated its input assembly (`:1081-1318`) on the deployed container with orchestration's inputs
+  (`orchestration.ts:540`) — resolved profile 239, kit 177, offer 223, magnet 5686 — and stopped short of the
+  insert. **58-table diff before and after: no change.** The compliance gate retried the `original` angle twice
+  (`unearned_authority`, then `invented_testimonial`) and passed on the third attempt.
+- **The check: 0 claim text · 0 dollar figures · 13 TIMEFRAMES — so it stopped.** Every one is a duration inside
+  scene-setting prose: *"She spends about twelve seconds on it"*, *"closes the tab in under fifteen seconds"*,
+  *"six weeks"*, *"forty minutes"*, *"three hours"*, *"two days"*. They sit in `quizSection`, `problemAgitation`
+  and `systemTiles` — **none in a field the Burchard template renders** (it reads `mainHeadline`, `subheadline`,
+  `primaryCta`, `consultationOutline`, `solutionIntro`, `featureHighlights`, `testimonials`,
+  `coachTestimonials`), so none would have reached the live page; all would have been stored in row 211.
+- Also found: one leftover `[INSERT_GUARANTEE_TERMS]` in `godfather.guarantee` (an unrendered angle; the publish
+  gate scans the rendered HTML, so it would not have blocked). The rendered subheadline reads *"…assembled in one
+  sitting, ready to send the same day you download it"* — a speed statement with no figure.
+- **Open, for Arfeen:** whether durations in fields the page never renders count as timeframes under the rule.
+  **`campaign-211` is still live with the claim** in three passages. The generated angles were not retained.
+
+**C — magnet 7233 / kit 223 — DONE.** Each step bracketed by the 58-table checksum snapshot.
+
+| step | result | whole-database diff |
+|---|---|---|
+| 1 · offer | **225** *"The Recurring Argument Script for Couples"* (`godfather` active) — 0 event words, no `[INSERT_OFFER_LINK]`, no figures; three unfilled `[INSERT_BONUS_N_NAME]` slots (queue item 9). Selected on kit 223 (216 → 225); 7 stale rows upserted | `offers` +1 · `campaignKits` · `nodeStatuses` +7 — **`jobs` UNCHANGED** (0 rows before and after; profile 289 has 8 concepts) |
+| 2 · body | attempt 1 thin, attempt 2 written; persistence screen 0 hits | `hvcoTitles` only |
+| 3 · republish | bridge `target-unpublished` (page 240 is down) → the question card; new PDF `v1789144605`, 282,739 B `ad39c493b9c2` | `hvcoTitles` only |
+| 4 · stale row | `freeOptIn` row 230 deleted, `ROW_COUNT` 1 | `nodeStatuses` only (105 → 104) |
+
+**Live, fetched 16:38 UTC:** both pages 200 · 0 tokens · 0 event words · 0 links to page 240 · text card with no
+button · the close asks *"Is the argument the problem, or is agreement the problem?"*, label *"Notice who carries
+the repair work"* — it names no destination. The old *"Download The Repeating Argument Reset Free"* card is gone.
+New PDF: the same close, 0 tokens, 0 "live session" / "Register" / date. Kit 223 keeps 7 stale rows (187 ad copy,
+229 method, 231 headlines, 233 landing page, 234 email, 235 WhatsApp, 236 ad creatives) — all built against 216.
+- The stored body also carries `nextStepLinked` — the coach's free live session, *October 14, 2026, 7:30 pm IST*,
+  from kit 223's own facts, with *"Register for the free session"*. It renders ONLY when the bridge resolves
+  `linked` (`leadMagnetPublisher.ts:167`); it is on neither page nor the PDF.
+- The title *"The 90-Second Spiral Stopper"* is unchanged — C does not touch it. A timeframe from service 316's
+  topic field: queue item 12's class.
+- The body's own timeframes are instructions for using the tool (*"the 72-hour test plan"*, *"within 24 hours"*).
 
 ### 0.6a
 
@@ -288,7 +334,7 @@ never re-roll. Same standard for instruments: **two fetches minutes apart for an
 |---|---|
 | **5686 / kit 177** | ✅ **Regenerated, live pages clean.** Offer **223** *"The Cold Outreach Toolkit for Freelance Graphic Designers"*, no live-event wording. The next step asks a diagnostic question (*"Is your portfolio built for designers — or for buyers?"*) and names no destination. 0 leftover tokens. The discovery-call funnel is gone from both live pages and the new PDF. **7 stale rows remain, all accurate** (mechanism, headlines, ad copy, landing page, email, WhatsApp, ad creatives — built against the paid offer). ✅ **Title written in place 2026-09-11 — *"The Cold Inbox Toolkit for Designers"* — clean by position, not by a gate** (§0.6b). 🔴 **Both old PDF addresses still serve old files: `v1787860054` the funnel (UNRESOLVED, not retried), `v1789071852` the old title with the claim.** 🔴 Kit 177's live landing page still carries the claim — reported, not changed (§0.6b). |
 | **7173 / kit 222** | ✅ **Regenerated, live pages clean.** Offer **224** *"The Hard Conversation Script for Couples Who Keep Circling"*, no live-event wording. The next step asks a question (*"Is the signal the real problem — or what it stands for?"*) and names no destination. 0 leftover tokens. **1 stale row remains, `uniqueMethod`, accurate.** Its concept job `concepts-icp-288` was created and deleted. 🟡 B run 2026-09-11: the old address returned the 28 Aug file (clean but stale) once in six fetches, after the purge; the current file otherwise (§0.6b). |
-| **7233 / kit 223** | ⏸ **Not started** (§0.6 C). Its profile has 8 concepts, so selection should NOT create a concept job — **confirm it, do not assume it.** 🔴 Old address `v1788007578` purged 2026-09-11 15:41 and still serving the dead page-240 link at 16:05 (§0.6b). |
+| **7233 / kit 223** | ✅ **Regenerated 2026-09-11, live pages clean** (§0.6d). Offer **225** *"The Recurring Argument Script for Couples"*, no live-event wording. The next step asks a question (*"Is the argument the problem, or is agreement the problem?"*) and names no destination. 0 leftover tokens, 0 links to page 240. **7 stale rows remain, all accurate** (built against offer 216). No concept job. The title *"The 90-Second Spiral Stopper"* is unchanged (queue item 12's class). 🔴 Two old PDF addresses stay permanently public (§0.6c). |
 
 Step-by-step records, with every diff: §0.4c of the 2026-09-10 (evening) block below.
 
@@ -334,6 +380,10 @@ Shipped earlier the same night: `1def3b9` (one definition of a leftover token; t
 12. 🔴 **The product manufactures the fabrication** — the service profile's lead-magnet topic MUST contain a
     figure, nothing grounds it, the title node carries it into every title (34 of 60 in the dry run), 112 of
     115 production topics carry a figure. **Affects every service.** 5686's replacement is clean by position.
+13. 🔴 **A live page's content depends on an undefined ordering** — the lead-magnet landing page takes its magnet
+    name and cover from the newest `long` row for the SERVICE, ordered by `createdAt` alone, and a title set
+    shares one second. Service 262's page shows the clean title today by chance; 5689 would put an unverified
+    result claim ("4 Qualified Replies in 9 Days") on it. General — every service (§4 item 13).
 
 The **three approved regeneration items** in §0.6 (A–C) are run first only because they are already
 approved and partly done; then §0.5 decides.
@@ -2385,6 +2435,34 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
      provenance on the stored value, and the title node's fallback — each with a before/after measurement.
      Not a retry, and not a filter on titles after the fact. Related: item 10 (naming has no timeframe rule),
      item 8 (a rule's own examples priming the output).
+13. 🔴 **A LIVE PAGE'S CONTENT DEPENDS ON AN UNDEFINED ORDERING — the lead-magnet landing page picks its magnet
+   by a tie** — added 2026-09-11, recorded, NOT fixed. **A general defect, not specific to service 262.**
+   - **The mechanism.** The Burchard lead-magnet template (`server/lib/templates/leadMagnetPublish.ts:46-53`,
+     reached from `renderRegistry.ts:123`) takes the magnet NAME — the orange emphasis, the CTA, the card
+     title — AND the PDF used as the product cover from *"the newest `long` title for this service"*:
+     `WHERE serviceId = ? AND tabType = 'long' ORDER BY createdAt DESC LIMIT 1`. It never reads the kit's
+     `selectedHvcoId`.
+   - **Why the ordering is undefined.** The title node writes a whole set at once, so its rows share
+     `createdAt` to the second — service 262's five `long` rows are all `2026-07-09 20:33:41`. With a tie on
+     the only ORDER BY key, MySQL may return any of them; which one depends on the plan and physical order, not
+     on a rule. **Today it returns 5686 — the kit's magnet, now "The Cold Inbox Toolkit for Designers" — by
+     chance.**
+   - **What the other candidates would put on the live page** (measured 2026-09-11): 5687 *"…Around One Industry
+     in 48 Hours So Marketing Directors Stop Scanning Past You and Start Booking Discovery Calls"* · 5688 *"The
+     3-Part Brief-to-Buyer Portfolio Audit…"* · 5689 *"…and the Sequence Fix That Generated 4 Qualified Replies
+     in 9 Days"* · 5690 *"The 11-Day Cold Outreach Starter System…"*. **5689 is an unverified result claim of the
+     same shape as the one removed from 5686** (a figure and a timeframe); 5690 carries the same "11-day"
+     timeframe; 5687 a timeframe and a promised outcome. None repeats "$6,000".
+   - **Why it is general.** Every service whose titles were generated as a set has tied `long` rows — the tie
+     is the normal case. The cover comes from the same row's `magnetPdfUrl`, so a different pick shows another
+     magnet's cover, or none.
+   - **The consequences.** A live page's words can change at its next render with nothing the coach chose having
+     changed; and the page can name a magnet other than the one the kit delivers — the opt-in promises one asset,
+     the PDF is another. Every "clean" verdict on a lead-magnet page's magnet name holds only for the pick that
+     happened.
+   - **The fix is at the source**: the page must name the magnet the kit actually selected, not the newest row
+     for the service; a deterministic tiebreak alone would only make the wrong pick stable. Before/after on a
+     service with tied rows. Related: item 12 (the titles carry figures in the first place).
 
 ---
 
