@@ -158,7 +158,12 @@ SELECT ROW_COUNT();
 Then step 3 with `hvcoId: 5686`, then the invalidation in §5 on `lead-magnets_1_5686.pdf`. The row keeps
 `tabType='long'` although the title came from the `short` tab — cosmetic, leave it.
 
-## 5. CLOUDINARY — invalidate, then TWO fetches minutes apart
+## 5. CLOUDINARY — 🛑 PURGING RETIRED 2026-09-11. DO NOT RUN THE INVALIDATION BELOW.
+
+**Settled (CHECKPOINT restart block §0.6c):** a purge does not retire an old address — 7233's, purged once, read
+current three times spaced and then served the old file again. Make no purge calls; never record an address as
+cleared. The script is kept as a record of what was run. The `probe` function is still the way to READ an
+address: at least three fetches spaced minutes apart, every result reported.
 
 `explicit` with `invalidate: true` changes no content or version; it asks the CDN to drop cached copies of
 the public id. One call per public id covers every versioned address of it.

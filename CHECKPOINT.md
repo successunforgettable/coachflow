@@ -161,10 +161,49 @@ Kit 177 keeps its 7 stale rows.
   was real; the purge did not reach that cache.
 - 🔴 **5686's funnel address: UNRESOLVED — recorded, not retried, as instructed.**
 - 🔴 **5686's pre-A address still serves the old title with the claim** at all seven fetches.
-- **THE FINDING: one `explicit(invalidate)` per public id does not retire an old version from every cache.** On
-  both days old bytes came back from a cache after the call — once after three clean readings. No second call was
-  made on any id. What does retire an old address is OPEN; it is Arfeen's decision, and C will overwrite
-  `lead-magnets_1_7233.pdf` again, making `v1789055696` one more old address.
+- **THE FINDING — SETTLED, see §0.6c: a purge does not retire an old Cloudinary address.** No second call was
+  made on any id, and none will be.
+
+### 0.6c · 🛑 SETTLED 2026-09-11 — A PURGE DOES NOT RETIRE AN OLD ADDRESS; EVERY REPUBLISH LEAVES A PERMANENT PUBLIC FILE
+
+**Settled by Arfeen, 2026-09-11, on this evidence — not open:** 7233's old address was purged once (15:41:34
+UTC), then read the CURRENT file three times in a row, spaced (15:45:16 miss · 15:49:16 hit · 15:54:16 hit), and
+at 16:02:05 and 16:05:16 served the OLD file with the dead page-240 link again. One purge, three spaced clean
+fetches, and it still reverted — as it did after the 2026-09-10 purge that was recorded "CLEARED".
+
+- 🛑 **MAKE NO FURTHER PURGE CALLS.** `explicit(invalidate)` is retired as a tool (runbook §5 is marked so).
+- 🛑 **NEVER TREAT ANY CLOUDINARY ADDRESS AS CLEARED.** A clean fetch is what one cache served once.
+
+**THE STRUCTURAL CONSEQUENCE — it governs everything downstream.** `storagePut` overwrites the public id and mints
+a new versioned address; **the previous address stays reachable to anyone holding it, indefinitely** — the header
+says `max-age` 30 days, and nothing observed bounds it even at that; treat it as permanent. **Every republish of
+a Cloudinary-hosted file therefore creates a permanent public artefact that cannot be retracted.** So:
+
+> **THE DEFENCE IS NOT PUBLISHING A BAD FILE IN THE FIRST PLACE — NOT CLEANING UP AFTERWARDS.** The publish-time
+> gates (the leftover-token refusal, `1def3b9`; the operator-field hold; the compliance gate) are the only
+> protection a PDF gets. A regeneration fixes the LIVE page and the CURRENT address; it adds one more old
+> address to the list below, never removes one.
+
+Pages served from KV (`/p/…`) are different in kind: an overwrite or delete took effect at once in every fetch on
+record (7293's pages 404 since 2026-09-10; 5686's pages changed at its republish). Deleting a whole Cloudinary
+public id (`storageDelete`, `invalidate: true`) has returned 404 at both of 7293's addresses on every fetch since
+2026-09-10 — but it removes the current file too, so it is no way to retire an old version, and those 404s show
+only the caches reached.
+
+**PERMANENTLY PUBLIC — the known old addresses and what each has served** (form
+`https://res.cloudinary.com/dunshei0y/image/upload/<version>/lead-magnets_1_<id>.pdf.pdf`):
+
+| address | what it serves |
+|---|---|
+| **7233 `v1788007578`** | 🔴 the 29 Aug PDF, 274,507 B `b56a82b82098`, whose next-step button links `/p/campaign-240` — a page taken down 2026-09-02 (404). The dead link. Also the current file on some fetches |
+| **5686 `v1787860054`** | 🔴 the July PDF, 415,099 B `3eb37b0fc011` — the discovery-call funnel, "Book My Free Pipeline Diagnosis Call" (×1 "Book My Free", ×2 "Pipeline Diagnosis"). Once, the pre-A file instead |
+| **5686 `v1789071852`** | 🔴 the 10 Sep PDF, 615,289 B `3829e6b65c65` — the pre-A title *"The 5-Line Cold Email Swipe File That Booked a $6,000 Branding Client in 11 Days…"*, an unverified result claim |
+| **7173 `v1787948313`** | 🟡 the 28 Aug PDF, 282,521 B `b656b92de609` — 0 tokens, 0 event words; stale, not harmful. Mostly the current file |
+
+Not enumerated, same class: every earlier version of every magnet and bonus PDF that has ever been overwritten.
+No inventory of them exists. Any address added by a later republish is appended here.
+
+### 0.6a
 
 ### 0.6a · 🕳️ THE HOLE IN THE DELIVERABLE — VIDEO SCRIPTS. The next package, and NOT a queue item.
 
@@ -289,8 +328,9 @@ Shipped earlier the same night: `1def3b9` (one definition of a leftover token; t
 11. 🔴 **A Cloudinary address does not serve the version it names; no single fetch proves what it
     serves.** More than one cache answers: on 2026-09-11 the same address returned the current file on a
     miss and the old file on a hit within four minutes, and 7233's old address — recorded CLEARED —
-    served the dead page-240 link again. A purge is proven neither by the call nor by one later fetch.
-    Standard: ≥3 spaced fetches, every result reported. Full text and the table: §4 item 11 below.
+    served the dead page-240 link again. **SETTLED 2026-09-11 (§0.6c): a purge does not retire an old
+    address — no purge calls; every republish leaves a permanent public file; the defence is not publishing a
+    bad one.** Full text and the tables: §4 item 11 below and §0.6b.
 12. 🔴 **The product manufactures the fabrication** — the service profile's lead-magnet topic MUST contain a
     figure, nothing grounds it, the title node carries it into every title (34 of 60 in the dry run), 112 of
     115 production topics carry a figure. **Affects every service.** 5686's replacement is clean by position.
@@ -336,6 +376,7 @@ silent foreground step drops at ~50 s. **Never pipe a bare `railway … --json` 
 4. **A deploy marker must be proven to differ between the two builds** (§15h).
 5. **Screenshots come from Arfeen's browser.** CC never fabricates screenshots or Railway logs.
 6. **Any write beyond what was approved → stop and report** (§0.7).
+7. **No Cloudinary purge calls, and no address is ever recorded as cleared** — settled 2026-09-11 (§0.6c).
 
 ---
 
@@ -2301,6 +2342,10 @@ proves the 37 `NO_KIT` results are a real absence and not a broken query.
    - **The standard from now:** at least three fetches spaced minutes apart; every result reported
      (status, bytes, hash, `desc=hit|miss`), never a summary; a verdict names what the caches that were
      seen returned, never "cleared". This supersedes "two fetches" wherever it is written above.
+   - **SETTLED LATER THE SAME DAY (restart block §0.6c):** a second purge of 7233, then three spaced clean
+     fetches, and the old file came back. **A purge does not retire an old address. No purge calls.** The
+     two decisions above (purge the cached URLs; make `storagePut` invalidate on overwrite) are moot — the
+     defence is not publishing a bad file.
 12. 🔴 **THE PRODUCT MANUFACTURES THE FABRICATION — the service profile writes an invented proof claim into
    the lead-magnet topic, and the title node carries it into every title** — added 2026-09-11, recorded, NOT
    fixed. **The most consequential finding of the 2026-09-10/11 session.**
