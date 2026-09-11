@@ -70,6 +70,10 @@ from Arfeen's statement.)
 
 ### 0.6 · ✅ APPROVED AND OUTSTANDING — run in this order, then STOP
 
+> 🟠 **STATUS 2026-09-11 16:05 UTC — A and B HAVE RUN, and so has a clear of 7233's old address, each on
+> Arfeen's approval in the restart session. DO NOT RE-RUN A OR B. C IS NOT STARTED** — Arfeen wanted A and
+> B reported before 7233's regeneration begins. Results, every fetch: **§0.6b**.
+
 Approved by Arfeen on 2026-09-11 so a fresh session can resume without re-asking WHAT to do. ⚠️ **§0.10
 gate 1 still binds EACH write**: show the statement and wait for "go ahead" in the message immediately
 before it. A restart message that says "go ahead" on these items satisfies it. Scripts, SQL and the run
@@ -115,6 +119,52 @@ with a whole-database comparison before and after each. Measured 2026-09-11:
   and record what it serves.
 
 **D. Then STOP.** Next is §0.5's decision, not more inspection.
+
+### 0.6b · RESULTS — the 7233 old-address clear, B and A, run 2026-09-11 (each separately approved)
+
+Every write bracketed by the 58-table snapshot with `CHECKSUM TABLE` (runbook §2), taken immediately before
+and after.
+
+| step | the write | whole-database diff |
+|---|---|---|
+| 7233 clear | `explicit(invalidate)` on `lead-magnets_1_7233.pdf`, 15:41:34 UTC; version `1789055696` / 272,744 B unchanged | **none** |
+| B | same on `lead-magnets_1_7173.pdf`, 15:42:35; `1789074179` / 294,919 B unchanged | **none** |
+| A1 | `UPDATE hvcoTitles` 5686: `title` + `assetBody.$.title` → *"The Cold Inbox Toolkit for Designers"*; `ROW_COUNT` 1; body-without-title md5 `f1b2de371165` before and after; 5 keys before and after. Pre-check: `6,000`, `11 day`, `booked a` ×1 each, all inside `$.title` | `hvcoTitles` only |
+| A2 | `publishLeadMagnet(5686)` on the deployed `9156875` container; bridge `no-pointer`; new PDF `v1789141529`, 584,656 B | `hvcoTitles` only |
+| A3 | one `explicit(invalidate)` on `lead-magnets_1_5686.pdf`, 15:46:35; version unchanged | **none** |
+
+**Live after A, fetched:** both 5686 pages 200; h1 *"The Cold Inbox Toolkit for Designers"*; 0 claim hits, 0
+tokens; text card with no button; the close question present; the opt-in links `v1789141529`, whose text opens
+with the new title and carries 0 claim hits. The one "discovery call" on the page and in the PDF is the body's
+own checklist line (*"a positive reply rate, a discovery call booked"* — the reader's result measure), not a
+funnel. **The title is clean by POSITION, not by a gate** (queue item 12).
+**§15l:** kit 177's live landing page `/p/campaign-211` (last written 2026-07-13) still carries the claim in
+three passages — subhead, product mockup, "Everything you need". **Reported, not changed — not approved.**
+Kit 177 keeps its 7 stale rows.
+
+**Every fetch** (bytes · sha256[:12] · `desc`). OLD = the pre-overwrite file:
+
+| address | results |
+|---|---|
+| 7233 old `v1788007578` | 15:42:15 **OLD** 274,507 `b56a82b82098` hit · 15:45:16 current 272,744 miss · 15:49:16 current hit · 15:54:16 current hit · 16:02:05 **OLD** hit · 16:05:16 **OLD** hit |
+| 7233 current `v1789055696` | current 272,744 `e9b32810c643` at all four (miss · hit · hit · hit) |
+| 7173 old `v1787948313` | 15:42:59 current 294,919 hit · 15:45:59 **OLD** 282,521 `b656b92de609` hit · 15:49:59 current hit · 15:55:00 current hit · 16:02:08 current hit · 16:05:18 current hit |
+| 7173 current `v1789074179` | current 294,919 `e15dd7c7e2e9` at all four (hit · miss · hit · hit) |
+| 5686 oldest `v1787860054` | 15:47:27 **FUNNEL** 415,099 `3eb37b0fc011` hit · 15:50:30 615,289 (pre-A, old title) hit · 15:54:29 **FUNNEL** hit · 15:59:32 **FUNNEL** hit · 16:02:10 **FUNNEL** hit · 16:05:21 **FUNNEL** hit |
+| 5686 pre-A `v1789071852` | 615,289 `3829e6b65c65` — the old title *with the claim* — hit at 15:47:29 · 15:50:32 · 15:54:31 · 15:59:34 · 16:00:14 · 16:02:13 · 16:05:23 |
+| 5686 new `v1789141529` | 584,656 `a0ea56c9bc3a` at all four (hit · miss · hit · miss) |
+
+**Outcomes, stated plainly:**
+- 🔴 **7233's old address is NOT cleared.** Three current readings after the purge, then the old file — dead
+  page-240 link included — from a cache at 16:02 and 16:05. The same shape as the 2026-09-10 "CLEARED" verdict.
+- 🟡 **7173's old address** returned the 28 Aug file once in six fetches — 3½ minutes AFTER its purge. B's premise
+  was real; the purge did not reach that cache.
+- 🔴 **5686's funnel address: UNRESOLVED — recorded, not retried, as instructed.**
+- 🔴 **5686's pre-A address still serves the old title with the claim** at all seven fetches.
+- **THE FINDING: one `explicit(invalidate)` per public id does not retire an old version from every cache.** On
+  both days old bytes came back from a cache after the call — once after three clean readings. No second call was
+  made on any id. What does retire an old address is OPEN; it is Arfeen's decision, and C will overwrite
+  `lead-magnets_1_7233.pdf` again, making `v1789055696` one more old address.
 
 ### 0.6a · 🕳️ THE HOLE IN THE DELIVERABLE — VIDEO SCRIPTS. The next package, and NOT a queue item.
 
@@ -197,9 +247,9 @@ never re-roll. Same standard for instruments: **two fetches minutes apart for an
 
 | magnet / kit | state |
 |---|---|
-| **5686 / kit 177** | ✅ **Regenerated, live pages clean.** Offer **223** *"The Cold Outreach Toolkit for Freelance Graphic Designers"*, no live-event wording. The next step asks a diagnostic question (*"Is your portfolio built for designers — or for buyers?"*) and names no destination. 0 leftover tokens. The discovery-call funnel is gone from both live pages and the new PDF. **7 stale rows remain, all accurate** (mechanism, headlines, ad copy, landing page, email, WhatsApp, ad creatives — built against the paid offer). 🔴 **The title still carries the unverified result claim** — the in-place fix is approved, NOT written (§0.6 A). 🔴 **The old cached PDF address still serves the old file with the funnel — UNRESOLVED.** |
-| **7173 / kit 222** | ✅ **Regenerated, live pages clean.** Offer **224** *"The Hard Conversation Script for Couples Who Keep Circling"*, no live-event wording. The next step asks a question (*"Is the signal the real problem — or what it stands for?"*) and names no destination. 0 leftover tokens. **1 stale row remains, `uniqueMethod`, accurate.** Its concept job `concepts-icp-288` was created and deleted. 🟡 The old cached PDF address still serves the 28 Aug file — clean but stale (§0.6 B). |
-| **7233 / kit 223** | ⏸ **Not started** (§0.6 C). Its profile has 8 concepts, so selection should NOT create a concept job — **confirm it, do not assume it.** |
+| **5686 / kit 177** | ✅ **Regenerated, live pages clean.** Offer **223** *"The Cold Outreach Toolkit for Freelance Graphic Designers"*, no live-event wording. The next step asks a diagnostic question (*"Is your portfolio built for designers — or for buyers?"*) and names no destination. 0 leftover tokens. The discovery-call funnel is gone from both live pages and the new PDF. **7 stale rows remain, all accurate** (mechanism, headlines, ad copy, landing page, email, WhatsApp, ad creatives — built against the paid offer). ✅ **Title written in place 2026-09-11 — *"The Cold Inbox Toolkit for Designers"* — clean by position, not by a gate** (§0.6b). 🔴 **Both old PDF addresses still serve old files: `v1787860054` the funnel (UNRESOLVED, not retried), `v1789071852` the old title with the claim.** 🔴 Kit 177's live landing page still carries the claim — reported, not changed (§0.6b). |
+| **7173 / kit 222** | ✅ **Regenerated, live pages clean.** Offer **224** *"The Hard Conversation Script for Couples Who Keep Circling"*, no live-event wording. The next step asks a question (*"Is the signal the real problem — or what it stands for?"*) and names no destination. 0 leftover tokens. **1 stale row remains, `uniqueMethod`, accurate.** Its concept job `concepts-icp-288` was created and deleted. 🟡 B run 2026-09-11: the old address returned the 28 Aug file (clean but stale) once in six fetches, after the purge; the current file otherwise (§0.6b). |
+| **7233 / kit 223** | ⏸ **Not started** (§0.6 C). Its profile has 8 concepts, so selection should NOT create a concept job — **confirm it, do not assume it.** 🔴 Old address `v1788007578` purged 2026-09-11 15:41 and still serving the dead page-240 link at 16:05 (§0.6b). |
 
 Step-by-step records, with every diff: §0.4c of the 2026-09-10 (evening) block below.
 
