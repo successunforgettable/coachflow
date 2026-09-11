@@ -1,6 +1,17 @@
 # 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-11
 ### supersedes the 2026-09-10 (evening) block below, which is retained and marked, not deleted
 
+> 🧹 **READ FIRST — 2026-09-12: THE PRE-LAUNCH DUMMY-DATA WIPE RAN (Arfeen-authorised).** Full record:
+> **`docs/handovers/WIPE_2026-09-12_PRELAUNCH_DUMMY_DATA.md`**. Production went from **18,725 rows to 983**,
+> 23 accounts to 3 (user 1 dev login · 117174 smoke · 1613 app-review login, held); KV 79 → 6 keys; Cloudinary
+> 1,640 → 143 assets; S3 renders 14 → 0. **Most row ids named in this block no longer exist** — kits 177/222/223,
+> magnets 5686/7173/7233, landing page 211, pages 170–191. Kept: services 272–277 (smoke), 285 and 318 with
+> everything hanging off them (kits 200, 225; bonuses 33–35, 42–44). **So §0.6 C / campaign-211 / item 14's 13 live
+> token pages are MOOT as rows — the pages are 404. The CODE defects behind items 7, 12, 13, 14 and 15 are
+> untouched and still open.** Restorable export (90 days, until 2026-12-11): `~/zap-wipe-export-2026-09-12/`.
+> 🔴 A Cloudinary DELETE does not retract a cached copy either — eight previously-probed PDF addresses still
+> served their old files after the delete (wipe record §7).
+
 **Written for a fresh terminal with no conversational memory.** Every number was MEASURED at write time
 (§15f) unless it says otherwise. Answers from this block alone: what is deployed · what is held locally ·
 what is approved and outstanding · what the next decision is · what a stray command destroys.
