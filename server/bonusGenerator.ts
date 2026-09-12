@@ -1,4 +1,5 @@
 import { invokeLLM } from "./_core/llm";
+import { scanTimedClaims, timedClaimFailContext, timedClaimSummary } from "./_core/timedClaimScanner";
 import { nanoid } from "nanoid";
 import {
   validateBonusFabricationPatterns,
@@ -36,6 +37,13 @@ export async function runBonusGeneration(input: {
   serviceId: number;
   campaignId?: number | null;
   icpId?: number | null;
+  /**
+   * Generate and validate, then return WITHOUT persisting. Added so this node can be exercised
+   * against the live model at all: every other path here ends in an unconditional
+   * `db.insert(bonuses)`, so there was no way to prove what the generator produces without writing
+   * rows to production first. Nothing in the product sets it.
+   */
+  dryRun?: boolean;
 }): Promise<{ bonusSetId: string; bonuses: GeneratedBonus[]; campaignKitId: number | null } | null> {
   const { getDb } = await import("./db");
   const { services, idealCustomerProfiles, campaignKits, hvcoTitles, bonuses: bonusesTable } =
@@ -103,14 +111,14 @@ ${obstacleBlock}
 ${leadMagnetLine}
 Generate EXACTLY 3 bonuses that make the core offer's outcome faster and more certain — one of each type:
 
-1. ACCELERATOR (type "accelerator") — collapses TIME DELAY. Derive from an obstacle that delays the buyer's first win. Deliver a quick-win checklist or protocol that produces a result within the first 7 days.
+1. ACCELERATOR (type "accelerator") — collapses TIME DELAY. Derive from an obstacle that delays the buyer's first win, and deliver a short checklist or protocol that does the delaying work for them so the step stops being theirs to solve. Describe the ASSET — how few steps or items it holds — and leave when the buyer arrives to the buyer.
 2. GAP-FILLER (type "gap_filler") — resolves a MISSING PREREQUISITE or logistical friction the buyer lacks. Deliver a fill-in template or SOP that finishes the missing step for them.
-3. OBJECTION-CRUSHER (type "objection_crusher") — dissolves the buyer's TOP buying objection (derive it from the Objections line above). Deliver a done-for-you script bank or template so acting takes minutes. It is ALWAYS a self-serve asset.
+3. OBJECTION-CRUSHER (type "objection_crusher") — dissolves the buyer's TOP buying objection (derive it from the Objections line above). Deliver a done-for-you script bank or template so the buyer acts from words already written for them instead of composing their own. It is ALWAYS a self-serve asset.
 
 For every bonus:
 - It is an implementation-heavy done-for-you asset. Choose a format from: checklist, template, script, sop, swipe, cheatsheet.
 - Write "title" as a clean NAME for the asset — around 6 words, concrete and specific to this audience (keep the distinctive niche term, e.g. "Sector Translation"), ending in the format word (Checklist, Template, Script Bank, SOP, Swipe File, Cheat Sheet). The title names the deliverable and stops there; the shortLine and description carry the outcome, so the title stays a plain name a coach could say aloud in one breath. Examples of the register: "The Sector Translation Checklist", "The Quiet Pivot Outreach SOP", "The 'Different From Last Time' Script Bank".
-- Write "description" as full buyer-facing copy (3-5 sentences) framed by the outcome it produces, the time it saves, or the problem it dissolves — concrete and niche-specific to this exact audience.
+- Write "description" as full buyer-facing copy (3-5 sentences) framed by the outcome it produces or the problem it dissolves — concrete and niche-specific to this exact audience. Where its scale matters, describe the asset itself (its length, or how many steps, items or fill-in fields it holds) rather than a time by which the buyer gets a result.
 - Write "shortLine" as ONE clause of 12-18 words — the same outcome in a single line, for a bonus stack on the offer and in emails. It must name the same format and outcome as the description (never a different deliverable, never a live session).
 - Set "derivedFromObstacle" to the specific ICP obstacle text it maps to (quote the relevant words from the obstacle lines).
 - Set "value" to null. A monetary value is supplied by the coach later; you never state one.
@@ -178,21 +186,38 @@ Return ONLY valid JSON: { "bonuses": [ {bonusType, title, description, format, d
       value: null,
     }));
 
+    // §14b — the timed-claim check, on the fields this generator owns (title, description,
+    // shortLine). This is the source that re-introduced the claim: `bonusPdfGenerator` builds the
+    // deliverable's content brief from `description`, so a clock stored here is handed straight back
+    // to the body generator as INPUT, and bonus-42's "By Day 7" survived a corrected body prompt
+    // that way. Checked in the same loop as the fabrication family so one retry addresses both.
+    const timed = scanTimedClaims(
+      parsed.map((b) => ({ title: b.title, description: b.description, shortLine: b.shortLine })),
+    );
+
     const fab = validateBonusFabricationPatterns(parsed as RawBonus[], validationCtx);
     // Carried out of the loop so the persistence gate can fold these into ONE verdict rather
     // than the legacy family reaching its own separate conclusion.
     __residualLegacyHits = fab.ok ? [] : (fab.hits ?? []).map((h) => ({
       classId: String(h.classId), matched: String((h as any).matched ?? ""), location: String(h.location ?? "bonus"),
     }));
-    if (fab.ok) break;
+    // Narrowed once — the early `break` is no longer a bare `if (fab.ok)`, so every `.hits` read
+    // below needs the union resolved explicitly.
+    const fabFail = fab.ok ? null : fab;
+    if (!fabFail && timed.violations.length === 0) break;
 
     if (attempt < BONUS_VALIDATOR_RETRY_MAX_ATTEMPTS) {
-      failContext = fab.failContext;
-      const summary = fab.hits.slice(0, 3).map((h) => `${h.classId}@${h.location}`).join(",");
-      console.warn(`[bonusGenerator] fabrication check failed attempt ${attempt}/${BONUS_VALIDATOR_RETRY_MAX_ATTEMPTS} (${fab.hits.length} hits, top=[${summary}]). Retrying with fail-context.`);
+      // Both families can fail at once; the retry must address both or the second one survives it.
+      failContext = [fabFail ? fabFail.failContext : "", timed.violations.length ? timedClaimFailContext(timed.violations) : ""]
+        .filter(Boolean).join("\n\n");
+      const fabNote = fabFail
+        ? `${fabFail.hits.length} hits, top=[${fabFail.hits.slice(0, 3).map((h) => `${h.classId}@${h.location}`).join(",")}]`
+        : "ok";
+      console.warn(`[bonusGenerator] checks failed attempt ${attempt}/${BONUS_VALIDATOR_RETRY_MAX_ATTEMPTS} (fabrication ${fabNote}; timed-claim ${timedClaimSummary(timed)}). Retrying with fail-context.`);
       continue;
     }
-    console.warn(`[bonusGenerator] fabrication check exhausted retries (${fab.hits.length} hits remaining, classes=[${fab.hits.map((h) => h.classId).join(",")}]); persisting best-effort.`);
+    if (fabFail) console.warn(`[bonusGenerator] fabrication check exhausted retries (${fabFail.hits.length} hits remaining, classes=[${fabFail.hits.map((h) => h.classId).join(",")}]); persisting best-effort.`);
+    if (timed.violations.length) console.warn(`[bonusGenerator] §14b timed-claim check exhausted retries — ${timedClaimSummary(timed)}; persisting best-effort.`);
   }
 
   if (!parsed || parsed.length === 0) return null;
@@ -228,7 +253,11 @@ Return ONLY valid JSON: { "bonuses": [ {bonusType, title, description, format, d
       console.warn(`[bonusGenerator] legacy validator residual hits (tier 2, non-blocking): ` +
         `[${Array.from(new Set(__residualLegacyHits.map((h) => h.classId))).join(",")}]`);
     }
-    await db.insert(bonusesTable).values(__bonusRows as any);
+    if (input.dryRun) {
+      console.warn(`[bonusGenerator] dryRun — generated ${__bonusRows.length} bonus row(s), NOTHING PERSISTED`);
+    } else {
+      await db.insert(bonusesTable).values(__bonusRows as any);
+    }
   };
 
   return { bonusSetId, bonuses: parsed, campaignKitId: kit?.id ?? null };

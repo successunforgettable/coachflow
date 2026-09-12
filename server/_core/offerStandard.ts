@@ -46,6 +46,52 @@ Four levers. Every sentence you write raises the numerator or lowers the denomin
    step by step, say so plainly: that is the denominator shrinking.
 `;
 
+/**
+ * THE VALUE EQUATION FOR A FREE ASSET — levers 1, 2 and 4 as above; lever 3 rewritten.
+ *
+ * 🔴 WHY THIS EXISTS AS ITS OWN LITERAL. `VALUE_EQUATION_BLOCK` lever 3 asks for "how soon" the
+ * first shift arrives. That attaches a time to the READER'S OUTCOME, which CLAUDE.md §14b bars
+ * unless the coach supplied it — and a free download supplies nothing of the kind. This block is
+ * assembled into the free-asset prompt in its place.
+ *
+ * 📌 WRITTEN OUT IN FULL, NOT DERIVED BY `.replace()` ON THE BLOCK ABOVE. A derivation that
+ * misses its marker falls back to the ORIGINAL — which is the timed line — so a future rewording
+ * of lever 3 would silently restore the defect in the one mode that must never carry it. Written
+ * as a literal, free-asset mode cannot regain a timed lever by accident. The cost is that levers
+ * 1, 2 and 4 are duplicated; `offerStandard.test.ts` asserts those three stay byte-identical to
+ * the block above, so the duplication cannot drift unnoticed.
+ */
+export const VALUE_EQUATION_BLOCK_FREE_ASSET = `
+THE VALUE EQUATION — the engine under every section you write:
+
+  Value = (Dream Outcome x Perceived Likelihood of Achievement) / (Time Delay x Effort & Sacrifice)
+
+Four levers. Every sentence you write raises the numerator or lowers the denominator.
+
+1. DREAM OUTCOME — identity, not features. A B2C buyer is not buying a service, they are buying
+   a version of themselves. Translate raw pain into identity: "anxious and overwhelmed" becomes
+   "the woman who leads her family with calm authority". Name the specific situation that
+   changes, in the vocabulary this field actually uses. The pain lives in the gap between who
+   they are now and who they want to be, so name both ends of that gap precisely.
+
+2. PERCEIVED LIKELIHOOD — certainty is often worth more than the thing itself. Raise it with the
+   MECHANISM: name the process, say what it accounts for that the approaches they already tried
+   do not, and show the order it runs in. A named, repeatable process reads as predictable. Where
+   real proof is supplied below, it carries this lever; where none is supplied, the mechanism
+   carries it alone and carries it well.
+
+3. TIME DELAY — name the FIRST thing that shifts, concretely. A small, specific, real change
+   validates the whole system and is the strongest evidence of certainty a reader has. Lower this
+   lever by describing the ASSET: its size and shape, in plain words a reader can check before
+   they open it — a one-page checklist, a single script, a form with eight lines to fill in. The
+   asset's own smallness is the claim, and it is one the reader can verify. When the reader gets
+   a result is theirs, not ours: attach no timeframe to the change itself.
+
+4. EFFORT & SACRIFICE — name the one thing they do NOT have to do that they assumed they would.
+   Cognitive load is the offer killer. Where the work is structured, templated or walked through
+   step by step, say so plainly: that is the denominator shrinking.
+`;
+
 // ── New Opportunity vs Incremental Improvement ──────────────────────────────────────────────
 export const NEW_OPPORTUNITY_BLOCK = `
 NEW OPPORTUNITY FRAMING — the mechanism is the context, and it does specific work:
@@ -368,9 +414,9 @@ export const FREE_ASSET_ANGLE_PROMPTS: Record<"godfather" | "free" | "dollar", s
   godfather: `
 ANGLE — THE REAL TOOL, NOT A TASTE OF IT.
 
-This free asset is a working tool the reader uses today, not a trailer for one. Write it so a
-reader understands they are getting the actual thing — the script, the template, the checklist —
-and can put it to work on their own problem straight away.
+This free asset is a working tool, not a trailer for one. Write it so a reader understands they
+are getting the actual thing — the script, the template, the checklist — and can put it to work
+on their own problem.
 
 Build it this way:
   - Name the one tool inside that does the most work, and what the reader does with it.
@@ -379,14 +425,15 @@ Build it this way:
     is that it genuinely solves one thing.
 `,
   free: `
-ANGLE — THE QUICK WIN, DELIVERED FIRST.
+ANGLE — THE ONE THING IT FIXES, SHOWN RATHER THAN PROMISED.
 
-Let the reader feel the coach's competence through one fast, real result. This angle wins by
-demonstration rather than by promise.
+Let the reader feel the coach's competence through one specific, real change. This angle wins by
+demonstration rather than by promise, so it describes the change itself and leaves the reader's
+clock alone.
 
 Build it this way:
-  - Name the specific symptom it relieves and how soon the reader sees the first change, in
-    plain words such as "the same day" or "in one sitting".
+  - Name the specific symptom it relieves, in this field's own words, and what the reader holds
+    once they have worked through it. Describe the change; attach no timeframe to it.
   - Say who it is genuinely FOR, concretely enough that the wrong reader passes it by.
   - Name the one thing in it a reader will not find in a generic article: the coach's own angle
     on the problem.
@@ -415,12 +462,12 @@ The coach's paid programme is sold later, in conversation, away from this page.
    it comes in.
 
 2. **valueProposition** (20-40 words)
-   The one specific problem it solves and how soon the reader feels the difference. A situation,
-   not a feeling.
+   The one specific problem it solves and what changes for the reader who works through it. A
+   situation, not a feeling. Attach no timeframe to that change.
 
 3. **pricing** — ACCESS (15-30 words)
-   What it takes to get it, stated plainly: that it is free, that it arrives straight away, and
-   what the reader has in hand the moment it does.
+   What it takes to get it, stated plainly: that it is free, how it reaches them, and what the
+   reader has in hand once it does.
 
 4. **bonuses** (EXACTLY 3)
    What comes with the asset. Emit ONLY the name slot for each, one per line:
@@ -430,8 +477,8 @@ The coach's paid programme is sold later, in conversation, away from this page.
    on any line.
 
 5. **guarantee** — WHAT THEY KEEP (20-35 words)
-   What the reader keeps: the asset is theirs, usable today, whether or not they ever speak to
-   the coach. Write it about what is given and what is kept.
+   What the reader keeps: the asset is theirs to keep and to use, whether or not they ever speak
+   to the coach. Write it about what is given and what is kept.
 
 6. **urgency** (15-30 words)
    The cost of waiting, per the urgency rule above: what another week of this problem costs.
@@ -444,7 +491,9 @@ The coach's paid programme is sold later, in conversation, away from this page.
 export function offerStandardBlock(mode: OfferMode): string {
   if (mode === "free_asset") {
     return [
-      VALUE_EQUATION_BLOCK,
+      // §14b: the free-asset lever 3 carries no timeframe. Paid and free_event keep
+      // VALUE_EQUATION_BLOCK byte-identical — pinned in promptPins.test.ts.
+      VALUE_EQUATION_BLOCK_FREE_ASSET,
       NEW_OPPORTUNITY_BLOCK,
       DESIRE_IDENTITY_BLOCK,
       FREE_ASSET_NAMING_BLOCK,

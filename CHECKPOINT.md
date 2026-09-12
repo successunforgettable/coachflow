@@ -1,4 +1,36 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-11
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-13
+
+### supersedes the 2026-09-11 block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-13_ITEM15_TWO_FIXES_AUTHORIZED.md`**
+> Read that first. It answers, from the file alone: what is deployed, what is held, item 15's exact state across
+> all six live pages, the reproduced root cause, the two authorised fixes, and the next session's first step.
+
+## 0. THE THIRTY-SECOND VERSION
+
+| | |
+|---|---|
+| deployed | **`9156875`, UNTOUCHED.** `origin/railway-build` still `9156875`; `main` still `67517e3` |
+| **nothing is deployed** | the item-15 fixes + the timed-claim scanner are committed to **`docs/held-2026-09-12` only**. **Every NEW production generation still carries the §14b defect** |
+| local `railway-build` | still `aa9209b`, deliberately behind — a stray push cannot deploy this work |
+| item 15 | **three prompt sources fixed and gated** (offer prompt · lead-magnet content generator · `bonusGenerator` description/shortLine, the third found mid-work) |
+| live pages | **`bonus-42` ✅ clean · `bonus-43` ✅ clean** · `bonus-35` 🔴 blocked · `bonus-44` 🔴 blocked · `bonus-33` 🔴 **parked for item 14, do not touch** · `bonus-34` 🔴 node defect |
+| root cause | **`leadMagnetContentGenerator.ts:871` clears `failContext` on a thin body**, discarding the timed-claim correction. Reproduced identically on 34, 35 and 44 |
+| ✅ authorised, **NOT STARTED** | (1) separate accumulating slots for the two correction families; (2) narrow the quoted-speech exemption to exclude outcome figures. 🛑 **The attempt budget of 3 is NOT to be touched** |
+| next step | implement both fixes → re-run 34/35/44 → confirm each live page **by fetch** → blast-radius check |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.** Nothing here is ready for it.
+
+🛑 **HARD GATES THAT DO NOT RELAX** are unchanged and still live in the 2026-09-11 block below (§0.13):
+prod writes need explicit approval in the immediately preceding message; never push `main`; never `git add .`;
+screenshots come from Arfeen's browser; no Cloudinary purge calls.
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-11, retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-13 RESTART BLOCK at the top of this file**.
+### Everything below remains the detailed record of the offer-mode build, the regenerations and the Cloudinary findings.
 ### supersedes the 2026-09-10 (evening) block below, which is retained and marked, not deleted
 
 > 🧹 **READ FIRST — 2026-09-12: THE PRE-LAUNCH DUMMY-DATA WIPE RAN (Arfeen-authorised).** Full record:

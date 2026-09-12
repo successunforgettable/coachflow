@@ -16,6 +16,7 @@ import { getDb } from "./db";
 import { services, idealCustomerProfiles, campaignKits, heroMechanisms, coachMethods, sourceOfTruth, campaigns } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { GUARANTEE_CLAIMS_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE } from "./_core/copywritingRules";
+import { scanTimedClaims, timedClaimFailContext, timedClaimSummary } from "./_core/timedClaimScanner";
 import { truncateAtSentence, truncateAtBlock } from "./_core/cascadeContext";
 import { hasAllEventFacts } from "./_core/nextStepBridge";
 
@@ -314,11 +315,23 @@ export function buildMagnetContextBlock(c: MagnetContext, mode: DeliverableMode 
 // BONUS (reader has already enrolled — write to a buyer on the inside, help them execute, no sales pitch).
 export type DeliverableMode = "lead_magnet" | "bonus";
 
+// ⚠️ §14b — "checklists the reader uses TODAY" WAS REMOVED FROM BOTH SYSTEM PROMPTS, and the reason
+// is that it CONTRADICTED a rule already in the same prompt. `systemPromptFor` appends
+// GUARANTEE_CLAIMS_RULE, which states: "Where a timeframe appears, attach it to what gets DELIVERED
+// in that time ... what the reader will have become by day thirty is a promise about them." Both
+// statements reached the model in one system prompt, and the nearer, more concrete one won: the
+// bonus path produced "By Day 7, you will hold a ranked shortlist", "send to a real person today"
+// and "a complete sales page draft in 48 hours" while that rule sat above it.
+//
+// So the fix is a DELETION, not another rule. Adding a third statement would have left the
+// contradiction in place and made the prompt longer. The 80/20 bar itself is untouched — what a
+// tool IS ("fill-in templates", "swipe copy", "as they are") is a property of the asset and stays;
+// only the reader's clock is gone.
 const SYSTEM_PROMPT_LEAD_MAGNET =
-  "You produce done-for-you lead-magnet content for coaches, consultants and experts at agency quality. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content or real swipe copy the reader can copy and use, never generic filler that could belong to any coach. Open with a tight promise (max two sentences: what they can DO after using it). Close with a nextStep that opens the bigger question this asset leaves behind: the root cause the reader had not considered, as a diagnostic question, ending on something they can do next. Respond with valid JSON.";
+  "You produce done-for-you lead-magnet content for coaches, consultants and experts at agency quality. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses as they are) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content or real swipe copy the reader can copy and use, never generic filler that could belong to any coach. Open with a tight promise (max two sentences: what they can DO after using it). Close with a nextStep that opens the bigger question this asset leaves behind: the root cause the reader had not considered, as a diagnostic question, ending on something they can do next. Respond with valid JSON.";
 
 const SYSTEM_PROMPT_BONUS =
-  "You produce done-for-you BONUS deliverables for coaches, consultants and experts at agency quality. The reader has ALREADY enrolled in / purchased the paid programme — this is a post-purchase asset that helps them get more from what they've already committed to, so you write to a buyer on the inside who is ready to execute, never to a prospect you are trying to convince to buy. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses TODAY) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content the reader can use, never generic filler. Open by telling the reader plainly what this is, how to use it, and what it achieves. Close with a nextStep that helps them put this to work and get the most from the programme they've joined — a concrete action, no dead end. Respond with valid JSON.";
+  "You produce done-for-you BONUS deliverables for coaches, consultants and experts at agency quality. The reader has ALREADY enrolled in / purchased the paid programme — this is a post-purchase asset that helps them get more from what they've already committed to, so you write to a buyer on the inside who is ready to execute, never to a prospect you are trying to convince to buy. The bar: ~80% immediately-usable tools (swipe copy, fill-in templates, SOPs, scripts, worksheets, checklists the reader uses as they are) and only ~20% teaching. Useful beats comprehensive — right-size to solve ONE specific problem, never padded. Everything is concrete and specific to the exact niche given, with real fill-in-the-blank content the reader can use, never generic filler. Open by telling the reader plainly what this is, how to use it, and what it achieves. Close with a nextStep that helps them put this to work and get the most from the programme they've joined — a concrete action, no dead end. Respond with valid JSON.";
 
 export function systemPromptFor(mode: DeliverableMode = "lead_magnet"): string {
   // GUARANTEE_CLAIMS_RULE is PORTED, not re-derived — Track B reuse, exactly as CHECKPOINT
@@ -698,8 +711,8 @@ The nextStep ends on something the reader does alone.`;
   // 📌 The cap on this field sits at 570 characters — the corpus outlier fence, more than the
   // target's own width over again. The target moves the centre; the cap catches a runaway. Putting
   // a cap ON the centre is the error the first section.body bound made. See BOUNDS.
-  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a detail of about 60 words that makes it doable today. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
-  if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses today). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { ${howToJson}"promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
+  if (format === "checklist") return `${common}Produce a CHECKLIST / cheat-sheet: 7-15 concrete action items, each a short actionable label plus a detail of about 60 words that makes it directly doable, with no timeframe attached to the result. Every item is something they DO, not something they learn.\nReturn JSON: { ${howToJson}"promise", "items":[{"label","detail"}], "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
+  if (format === "toolkit") return `${common}Produce a TOOLKIT: 3-4 focused, immediately-usable tools (no more — lean, not a swipe-file dump). Each tool has a name, a type (one of: swipe, template, sop, worksheet, script, checklist), one-line usage instructions, and the ACTUAL usable content (real fill-in-the-blank templates / swipe copy / step-by-step SOP the reader copies and uses as-is). Structure the content as clean markdown — headings, bold labels, ordered steps, and tables where useful — and write any fill-in field in [SQUARE BRACKETS].\nReturn JSON: { ${howToJson}"promise", "tools":[{"name","type","instructions","content"}], "nextStep":{"heading","body","ctaLabel"}${linkedJson} }.`;
   return `${common}Produce a READINESS SCORECARD — a weighted, single-axis self-assessment that diagnoses where this prospect stands on their journey toward the outcome "${programme}" delivers. Genuinely diagnostic, never a disguised pitch.
 
 Build it so the scoring is self-consistent and discriminating:
@@ -792,15 +805,27 @@ export async function generateLeadMagnetContent(input: {
   const linked = mode === "lead_magnet" && !!c.eventFacts;
 
   const { invokeLLM } = await import("./_core/llm");
-  // Up to 2 attempts: the model occasionally returns a thin/empty array on the
+  // Up to 3 attempts: the model occasionally returns a thin/empty array on the
   // first pass for long/complex titles. A retry recovers it — important because
   // this is a launch-critical deliverable and the caller runs the generator once.
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  //
+  // ⚠️ RAISED FROM 2 TO 3 WHEN THE §14b CHECK WAS ADDED. The shape retry and the timed-claim
+  // retry now share this budget, and at 2 a thin first pass would have spent the only retry and
+  // left a timed claim with nowhere to go.
+  //
+  // ⚠️ AND THE RETRY NOW CARRIES A FAIL-CONTEXT. Until this change the loop re-sent the SAME
+  // prompt and hoped for a better roll — which is precisely the re-roll the standing ruling bars
+  // ("a defect in the node, not a bad roll"). `inj` makes the second pass corrective: it names what
+  // came back wrong in the response just produced, which §14a permits and a standing wrong-shape
+  // example does not.
+  let failContext = "";
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+      const inj = failContext ? `\n\nPRIOR-ATTEMPT FEEDBACK (you must address this):\n${failContext}\n\n` : "";
       const response = await invokeLLM({
         messages: [
           { role: "system", content: systemPromptFor(mode) },
-          { role: "user", content: userPromptFor(format, c, mode) },
+          { role: "user", content: userPromptFor(format, c, mode) + inj },
         ],
         response_format: schemaFor(format, mode, { linked }),
       });
@@ -829,10 +854,21 @@ export async function generateLeadMagnetContent(input: {
         (format === "toolkit" && Array.isArray((body as ToolkitBody).tools) && (body as ToolkitBody).tools.length > 0) ||
         (format === "quiz" && !!quizCheck?.ok);
       if (ok) {
-        console.log(`[leadMagnetContent] generated ${format} body for "${input.title}"${attempt > 1 ? ` (attempt ${attempt})` : ""}`);
+        // §14b — the body is the longest asset ZAP produces and the only one a prospect keeps a
+        // copy of. A clock attached to the reader's result here reaches a published page and a PDF,
+        // and a republished PDF leaves its old address permanently public, so this is checked
+        // BEFORE the body is handed back rather than after it is stored.
+        const timed = scanTimedClaims(body);
+        if (timed.violations.length > 0) {
+          console.warn(`[leadMagnetContent] §14b timed-claim check rejected ${format} "${input.title}" (attempt ${attempt}): ${timedClaimSummary(timed)}`);
+          failContext = timedClaimFailContext(timed.violations);
+          continue;
+        }
+        console.log(`[leadMagnetContent] generated ${format} body for "${input.title}"${attempt > 1 ? ` (attempt ${attempt})` : ""}${timed.exempt.length ? ` (${timed.exempt.length} timed phrase(s) exempt as quoted speech)` : ""}`);
         return body;
       }
       console.warn(`[leadMagnetContent] thin/invalid ${format} body (attempt ${attempt}) for "${input.title}"`);
+      failContext = "";
     } catch (err) {
       console.warn(`[leadMagnetContent] generation error (attempt ${attempt}) for "${input.title}": ${err instanceof Error ? err.message : String(err)}`);
     }

@@ -2,6 +2,7 @@ import { invokeLLM } from "./_core/llm";
 import type { OfferContent } from "../drizzle/schema";
 import { BANNED_COPYWRITING_WORDS, META_COMPLIANCE_NOTES, NO_DATE_FABRICATION_RULE, REGISTER_STANDARD, truncateQuote, neutraliseProfileCurrency } from "./_core/copywritingRules";
 import { validateOfferFabricationPatterns, getCanonicalOfferTokens, type OfferSuppliedData, type RawOfferFields } from "./_core/validator";
+import { scanTimedClaims, timedClaimFailContext, timedClaimSummary } from "./_core/timedClaimScanner";
 import { resolveOfferMode, FREE_STEP_NOUN, DEFAULT_CAMPAIGN_TYPE, type OfferMode } from "./_core/campaignFraming";
 import { offerStandardBlock, offerAngleBlock } from "./_core/offerStandard";
 
@@ -87,14 +88,14 @@ USAGE RULES:
     ? `- The operator HAS supplied a price: ${supplied.price}. Use this exact number in pricing. Do not invent additional anchor prices or alternative tiers.`
     : `- The operator has NOT supplied a price. Emit the placeholder [INSERT_PRICE] verbatim wherever the price would appear. Do NOT invent a currency amount.`;
   const suppliedGuaranteeLine = isFreeAsset
-    ? `- A free ${freeStepNoun} takes no money, so there is nothing to refund. The guarantee field says what the reader keeps: the ${freeStepNoun} is theirs to use, today and afterwards. Emit no guarantee token and no refund language.`
+    ? `- A free ${freeStepNoun} takes no money, so there is nothing to refund. The guarantee field says what the reader keeps: the ${freeStepNoun} is theirs to keep and to use, whether or not they ever speak to the coach. Emit no guarantee token and no refund language.`
     : isFreeEvent
     ? `- A free ${freeStepNoun} takes no money, so there is nothing to refund and no guarantee section in the money sense. The guarantee field carries the ATTENDANCE PROMISE instead: what the reader walks away holding, and that nothing is sold in the room. Emit no guarantee token and no refund language.`
     : (supplied.guaranteeType || supplied.guaranteeDuration)
     ? `- The operator HAS supplied guarantee terms: ${[supplied.guaranteeDuration, supplied.guaranteeType].filter(Boolean).join(", ")}. Use these terms verbatim in the guarantee section.`
     : `- The operator has NOT supplied a guarantee. Emit the placeholder [INSERT_GUARANTEE_TERMS] verbatim in the guarantee section. Do NOT invent refund mechanics, timeframes, or "pay nothing" / "full refund" / "money-back" language.`;
   const suppliedDurationLine = isFreeAsset
-    ? `- The ${freeStepNoun} is used in one short sitting. Describe how quickly it works in plain words such as "in one sitting" or "the same day".`
+    ? `- A free ${freeStepNoun} has no programme duration to state. Where its scale matters, describe the ASSET rather than the reader's clock — its length, or how many steps, items or fill-in fields it contains ("a one-page checklist", "eight prompts"). Attach no timeframe to the reader's result.`
     : supplied.deliveryDuration
     ? `- The operator HAS supplied a delivery duration: ${supplied.deliveryDuration}. Use this verbatim wherever programme duration is mentioned.`
     : `- The operator has NOT supplied a delivery duration. Emit the placeholder [INSERT_PROGRAMME_DURATION] verbatim wherever programme duration would appear. Do NOT invent "N-minute session", "N-week sprint", or similar durations.`;
@@ -133,10 +134,14 @@ cohort size, programme duration, bonus values, etc.)`;
 - Inventing next-cohort opening/closing dates
 - Emitting any [INSERT_X] token NOT in the canonical allow-list above`;
 
-  // A free asset has no cohort and no dates: it is open to everyone, straight away. Every other mode
-  // keeps the two cohort lines exactly as they were (promptPins.test.ts).
+  // A free asset has no cohort and no dates: it is open to everyone, with nothing to wait for. Every
+  // other mode keeps the two cohort lines exactly as they were (promptPins.test.ts).
+  //
+  // §14b: "straight away" was removed here. It described ACCESS truthfully, but access speed and
+  // result speed are one adverb apart in generated copy, and this line sits beside the sections that
+  // carried "usable today". Access is now stated as the absence of a gate rather than as a speed.
   const cohortLines = isFreeAsset
-    ? `- The ${freeStepNoun} is open to everyone, straight away, for as long as they want it — describe access in exactly those terms.`
+    ? `- The ${freeStepNoun} is open to everyone, with no group to join, no waiting list and no closing date, for as long as they want it — describe access in exactly those terms.`
     : `- No fixture field exists for cohort size. Always emit [INSERT_COHORT_LIMIT] verbatim when cohort scarcity is mentioned. Never invent "8 leaders" / "maximum of 12 founders" / etc.
 - No fixture field exists for cohort dates. Always emit [INSERT_COHORT_CLOSE_DATE] or [INSERT_PROGRAMME_START_DATE] verbatim. Never invent "next cohort opens" / "enrolment closes" framing.`;
 
@@ -327,26 +332,46 @@ Return ONLY valid JSON with these exact keys: offerName, valueProposition, prici
     if (__legacySink) __legacySink.hits.push(...(fabResult.ok ? [] : (fabResult.hits ?? []).map((h: any) => ({
       classId: String(h.classId), matched: String(h.matched ?? ""), location: String(h.location ?? "offer"),
     }))));
-    if (fabResult.ok) {
+    // §14b — the timed-claim check, FREE-ASSET MODE ONLY, and the scope is deliberate. The paid
+    // and free-event standards keep the value equation's "name the FIRST thing that shifts, and how
+    // soon" on purpose: a paid programme has a real delivery timeline the operator supplies, and
+    // both prompts are pinned byte-identical in promptPins.test.ts. A free download supplies
+    // nothing of the kind, which is the whole of §14b's carve-out, so only this mode is gated.
+    const timedOffer = isFreeAsset ? scanTimedClaims(parsed) : { violations: [], exempt: [] };
+
+    // `fabResult` is a discriminated union; narrowing it ONCE here keeps every `.hits` read below
+    // type-safe now that the early return is no longer a bare `if (fabResult.ok)`.
+    const fabFail = fabResult.ok ? null : fabResult;
+
+    if (!fabFail && timedOffer.violations.length === 0) {
       return parsed;
     }
 
     if (attempt < OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS) {
-      validatorFailContext = fabResult.failContext;
-      const hitCount = fabResult.hits.length;
-      const hitSummary = fabResult.hits.slice(0, 3).map(h => `${h.classId}@${h.location}`).join(",");
-      console.warn(`[offersGenerator] Offer fabrication check failed on attempt ${attempt}/${OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS} (angle=${angle}, ${hitCount} hits, top=[${hitSummary}]). Retrying with fail-context.`);
+      // Either family can fail alone or both together; a retry that answers only one leaves the other.
+      validatorFailContext = [
+        fabFail ? fabFail.failContext : "",
+        timedOffer.violations.length ? timedClaimFailContext(timedOffer.violations) : "",
+      ].filter(Boolean).join("\n\n");
+      const fabNote = fabFail
+        ? `${fabFail.hits.length} hits, top=[${fabFail.hits.slice(0, 3).map(h => `${h.classId}@${h.location}`).join(",")}]`
+        : "ok";
+      console.warn(`[offersGenerator] Offer checks failed on attempt ${attempt}/${OFFER_VALIDATOR_RETRY_MAX_ATTEMPTS} (angle=${angle}, fabrication ${fabNote}; timed-claim ${timedClaimSummary(timedOffer)}). Retrying with fail-context.`);
       continue;
     }
+    if (timedOffer.violations.length) {
+      console.warn(`[offersGenerator] §14b timed-claim check exhausted retries (angle=${angle}) — ${timedClaimSummary(timedOffer)}; persisting best-effort.`);
+    }
+    if (!fabFail) return parsed; // timed-claim exhaustion only; the fabrication dump below needs hits.
 
     // Exhaust path — best-effort return + diagnostic dump for forensic
     // recovery (mirrors LP testimonial exhaust + C1.1 ad headlines exhaust
     // patterns). Persist content so the user gets *something* rather than
     // a hard generation failure; the PlaceholderBanner UX (Phase 3) will
     // surface remaining fabricated fields to the operator for inline edit.
-    const hitClasses = fabResult.hits.map(h => h.classId).join(",");
-    console.warn(`[offersGenerator] Offer fabrication check exhausted retries on angle=${angle} (${fabResult.hits.length} hits remaining, classes=[${hitClasses}]); returning content as best-effort. Phase D Phase 1.`);
-    fabResult.hits.forEach((h, i) => {
+    const hitClasses = fabFail.hits.map(h => h.classId).join(",");
+    console.warn(`[offersGenerator] Offer fabrication check exhausted retries on angle=${angle} (${fabFail.hits.length} hits remaining, classes=[${hitClasses}]); returning content as best-effort. Phase D Phase 1.`);
+    fabFail.hits.forEach((h, i) => {
       if (i < 10) console.warn(`[offersGenerator]   hit ${i + 1}: ${h.classId} @ ${h.location} matched "${h.matched}"`);
     });
     return parsed;
