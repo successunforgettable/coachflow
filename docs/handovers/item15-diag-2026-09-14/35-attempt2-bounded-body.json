@@ -1,0 +1,19 @@
+{
+  "format": "toolkit",
+  "title": "The 'My Brain Doesn't Write' Reframe Script Bank",
+  "howToUse": "This is your 'My Brain Doesn't Write' Reframe Script Bank — seventeen pre-written self-coaching prompts you read aloud (or silently) the moment a specific stuck feeling surfaces while you're writing. Each script is one to three sentences, written in the plain spoken voice you already use on a discovery call. Open it in a separate tab whenever you sit down to write, and go straight to the stuck moment that matches where you are right now.",
+  "promise": "Use these scripts to redirect the fear that your brain isn't wired to write — and keep moving inside a session instead of closing the document. Every script maps to the exact moment it's designed to dissolve, so you're never searching for the right reframe when you need it most.",
+  "tools": [
+    {
+      "name": "The Blank Page Scripts (Stuck Moments 1–6)",
+      "type": "script",
+      "instructions": "Read the script that matches your stuck moment out loud before typing a single word — do not edit it, do not improve it, just say it and open a new line.",
+      "content": "## The Blank Page Scripts — Stuck Moments 1–6\n\nUse these the moment you open a new document and feel the familiar freeze. Find the sentence that most accurately names what you're experiencing right now, read it once, and begin.\n\n---\n\n### Stuck Moment 1 — "
+    }
+  ],
+  "nextStep": {
+    "heading": "Your Next Move Inside the Programme",
+    "body": "Take the script bank into your very next writing session — open it alongside your draft before you write a single word. Then bring whatever you wrote, however rough, to your next programme session. The Client Psychology Reverse-Map works best when your coach can see a real attempt on the page, not a blank one — so a rough draft with your own voice showing through is exactly the right material to bring.",
+    "ctaLabel": "Bring Your Draft to the Next Session"
+  }
+}

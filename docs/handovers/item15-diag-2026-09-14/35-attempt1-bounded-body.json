@@ -1,0 +1,37 @@
+{
+  "format": "toolkit",
+  "title": "The 'My Brain Doesn't Write' Reframe Script Bank",
+  "howToUse": "This is Bonus #3 from your programme: a ready-to-use script bank of seventeen self-coaching prompts, sorted by the exact stuck moment they solve. You don't read this top to bottom — you dog-ear the page for the moment you're in (blank page, rewrite spiral, or post-publish regret) and read the script out loud or type it to yourself before you do anything else. It works because every script redirects the fear using the same psychology that already makes you brilliant on a discovery call — you already know how to hold someone through a stuck moment, and this is you doing that for yourself.",
+  "promise": "Pick the script that matches your exact stuck moment and read it aloud — once — before you write a single word. You'll move from frozen to typing in under three minutes, using only your own voice.",
+  "tools": [
+    {
+      "name": "The 17-Script Reframe Bank (Sorted by Stuck Moment)",
+      "type": "swipe",
+      "instructions": "Find the moment you're in — blank page, rewrite spiral, or post-publish regret — read the matching script aloud or type it to yourself, then open your document and start.",
+      "content": "## How to use this bank\n\nYou are not reading this for inspiration. You are using it as a **pattern interrupt** — the same way you use a reframe on a discovery call when a prospect says "
+    },
+    {
+      "name": "The Blank-Page Diagnostic Worksheet",
+      "type": "worksheet",
+      "instructions": "Fill this in the moment you open a new document and feel nothing — it takes four minutes and gives you the first two sentences of your copy before you close it.",
+      "content": "## The Blank-Page Diagnostic\n**Use this when:** You've opened a new document and the cursor is blinking and you have written nothing.\n\n---\n\n### Step 1 — Name the person (90 seconds)\n\nWrite the name (real or composite) of ONE client you have already coached who this piece of copy is for:\n\n**Their name:** [WRITE ONE NAME HERE]\n\nThe single moment they described to you — the one where they ran out of their own answer — was:\n\n**Their moment:** [WRITE THE MOMENT IN THEIR EXACT WORDS IF YOU REMEMBER THEM — paraphrase if not]\n\n---\n\n### Step 2 — Locate the sentence that caught them (90 seconds)\n\nThink about the first discovery call you had with this person, or someone exactly like them.\n\nThe sentence YOU said that made them go quiet — the one where they said "
+    },
+    {
+      "name": "The Stuck-Moment SOP (From Frozen to First Draft in 12 Minutes)",
+      "type": "sop",
+      "instructions": "Run this sequence in order the next time you sit down to write copy and feel the freeze — do not skip steps, do not reorder them.",
+      "content": "## Stuck-Moment SOP\n**Trigger:** You have opened a document to write copy (sales page section, email, or invitation) and after 90 seconds you have typed nothing, or you have deleted everything you've typed.\n\n**Time required:** 12 minutes\n**Output:** Your first usable paragraph\n\n---\n\n### Step 1 — Name the fear out loud (1 minute)\n\nType this sentence exactly as written, filling in the bracket:\n\n> *"
+    },
+    {
+      "name": "The Post-Publish Recovery Script (For the Spiral After You Hit Send)",
+      "type": "script",
+      "instructions": "Read this the moment you publish or send and immediately feel the urge to pull it back — read it once, out loud, before you look at any metrics.",
+      "content": "## Post-Publish Recovery Script\n**Use this when:** You have just hit publish or send and within minutes (sometimes seconds) you are convinced it was wrong, it was cringe, nobody will book, you sounded desperate, you sounded arrogant, or all of the above simultaneously.\n\n---\n\n### Read this out loud. Once. Before you open your analytics.\n\n---\n\n**Script 1 — The Discovery Call Mirror**\n\n*"
+    }
+  ],
+  "nextStep": {
+    "heading": "Your Next Move Inside the Programme",
+    "body": "Take the script that matched your most recent stuck moment and paste it at the top of the document you're currently avoiding. Then open the module on The Client Psychology Reverse-Map and run the Blank-Page Diagnostic worksheet alongside it — that combination is where the method becomes your actual copy, not a concept you understood in a lesson.",
+    "ctaLabel": "Open the Client Psychology Reverse-Map Module Now"
+  }
+}

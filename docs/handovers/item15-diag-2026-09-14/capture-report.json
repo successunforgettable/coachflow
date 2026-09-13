@@ -1,0 +1,155 @@
+{
+  "startedAt": "2026-09-13T21:25:20.025Z",
+  "declaredCounts": [
+    {
+      "count": 17,
+      "family": "script",
+      "phrase": "seventeen … prompts"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "http": [
+        {
+          "strict": true,
+          "status": 200
+        }
+      ],
+      "strictFallbackWarnings": [],
+      "feedbackSent": "",
+      "usage": {
+        "prompt_tokens": 3658,
+        "completion_tokens": 1111,
+        "total_tokens": 4769
+      },
+      "gates": {
+        "toolsIsArray": true,
+        "completeness": [
+          "tools.0.content is 184 characters; a complete one runs to at least 400",
+          "tools.2.content is 399 characters; a complete one runs to at least 400",
+          "tools.3.content is 387 characters; a complete one runs to at least 400"
+        ],
+        "declaredCount": [
+          "the brief declares 17 scripts and the body delivers 0 with content (none) — write all 17, each as its own headed entry with its content in full; each tool's content holds at most 4000 characters, so spread them across tools rather than into one"
+        ],
+        "scriptsDelivered": {
+          "delivered": 0,
+          "labels": []
+        },
+        "timedViolations": [
+          {
+            "match": "in under three minutes",
+            "path": "promise",
+            "line": "Pick the script that matches your exact stuck moment and read it aloud — once — before you write a single word. You'll move from frozen to typing in under three minutes, using only your own voice."
+          },
+          {
+            "match": "in 12 minutes",
+            "path": "tools.2.name",
+            "line": "The Stuck-Moment SOP (From Frozen to First Draft in 12 Minutes)"
+          },
+          {
+            "match": "after 90 seconds",
+            "path": "tools.2.content",
+            "line": "**Trigger:** You have opened a document to write copy (sales page section, email, or invitation) and after 90 seconds you have typed nothing, or you have deleted everything you've typed."
+          }
+        ],
+        "timedExempt": []
+      },
+      "inASecond": []
+    },
+    {
+      "attempt": 2,
+      "http": [
+        {
+          "strict": true,
+          "status": 200
+        }
+      ],
+      "strictFallbackWarnings": [],
+      "feedbackSent": "\n\nPRIOR-ATTEMPT FEEDBACK (you must address this):\nAn earlier response in this run came back in a shape that could not be used:\n- the response was incomplete — tools.0.content is 184 characters; a complete one runs to at least 400; tools.2.content is 399 characters; a complete one runs to at least 400; tools.3.content is 387 characters; a complete one runs to at least 400; the brief declares 17 scripts and the body delivers 0 with content (none) — write all 17, each as its own headed entry with its content in full; each tool's content holds at most 4000 characters, so spread them across tools rather than into one. Return every entry and every field written out in full\n\n",
+      "usage": {
+        "prompt_tokens": 3830,
+        "completion_tokens": 489,
+        "total_tokens": 4319
+      },
+      "gates": {
+        "toolsIsArray": true,
+        "completeness": [
+          "\"tools\" has 1 entries; the format needs at least 3",
+          "tools.0.content is 254 characters; a complete one runs to at least 400"
+        ],
+        "declaredCount": [
+          "the brief declares 17 scripts and the body delivers 0 with content (none) — write all 17, each as its own headed entry with its content in full; each tool's content holds at most 4000 characters, so spread them across tools rather than into one"
+        ],
+        "scriptsDelivered": {
+          "delivered": 0,
+          "labels": []
+        },
+        "timedViolations": [],
+        "timedExempt": []
+      },
+      "inASecond": []
+    },
+    {
+      "attempt": 3,
+      "http": [
+        {
+          "strict": true,
+          "status": 200
+        }
+      ],
+      "strictFallbackWarnings": [],
+      "feedbackSent": "\n\nPRIOR-ATTEMPT FEEDBACK (you must address this):\nAn earlier response in this run came back in a shape that could not be used:\n- the response was incomplete — tools.0.content is 184 characters; a complete one runs to at least 400; tools.2.content is 399 characters; a complete one runs to at least 400; tools.3.content is 387 characters; a complete one runs to at least 400; the brief declares 17 scripts and the body delivers 0 with content (none) — write all 17, each as its own headed entry with its content in full; each tool's content holds at most 4000 characters, so spread them across tools rather than into one. Return every entry and every field written out in full\n- the response was incomplete — \"tools\" has 1 entries; the format needs at least 3; tools.0.content is 254 characters; a complete one runs to at least 400; the brief declares 17 scripts and the body delivers 0 with content (none) — write all 17, each as its own headed entry with its content in full; each tool's content holds at most 4000 characters, so spread them across tools rather than into one. Return every entry and every field written out in full\n\n",
+      "usage": {
+        "prompt_tokens": 3945,
+        "completion_tokens": 2792,
+        "total_tokens": 6737
+      },
+      "gates": {
+        "toolsIsArray": true,
+        "completeness": [],
+        "declaredCount": [],
+        "scriptsDelivered": {
+          "delivered": 17,
+          "labels": [
+            "script 1",
+            "script 2",
+            "script 3",
+            "script 4",
+            "script 5",
+            "script 6",
+            "script 7",
+            "script 8",
+            "script 9",
+            "script 10",
+            "script 11",
+            "script 12",
+            "script 13",
+            "script 14",
+            "script 15",
+            "script 16",
+            "script 17"
+          ]
+        },
+        "timedViolations": [
+          {
+            "match": "in under two minutes",
+            "path": "promise",
+            "line": "These seventeen scripts redirect the fear that your brain isn't wired to write — so you can move from stuck to moving in under two minutes at any point in your copy process."
+          },
+          {
+            "match": "in the next twenty minutes",
+            "path": "tools.1.content",
+            "line": "\"This draft is not the sales page. This draft is the conversation I need to have with myself about the sales page before I write the sales page. Nothing I write in the next twenty minutes is going public. I'm just thinking out loud in a document.\"",
+            "quotedFigure": true
+          }
+        ],
+        "timedExempt": []
+      },
+      "inASecond": []
+    }
+  ],
+  "loopReturnedABody": false,
+  "finishedAt": "2026-09-13T21:27:03.656Z"
+}
