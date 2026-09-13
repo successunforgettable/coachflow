@@ -1,5 +1,27 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-13
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-14
 
+### supersedes the 2026-09-13 block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-14_ITEM15_BONUS35_NODE_DEFECT_PENDING_CLOSE.md`**
+> Read that first. It answers from the file alone: production and held-branch state, what is committed and what is NOT,
+> every item-15 page's live state, the bonus-35 node-defect evidence, logged gaps, and the ordered next steps.
+
+| | |
+|---|---|
+| deployed | **`9156875`, UNTOUCHED** for all of item 15. `origin/railway-build` `9156875`; `main` `67517e3` |
+| held branch | `docs/held-2026-09-12` — item-15 commits `2349d6e` `f889c7d` `7ce210e` `265207f` `d32e2c8` + this checkpoint. **Nothing pushed** (origin still `6d88070`) |
+| 🔴 **uncommitted** | the **declared-count gate** pass and the **"in a second" capture** pass — working tree only. `git checkout/stash/reset/clean` destroys them |
+| 🛑 **held, not executed** | *"mark bonus-35 as confirmed node defect + write closing summary"* |
+| pages | 42 ✅ · 44 ✅ · 34 live, count-gate follow-on (12 → 9) · 43 live, count-gate follow-on (5 → 3) · **35 NODE DEFECT, live with 17 → 13** · 33 parked for item 14 |
+| next step | commit the two passes → execute the held bonus-35 instruction → bonus-34/43 follow-ons |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.** Nothing here is ready for it.
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-13, retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-14 RESTART BLOCK at the top of this file**.
 ### supersedes the 2026-09-11 block below, which is retained and marked, not deleted
 
 > ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
