@@ -367,3 +367,101 @@ scripts are short, and the trim removes delivered items silently with no knowled
 http 200, **21,586 bytes**, md5 `dc3044dabb0133216d83f83a6acd270f` on all three (before: 7,412 B, `425de5e3…`). Scan 0
 violations, 1 exempt (`in a second` — "Keep it open in a second tab", a pattern misread, exempted as action timing).
 bonus-33, 34, 42, 43, 44 byte-identical to their pre-run captures.
+
+---
+
+# ADDENDUM — 2026-09-14 (sixth pass): the declared-count gate. Passes 4–5 committed as `d32e2c8` (not pushed).
+
+## 📌 LOGGED, NOT TOUCHED — for whoever next scopes bonus-description generation
+
+**`server/bonusGenerator.ts:121`** instructs every new bonus description to *"describe the asset itself (its length, or how
+many steps, items or fill-in fields it holds)"*. It arrived with item 15 in `6d88070` (2026-09-13) as the §14b
+alternative to a timed promise. It sets up the bonus-35 mismatch on every future bonus: the description states a count,
+the description becomes the body generator's MUST-MATCH brief, and a toolkit tool's content is capped at 4,000
+characters. **Out of scope for item 15. Not changed.**
+
+## 🔴 TWO MORE LIVE MISMATCHES FOUND WHILE CALIBRATING — NOT TOUCHED
+
+Measured 2026-09-14 against production `bonuses.description` and live `assetBody`:
+
+- **bonus-34** — description "twelve targeted prompts"; promise *"Fill in all twelve prompts…"*. The brief tool
+  "The Twelve-Prompt Voice Capture Brand Brief" is 3,897 chars and ends at an empty `## SECTION 4 — THE EDGES OF YOUR
+  VOICE`: **Prompts 1–9 delivered, 10–12 absent**, while other tools send the reader to "Prompt 10" and "Prompt 11".
+- **bonus-43** — description "five sequential steps"; promise *"Follow the five steps…"*. The SOP tool "(5 Steps)" is
+  3,958 chars and ends inside STEP 3: **Steps 1–3 delivered, 4–5 absent**, while other tools send the reader to
+  "SOP Step 4c", "Step 5", "Step 5c".
+
+Both tools sit just under the 4,000 cap — the same trim shape as bonus-35. Published in earlier passes of this item
+(bonus-43 on 2026-09-12, bonus-34 on 2026-09-13). Only bonus-35 is authorised for this pass.
+
+## 1. The gate — `server/_core/declaredCount.ts` (uncommitted)
+
+- `parseDeclaredCounts(description)` — a number followed within four words by a deliverable noun (script/prompt/reframe ·
+  template · swipe/email/message/caption/headline · question · step · task/item/check · field · tool); counts < 2 ignored;
+  stops at to/of/in/within/by/for/at/from/or/than/per/a/an/the/each/every. Calibrated on all six production
+  descriptions: 33 → 7 task · 34 → 12 script · 35 → 17 script · 43 → 5 step · 42 none · 44 none.
+- `countDeliveredItems` — checklist items / toolkit tools / guide sections where the noun is the container; otherwise
+  distinct line-start headings of the family (`## Step 3`, `**Script A1**`) with ≥ 20 characters under them. **Per noun,
+  largest set — never the sum:** a first version summed and read diagnostic attempt 3 as 22 (17 scripts + a worksheet's
+  5 PROMPT headings). Stubs and in-sentence/table mentions never count. Both instruments fail closed.
+- Wired: `generateBodyWithRetries({ declaredCounts })` — checked after `applyBodyBounds` alongside `bodyCompleteness`,
+  so a trim below the declared count fails the attempt. `generateLeadMagnetContent({ countBrief })`;
+  `bonusPdfGenerator` passes `b.description`. Lead magnets pass no count brief → no gate.
+
+**Gates:** tsc **34** · declaredCount **15/15** · completeness 9 · retry slots 10 · strictToolSchema 9 · researchStatRule
+3 · scanner 48 · pipeline-fixes 414 · offerStandard 13 · promptPins 21 · leadMagnetOfferMode 9 · leadMagnetClose 12 ·
+complianceFilter 31 · tokenCrypto 10 · bonusPdfFormat 3 · node5Screening 16. Pre-existing unchanged: Bounds 2, bonus 1.
+Mutations: gate removed from the loop → loop test fails; counter summing nouns → both inflation tests fail. md5-restored.
+Tests include: live bonus-35 (declares 17, delivers 13) fails; attempt 2 passes pre-trim (17) and fails post-trim (15);
+attempt 3 (Script A1–C5) passes; live bonus-34 (9 of 12) and bonus-43 (3 of 5) fail.
+
+## 2. Re-run bonus-35 — baseline 21:09:15 UTC, run to 21:12:15, report written, then after-snapshot
+
+**Strict:** 3/3 `strict: true`, HTTP 200, `claude-sonnet-4-6`, 0 fallbacks, `tools` an array every attempt.
+Declared: **17 script** (`"seventeen … prompts"`).
+
+| attempt | out tok | scripts raw → after trim | result |
+|---|---|---|---|
+| 1 | 4,173 | **17 → 14** (tool 5,046 → 3,991) | 🟢 **count gate rejected it** — the trim-induced mismatch, caught before publish |
+| 2 | 853 | 0 → 0 | floor + count: tools 20–243 chars — degenerate |
+| 3 | 2,807 | **17 → 17** (no content trim) | count gate PASSED; rejected by §14b: `in a second@nextStep.body`, 4 exempt |
+
+🔴 **NODE DEFECT — null within the budget of 3. NOT WRITTEN.** Blast radius: **539 compared · 0 changed.**
+
+⚠️ **Attempt 3 may have been lost to a scanner misread, UNCONFIRMED.** `in a second` is the same pattern shape that
+exempted *"Keep it open in a second tab"* on the live page last pass (NUM `a` + UNIT `second` — not a clock). Failed
+bodies are not persisted and the log carries only the summary, so the sentence itself was not captured. It may equally
+be a genuine claim ("back to writing in a second"). The only body in three attempts that met its declared count was
+refused on this one hit.
+
+## 3. Live page — unchanged
+
+bonus-35 fetched 21:13:06 UTC: http 200, 21,586 bytes, md5 `dc3044dabb0133216d83f83a6acd270f` — the pass-5 body
+(promises seventeen, delivers 13) is still live. Rounds 2–3 below.
+Rounds 2–3: 21:17:12 and 21:21:15 UTC — http 200, 21,586 bytes, md5 `dc3044dabb0133216d83f83a6acd270f` both times.
+Three reads, four minutes apart, identical: nothing changed on the live page.
+
+## 4. 📌 FOLLOW-ON WORK FOR ITEM 15 — NOT A NEW ITEM (Arfeen, 2026-09-14)
+
+**Once bonus-35 is resolved,** check **bonus-34** and **bonus-43** against the declared-count gate and correct each that
+fails it. Both are already live with the promise/delivery mismatch the gate exists to catch:
+
+- **bonus-34** — description "twelve targeted prompts"; live body delivers **Prompts 1–9** (brief tool 3,897 chars,
+  ends at an empty `## SECTION 4`). The gate already reads it: *declares 12 scripts, delivers 9*.
+- **bonus-43** — description "five sequential steps"; live body delivers **Steps 1–3** (SOP tool 3,958 chars, ends
+  inside STEP 3). The gate already reads it: *declares 5 steps, delivers 3*.
+
+Not acted on in this pass. Both are regression cases in `server/_core/declaredCount.test.ts`.
+
+## 5. READ-ONLY CAPTURE (2026-09-14, approved) — "in a second": not reproduced
+
+Full record: **`docs/handovers/item15-diag-2026-09-14/CAPTURE.md`**. 0 writes (539 compared, 0 changed). Strict held 3/3.
+
+- **None of three fresh attempts contained "in a second".** Pass 6 attempt 3's sentence was never persisted and cannot
+  be recovered; genuine-vs-misread for that one hit is **unresolved by evidence**.
+- The capture did expose the scanner on real output: **3 genuine** outcome clocks (*"in under three minutes"*,
+  *"in 12 Minutes"* in a tool name, *"in under two minutes"*) and **2 misreads** — a trigger condition (*"after 90
+  seconds you have typed nothing"*) and scene-setting speech (*"Nothing I write in the next twenty minutes is going
+  public"*).
+- Attempt 3 again met its declared count (17) and floor; refused on one genuine + one misread hit.
+- **Scanner not touched. No real re-run.**

@@ -18,6 +18,7 @@ import { eq, and } from "drizzle-orm";
 import { GUARANTEE_CLAIMS_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE } from "./_core/copywritingRules";
 import { scanTimedClaims, timedClaimFailContext, timedClaimSummary, type TimedClaimHit } from "./_core/timedClaimScanner";
 import type { InvokeParams } from "./_core/llm";
+import { parseDeclaredCounts, declaredCountFaults, type DeclaredCount } from "./_core/declaredCount";
 import { truncateAtSentence, truncateAtBlock } from "./_core/cascadeContext";
 import { hasAllEventFacts } from "./_core/nextStepBridge";
 
@@ -912,10 +913,16 @@ export async function generateBodyWithRetries(input: {
   format: LeadMagnetFormat;
   title: string;
   linked: boolean;
+  /** Item counts the brief declares ("seventeen scripts"). A trimmed body delivering fewer fails the attempt. */
+  declaredCounts?: DeclaredCount[];
   /** One model call. Receives the prior-attempt feedback block ("" on a first pass); returns the message content. */
   call: (priorAttemptFeedback: string) => Promise<unknown>;
 }): Promise<LeadMagnetBody | null> {
   const { format, title, linked } = input;
+  const declaredCounts = input.declaredCounts ?? [];
+  if (declaredCounts.length > 0) {
+    console.log(`[leadMagnetContent] ${format} "${title}" brief declares: ${declaredCounts.map((d) => `${d.count} ${d.family} ("${d.phrase}")`).join(", ")}`);
+  }
   const timedViolations: TimedClaimHit[] = [];
   const shapeNotes: string[] = [];
   const seenTimed = new Set<string>();
@@ -958,7 +965,8 @@ export async function generateBodyWithRetries(input: {
         (format === "checklist" && Array.isArray((body as ChecklistBody).items) && (body as ChecklistBody).items.length > 0) ||
         (format === "toolkit" && Array.isArray((body as ToolkitBody).tools) && (body as ToolkitBody).tools.length > 0) ||
         (format === "quiz" && !!quizCheck?.ok);
-      const incomplete = ok ? bodyCompleteness(format, body) : [];
+      // Checked on the body AFTER applyBodyBounds: a trim that cuts below a declared count fails here.
+      const incomplete = ok ? [...bodyCompleteness(format, body), ...declaredCountFaults(format, body, declaredCounts)] : [];
       if (ok && incomplete.length === 0) {
         // §14b — the body is the longest asset ZAP produces and the only one a prospect keeps a
         // copy of. A clock attached to the reader's result here reaches a published page and a PDF,
@@ -1004,6 +1012,8 @@ export async function generateLeadMagnetContent(input: {
   contentBrief?: string;
   /** "bonus" → post-purchase framing (buyer already enrolled) + howToUse orientation. Default "lead_magnet". */
   mode?: DeliverableMode;
+  /** The text whose stated item counts the body must deliver — the bonus `description`. Omitted: no count gate. */
+  countBrief?: string;
 }): Promise<LeadMagnetBody | null> {
   const format = input.formatOverride ?? inferLeadMagnetFormat(input.title);
   const mode: DeliverableMode = input.mode ?? "lead_magnet";
@@ -1031,6 +1041,7 @@ export async function generateLeadMagnetContent(input: {
     format,
     title: input.title,
     linked,
+    declaredCounts: input.countBrief ? parseDeclaredCounts(input.countBrief) : [],
     call: async (inj) => {
       const response = await invokeLLM(leadMagnetRequest(format, c, mode, linked, inj));
       return response.choices[0].message.content;

@@ -1,0 +1,57 @@
+{
+  "items": [
+    {
+      "label": "Write your Single Trigger Sentence before you open the doc",
+      "detail": "Before you type a word of copy, write one sentence — longhand if that helps — answering this: 'What is the exact moment my ideal client runs out of their own answer?' Not the months of vague frustration. The specific mid-sentence stop. The one conversation where their usual toolkit fails them. This sentence becomes the lens every other section is measured against. Keep it visible on your desk the entire time you write."
+    },
+    {
+      "label": "Draft your headline using the Trigger Sentence as your only source",
+      "detail": "Your headline names the moment, not the category. Bad: 'Ready to scale your coaching business?' Good: 'For the coach who just gave a client the same advice twice and knew it wasn't landing.' Rewrite the Trigger Sentence as a statement a qualified prospect reads and thinks 'that's me — exactly.' Aim for two to three headline options and circle the one that makes you slightly uncomfortable because it's so specific."
+    },
+    {
+      "label": "Write the 'You're Not Imagining It' paragraph",
+      "detail": "This is a three-to-five sentence block placed immediately under your headline. Its only job: confirm the reader's private experience before you name your offer. Use your own words for what your client describes in discovery calls. Avoid category language ('overwhelmed', 'burned out', 'stuck'). Instead, describe the scene: the tab they always have open, the sentence they started and deleted, the follow-up email they rewrote four times. No solution yet."
+    },
+    {
+      "label": "Name what they've already tried and why it fell short",
+      "detail": "List two or three approaches your reader has genuinely attempted before coming to you — hiring a copywriter, using a template, running their copy through AI, watching a YouTube tutorial. For each one, write one sentence explaining what it failed to give them: not that it 'didn't work,' but the specific gap it left. 'A copywriter gave you polished sentences that didn't sound like you said them.' This section creates the shelf your offer sits on."
+    },
+    {
+      "label": "Introduce your method with a mechanism sentence, not a credential sentence",
+      "detail": "Write one sentence that says what your approach does differently at the level of structure — not your background, not your years of experience, not your framework name alone. Model: 'Instead of writing from a client pain category, [Your Method] maps every section of your sales page back to the single psychological moment that actually triggers a buying decision for a high-achieving coaching client.' Fill in your method name and mechanism. This is the pivot point of the page."
+    },
+    {
+      "label": "Write the deliverables list as concrete handovers, not transformation promises",
+      "detail": "List what the reader gets: the sessions, the documents, the templates, the reviews, the recordings. For each item, name the format and what it covers — not what the reader will become after receiving it. 'Six recorded coaching sessions, each one focused on a specific section of a sales page or email sequence' is correct. 'Six sessions that transform you into a confident copywriter' is not. Concrete handovers build trust; transformation promises create objections."
+    },
+    {
+      "label": "Write your proof block using scene-based client language, not superlatives",
+      "detail": "Pull one to three pieces of client feedback and rewrite each as a scene: what they tried before, what shifted, and what they noticed afterward in measurable or observable terms. 'Before I wrote my own page, I was refreshing my booking link every hour hoping. Three weeks after I published the version I'd written myself, I had my first cold-traffic booking from someone who'd never heard of me.' Avoid 'life-changing,' 'incredible,' or 'game-changer' — they cancel each other out."
+    },
+    {
+      "label": "Write your objection paragraph using the exact words your clients use",
+      "detail": "Pick the single most common objection you hear on discovery calls — not the objection you wish they had, the one they actually say. Write it in their words as a direct quote or close paraphrase, then answer it in two to three sentences using what you know from working with clients. 'I hear this one often: \"I'm just not a natural writer.\" Here's what I've seen: the coaches who say this are usually extremely precise communicators — they're just applying precision in the wrong direction.'"
+    },
+    {
+      "label": "Write your call-to-action block with a named next step, not an open invitation",
+      "detail": "Tell the reader exactly what happens when they click: what they book, how long it runs, what they bring, and what they leave with — regardless of whether they enrol. 'Book your [INSERT_BOOKING_DURATION] strategy call at [INSERT_BOOKING_URL] — bring your current sales page and leave with a clear diagnosis of exactly why it isn't converting, at no charge.' Remove every word between the reader and that instruction. One CTA per page."
+    },
+    {
+      "label": "Run the Voice Check: read the page aloud, flag anything you'd never say",
+      "detail": "Print or enlarge the page and read every sentence aloud at the speed you'd use on a discovery call. Every phrase that sounds like a brochure — underline it. Every sentence that makes you speed up or trail off — circle it. Rewrite each flagged item using the words you would actually say to a client sitting across from you. If you can't say it comfortably, your reader won't believe it when they read it."
+    },
+    {
+      "label": "Publish the draft and set a revision reminder before you close the tab",
+      "detail": "Save and publish the draft as-is. Before you close the tab, put a calendar reminder seven days out labelled 'Sales Page First Revision.' Do not go back in tomorrow. The enemy of a shipped page is the itch to keep editing before you have real reader data. What you have now is a complete, structured draft written in your voice — that is what goes live. Revision is a separate task that belongs to a separate day."
+    }
+  ],
+  "title": "The Panic-Launch Copy Sequence Checklist",
+  "format": "checklist",
+  "promise": "Use this checklist to break your next sales page into seven discrete micro-tasks, each small enough to finish before your attention gives out. You'll ship a complete draft you're proud of — and you'll know exactly which piece you wrote and why.",
+  "howToUse": "This is a seven-step sales page checklist built for coaches who have a new offer and a blank document staring back at them. Work through the items in order — one section per sitting, in whatever order your schedule allows across the two days — checking each off before moving to the next. By the end, you have a complete, sequenced sales page draft written entirely in your voice, with no section skipped and no placeholder left unfilled.",
+  "nextStep": {
+    "body": "The Single Trigger Sentence in Step 1 is the hardest item on this checklist — and it's the one the programme goes deepest on. Inside the Client Psychology Reverse-Map module, you'll find the exact questions that surface the specific psychological moment your buyer hits before they decide they need outside help. Run that module before you sit down with this checklist and Step 1 writes itself. Everything else on this page flows from that one sentence.",
+    "heading": "Your next move inside the programme: apply the Client Psychology Reverse-Map to Step 1",
+    "ctaLabel": "Open the Client Psychology Reverse-Map Module"
+  }
+}

@@ -60,6 +60,8 @@ export async function runBonusPdfGeneration(input: { userId: number; bonusSetId:
         title: b.title,
         formatOverride: leadMagnetFormat,
         contentBrief,
+        // The description's stated item counts ("seventeen scripts") must be delivered — item 15, 2026-09-14.
+        countBrief: b.description,
         mode: "bonus", // post-purchase framing (buyer already enrolled) + howToUse orientation
       });
       if (!body) {
