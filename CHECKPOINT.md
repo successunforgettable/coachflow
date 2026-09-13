@@ -10,11 +10,11 @@
 | | |
 |---|---|
 | deployed | **`9156875`, UNTOUCHED** for all of item 15. `origin/railway-build` `9156875`; `main` `67517e3` |
-| held branch | `docs/held-2026-09-12` — item-15 commits `2349d6e` `f889c7d` `7ce210e` `265207f` `d32e2c8` + this checkpoint. **Nothing pushed** (origin still `6d88070`) |
-| 🔴 **uncommitted** | the **declared-count gate** pass and the **"in a second" capture** pass — working tree only. `git checkout/stash/reset/clean` destroys them |
+| held branch | `docs/held-2026-09-12` — item-15 commits `2349d6e` `f889c7d` `7ce210e` `265207f` `d32e2c8` `f4a53fa` (checkpoint) **`d593331`** (declared-count gate) **`425a4cb`** (capture) + the checkpoint update. **Nothing pushed** (origin still `6d88070`) |
+| ✅ **committed** | all item-15 work. Working tree clean of tracked changes. **Do not re-attempt the gate or capture commits** |
 | 🛑 **held, not executed** | *"mark bonus-35 as confirmed node defect + write closing summary"* |
 | pages | 42 ✅ · 44 ✅ · 34 live, count-gate follow-on (12 → 9) · 43 live, count-gate follow-on (5 → 3) · **35 NODE DEFECT, live with 17 → 13** · 33 parked for item 14 |
-| next step | commit the two passes → execute the held bonus-35 instruction → bonus-34/43 follow-ons |
+| next step | verify ground truth → execute the held bonus-35 instruction → bonus-34/43 follow-ons |
 
 🔴 **PUSHING `railway-build` IS THE DEPLOY.** Nothing here is ready for it.
 

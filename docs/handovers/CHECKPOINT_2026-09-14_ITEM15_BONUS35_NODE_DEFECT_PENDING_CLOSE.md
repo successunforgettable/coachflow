@@ -22,7 +22,8 @@ the pre-item-15 code.** All changes below exist only on the held branch and in i
 
 ## 2. THE HELD BRANCH — `docs/held-2026-09-12`
 
-**HEAD before this checkpoint's own commit: `d32e2c8a912796c7223710c7cc906c2c3c7cc244`.**
+**All item-15 work is now committed** (updated 2026-09-14, same session). Held-branch HEAD after the two pending passes
+were committed: **`425a4cbed357e216951b2e3c2ecb454226959972`**, followed by the commit that records this update.
 `origin/docs/held-2026-09-12` = **`6d88070`**. **Nothing pushed to origin at any point in item 15.**
 
 ### 2a. Committed — item 15, in order (`git log 6d88070^..HEAD`)
@@ -35,13 +36,20 @@ the pre-item-15 code.** All changes below exist only on the held branch and in i
 | `7ce210e` | 2026-09-13 22:28 | read-only diagnostic capture folder `docs/handovers/item15-diag-2026-09-13/` |
 | `265207f` | 2026-09-13 22:40 | strict tool use for lead-magnet bodies + positive-only research-statistic rule |
 | `d32e2c8` | 2026-09-14 02:31 | action-timing ruling, content floor, hedged clocks; bonus-35/44 re-runs |
-| *(this checkpoint)* | 2026-09-14 | this file + `CHECKPOINT.md` restart block — hash reported in the commit that adds it |
+| `f4a53fa` | 2026-09-14 03:18 | this checkpoint + `CHECKPOINT.md` restart block (written while the next two passes were still uncommitted) |
+| **`d593331`** | 2026-09-14 | **declared-count gate** — `declaredCount.ts`, its 15 tests, 7 fixtures, generator + `bonusPdfGenerator` wiring, sixth-pass handover addendum |
+| **`425a4cb`** | 2026-09-14 | **"in a second" read-only capture** — `docs/handovers/item15-diag-2026-09-14/` |
+| *(next commit)* | 2026-09-14 | this update to the checkpoint file and the restart block |
 
-### 2b. 🔴 NOT COMMITTED — two passes exist ONLY in the working tree
+### 2b. ✅ NOW COMMITTED — the two passes that were working-tree only when this checkpoint was first written
 
-**Verified 2026-09-14: the declared-count gate pass and the "in a second" capture pass have NO commit hash.** They were
-built, gated and recorded, then held for an explicit commit instruction. This checkpoint commits only itself and
-`CHECKPOINT.md`, so they remain uncommitted — **next session's first step (§8) is to commit them.**
+**Committed 2026-09-14, same session, on Arfeen's instruction — do NOT re-attempt these commits.** Before committing:
+tsc 34, declaredCount suite 15/15. After: **0 uncommitted tracked changes; no item-15 file untracked.**
+
+- **`d593331e6fb9129a23cb0c08b34e26011807cb4f`** — declared-count gate (12 files)
+- **`425a4cbed357e216951b2e3c2ecb454226959972`** — "in a second" capture pass (8 files)
+
+The table below is kept as the record of exactly what those two commits contain.
 
 | state | path | pass |
 |---|---|---|
@@ -56,8 +64,9 @@ built, gated and recorded, then held for an explicit commit instruction. This ch
 | new | `server/__fixtures__/raw-bonus-35-attempt{2,3}-2026-09-13.json` | raw pre-trim bodies (17 scripts each) |
 | new | `docs/handovers/item15-diag-2026-09-14/` | capture: `CAPTURE.md`, 3 raw + 3 bounded bodies, `capture-report.json` |
 
-🛑 **WHAT A STRAY COMMAND DESTROYS:** `git checkout -- .`, `git stash`, `git reset --hard`, `git clean -fd` — **all of §2b
-is gone, with no copy anywhere.** Never `git add .` either: ~330 untracked screenshots (~590 MB) sit in the tree.
+🛑 **WHAT A STRAY COMMAND DESTROYS:** item-15 work is now all committed, so a checkout/stash/reset no longer loses it.
+**The held branch exists on origin only at `6d88070`** — deleting the local branch or its reflog loses every item-15
+commit. Never `git add .`: ~330 untracked screenshots (~590 MB) sit in the tree.
 
 ## 3. ITEM 15 — PER-PAGE STATE (live pages fetched + scanned 2026-09-14 21:45 UTC; DB rows read the same minute)
 
@@ -141,7 +150,7 @@ Earlier in item 15, bonus-35 also went live twice with defective bodies: pass 4 
 | 6 | **action vs outcome timeframes** (Arfeen's ruling: action timing passes, outcome timing fails) | `isActionTiming` | `d32e2c8` |
 | 7 | **completeness floor** — format `minItems`, per-field minimum lengths (calibrated), rejects one-character placeholders | `bodyCompleteness` | `d32e2c8` |
 | 8 | **hedged-timeframe patch** — in/within under · less than · just · only … N unit | `timedClaimScanner.ts` | `d32e2c8` |
-| 9 | **declared-count gate** — parses a count in the brief, counts delivered items (per noun, largest set), rejects a trimmed body below it | `_core/declaredCount.ts` | 🔴 **UNCOMMITTED (§2b)** |
+| 9 | **declared-count gate** — parses a count in the brief, counts delivered items (per noun, largest set), rejects a trimmed body below it | `_core/declaredCount.ts` | `d593331` |
 
 **Gates as last measured.** tsc **34** (re-measured at write time). Suites last run 2026-09-14 ~21:05 UTC, **no source
 changed since** (the capture pass added only docs): declaredCount 15 · completeness 9 · retry slots 10 · strictToolSchema 9
@@ -161,15 +170,14 @@ previous PDF address publicly reachable. From this session: bonus-34 `v178578055
 
 ## 8. NEXT SESSION — FIRST STEPS, IN ORDER
 
-1. **Verify ground truth**, then **commit the two uncommitted passes (§2b)** — by name, never `git add .`:
+1. **Verify ground truth only — the two passes are ALREADY COMMITTED (`d593331`, `425a4cb`, §2b). Do not re-commit.**
    ```
-   git fetch origin && git ls-remote origin refs/heads/railway-build   # must still be 9156875
-   git rev-parse HEAD                                                  # this checkpoint's commit
-   git status --porcelain | grep -v '^??'                              # expect the 3 modified files in §2b
-   npx tsc --noEmit 2>&1 | grep -c "error TS"                          # 34
+   git fetch origin && git ls-remote origin refs/heads/railway-build refs/heads/docs/held-2026-09-12
+                                                    # railway-build 9156875 · held branch on origin 6d88070
+   git log --oneline 6d88070..HEAD                  # expect 2349d6e f889c7d 7ce210e 265207f d32e2c8 f4a53fa d593331 425a4cb + the checkpoint-update commit
+   git status --porcelain | grep -v '^??'           # expect nothing
+   npx tsc --noEmit 2>&1 | grep -c "error TS"       # 34
    ```
-   Suggested split: (a) declared-count gate — `declaredCount.ts`, its test, the 7 fixtures, the generator and
-   `bonusPdfGenerator` edits, the handover addendum; (b) capture pass — `docs/handovers/item15-diag-2026-09-14/`.
 2. **Send / execute the held instruction:** *"mark bonus-35 as confirmed node defect, write closing summary."* Carry the
    §4 corrections into the summary — they are ground truth.
 3. **bonus-34 and bonus-43 declared-count follow-ons** — check each against the gate and correct any that fails. Both
