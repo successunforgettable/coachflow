@@ -4,7 +4,7 @@ import {
   scanTimedClaimsInString,
   timedClaimFailContext,
 } from "./timedClaimScanner";
-import { LIVE_VIOLATIONS, LIVE_EXEMPT, LIVE_QUOTED_OUTCOME_FIGURES } from "./__fixtures__/timedClaimCorpus";
+import { LIVE_VIOLATIONS, LIVE_EXEMPT, LIVE_QUOTED_OUTCOME_FIGURES, LIVE_ACTION_TIMING } from "./__fixtures__/timedClaimCorpus";
 
 /**
  * THE SCANNER IS CALIBRATED BEFORE IT IS TRUSTED (§15c, §15k).
@@ -153,6 +153,101 @@ describe("C3 · quoted speech that claims a figure as a result is NOT exempt (Ar
     const fc = timedClaimFailContext(scanTimedClaimsInString(LIVE_QUOTED_OUTCOME_FIGURES.q44, "tools.2.content").violations);
     expect(fc).toContain("within 90 days");
     expect(fc).toContain("spoken line still names a figure");
+  });
+});
+
+describe("C4 · a time on the reader's ACTION passes; a time on the reader's OUTCOME still fails (Arfeen, 2026-09-13)", () => {
+  for (const [key, text] of Object.entries(LIVE_ACTION_TIMING)) {
+    it(`exempts ${key} — the real line the first version rejected — and says why`, () => {
+      const r = scanTimedClaimsInString(text, "tools.2.content");
+      // POSITIVE artefact: the clock was SEEN and classified, not missed.
+      expect(r.exempt.map((e) => e.exemptReason)).toEqual(["action-timing"]);
+      expect(r.violations).toEqual([]);
+    });
+  }
+
+  // 🔴 THE PAIRED CONTROLS. Same instruction verbs, same clocks — the timeframe now attaches to a result.
+  it("the same verbs fail the moment the clock attaches to what the reader gets", () => {
+    for (const [line, clock] of [
+      ["Follow up within 48 hours and you'll have your first client booked.", "within 48 hours"],
+      ["Complete this within an hour to have a finished draft ready to send.", "within an hour"],
+      ["Run this within 24 hours so your results show up by the weekend.", "within 24 hours"],
+      ["Use this checklist to go from blank document to complete sales page draft in 48 hours.", "in 48 hours"],
+      ["Book your first paying client within 30 days.", "within 30 days"],
+      ["Sign three clients within 90 days.", "within 90 days"],
+      ["Start seeing results within a week.", "within a week"],
+    ]) {
+      const r = scanTimedClaimsInString(line);
+      expect({ line, flagged: r.violations.map((v) => v.match) }).toEqual({ line, flagged: [clock] });
+    }
+  });
+
+  it("an outcome clause stays flagged even when an instruction sits in the same sentence", () => {
+    const r = scanTimedClaimsInString("Follow the five steps in order and you finish holding an offer you can send to a real person today.");
+    expect(r.violations.map((v) => v.match)).toContain("today");
+  });
+
+  it("every live violation captured on 2026-09-12 is still a violation — nothing was loosened", () => {
+    for (const text of Object.values(LIVE_VIOLATIONS)) {
+      const before = scanTimedClaimsInString(text);
+      expect(before.violations.length).toBeGreaterThan(0);
+      expect(before.exempt.filter((e) => e.exemptReason === "action-timing")).toEqual([]);
+    }
+  });
+
+  it("the fail-context tells the model an action timing may stay", () => {
+    const fc = timedClaimFailContext(scanTimedClaimsInString("You will hold the draft by day 7.").violations);
+    expect(fc).toContain("when the reader carries out a step");
+  });
+});
+
+describe("C5 · hedged clocks — the blind spot that reached bonus-35's live page (2026-09-14)", () => {
+  // 🔴 THE REAL MISS: published live on 2026-09-13 and scanned as `0 violations, 0 exempt`.
+  it("flags the exact promise bonus-35 went live with", () => {
+    const r = scanTimedClaimsInString(
+      `Use these scripts to dissolve the "my brain doesn't write" fear at the exact moment it surfaces and redirect yourself back into the copy in under two minutes. Every script is drawn from the same psychology that already makes you brilliant on a discovery call — so you already have everything this asks of you.`,
+      "promise",
+    );
+    expect(r.violations.map((v) => v.match)).toEqual(["in under two minutes"]);
+  });
+
+  it("flags each hedge form attached to an outcome", () => {
+    for (const [line, clock] of [
+      ["You will have your first draft in less than 10 minutes.", "in less than 10 minutes"],
+      ["You'll see your first reply within just 5 days.", "within just 5 days"],
+      ["Your sales page is finished in just an hour.", "in just an hour"],
+      ["Clients start booking in less than a week.", "in less than a week"],
+      ["The whole reset takes less than a week to change how you write.", "less than a week"],
+      ["Get your offer written in under an hour.", "in under an hour"],
+    ]) {
+      const r = scanTimedClaimsInString(line);
+      expect({ line, flagged: r.violations.map((v) => v.match) }).toEqual({ line, flagged: [clock] });
+    }
+  });
+
+  it("the action-timing ruling holds for hedged clocks — an instruction still passes", () => {
+    for (const line of [
+      "Complete this in under ten minutes.",
+      "Run this check in less than 5 minutes before you publish.",
+      "Fill in the worksheet in just 15 minutes.",
+    ]) {
+      const r = scanTimedClaimsInString(line);
+      expect({ line, violations: r.violations, reasons: r.exempt.map((e) => e.exemptReason) })
+        .toEqual({ line, violations: [], reasons: ["action-timing"] });
+    }
+  });
+
+  it("the pre-existing action lines are still exempt — last pass's fix did not regress", () => {
+    for (const text of Object.values(LIVE_ACTION_TIMING)) {
+      expect(scanTimedClaimsInString(text).exempt.map((e) => e.exemptReason)).toEqual(["action-timing"]);
+    }
+  });
+
+  it("control: hedge words with no clock after them match nothing", () => {
+    for (const line of ["Start with just the first three prompts.", "Publish it under your own name.", "Use less than half the page."]) {
+      const r = scanTimedClaimsInString(line);
+      expect([...r.violations, ...r.exempt]).toEqual([]);
+    }
   });
 });
 

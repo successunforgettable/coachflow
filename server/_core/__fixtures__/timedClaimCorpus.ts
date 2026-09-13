@@ -30,6 +30,18 @@ export const LIVE_EXEMPT: Record<string, string> = {
 };
 
 /**
+ * A time on the READER'S ACTION — not a §14b claim (Arfeen, ruling confirmed 2026-09-13). MUST be exempt.
+ *
+ * Captured verbatim from the read-only bonus-35/44 diagnostic, 2026-09-13 (docs/handovers/item15-diag-2026-09-13):
+ * the first version of the scanner rejected all three, and the node could not tell why.
+ */
+export const LIVE_ACTION_TIMING: Record<string, string> = {
+  a44follow: "3. **Follow up within 48 hours** — even just: *\"Great to reconnect — I'll keep you posted as my offer takes shape.\"*",
+  a44complete: "Complete this within an hour of any network conversation where you used one of the scripts above. One page, five questions. The answers feed directly into your Career Layer Excavation work inside the programme.",
+  a35run: "Run this within 24 hours of publishing any piece of copy — sales page, email, or invitation — when the post-publish spiral starts. Go through it in order. Stop when the spiral stops.",
+};
+
+/**
  * Quoted speech that CLAIMS A FIGURE AS A RESULT — NOT scene-setting. MUST be flagged.
  *
  * Captured from the live bonus-44 page on 2026-09-13. The page renders `[INVESTMENT AMOUNT]` as its

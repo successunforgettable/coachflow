@@ -45,6 +45,13 @@
  */
 const NUM = "(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|sixty|ninety|\\d+)";
 const UNIT = "(?:second|minute|hour|day|week|month)s?";
+/**
+ * ⚠️ HEDGED CLOCKS — added 2026-09-14 after a third blind spot reached a live page. bonus-35 was published with
+ * "redirect yourself back into the copy IN UNDER TWO MINUTES": a hedge word between the preposition and the
+ * number, which `in NUM UNIT` cannot see. A hedge softens a clock; it does not stop it being one. Hits still pass
+ * through the quoted-speech, refund-window and action-timing rules below, unchanged.
+ */
+const HEDGE = "(?:under|less\\s+than|fewer\\s+than|just|only|about|around|roughly|barely|as\\s+little\\s+as|no\\s+more\\s+than)";
 export const TIMED_CLAIM_PATTERN = new RegExp(
   [
     "\\btoday\\b", "\\btonight\\b", "\\bovernight\\b", "\\bthe same day\\b", "\\bone sitting\\b",
@@ -53,6 +60,11 @@ export const TIMED_CLAIM_PATTERN = new RegExp(
     "\\b(?:by|on|before|after|leaves?|leaving)\\s+day\\s*\\d+\\b",
     // "in 48 hours", "within 90 days", "in the next ten minutes", "inside a week"
     `\\b(?:in|within|inside|after)\\s+(?:the\\s+next\\s+)?${NUM}[-\\s]${UNIT}\\b`,
+    // "in under two minutes", "within just 5 days", "in less than an hour"
+    `\\b(?:in|within|inside|after)\\s+(?:the\\s+next\\s+)?${HEDGE}\\s+${NUM}[-\\s]${UNIT}\\b`,
+    // bare: "less than a week", "just 10 minutes", "under two hours"
+    `\\b(?:less|fewer)\\s+than\\s+${NUM}[-\\s]${UNIT}\\b`,
+    `\\b(?:just|under)\\s+${NUM}[-\\s]${UNIT}\\b`,
     `\\bnext\\s+${NUM}\\s+${UNIT}\\b`,
   ].join("|"),
   "gi",
@@ -105,6 +117,53 @@ const CLAUSE_BREAK = /[,;:.!?—–]/g;
 /** The clause leading into the clock ends in a copula: `launch is`, `the call's` — an event's schedule. */
 const EVENT_SCHEDULE_LEAD = /(?:\b(?:is|are|was|were)|['’]s)\s*$/i;
 
+/**
+ * A TIME ON THE READER'S ACTION IS NOT A §14b CLAIM (Arfeen, ruling confirmed 2026-09-13).
+ *
+ * "Follow up within 48 hours" and "Complete this within an hour of any network conversation" tell the
+ * reader WHEN to do a step. Nothing is promised about what they will have. The first version rejected
+ * both, and the fail-context — which only ever named the reader's RESULT — could not explain why, so the
+ * node kept writing fresh action timings and burned its attempts on bonus-44 (captured 2026-09-13).
+ *
+ * 🔴 DELIBERATELY NARROW — every outcome shape that failed before must still fail. A hit outside quoted
+ * speech is action timing only when ALL of these hold for the clause it sits in (cut at . ; : ! ? — –):
+ *   1. the clause opens with a reader-instruction verb, after any list number, bullet, checkbox or bold;
+ *   2. nothing before the clock turns the step toward a result — "Use this checklist TO go from blank
+ *      page to draft in 48 hours", "Follow the steps AND YOU finish holding…", "Book YOUR first client…";
+ *   3. the clause names no outcome anywhere — "you'll", "you can", "results", "ready";
+ *   4. the clause carries no figure besides the clock — "Sign three clients within 90 days".
+ * Anything that fails one test stays a violation — the safe direction. Quoted speech and refund windows
+ * keep their own rules above; this is not consulted for a quoted hit.
+ */
+const INSTRUCTION_VERBS = new Set([
+  "add", "answer", "ask", "block", "book", "breathe", "call", "check", "choose", "circle", "complete", "contact",
+  "copy", "do", "edit", "email", "fill", "find", "finish", "follow", "go", "keep", "list", "look", "make", "mark",
+  "meet", "message", "note", "open", "paste", "pause", "pick", "plan", "post", "practice", "practise", "prepare",
+  "print", "publish", "rate", "read", "record", "repeat", "reply", "return", "review", "revisit", "run", "save",
+  "schedule", "score", "send", "set", "share", "sit", "spend", "start", "submit", "take", "test", "text", "tick",
+  "try", "update", "use", "walk", "write",
+]);
+const LEADING_MARKERS = /^(?:\s|[>*_#-]|\d+[.)]|\[[ xX]?\])+/;
+const TOWARD_A_RESULT = /\b(?:to|so|and|then|until|you|you'?ll|you're|your|will|can|ready|get|into|have|has|holding|leave|results?)\b/i;
+const OUTCOME_IN_CLAUSE = /\b(?:you'?ll|you will|you can|you'd|so that|and you|results?|ready)\b/i;
+
+function isActionTiming(line: string, at: number, clock: string): boolean {
+  const BREAK = /[.;:!?—–]/;
+  let start = 0;
+  for (let i = 0; i < at; i++) if (BREAK.test(line[i])) start = i + 1;
+  let end = line.length;
+  for (let i = at + clock.length; i < line.length; i++) if (BREAK.test(line[i])) { end = i; break; }
+  const lead = line.slice(start, at).replace(LEADING_MARKERS, "");
+  const tail = line.slice(at + clock.length, end);
+  const words = lead.trim().split(/\s+/);
+  const verb = (words[0] ?? "").replace(/[^A-Za-z]/g, "").toLowerCase();
+  if (!INSTRUCTION_VERBS.has(verb)) return false;
+  if (TOWARD_A_RESULT.test(words.slice(1).join(" "))) return false;
+  if (OUTCOME_IN_CLAUSE.test(`${lead} ${tail}`)) return false;
+  if (FIGURE_IN_SPEECH.test(lead) || FIGURE_IN_SPEECH.test(tail)) return false;
+  return true;
+}
+
 export type TimedClaimHit = {
   /** The matched clock, lowercased. */
   match: string;
@@ -113,7 +172,7 @@ export type TimedClaimHit = {
   /** The line it sits on, trimmed — enough for a human to judge it. */
   line: string;
   /** Set when the hit is allowed; names which standing exemption applied. */
-  exemptReason?: "quoted-speech" | "money-window";
+  exemptReason?: "quoted-speech" | "money-window" | "action-timing";
   /** Set on a violation inside quoted speech that the exemption refused because it carries a figure. */
   quotedFigure?: true;
 };
@@ -204,6 +263,10 @@ export function scanTimedClaimsInString(text: string, path = ""): TimedClaimScan
         exempt.push({ ...hit, exemptReason: "money-window" });
         continue;
       }
+      if (!hit.quotedFigure && containing.length === 0 && isActionTiming(rawLine, at, m[0])) {
+        exempt.push({ ...hit, exemptReason: "action-timing" });
+        continue;
+      }
       violations.push(hit);
     }
   }
@@ -255,6 +318,7 @@ export function timedClaimFailContext(violations: TimedClaimHit[]): string {
     "Rewrite each of those so the sentence describes what the asset IS, or what changes for the reader, with no timeframe on the reader's outcome.",
     "Describing the asset is always available to you: its length, how many steps or items or fill-in fields it holds (\"a one-page checklist\", \"eight prompts\", \"five steps\").",
     "When the reader gets a result belongs to the reader. A line of quoted speech may keep a passing time word, as long as it names no figure, timeframe or deadline as a result.",
+    "A time on when the reader carries out a step may stay as an instruction on its own — \"Follow up within 48 hours\" — with the result it leads to left untimed.",
     quoted,
     "Keep everything else about the response as it was.",
   ].filter(Boolean).join("\n");

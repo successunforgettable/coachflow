@@ -1,0 +1,25 @@
+{
+  "format": "toolkit",
+  "title": "The 'My Brain Doesn't Write' Reframe Script Bank",
+  "howToUse": "This is your Reframe Script Bank — a ready-to-use collection of seventeen self-coaching prompts and perspective-shift scripts for the exact moments when your brain convinces you it can't write. Keep this document open in a browser tab whenever you sit down to work on copy. The moment you feel stuck, find the script that matches where you are, say it out loud or type it into your document, and keep moving. This is not a reading exercise — it is an interruption tool.",
+  "promise": "Use these scripts to dissolve the \"my brain doesn't write\" fear at the exact moment it surfaces and redirect yourself back into the copy in under two minutes. Every script is drawn from the same psychology that already makes you brilliant on a discovery call — so you already have everything this asks of you.",
+  "tools": [
+    {
+      "name": "The 17 Reframe Scripts — Matched to Your Exact Stuck Moment",
+      "type": "swipe",
+      "instructions": "Find the stuck moment that matches where you are right now, read the script once, then say it aloud or type it at the top of your document before continuing.",
+      "content": "## The 17 Reframe Scripts\n\nEach script is mapped to a specific stuck moment. Find yours. Use it. Keep going.\n\n---\n\n### STUCK MOMENT 1: The Blank Page\n*You've opened a new document. The cursor is blinking. Nothing is coming.*\n\n**Script 1 — The Discovery Call Pivot**\n"
+    },
+    {
+      "name": "x",
+      "type": "swipe",
+      "instructions": "x",
+      "content": "x"
+    }
+  ],
+  "nextStep": {
+    "heading": "x",
+    "body": "x",
+    "ctaLabel": "x"
+  }
+}

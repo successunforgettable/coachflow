@@ -188,3 +188,182 @@ rule appeared exactly once, that swapping in the new rule makes `system` byte-id
   `strictToolSchema` fails the opted-in and refused-schema tests; generator opt-in set false → fails 1; pre-rewrite
   rule restored → `researchStatRule` fails 2. (A first M1 attempt produced a syntax error and ran no tests — a crash,
   not a detection — and was redone.)
+
+---
+
+# ADDENDUM — 2026-09-13 (fourth pass): action-timing ruling built; bonus-35/44 re-run. 🔴 bonus-35 PUBLISHED DEGENERATE.
+
+Pass 3 committed as `265207f` (not pushed). **This pass is uncommitted.**
+
+## 1. The ruling and the scanner change
+
+Arfeen, confirmed 2026-09-13: **a timeframe on the reader's ACTION is not a §14b violation; only a timeframe on the
+reader's outcome or result is.** `timedClaimScanner.ts` `isActionTiming`: outside quoted speech, a hit is exempt
+(`action-timing`) only when its clause opens with a reader-instruction verb, nothing before the clock turns it toward a
+result (`to`, `and`, `you`, `your`, `get`, `have`…), the clause names no outcome (`you'll`, `you can`, `results`,
+`ready`), and it carries no figure besides the clock. Fixture `LIVE_ACTION_TIMING` = the three real lines the diagnostic
+captured. Fail-context now says an action timing may stay.
+
+**Gates:** tsc **34** · scanner **43/43** (36 prior unchanged + 7 new: 3 live action lines pass, 7 same-verb outcome
+controls fail, every 2026-09-12 live violation still fails) · retry slots 10 · strictToolSchema 9 · researchStatRule 3 ·
+pipeline-fixes 414 · offerStandard 13 · promptPins 21 · leadMagnetOfferMode 9 · leadMagnetClose 12 · complianceFilter 31
+· tokenCrypto 10. Pre-existing unchanged: Bounds 2, bonus 1. Mutations: exemption off → 3 fail; every clause forced to
+action → every live violation fails. Restored md5-verified.
+
+## 2. Re-run — baseline 17:16:12 UTC, run 17:16–17:20, report written, then after-snapshot
+
+**Strict mode, per attempt, from the request actually sent (fetch wrapper):** 3 of 3 requests `strict: true`, HTTP 200,
+`claude-sonnet-4-6`, **0 `[LLM][strict]` fallbacks**, `tools` a real array every time (35: array(2); 44: array(4), array(4)).
+
+| page | attempts | outcome |
+|---|---|---|
+| bonus-35 | attempt 1 accepted | 🔴 **WRITTEN + PUBLISHED — DEGENERATE** (§3) |
+| bonus-44 | attempt 1 rejected (`next 90 days` — outcome, correctly); attempt 2 clean, 1 exempt `action-timing` | ✅ written + published |
+
+**Blast radius:** 539 compared · **3 changed** (bonus-35, bonus-44, `bonuses` checksum) · **0 unexpected.**
+
+## 3. 🔴 bonus-35 — a broken deliverable reached the live page
+
+Output **459 tokens**, `stop_reason: tool_use` (a full body runs 3,700–3,900). The model stopped early and filled the
+required fields with placeholders, and the gates passed it:
+
+- `tools` = **2** (floor is 3): tool 0 content **266 chars**, cut off at *"Script 1 — The Discovery Call Pivot"*;
+  tool 1 is `name: "x"`, `type: "swipe"`, `instructions: "x"`, `content: "x"`.
+- `nextStep` = `{ heading: "x", body: "x", ctaLabel: "x" }`.
+- promise: *"…redirect yourself back into the copy **in under two minutes**."* — a timed OUTCOME claim the scanner
+  **did not see** (`0 violations, 0 exempt`): the pattern requires in/within immediately before the number, so
+  `in under two` passes. A hedged-timeframe sweep of both new bodies found this one hit only.
+- Live page 23,541 → **7,412 bytes**. New PDF `v1789319816`; previous `v1789220011` stays public (settled finding).
+
+**Why it got through — two gaps, the first introduced by pass 3:**
+1. Strict mode requires `minItems` ≤ 1, so `toStrictToolSchema` clamped the toolkit's `minItems: 3` to 1 and moved the 3
+   into a description. The generator's shape check only requires `tools.length > 0`, and nothing checks content length
+   or placeholder values. Before strict, the schema's `minItems: 3` was steering the model; now nothing enforces it.
+2. The scanner is blind to hedged timeframes (`in under N`, `in less than N`, `in just N`).
+
+**Not corrected.** A corrective republish is a production write and needs Arfeen's go-ahead.
+
+## 4. bonus-44 — clean
+
+- Before (tools.1): *"'It's [INVESTMENT AMOUNT]. The goal the programme is built around is three paying clients within
+  90 days of launching…'"* → gone. The new body contains no "90" and no "three paying clients".
+- Promise after: *"These scripts give you the exact sentences to say in three high-stakes conversations — so 'I don't
+  have my niche yet' stops being a reason to wait and becomes something you can move straight through."*
+- 4 tools, content 1,975 / 3,410 / 3,634 / 2,979 chars; real `nextStep`. One exempt: *"Check the script that matches
+  today's conversation:"* — `action-timing`. Hedged sweep: 0. Page 22,772 → 24,581 bytes. New PDF `v1789320008`;
+  previous `v1789220451` stays public.
+
+## 5. Live pages — fetched three times, four minutes apart (17:20:50 · 17:24:57 · 17:29:00 UTC)
+
+- bonus-35: http 200, **7,412 bytes**, md5 `425de5e35103dacfa602b9baef4f10c4` on all three reads (before: 23,541 B,
+  `9b44f887…`). The degenerate body is what is live: 6 lines reading `x`, and *"in under two minutes"* in the promise.
+- bonus-44: http 200, **24,581 bytes**, md5 `7e4d395c13bf7213dc62151c5e4255fc` on all three (before: 22,772 B, `ecff2110…`).
+  Scan 0 violations, 1 exempt (`action-timing`).
+- bonus-33, 34, 42, 43 byte-identical to their pre-run captures.
+
+---
+
+# ADDENDUM — 2026-09-14 (fifth pass): content floor + hedged clocks built; bonus-35 re-run. 🔴 LIVE BUT INCOMPLETE — NODE DEFECT.
+
+Pass 4 is uncommitted too (action-timing ruling). **This pass is uncommitted.** Production code still `9156875`.
+
+## 1. The two fixes
+
+**Content floor** — `bodyCompleteness` in `leadMagnetContentGenerator.ts`, checked after the response, before the §14b
+scan. Enforces the format's `BOUNDS.minItems` (strict mode can only send `minItems` ≤ 1), minimum lengths per field, and
+rejects any one-character value. Floors set far below every complete body measured 2026-09-14 (production: 7 bodies;
+this item's captures: 6): toolkit content 400 (measured min 1,424), instructions 30 (95), name 8 (24); checklist detail
+60 (296), label 8 (40); promise 40 (198); howToUse 80 (388); nextStep body 40 (453), heading 8 (43), ctaLabel 4 (26).
+⚠️ Guide floors uncalibrated — no guide body exists in production. Quiz left to `validateQuizBody`.
+Regression fixture: `server/__fixtures__/degenerate-bonus-35-2026-09-13.json` — the exact body published on 2026-09-13.
+Positive control: `complete-bonus-44-2026-09-13.json`.
+
+**Hedged clocks** — `timedClaimScanner.ts`: `in/within … under | less than | fewer than | just | only | about | around |
+roughly | barely | as little as | no more than N unit`, and bare `less/fewer than N unit`, `just N unit`, `under N unit`.
+Hits still pass through quoted-speech, refund-window and action-timing rules unchanged.
+
+**Gates:** tsc **34** · completeness **9/9** · scanner **48/48** (43 prior unchanged + 5) · retry slots 10 (fixtures
+raised to meet the floor) · strictToolSchema 9 · researchStatRule 3 · pipeline-fixes 414 · offerStandard 13 · promptPins
+21 · leadMagnetOfferMode 9 · leadMagnetClose 12 · complianceFilter 31 · tokenCrypto 10. Pre-existing unchanged: Bounds 2,
+bonus 1. Mutations: floor off → degenerate regression fails; hedge patterns removed → 3 fail. md5-restored.
+Widened scanner on all six live pages: only new hit is bonus-35's own `in under two minutes`.
+
+## 2. Re-run bonus-35 — baseline 20:48:09 UTC, run to 20:51:34, report written, then after-snapshot
+
+**Strict mode, from the request actually sent:** 3/3 `strict: true`, HTTP 200, `claude-sonnet-4-6`, **0 fallbacks**,
+`tools` a real array every attempt.
+
+| attempt | out tokens | result |
+|---|---|---|
+| 1 | 717 | 🟢 **floor caught it** — 2 tools, tools.0 261 chars. Degenerate again; last pass this reached the live page |
+| 2 | 3,774 | rejected §14b — `today`, `in seven days`, `under five minutes` (a hedged clock the old pattern missed) |
+| 3 | 3,826 | passed every gate → **written + published** |
+
+**Blast radius:** 539 compared · **2 changed** (bonus-35 row, `bonuses` checksum) · **0 unexpected.**
+
+## 3. 🔴 What went live is NOT complete — the gates passed it
+
+- Promise: *"These seventeen scripts hand you the exact words to redirect the 'my brain doesn't write' conviction the
+  moment it surfaces, so you stay in the session and finish the copy."* — no clock, but it names **seventeen**.
+- **Scripts delivered: 1–13, plus a reference to 15 in the worksheet. Scripts 14, 16, 17 are absent.**
+- tools.0 *"Master Script Bank — All 17 Prompts"*: **404 chars** — a how-to paragraph and a section heading, ending at
+  *"Script 1 — The Discovery Call Redirect"* with nothing under it. It cleared the 400 floor by four characters.
+- tools.3 *"The 17-Script Bank — Expanded (All Sections, All Scripts)"*: returned at 5,142 chars, **cut by `applyBodyBounds`
+  to 3,952 at the 4,000 cap**, ending at Script 13.
+- Otherwise: 4 tools, howToUse and nextStep complete; 0 violations; 1 exempt — `in a second`, from *"Keep it open in a
+  second tab"* — a pre-existing pattern misread ("a second" is not a clock), exempted as action timing, blocked nothing.
+
+**Why this is a node defect, not a gate fix in waiting:** the node is asked for a 17-script bank inside tools capped at
+4,000 characters each. It split the bank across two tools, left one a stub, and the upper-bound repair — designed to
+"repair, never reject" — cut the other mid-set. The content floor measures length, not whether a promise's stated count
+is delivered. Three separate mechanisms each behaved as designed, and the page promises more than it holds.
+
+**Not corrected.** Any further write needs Arfeen's go-ahead. New PDF `v1789332694`; previous addresses stay public.
+
+## 4. INVESTIGATION (2026-09-14, read-only, no fix proposed) — the "seventeen" mismatch on live bonus-35
+
+### 4a. Where the count comes from — the INPUT, not the model
+
+- `bonuses.description` for bonus-35 (read from production 2026-09-14; created 2026-08-03, unchanged since) says:
+  *"This script bank hands you **seventeen** pre-written self-coaching prompts and perspective-shift scripts … Each
+  script is one to three sentences long…"* `bonusPdfGenerator.ts:54` hands that description to the body generator as
+  the MUST-MATCH brief. The model restates the number in the promise and in tool names ("The 17-Script Bank").
+- The count was born in the bonus generator's ORIGINAL output (2026-08-03). The instruction now in
+  `bonusGenerator.ts:121` ("describe the asset itself — its length, or how many steps, items or fill-in fields it
+  holds") arrived with item 15 in `6d88070` (2026-09-13), after this description existed. It invites such counts for
+  every future bonus.
+- **Structurally nothing links a stated count to what is delivered.** `promise` and tool `name` are free strings; the
+  toolkit schema has no count field; no code anywhere compares a number in prose to the items produced (searched).
+- **The model CAN deliver the count** (instrument: bold `Script …` headings, letter or number labels):
+
+| body | scripts | chars / script | trim |
+|---|---|---|---|
+| diagnostic attempt 3, raw | **17** (A1–C5), one tool, 3,791 c | ≈223 | none — fits |
+| diagnostic attempt 2, raw | **17**, one tool, 4,454 c | ≈262 | cut to 3,780 → **15** |
+| live (pass 5 attempt 3) | **13** in tools.3 (3,952 c after trim) + tools.0 a 404 c stub holding only Script 1's heading | ≈304 | tools.3 5,142 → 3,952 |
+
+  Whether 17 scripts survive depends on how long the model writes each one against a fixed per-tool cap. ⚠️ An earlier
+  reading this pass reported attempt 3 as "scripts 1–3" — that was the counter missing `Script A1` labels, not the body.
+
+### 4b. The trim, independent of what the model wrote
+
+- `applyBodyBounds` → `capBlock` → `truncateAtBlock` (`cascadeContext.ts:232`) keeps text up to the last block start
+  under 4,000 characters. It reads only that one string. It does not see the promise, the tool name, or any count. Its
+  only record is a `console.log` of `field(from->to)`; nothing downstream re-checks the trimmed body against a stated
+  count (the completeness floor measures length, the §14b scan measures clocks).
+- The 4,000 cap is rule 2 of the SIZE LIMITS derivation (`leadMagnetContentGenerator.ts:375`): an outlier threshold on
+  measured field length — "repair after, never reject". It carries no notion of a brief's item count.
+- **Measured, not inferred:** replaying the production trim on diagnostic attempt 2's raw output — a body that
+  delivered all 17 scripts under a tool named "The 17-Script Reframe Bank" — **deletes scripts 16 and 17.** The trim
+  alone turns a matching body into a mismatched one.
+- **Live body:** the trim cut tools.3 by 1,190 characters and it now ends at Script 13. The pre-trim text was not
+  captured, so that scripts 14–17 were in the cut portion is an INFERENCE (≈304 c/script × 4 ≈ 1,216 c), not a
+  measurement. tools.0's 404 c stub was not trimmed — the model wrote it that way.
+
+**So there are two causes, and they compound:** the input states a count that the per-tool cap can only hold when
+scripts are short, and the trim removes delivered items silently with no knowledge of the count it breaks.
+
+### Pass 5 live confirmation — bonus-35 fetched three times, four minutes apart (20:52:16 · 20:56:21 · 21:00:24 UTC)
+http 200, **21,586 bytes**, md5 `dc3044dabb0133216d83f83a6acd270f` on all three (before: 7,412 B, `425de5e3…`). Scan 0
+violations, 1 exempt (`in a second` — "Keep it open in a second tab", a pattern misread, exempted as action timing).
+bonus-33, 34, 42, 43, 44 byte-identical to their pre-run captures.

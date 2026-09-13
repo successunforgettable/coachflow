@@ -804,6 +804,57 @@ export function bodyShapeNote(format: LeadMagnetFormat, body: any, quizReason?: 
 }
 
 /**
+ * THE CONTENT FLOOR — item 15, 2026-09-14. A body that parses is not a body that is complete.
+ *
+ * 🔴 WHY. bonus-35 was PUBLISHED on 2026-09-13 with 2 tools (the format needs 3), the second tool reading
+ * `name: "x"`, `instructions: "x"`, `content: "x"`, a first tool cut off at 266 characters, and a nextStep of
+ * "x" in every field. The model had stopped at 459 output tokens. Strict tool use requires `minItems` ≤ 1, so
+ * the schema's floor of 3 became a description, and the shape check above asked only for `length > 0`.
+ *
+ * So the floors live here, after the response, where nothing can strip them. The minimum COUNT is the format's
+ * own `BOUNDS.minItems` — already the agreed contract. The minimum LENGTHS are deliberately far below every
+ * complete body measured on 2026-09-14 (production + this item's captures): toolkit content ≥ 1,424 chars
+ * measured vs 400 floor; instructions 95 vs 30; name 24 vs 8; checklist detail 296 vs 60; label 40 vs 8;
+ * promise 198 vs 40; howToUse 388 vs 80; nextStep body 453 vs 40, heading 43 vs 8, ctaLabel 26 vs 4.
+ * ⚠️ Guide floors are UNCALIBRATED — no guide body exists in production after the 2026-09-12 wipe — and are set
+ * low for that reason. A floor this far under the real minimum rejects a degenerate body, not a short one.
+ *
+ * Any single-character string value is a placeholder, not content. Quiz is judged by `validateQuizBody` and is
+ * not touched here: a one-letter option label can be legitimate there.
+ */
+const FLOORS = {
+  toolkit:   { name: 8, instructions: 30, content: 400 },
+  checklist: { label: 8, detail: 60 },
+  guide:     { heading: 8, body: 120 },
+  promise: 40, howToUse: 80, nextStep: { heading: 8, body: 40, ctaLabel: 4 },
+} as const;
+
+/** Every way a parsed static-format body is incomplete, each naming the field. Empty means complete. */
+export function bodyCompleteness(format: LeadMagnetFormat, body: any): string[] {
+  if (format === "quiz" || !body || typeof body !== "object") return [];
+  const faults: string[] = [];
+  const field = SHAPE_FIELD[format];
+  const items: any[] = Array.isArray(body[field]) ? body[field] : [];
+  const min = (BOUNDS[format] as any)[field].minItems as number;
+  if (items.length < min) faults.push(`"${field}" has ${items.length} entries; the format needs at least ${min}`);
+  const len = (v: unknown) => (typeof v === "string" ? v.trim().length : 0);
+  const check = (path: string, v: unknown, floor: number) => {
+    const n = len(v);
+    if (n <= 1) faults.push(`${path} is a one-character placeholder, not content`);
+    else if (n < floor) faults.push(`${path} is ${n} characters; a complete one runs to at least ${floor}`);
+  };
+  const itemFloors = FLOORS[format] as Record<string, number>;
+  items.forEach((it, i) => { for (const [k, floor] of Object.entries(itemFloors)) check(`${field}.${i}.${k}`, it?.[k], floor); });
+  check("promise", body.promise, FLOORS.promise);
+  if ("howToUse" in body) check("howToUse", body.howToUse, FLOORS.howToUse);
+  for (const key of ["nextStep", "nextStepLinked"] as const) {
+    if (key === "nextStepLinked" && !(key in body)) continue;
+    for (const [k, floor] of Object.entries(FLOORS.nextStep)) check(`${key}.${k}`, body[key]?.[k], floor);
+  }
+  return faults;
+}
+
+/**
  * REPAIR, NEVER REJECT, a list that arrived in the wrong wrapper (item 15, 2026-09-13).
  *
  * 🔴 WHY. The re-run of bonus-34/35/44 logged every thin body — 4 of 9 attempts — as `tools` returned
@@ -907,7 +958,8 @@ export async function generateBodyWithRetries(input: {
         (format === "checklist" && Array.isArray((body as ChecklistBody).items) && (body as ChecklistBody).items.length > 0) ||
         (format === "toolkit" && Array.isArray((body as ToolkitBody).tools) && (body as ToolkitBody).tools.length > 0) ||
         (format === "quiz" && !!quizCheck?.ok);
-      if (ok) {
+      const incomplete = ok ? bodyCompleteness(format, body) : [];
+      if (ok && incomplete.length === 0) {
         // §14b — the body is the longest asset ZAP produces and the only one a prospect keeps a
         // copy of. A clock attached to the reader's result here reaches a published page and a PDF,
         // and a republished PDF leaves its old address permanently public, so this is checked
@@ -921,10 +973,12 @@ export async function generateBodyWithRetries(input: {
           }
           continue;
         }
-        console.log(`[leadMagnetContent] generated ${format} body for "${title}"${attempt > 1 ? ` (attempt ${attempt})` : ""}${timed.exempt.length ? ` (${timed.exempt.length} timed phrase(s) exempt as quoted speech)` : ""}`);
+        console.log(`[leadMagnetContent] generated ${format} body for "${title}"${attempt > 1 ? ` (attempt ${attempt})` : ""}${timed.exempt.length ? ` (${timed.exempt.length} timed phrase(s) exempt: ${timed.exempt.map((e) => e.exemptReason).join(", ")})` : ""}`);
         return body;
       }
-      const note = bodyShapeNote(format, body, quizCheck?.reason);
+      const note = ok
+        ? `the response was incomplete — ${incomplete.slice(0, 6).join("; ")}${incomplete.length > 6 ? `; and ${incomplete.length - 6} more` : ""}. Return every entry and every field written out in full`
+        : bodyShapeNote(format, body, quizCheck?.reason);
       console.warn(`[leadMagnetContent] thin/invalid ${format} body (attempt ${attempt}) for "${title}": ${note}`);
       if (!shapeNotes.includes(note)) shapeNotes.push(note);
     } catch (err) {

@@ -10,11 +10,18 @@ import { generateBodyWithRetries, bodyShapeNote, repairArrayField } from "./lead
  * attempt 3 is actually SENT — a positive artefact (§15k), not merely a non-null return.
  */
 
-const tool = (content: string) => ({ name: "Tool", type: "script", instructions: "Read it aloud.", content });
+// Fixture bodies clear the 2026-09-14 content floor (bodyCompleteness): 3 tools, full-length fields. The floor is
+// what a published body must meet, so the fixtures meet it rather than the floor bending to the fixtures.
+const PAD = " Read the prompt, answer it in your own words, and keep the answer on the page before moving on to the next one.".repeat(4);
+const tool = (content: string) => ({
+  name: "The Reframe Script", type: "script",
+  instructions: "Read the script aloud at the moment the doubt surfaces, then write the next sentence.",
+  content: content + PAD,
+});
 const toolkit = (contents: string[]) => JSON.stringify({
-  promise: "A four-part script bank.",
+  promise: "A four-part script bank for the moments your writing stalls, one script for each stuck moment.",
   tools: contents.map(tool),
-  nextStep: { heading: "Next", body: "Open the first script.", ctaLabel: "Open" },
+  nextStep: { heading: "Open the first module", body: "Take the first script into your next writing session inside the programme.", ctaLabel: "Start Step 1" },
 });
 const CLEAN = toolkit(["Say the first line.", "Say the second line.", "Say the third line."]);
 const TIMED = toolkit(["You will have your first reply by day 7.", "Say the second line.", "Say the third line."]);
@@ -73,14 +80,14 @@ describe("the attempt budget is unchanged at 3", () => {
 
 describe("a list delivered as text is REPAIRED, not rejected — it costs no attempt", () => {
   const tools = [
-    { name: "A", type: "script", instructions: "Read it.", content: "Say the first line." },
-    { name: "B", type: "script", instructions: "Read it.", content: "Say the second line." },
-    { name: "C", type: "script", instructions: "Read it.", content: "Say the third line." },
+    { ...tool("Say the first line."), name: "A — The First Script" },
+    { ...tool("Say the second line."), name: "B — The Second Script" },
+    { ...tool("Say the third line."), name: "C — The Third Script" },
   ];
-  const nextStep = { heading: "Next", body: "Open the first script.", ctaLabel: "Open" };
+  const nextStep = { heading: "Open the first module", body: "Take the first script into your next writing session inside the programme.", ctaLabel: "Start Step 1" };
 
   it("tools as a JSON-encoded string: accepted on attempt 1, one call, a real array of the same tools", async () => {
-    const { sent, call } = scripted([JSON.stringify({ promise: "A script bank.", tools: JSON.stringify(tools), nextStep })]);
+    const { sent, call } = scripted([JSON.stringify({ promise: "A four-part script bank for the moments your writing stalls.", tools: JSON.stringify(tools), nextStep })]);
     const body = await generateBodyWithRetries({ format: "toolkit", title: "Script Bank", linked: false, call });
     expect(sent).toHaveLength(1);
     expect(Array.isArray((body as any).tools)).toBe(true);
@@ -90,7 +97,7 @@ describe("a list delivered as text is REPAIRED, not rejected — it costs no att
   it("tools as an object with numeric keys is rebuilt in key order", () => {
     const { body, repaired } = repairArrayField({ tools: { 1: tools[1], 0: tools[0], 2: tools[2] } }, "toolkit");
     expect(repaired).toContain("numeric-keyed");
-    expect(body.tools.map((t: any) => t.name)).toEqual(["A", "B", "C"]);
+    expect(body.tools.map((t: any) => t.name)).toEqual(["A — The First Script", "B — The Second Script", "C — The Third Script"]);
   });
 
   it("a stringified wrapper object carrying the list is unwrapped", () => {
