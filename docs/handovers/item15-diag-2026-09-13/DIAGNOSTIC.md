@@ -72,3 +72,13 @@ attempt 2 DID parse, the correction reached attempt 3, the named clocks were gon
    a product ruling** — §14b bars a time attached to the reader's outcome.
 
 Evidence does not rank these three; all three were present in the capture.
+
+## 3. 📌 LOGGED FOR ITEM 12 — NOT ACTED ON (Arfeen, 2026-09-13)
+
+Service 318's `mainBenefit` (*"Sign their first three paying consulting or coaching clients … within 90 days of
+building and launching their offer"*) traces to **`server/routers/services.ts:383`**, where the service-expansion
+prompt requires a main benefit to *"contain a concrete result — a number, a timeframe, or a named change in
+situation."* **This may be the same root as parked item 12 (the required-figure defect).** Whoever scopes item 12
+next: start there. That value flows straight into every lead-magnet and bonus prompt as *"Main benefit of the paid
+offer"* (`leadMagnetContentGenerator.ts` `gatherContext` → `mainBenefit`). **`services.ts` was deliberately not
+touched in item 15.**

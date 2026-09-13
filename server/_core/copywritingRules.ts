@@ -280,21 +280,23 @@ This rule overrides any in-prompt example or template that asks you to generate 
  * experiential framing and explicit hypotheticals so it does not
  * over-scrub useful niche-grounded prose.
  */
-export const NO_RESEARCH_STATISTIC_FABRICATION_RULE = `NO RESEARCH STATISTIC FABRICATION: You do not have ground truth on epidemiological, demographic, behavioural-science, or industry-survey findings. Do not invent any population-level statistic in published copy. Specifically banned:
-- Invented percentages framed as research findings: "above 80% failure rate", "92% of [group] experience X", "less than 12% of people..."
-- Invented X-of-Y ratios: "fewer than 1 in 8", "1 in 5 [group] report", "3 out of 4 [target] struggle with..."
-- Invented time-to-X claims: "first reactive decision within 90 seconds of waking", "make 35,000 decisions a day", "lose 47 minutes per interruption"
-- Invented bounded-quantity claims: "fewer than 11 uninterrupted personal minutes per day", "the average person checks their phone 144 times daily"
-- Research-shaped phrasings presented as established findings: "studies show", "research finds", "data indicates", "neuroscience tells us", "the science is clear" — when no operator-supplied source backs the claim
-- Named-source attribution without operator-supplied source: "Stanford research shows", "a Harvard study found", "Gallup data indicates"
+//
+// ⚠️ REWRITTEN POSITIVE-ONLY — item 15, 2026-09-13 (CLAUDE.md §14 / §14a). The rule used to list the
+// shapes it banned, verbatim: "first reactive decision within 90 seconds of waking", "lose 47 minutes
+// per interruption", "92% of [group]…", "a Harvard study found". It is appended to every deliverable
+// prompt, so those canonical wrong shapes were in front of the generator on every call — the exact
+// priming §14 bans. It now states only what a figure's source must be and the framings to reach for.
+// The wrong shapes live where §14a says they belong: the validator's pattern catalog (validator.ts)
+// and the test fixtures (researchStatRule.test.ts).
+export const NO_RESEARCH_STATISTIC_FABRICATION_RULE = `NO RESEARCH STATISTIC FABRICATION — research statistics come from the input: the input fields are your only source for epidemiological, demographic, behavioural-science, or industry-survey findings. Every figure in published copy that describes a group of people — a share, a ratio, a count, a frequency, a length of time — is one supplied in the input fields. Every study, institution or dataset named in the copy is one the input fields name. Where the input supplies no figure, the sentence carries none.
 
-Use one of these instead, in order of preference:
+Write the point in one of these ways, in order of preference:
 1. Real statistics supplied in input fields (when populated with non-empty, non-"N/A" values) — quoted verbatim, attributed if attribution was supplied
-2. First-person experiential framing without research shape: "many of the people I work with", "in my work with [niche]", "the pattern I see most often is", "what I've noticed across [n] cohorts"
+2. First-person experiential framing: "many of the people I work with", "in my work with [niche]", "the pattern I see most often is", "what I've noticed across the people I've worked with"
 3. Explicit hypothetical framing: "imagine you're someone who", "what often happens when [situation]", "consider the [niche]-specific case where"
-4. Generic situational framing without quantifier: "when [situation], it's common to feel", "people in [role] often find that"
+4. Situational framing: "when [situation], it's common to feel", "people in [role] often find that"
 
-This rule overrides any in-prompt example or template that asks you to "make the problem feel urgent with a number" — research-shaped numbers are fabricated examples, not data to copy. The model's job is to make the problem feel personal through specific situational framing, not to invent population-level statistics. If a sentence reads better with a specific number, prefer rephrasing toward situational specificity ("the moment between alarm and first decision") over fabricated quantification ("the 90 seconds between alarm and first decision").`;
+This rule takes precedence over any template or example elsewhere in the prompt that calls for a number to make a problem feel urgent. A problem feels personal through a specific moment the reader recognises — "the moment between the alarm and the first decision", "the Sunday evening before a launch email goes out" — and a moment like that is complete without a figure.`;
 
 /**
  * PROOF specificity compositional-ceiling modifier — DEFINED BUT NOT

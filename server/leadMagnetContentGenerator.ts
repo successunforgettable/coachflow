@@ -17,6 +17,7 @@ import { services, idealCustomerProfiles, campaignKits, heroMechanisms, coachMet
 import { eq, and } from "drizzle-orm";
 import { GUARANTEE_CLAIMS_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE } from "./_core/copywritingRules";
 import { scanTimedClaims, timedClaimFailContext, timedClaimSummary, type TimedClaimHit } from "./_core/timedClaimScanner";
+import type { InvokeParams } from "./_core/llm";
 import { truncateAtSentence, truncateAtBlock } from "./_core/cascadeContext";
 import { hasAllEventFacts } from "./_core/nextStepBridge";
 
@@ -977,14 +978,28 @@ export async function generateLeadMagnetContent(input: {
     title: input.title,
     linked,
     call: async (inj) => {
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: systemPromptFor(mode) },
-          { role: "user", content: userPromptFor(format, c, mode) + inj },
-        ],
-        response_format: schemaFor(format, mode, { linked }),
-      });
+      const response = await invokeLLM(leadMagnetRequest(format, c, mode, linked, inj));
       return response.choices[0].message.content;
     },
   });
+}
+
+/**
+ * The exact request each attempt sends.
+ *
+ * 🔴 `strictToolUse: true` — item 15, 2026-09-13. A read-only capture of bonus-35/44 found `tools` came
+ * back as TEXT on 3 of 6 attempts, and that text was not valid JSON: a bare opening quote before quoted
+ * speech (2 of 3) and a markdown `\_` escape (1 of 3). Strict tool use constrains sampling to the
+ * schema, so `tools` can only be an array of objects and every value a properly escaped JSON string —
+ * quoted speech and markdown included. `repairArrayField` stays as a free check (§15j).
+ */
+export function leadMagnetRequest(format: LeadMagnetFormat, c: MagnetContext, mode: DeliverableMode, linked: boolean, inj: string): InvokeParams {
+  return {
+    messages: [
+      { role: "system", content: systemPromptFor(mode) },
+      { role: "user", content: userPromptFor(format, c, mode) + inj },
+    ],
+    response_format: schemaFor(format, mode, { linked }),
+    strictToolUse: true,
+  };
 }

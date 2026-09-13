@@ -133,3 +133,58 @@ bonus-35 `9b44f8872d00f20507a23fc8f4c571b0` (23,541 B) and bonus-44 `ecff211037e
 byte-identical to every earlier read this session — fetched three times, four minutes apart (15:56:31, 16:00:38,
 16:04:43 UTC), http 200, identical md5 on every read, 1 violation each. Still live: 35 *"get words on the page in the next ten minutes"*;
 44 *"three paying clients within 90 days of launching"*.
+
+---
+
+# ADDENDUM — 2026-09-13 (third pass): JSON-escaping fix + positive-only research rule. Gated. NOT re-run.
+
+Commits before this pass: `2349d6e`, `f889c7d`, `7ce210e` (diagnostic folder) on `docs/held-2026-09-12`, none pushed.
+**This pass is uncommitted. bonus-35/44 NOT re-run** — held for Arfeen's policy call on action-timeframes (the third
+cause in `item15-diag-2026-09-13/DIAGNOSTIC.md` §2b.3). `services.ts` not touched (item-12 link logged there, §3).
+
+## 1. JSON-escaping fix — strict tool use for lead-magnet bodies
+
+**Chosen:** `strict: true` on the synthesised tool, so the API constrains sampling to the schema (grammar-constrained).
+`tools` can then only be an array of objects and every value a properly escaped JSON string — quoted speech and
+markdown included. Both captured fault classes (bare opening quote, `\_`) are impossible inside a grammar-valid
+string. Confirmed against the live docs 2026-09-13: `claude-sonnet-4-6` and `claude-haiku-4-5-20251001` are
+supported; no beta header; compatible with forced `tool_choice`; a raw schema with an unsupported keyword is a 400.
+
+- `llm.ts` — new opt-in `strictToolUse` (NOT `json_schema.strict`: 20 call sites already set that inert field).
+  `toStrictToolSchema` strips `maxLength`/`minLength`/`maxItems`/`minimum`/`maximum`/…, clamps `minItems` > 1 to 1,
+  adds `additionalProperties: false`, and writes each removed bound into the field's `description` (the SDKs' own
+  transformation). Bounds stay enforced after the response (`applyBodyBounds`, `validateQuizBody`, shape check).
+- **Fallback:** a 400 on a strict request retries the same model once non-strict, logged `[LLM][strict]`. Covers a
+  schema the grammar compiler refuses and the legacy ladder model `claude-3-haiku-20240307`.
+- `leadMagnetContentGenerator.ts` — `leadMagnetRequest()` builds every attempt's request with `strictToolUse: true`.
+  `repairArrayField` kept as a free check (§15j).
+- **Rejected:** a tolerant parser for the malformed text (a bare quote is ambiguous — it cannot know where the value
+  ends); a prompt instruction against stringifying (the email path does this and still fails ~50%); a model change.
+
+## 2. Positive-only `NO_RESEARCH_STATISTIC_FABRICATION_RULE`
+
+Every quoted wrong shape removed ("within 90 seconds of waking", "lose 47 minutes per interruption", "92% of…",
+"a Harvard study found", "studies show"). States the requirement: every figure describing a group of people, and
+every named study or institution, comes from the input fields. Positive ladder kept (the pinned phrases). The
+header marker `NO RESEARCH STATISTIC FABRICATION` kept (pinned). "[n] cohorts" became "the people I've worked with"
+— an invented count had been invited by the example. Appended to lead-magnet, email, WhatsApp and landing-page prompts.
+
+**Prompt pins:** the four `magnet-bonus-*` recordings were updated by a script that proved, per file, that the old
+rule appeared exactly once, that swapping in the new rule makes `system` byte-identical to the current code, and that
+`user` and `schema` are unchanged. No other pin moved.
+
+## 3. Gates
+
+- `npx tsc --noEmit` = **34**.
+- New: `strictToolSchema.test.ts` **9/9** · `researchStatRule.test.ts` **3/3**. Changed/related: retry slots 10/10 ·
+  scanner 36/36. Named: pipeline-fixes 414 · offerStandard 13 · promptPins 21 · leadMagnetOfferMode 9 ·
+  leadMagnetClose 12 · complianceFilter 31 · tokenCrypto 10.
+- In-suite negative controls: every lead-magnet schema as written fails the strict-subset check; the pre-rewrite
+  rule fails all four exemplar checks; a non-opted-in call is byte-identical to before; a non-strict 400 still throws.
+- Pre-existing, unchanged: leadMagnetBounds 2 · leadMagnetContentGenerator.bonus 1.
+- ⚠️ **NOT PROVEN LIVE:** no API call was made this pass. First thing on the next run: confirm no `[LLM][strict]`
+  fallback line appears (a fallback on every call would mean strict is silently off) and that `tools` is an array.
+- **Mutation checks (§15c), restored md5-verified:** strict flag deleted from the tool definition in `llm.ts` →
+  `strictToolSchema` fails the opted-in and refused-schema tests; generator opt-in set false → fails 1; pre-rewrite
+  rule restored → `researchStatRule` fails 2. (A first M1 attempt produced a syntax error and ran no tests — a crash,
+  not a detection — and was redone.)

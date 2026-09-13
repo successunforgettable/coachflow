@@ -73,7 +73,56 @@ export type InvokeParams = {
   // route landing-page body rewrites to Opus 4.7 while Phase 1/2 paths
   // continue to inherit the default Sonnet primary.
   model?: string;
+  // STRICT TOOL USE, OPT-IN PER CALL (item 15, 2026-09-13). Sends the synthesised tool with
+  // `strict: true`, so the API constrains sampling to the schema: an array property can only come back
+  // as an array, and every string is a properly escaped JSON string. Deliberately NOT keyed off
+  // `json_schema.strict` — twenty call sites already set that field while it reached nothing (§15i),
+  // and wiring it would switch every one of them at once. See toStrictToolSchema.
+  strictToolUse?: boolean;
 };
+
+/** JSON Schema keywords the strict-tool grammar does not accept; a raw schema carrying one is a 400. */
+const STRICT_UNSUPPORTED_KEYWORDS: Record<string, (v: unknown) => string> = {
+  maxLength: (v) => `at most ${v} characters`,
+  minLength: (v) => `at least ${v} characters`,
+  maxItems: (v) => `at most ${v} items`,
+  minimum: (v) => `minimum ${v}`,
+  maximum: (v) => `maximum ${v}`,
+  exclusiveMinimum: (v) => `greater than ${v}`,
+  exclusiveMaximum: (v) => `less than ${v}`,
+  multipleOf: (v) => `a multiple of ${v}`,
+};
+
+/**
+ * The strict-mode copy of a tool schema. Strict tool use supports a JSON Schema subset: no string
+ * length or numeric bounds, `minItems` only 0 or 1, `additionalProperties: false` on every object.
+ * Each removed bound is written into that field's `description` — the same transformation the official
+ * SDKs apply — so the model still sees the limit it was steered by. Callers keep enforcing the bounds
+ * after the response (lead magnets: `applyBodyBounds`, `validateQuizBody`). Never mutates the input.
+ */
+export function toStrictToolSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) return schema.map(toStrictToolSchema);
+  if (!schema || typeof schema !== "object") return schema;
+  const src = schema as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  const notes: string[] = [];
+  for (const [k, v] of Object.entries(src)) {
+    if (k in STRICT_UNSUPPORTED_KEYWORDS) { notes.push(STRICT_UNSUPPORTED_KEYWORDS[k](v)); continue; }
+    if (k === "minItems" && typeof v === "number" && v > 1) { out.minItems = 1; notes.push(`at least ${v} items`); continue; }
+    if (k === "properties" && v && typeof v === "object" && !Array.isArray(v)) {
+      out.properties = Object.fromEntries(Object.entries(v).map(([name, sub]) => [name, toStrictToolSchema(sub)]));
+      continue;
+    }
+    if (k === "enum" || k === "const" || k === "required") { out[k] = v; continue; }
+    out[k] = toStrictToolSchema(v);
+  }
+  if (out.type === "object" && out.additionalProperties === undefined) out.additionalProperties = false;
+  if (notes.length > 0) {
+    const limit = `${notes.join("; ")}.`;
+    out.description = typeof src.description === "string" && src.description ? `${src.description} (${limit})` : limit.charAt(0).toUpperCase() + limit.slice(1);
+  }
+  return out;
+}
 
 export type ToolCall = {
   id: string;
@@ -368,6 +417,8 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
   // production question is "which primary failed?", and on a longer ladder
   // that is more than one answer — so record all of them, not just the head.
   const ladderFailures: Array<{ model: string; status: number }> = [];
+  // Cleared for the rest of this call if the API refuses the strict schema (see the 400 branch below).
+  let strictToolActive = params.strictToolUse === true;
 
   for (const model of PREFERRED_MODELS) {
     requestedModel = model;
@@ -378,11 +429,13 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
       messages: anthropicMessages,
     };
     if (systemContent) body.system = systemContent;
+    const useStrictTool = needsJson && strictToolActive;
     if (needsJson) {
       body.tools = [{
         name: toolName,
         description: "Return the structured response by invoking this tool. The tool's input_schema defines the required shape.",
-        input_schema: toolInputSchema,
+        input_schema: useStrictTool ? toStrictToolSchema(toolInputSchema) : toolInputSchema,
+        ...(useStrictTool ? { strict: true } : {}),
       }];
       body.tool_choice = { type: "tool", name: toolName };
     }
@@ -404,6 +457,38 @@ async function invokeClaudeAPI(params: InvokeParams): Promise<InvokeResult> {
       });
     } finally {
       clearTimeout(timeoutId);
+    }
+
+    // STRICT SCHEMA REFUSED → the same model once more, non-strict. A 400 below otherwise throws, and
+    // for a strict caller that would turn a schema the grammar compiler rejects — or a ladder model
+    // without strict support — into a failed generation on every call. Logged loudly so a silent
+    // downgrade cannot pass as strict output (§15-parent).
+    if (response.status === 400 && useStrictTool) {
+      let refusal = response.statusText;
+      try { refusal = ((await response.json()) as any)?.error?.message ?? refusal; } catch { /* non-JSON body */ }
+      console.warn(`[LLM][strict] model ${model} refused the strict tool schema (400: ${refusal}) — retrying this model without strict`);
+      strictToolActive = false;
+      body.tools = [{
+        name: toolName,
+        description: "Return the structured response by invoking this tool. The tool's input_schema defines the required shape.",
+        input_schema: toolInputSchema,
+      }];
+      const fallbackController = new AbortController();
+      const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), 5 * 60 * 1000);
+      try {
+        response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": ENV.anthropicApiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+          signal: fallbackController.signal,
+        });
+      } finally {
+        clearTimeout(fallbackTimeoutId);
+      }
     }
 
     if (response.ok) break; // success — stop trying models
