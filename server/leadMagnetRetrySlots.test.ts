@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateBodyWithRetries, bodyShapeNote } from "./leadMagnetContentGenerator";
+import { generateBodyWithRetries, bodyShapeNote, repairArrayField } from "./leadMagnetContentGenerator";
 
 /**
  * ITEM 15 — THE TWO CORRECTION SLOTS (authorised 2026-09-13).
@@ -68,6 +68,51 @@ describe("the attempt budget is unchanged at 3", () => {
     const body = await generateBodyWithRetries({ format: "toolkit", title: "Script Bank", linked: false, call });
     expect(sent).toHaveLength(3);
     expect(body).toBeNull();
+  });
+});
+
+describe("a list delivered as text is REPAIRED, not rejected — it costs no attempt", () => {
+  const tools = [
+    { name: "A", type: "script", instructions: "Read it.", content: "Say the first line." },
+    { name: "B", type: "script", instructions: "Read it.", content: "Say the second line." },
+    { name: "C", type: "script", instructions: "Read it.", content: "Say the third line." },
+  ];
+  const nextStep = { heading: "Next", body: "Open the first script.", ctaLabel: "Open" };
+
+  it("tools as a JSON-encoded string: accepted on attempt 1, one call, a real array of the same tools", async () => {
+    const { sent, call } = scripted([JSON.stringify({ promise: "A script bank.", tools: JSON.stringify(tools), nextStep })]);
+    const body = await generateBodyWithRetries({ format: "toolkit", title: "Script Bank", linked: false, call });
+    expect(sent).toHaveLength(1);
+    expect(Array.isArray((body as any).tools)).toBe(true);
+    expect((body as any).tools.map((t: any) => t.content)).toEqual(tools.map((t) => t.content));
+  });
+
+  it("tools as an object with numeric keys is rebuilt in key order", () => {
+    const { body, repaired } = repairArrayField({ tools: { 1: tools[1], 0: tools[0], 2: tools[2] } }, "toolkit");
+    expect(repaired).toContain("numeric-keyed");
+    expect(body.tools.map((t: any) => t.name)).toEqual(["A", "B", "C"]);
+  });
+
+  it("a stringified wrapper object carrying the list is unwrapped", () => {
+    const { body } = repairArrayField({ tools: JSON.stringify({ tools }) }, "toolkit");
+    expect(body.tools).toHaveLength(3);
+  });
+
+  it("control: text that is not a JSON list of objects is NOT repaired, stays thin, and says what it was", async () => {
+    const r = repairArrayField({ tools: "Tool one; tool two" }, "toolkit");
+    expect(r.repaired).toBeNull();
+    expect(r.unrecoverable).toContain("Tool one; tool two");
+    expect(repairArrayField({ tools: JSON.stringify(["a", "b", "c"]) }, "toolkit").repaired).toBeNull();
+    const { sent, call } = scripted([THIN, CLEAN]);
+    await generateBodyWithRetries({ format: "toolkit", title: "Script Bank", linked: false, call });
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toContain("came back as a string");
+  });
+
+  it("the same repair covers checklist items; quiz is never touched", () => {
+    expect(repairArrayField({ items: JSON.stringify([{ label: "x", detail: "y" }]) }, "checklist").body.items).toHaveLength(1);
+    const q = { questions: "[]" };
+    expect(repairArrayField(q, "quiz").body).toBe(q);
   });
 });
 

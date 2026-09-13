@@ -88,3 +88,48 @@ reachable with the old claims (settled Cloudinary finding). New: `v1789311838`. 
    needs a ruling because it interacts with the parked budget question.
 2. bonus-33 — unchanged, parked for item 14.
 3. Nothing deployed; the fixes are uncommitted working-tree changes on `docs/held-2026-09-12`.
+
+---
+
+# ADDENDUM — 2026-09-13 (second pass): the `tools` repair built; bonus-35 and bonus-44 still node defects
+
+Pass 1 committed as **`2349d6e`** on `docs/held-2026-09-12` (not pushed). The repair below is **uncommitted**.
+
+## 1. The repair — `repairArrayField` (`server/leadMagnetContentGenerator.ts`)
+
+Runs in `generateBodyWithRetries` BEFORE the shape check and the bounds. For guide/checklist/toolkit it recovers a
+list delivered as a JSON-encoded string (or a stringified wrapper carrying the list) or as a numeric-keyed object —
+**only into a list of objects**. Anything unrecoverable is left as it came, stays thin, and is logged with its
+first 160 characters. Quiz untouched. **Budget still 3.**
+
+**Gates:** tsc **34** · retry slots 10 + scanner 36 = **46/46** · pipeline-fixes 414 · offerStandard 13 · promptPins 21
+· leadMagnetOfferMode 9 · leadMagnetClose 12 · complianceFilter 31 · tokenCrypto 10. Negative control: repair
+disabled → the text-form `tools` test fails; restored, md5-verified. Pre-existing failures unchanged (Bounds 2, bonus 1).
+
+## 2. Re-run — bonus-35 and bonus-44 (baseline 15:46:58 UTC; run finished 15:55:46; report written)
+
+| page | attempts | outcome |
+|---|---|---|
+| bonus-35 | text `tools` **unrepairable** ×3 | 🔴 **NODE DEFECT**, not written |
+| bonus-44 | text `tools` unrepairable → timed (`within 90 days`, `within 10 minutes`) → timed (`in the next 30 minutes`) | 🔴 **NODE DEFECT**, not written |
+
+🔴 **What the new log proves.** The text is list-SHAPED — every one begins `[\n  {\n    "name": "…", "type": …` — but
+**`JSON.parse` rejects it**, so the repair correctly declined it. The repair handles well-formed JSON-in-a-string;
+the model's text is not well-formed. **The exact parse fault is NOT confirmed** — only 160 characters were captured.
+Candidates, unverified: a raw control character inside a string value, an unescaped quote in markdown content, or
+a truncated string. **Next step, if approved: capture the full string and the parse error position (instrumentation
+only, no retry), then decide whether a tolerant parse is structurally sound.**
+
+bonus-44 shows a second, separate fact: once the list parsed, the correction was carried (both slots working) and the
+node still re-introduced a fresh clock each attempt (`within 10 minutes` → `in the next 30 minutes`).
+
+## 3. Blast radius — nothing written
+
+**539 compared · 0 changed · 0 unexpected.** All 58 table checksums, 467 hvco, 8 landingPages, 6 bonuses identical.
+
+## 4. Live pages — by fetch
+
+bonus-35 `9b44f8872d00f20507a23fc8f4c571b0` (23,541 B) and bonus-44 `ecff211037eb8fbb876b57b33390aada` (22,772 B),
+byte-identical to every earlier read this session — fetched three times, four minutes apart (15:56:31, 16:00:38,
+16:04:43 UTC), http 200, identical md5 on every read, 1 violation each. Still live: 35 *"get words on the page in the next ten minutes"*;
+44 *"three paying clients within 90 days of launching"*.

@@ -803,6 +803,45 @@ export function bodyShapeNote(format: LeadMagnetFormat, body: any, quizReason?: 
 }
 
 /**
+ * REPAIR, NEVER REJECT, a list that arrived in the wrong wrapper (item 15, 2026-09-13).
+ *
+ * 🔴 WHY. The re-run of bonus-34/35/44 logged every thin body — 4 of 9 attempts — as `tools` returned
+ * as a STRING, not an array. The Anthropic tool-use path does not enforce the schema's array type
+ * (CLAUDE.md §15i: `required` and `type` are steering there, not enforcement). Each one cost an attempt
+ * the content never deserved to lose, and bonus-35 and bonus-44 ended null with only one or two shots
+ * at a clean body. emailSequenceGenerator.ts records the same defect on `emails`: a stringified array
+ * or an object with numeric keys.
+ *
+ * Recovers exactly those two shapes, and only into a list of OBJECTS — a string that parses to a list
+ * of strings is not a usable toolkit and stays thin. Anything unrecoverable is left as it came, so the
+ * shape check still rejects it and the shape note still describes it. Quiz is not touched: its arrays
+ * are judged by the rubric validator.
+ */
+export function repairArrayField(body: any, format: LeadMagnetFormat): { body: any; repaired: string | null; unrecoverable: string | null } {
+  if (format === "quiz" || !body || typeof body !== "object") return { body, repaired: null, unrecoverable: null };
+  const field = SHAPE_FIELD[format];
+  const v = body[field];
+  const isObjList = (x: unknown): x is object[] =>
+    Array.isArray(x) && x.length > 0 && x.every((e) => !!e && typeof e === "object" && !Array.isArray(e));
+  if (typeof v === "string") {
+    let parsed: unknown;
+    try { parsed = JSON.parse(v); } catch { parsed = undefined; }
+    // A stringified wrapper object — `"{\"tools\":[…]}"` — carries the list one level down.
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && isObjList((parsed as any)[field])) parsed = (parsed as any)[field];
+    if (isObjList(parsed)) return { body: { ...body, [field]: parsed }, repaired: `"${field}" parsed from a JSON string`, unrecoverable: null };
+    return { body, repaired: null, unrecoverable: `"${field}" is text that is not a JSON list of objects: ${JSON.stringify(v.slice(0, 160))}` };
+  }
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const keys = Object.keys(v);
+    if (keys.length > 0 && keys.every((k) => /^\d+$/.test(k))) {
+      const list = keys.sort((a, b) => Number(a) - Number(b)).map((k) => v[k]);
+      if (isObjList(list)) return { body: { ...body, [field]: list }, repaired: `"${field}" rebuilt from a numeric-keyed object`, unrecoverable: null };
+    }
+  }
+  return { body, repaired: null, unrecoverable: null };
+}
+
+/**
  * The attempt loop, separated from context-gathering so its correction handling can be tested
  * without a database.
  *
@@ -840,9 +879,14 @@ export async function generateBodyWithRetries(input: {
       const inj = feedback ? `\n\nPRIOR-ATTEMPT FEEDBACK (you must address this):\n${feedback}\n\n` : "";
       const content = await input.call(inj);
       const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
-      const raw = { format, title, ...parsed } as LeadMagnetBody;
+      const unwrapped = { format, title, ...parsed } as LeadMagnetBody;
       // A session close that was not asked for is not kept: without all three facts there is no session.
-      if (!linked) delete (raw as any).nextStepLinked;
+      if (!linked) delete (unwrapped as any).nextStepLinked;
+      // A list delivered as text is repaired BEFORE the shape check and the bounds, so it never costs an attempt.
+      const listFix = repairArrayField(unwrapped, format);
+      if (listFix.repaired) console.log(`[leadMagnetContent] repaired ${format} "${title}" (attempt ${attempt}): ${listFix.repaired}`);
+      if (listFix.unrecoverable) console.warn(`[leadMagnetContent] unrepairable ${format} "${title}" (attempt ${attempt}): ${listFix.unrecoverable}`);
+      const raw = listFix.body as LeadMagnetBody;
       // Repair, never reject. An upper bound must not become a new way to reach `return null`.
       const { body, repairs } = applyBodyBounds(raw, format);
       if (repairs.length > 0) {
