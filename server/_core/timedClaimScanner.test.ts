@@ -4,7 +4,7 @@ import {
   scanTimedClaimsInString,
   timedClaimFailContext,
 } from "./timedClaimScanner";
-import { LIVE_VIOLATIONS, LIVE_EXEMPT } from "./__fixtures__/timedClaimCorpus";
+import { LIVE_VIOLATIONS, LIVE_EXEMPT, LIVE_QUOTED_OUTCOME_FIGURES } from "./__fixtures__/timedClaimCorpus";
 
 /**
  * THE SCANNER IS CALIBRATED BEFORE IT IS TRUSTED (§15c, §15k).
@@ -96,6 +96,63 @@ describe("C2 · the shapes that got through the first version — regression con
   it("still catches the digit and by-day forms the first version did", () => {
     expect(scanTimedClaimsInString("draft in 48 hours").violations.map((v) => v.match)).toContain("in 48 hours");
     expect(scanTimedClaimsInString("By Day 7, you will hold").violations.map((v) => v.match)).toContain("by day 7");
+  });
+});
+
+describe("C3 · quoted speech that claims a figure as a result is NOT exempt (Arfeen, 2026-09-13)", () => {
+  // 🔴 THE REAL MISS. The first exemption read this as scene-setting: `0 violations, 1 exempt`.
+  it("flags bonus-44's live 'three paying clients within 90 days' line, inside a first-person quote", () => {
+    const r = scanTimedClaimsInString(LIVE_QUOTED_OUTCOME_FIGURES.q44, "tools.2.content");
+    expect(r.violations.map((v) => v.match)).toContain("within 90 days");
+    expect(r.violations[0].quotedFigure).toBe(true);
+    expect(r.exempt).toEqual([]);
+  });
+
+  it("a quantified clock in speech is a figure on its own", () => {
+    for (const [line, clock] of [
+      [`She says "I'll have my first client within a week."`, "within a week"],
+      [`'I finished it in one sitting.'`, "one sitting"],
+      [`"I was booked by day 10."`, "by day 10"],
+    ]) {
+      const r = scanTimedClaimsInString(line);
+      expect(r.violations.map((v) => v.match)).toContain(clock);
+    }
+  });
+
+  it("a passing time word beside a figure in the same spoken line is flagged", () => {
+    const r = scanTimedClaimsInString(`"I signed three paying clients today."`);
+    expect(r.violations.map((v) => v.match)).toEqual(["today"]);
+    expect(r.violations[0].quotedFigure).toBe(true);
+  });
+
+  it("control: the same passing time word with no figure in the spoken line stays exempt", () => {
+    const r = scanTimedClaimsInString(`"I finally said it out loud today."`);
+    expect(r.violations).toEqual([]);
+    expect(r.exempt.map((e) => e.exemptReason)).toEqual(["quoted-speech"]);
+  });
+
+  it("a figure OUTSIDE the innermost quote does not strip the exemption — bonus-35's nested line", () => {
+    // The outer double quote mentions "a 25% open rate"; the clock sits in the inner single quote.
+    const r = scanTimedClaimsInString(LIVE_EXEMPT.x35a);
+    expect(r.violations).toEqual([]);
+    expect(r.exempt.map((e) => e.match)).toContain("today");
+  });
+
+  it("a scheduled event in speech stays exempt — bonus-34's live anchor, 'launch is in four days'", () => {
+    const r = scanTimedClaimsInString(LIVE_EXEMPT.x34);
+    expect(r.violations).toEqual([]);
+    expect(r.exempt.map((e) => e.match)).toEqual(["in four days"]);
+  });
+
+  it("control: the event carve-out does not survive a figure in the same clause", () => {
+    const r = scanTimedClaimsInString(`"Launch is in four days and I will have three clients booked."`);
+    expect(r.violations.map((v) => v.match)).toEqual(["in four days"]);
+  });
+
+  it("the fail-context tells the model the spoken line itself must change", () => {
+    const fc = timedClaimFailContext(scanTimedClaimsInString(LIVE_QUOTED_OUTCOME_FIGURES.q44, "tools.2.content").violations);
+    expect(fc).toContain("within 90 days");
+    expect(fc).toContain("spoken line still names a figure");
   });
 });
 

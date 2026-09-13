@@ -69,6 +69,42 @@ export const TIMED_CLAIM_PATTERN = new RegExp(
  */
 const MONEY_WINDOW_NEAR = /refund|money[- ]back|guarantee|cancellation/i;
 
+/**
+ * THE QUOTED-SPEECH EXEMPTION STOPS AT A FIGURE (Arfeen, 2026-09-13).
+ *
+ * 🔴 NARROWED AFTER IT PASSED A FABRICATED CLAIM. bonus-44's script has the reader say "The goal the
+ * programme is built around is three paying clients within 90 days of launching". It sits inside a
+ * first-person quote, so the exemption read it as scene-setting — and would have passed it again on
+ * every regeneration. Arfeen ruled the figure fabricated, not coach-supplied. Who is "speaking" a
+ * claimed result does not change what it claims.
+ *
+ * Judged on the CLAUSE the clock sits in, inside the innermost quote around it. The clock loses the
+ * exemption when:
+ *   - the clause carries a FIGURE besides the clock — a digit, a currency or percent sign, or a number
+ *     word ("three paying clients within 90 days", "I signed three clients today"); or
+ *   - the clock is itself QUANTIFIED — a counted timeframe or a deadline ("within a week", "by day 7",
+ *     "one sitting") — UNLESS the clause only says WHEN AN EVENT HAPPENS ("launch is in four days").
+ * A passing time word with no figure ("That yes is the only clarity I need today.") stays exempt.
+ *
+ * ⚠️ WHY THE EVENT-SCHEDULE CARVE-OUT. §14b: "a duration inside scene-setting prose … never bars a
+ * write." The first narrowing flagged every counted timeframe in speech, and so flagged bonus-34's live
+ * example anchor — "she's been avoiding for two weeks, launch is in four days" — a third-person scene,
+ * not a result. A clock stated as `<thing> is in N days` schedules an event; nothing is claimed as won.
+ *
+ * 📌 "one", "a" and "an" are NOT figures in the clause — they are everywhere in ordinary speech
+ * ("one reply", "the only one"). They still count inside the clock itself, where they quantify it.
+ *
+ * 📌 The clause is cut at , ; : . ! ? and dashes, inside the INNERMOST quote. bonus-35's live line
+ * nests 'this was exactly what I needed today,' inside a passage mentioning "a 25% open rate"; bonus-34's
+ * anchor carries "two weeks" one comma before "launch is in four days". Neither figure is the clock's.
+ */
+const QUANTIFIED_CLOCK = new RegExp(`\\d|\\b${NUM}\\b`, "i");
+const FIGURE_IN_SPEECH =
+  /\d|[$£€%]|\b(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|ninety|hundred|thousand)\b/i;
+const CLAUSE_BREAK = /[,;:.!?—–]/g;
+/** The clause leading into the clock ends in a copula: `launch is`, `the call's` — an event's schedule. */
+const EVENT_SCHEDULE_LEAD = /(?:\b(?:is|are|was|were)|['’]s)\s*$/i;
+
 export type TimedClaimHit = {
   /** The matched clock, lowercased. */
   match: string;
@@ -78,6 +114,8 @@ export type TimedClaimHit = {
   line: string;
   /** Set when the hit is allowed; names which standing exemption applied. */
   exemptReason?: "quoted-speech" | "money-window";
+  /** Set on a violation inside quoted speech that the exemption refused because it carries a figure. */
+  quotedFigure?: true;
 };
 
 export type TimedClaimScan = {
@@ -139,9 +177,26 @@ export function scanTimedClaimsInString(text: string, path = ""): TimedClaimScan
     while ((m = re.exec(rawLine)) !== null) {
       const at = m.index;
       const hit: TimedClaimHit = { match: m[0].toLowerCase(), path, line: rawLine.trim() };
-      if (spans.some(([a, b]) => at > a && at < b)) {
-        exempt.push({ ...hit, exemptReason: "quoted-speech" });
-        continue;
+      const containing = spans.filter(([a, b]) => at > a && at < b);
+      if (containing.length > 0) {
+        const [a, b] = containing.reduce((x, y) => (y[1] - y[0] < x[1] - x[0] ? y : x));
+        const spoken = rawLine.slice(a + 1, b);
+        const rel = at - (a + 1);
+        const leadAll = spoken.slice(0, rel);
+        const tailAll = spoken.slice(rel + m[0].length);
+        let leadStart = 0;
+        for (let i = 0; i < leadAll.length; i++) if (/[,;:.!?—–]/.test(leadAll[i])) leadStart = i + 1;
+        const lead = leadAll.slice(leadStart);
+        const tailEnd = tailAll.search(CLAUSE_BREAK);
+        const tail = tailEnd === -1 ? tailAll : tailAll.slice(0, tailEnd);
+        const figureInClause = FIGURE_IN_SPEECH.test(lead) || FIGURE_IN_SPEECH.test(tail);
+        const quantified = QUANTIFIED_CLOCK.test(m[0]);
+        if (!figureInClause && (!quantified || EVENT_SCHEDULE_LEAD.test(lead))) {
+          exempt.push({ ...hit, exemptReason: "quoted-speech" });
+          continue;
+        }
+        // Not scene-setting: a figure claimed as a result. It still earns a refund window below.
+        hit.quotedFigure = true;
       }
       // A money window is judged on its immediate neighbourhood, not the whole line.
       const near = rawLine.slice(Math.max(0, at - 60), at + m[0].length + 60);
@@ -189,14 +244,18 @@ export function timedClaimFailContext(violations: TimedClaimHit[]): string {
     return `- In ${where} you wrote "${v.match}" here: ${v.line.slice(0, 220)}`;
   });
   const more = violations.length > shown.length ? `\n(and ${violations.length - shown.length} more of the same kind)` : "";
+  const quoted = violations.some((v) => v.quotedFigure)
+    ? "Where one of those sits inside a line of quoted speech, the spoken line still names a figure, timeframe or deadline as a result — rewrite what is said so it names none."
+    : "";
   return [
-    `Your previous response attached a timeframe to the reader's RESULT in ${violations.length} place(s):`,
+    `An earlier response in this run attached a timeframe to the reader's RESULT in ${violations.length} place(s):`,
     ...lines,
     more,
     "",
     "Rewrite each of those so the sentence describes what the asset IS, or what changes for the reader, with no timeframe on the reader's outcome.",
     "Describing the asset is always available to you: its length, how many steps or items or fill-in fields it holds (\"a one-page checklist\", \"eight prompts\", \"five steps\").",
-    "When the reader gets a result belongs to the reader. A timeframe inside a line of quoted speech is fine and may stay.",
+    "When the reader gets a result belongs to the reader. A line of quoted speech may keep a passing time word, as long as it names no figure, timeframe or deadline as a result.",
+    quoted,
     "Keep everything else about the response as it was.",
   ].filter(Boolean).join("\n");
 }

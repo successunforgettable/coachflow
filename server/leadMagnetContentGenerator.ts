@@ -16,7 +16,7 @@ import { getDb } from "./db";
 import { services, idealCustomerProfiles, campaignKits, heroMechanisms, coachMethods, sourceOfTruth, campaigns } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { GUARANTEE_CLAIMS_RULE, NO_RESEARCH_STATISTIC_FABRICATION_RULE } from "./_core/copywritingRules";
-import { scanTimedClaims, timedClaimFailContext, timedClaimSummary } from "./_core/timedClaimScanner";
+import { scanTimedClaims, timedClaimFailContext, timedClaimSummary, type TimedClaimHit } from "./_core/timedClaimScanner";
 import { truncateAtSentence, truncateAtBlock } from "./_core/cascadeContext";
 import { hasAllEventFacts } from "./_core/nextStepBridge";
 
@@ -780,6 +780,116 @@ export function validateQuizBody(body: QuizBody): { ok: boolean; reason?: string
   return { ok: true };
 }
 
+/** The array field each static format's acceptance test reads. Quiz is judged by its rubric instead. */
+const SHAPE_FIELD: Record<Exclude<LeadMagnetFormat, "quiz">, "sections" | "items" | "tools"> = {
+  guide: "sections", checklist: "items", toolkit: "tools",
+};
+
+/**
+ * What came back wrong in THIS body's shape, for the corrective retry. §14a: specific and post-hoc,
+ * about the output just produced — "the `tools` field came back as a string; return a literal array".
+ */
+export function bodyShapeNote(format: LeadMagnetFormat, body: any, quizReason?: string): string {
+  if (format === "quiz") return `the quiz did not pass its scoring rubric: ${quizReason ?? "unknown reason"}`;
+  const field = SHAPE_FIELD[format];
+  const v = body && typeof body === "object" ? body[field] : undefined;
+  const got =
+    v === undefined || v === null ? "was missing" :
+    typeof v === "string" ? "came back as a string rather than an array" :
+    Array.isArray(v) ? "came back as an empty array" :
+    `came back as ${typeof v === "object" ? "an object" : `a ${typeof v}`} rather than an array`;
+  const range = (BOUNDS[format] as any)[field] as { minItems: number; maxItems: number };
+  return `the "${field}" field ${got} — return "${field}" as a literal JSON array of ${range.minItems} to ${range.maxItems} objects`;
+}
+
+/**
+ * The attempt loop, separated from context-gathering so its correction handling can be tested
+ * without a database.
+ *
+ * 🔴 TWO FAILURE FAMILIES, TWO SLOTS — NEITHER CLEARS THE OTHER (item 15, authorised 2026-09-13).
+ * Until this change one `failContext` served both, and a thin body set it to "". Reproduced
+ * identically on bonus-34, 35 and 44: attempt 1 rejected for a timed claim → correction set;
+ * attempt 2 thin → correction DISCARDED; attempt 3 re-ran uncorrected, repeated the claim, and the
+ * budget ran out → null. The node was close every time and was handed its correction exactly once.
+ *
+ * Each slot ACCUMULATES across the run: a clock the model dropped on attempt 1 and reintroduced on
+ * attempt 3 is still named, and a shape fault seen once is still described after a later body parses.
+ *
+ * 🛑 THE BUDGET OF 3 IS DELIBERATELY UNCHANGED. Whether toolkit needs more is a separate, parked question.
+ */
+export async function generateBodyWithRetries(input: {
+  format: LeadMagnetFormat;
+  title: string;
+  linked: boolean;
+  /** One model call. Receives the prior-attempt feedback block ("" on a first pass); returns the message content. */
+  call: (priorAttemptFeedback: string) => Promise<unknown>;
+}): Promise<LeadMagnetBody | null> {
+  const { format, title, linked } = input;
+  const timedViolations: TimedClaimHit[] = [];
+  const shapeNotes: string[] = [];
+  const seenTimed = new Set<string>();
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const feedback = [
+        shapeNotes.length > 0
+          ? `An earlier response in this run came back in a shape that could not be used:\n${shapeNotes.map((n) => `- ${n}`).join("\n")}`
+          : "",
+        timedViolations.length > 0 ? timedClaimFailContext(timedViolations) : "",
+      ].filter(Boolean).join("\n\n");
+      const inj = feedback ? `\n\nPRIOR-ATTEMPT FEEDBACK (you must address this):\n${feedback}\n\n` : "";
+      const content = await input.call(inj);
+      const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+      const raw = { format, title, ...parsed } as LeadMagnetBody;
+      // A session close that was not asked for is not kept: without all three facts there is no session.
+      if (!linked) delete (raw as any).nextStepLinked;
+      // Repair, never reject. An upper bound must not become a new way to reach `return null`.
+      const { body, repairs } = applyBodyBounds(raw, format);
+      if (repairs.length > 0) {
+        console.log(
+          `[leadMagnetBounds] ${format} "${title}" repaired ${repairs.length}: ` +
+          repairs.map((r) => `${r.field}(${r.kind} ${r.from}->${r.to})`).join(" "),
+        );
+      }
+      // Shape guard per format — retry rather than store junk. Quiz runs the full
+      // rubric validator (non-degenerate scoring is this format's whole value).
+      const quizCheck = format === "quiz" ? validateQuizBody(body as QuizBody) : null;
+      if (quizCheck && !quizCheck.ok) {
+        console.warn(`[leadMagnetContent] quiz rubric rejected (attempt ${attempt}) for "${title}": ${quizCheck.reason}`);
+      }
+      const ok =
+        (format === "guide" && Array.isArray((body as GuideBody).sections) && (body as GuideBody).sections.length > 0) ||
+        (format === "checklist" && Array.isArray((body as ChecklistBody).items) && (body as ChecklistBody).items.length > 0) ||
+        (format === "toolkit" && Array.isArray((body as ToolkitBody).tools) && (body as ToolkitBody).tools.length > 0) ||
+        (format === "quiz" && !!quizCheck?.ok);
+      if (ok) {
+        // §14b — the body is the longest asset ZAP produces and the only one a prospect keeps a
+        // copy of. A clock attached to the reader's result here reaches a published page and a PDF,
+        // and a republished PDF leaves its old address permanently public, so this is checked
+        // BEFORE the body is handed back rather than after it is stored.
+        const timed = scanTimedClaims(body);
+        if (timed.violations.length > 0) {
+          console.warn(`[leadMagnetContent] §14b timed-claim check rejected ${format} "${title}" (attempt ${attempt}): ${timedClaimSummary(timed)}`);
+          for (const v of timed.violations) {
+            const key = `${v.match}|${v.line}`;
+            if (!seenTimed.has(key)) { seenTimed.add(key); timedViolations.push(v); }
+          }
+          continue;
+        }
+        console.log(`[leadMagnetContent] generated ${format} body for "${title}"${attempt > 1 ? ` (attempt ${attempt})` : ""}${timed.exempt.length ? ` (${timed.exempt.length} timed phrase(s) exempt as quoted speech)` : ""}`);
+        return body;
+      }
+      const note = bodyShapeNote(format, body, quizCheck?.reason);
+      console.warn(`[leadMagnetContent] thin/invalid ${format} body (attempt ${attempt}) for "${title}": ${note}`);
+      if (!shapeNotes.includes(note)) shapeNotes.push(note);
+    } catch (err) {
+      console.warn(`[leadMagnetContent] generation error (attempt ${attempt}) for "${title}": ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  console.warn(`[leadMagnetContent] no valid ${format} body after retries for "${title}" — leaving unset`);
+  return null;
+}
+
 /**
  * Generate a lead-magnet body from the selected title + campaign context.
  * Returns null on any failure (caller leaves assetBody NULL — never throws into
@@ -817,11 +927,12 @@ export async function generateLeadMagnetContent(input: {
   // prompt and hoped for a better roll — which is precisely the re-roll the standing ruling bars
   // ("a defect in the node, not a bad roll"). `inj` makes the second pass corrective: it names what
   // came back wrong in the response just produced, which §14a permits and a standing wrong-shape
-  // example does not.
-  let failContext = "";
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const inj = failContext ? `\n\nPRIOR-ATTEMPT FEEDBACK (you must address this):\n${failContext}\n\n` : "";
+  // example does not. The two failure families keep SEPARATE slots — see generateBodyWithRetries.
+  return generateBodyWithRetries({
+    format,
+    title: input.title,
+    linked,
+    call: async (inj) => {
       const response = await invokeLLM({
         messages: [
           { role: "system", content: systemPromptFor(mode) },
@@ -829,50 +940,7 @@ export async function generateLeadMagnetContent(input: {
         ],
         response_format: schemaFor(format, mode, { linked }),
       });
-      const content = response.choices[0].message.content;
-      const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
-      const raw = { format, title: input.title, ...parsed } as LeadMagnetBody;
-      // A session close that was not asked for is not kept: without all three facts there is no session.
-      if (!linked) delete (raw as any).nextStepLinked;
-      // Repair, never reject. An upper bound must not become a new way to reach `return null`.
-      const { body, repairs } = applyBodyBounds(raw, format);
-      if (repairs.length > 0) {
-        console.log(
-          `[leadMagnetBounds] ${format} "${input.title}" repaired ${repairs.length}: ` +
-          repairs.map((r) => `${r.field}(${r.kind} ${r.from}->${r.to})`).join(" "),
-        );
-      }
-      // Shape guard per format — retry rather than store junk. Quiz runs the full
-      // rubric validator (non-degenerate scoring is this format's whole value).
-      const quizCheck = format === "quiz" ? validateQuizBody(body as QuizBody) : null;
-      if (quizCheck && !quizCheck.ok) {
-        console.warn(`[leadMagnetContent] quiz rubric rejected (attempt ${attempt}) for "${input.title}": ${quizCheck.reason}`);
-      }
-      const ok =
-        (format === "guide" && Array.isArray((body as GuideBody).sections) && (body as GuideBody).sections.length > 0) ||
-        (format === "checklist" && Array.isArray((body as ChecklistBody).items) && (body as ChecklistBody).items.length > 0) ||
-        (format === "toolkit" && Array.isArray((body as ToolkitBody).tools) && (body as ToolkitBody).tools.length > 0) ||
-        (format === "quiz" && !!quizCheck?.ok);
-      if (ok) {
-        // §14b — the body is the longest asset ZAP produces and the only one a prospect keeps a
-        // copy of. A clock attached to the reader's result here reaches a published page and a PDF,
-        // and a republished PDF leaves its old address permanently public, so this is checked
-        // BEFORE the body is handed back rather than after it is stored.
-        const timed = scanTimedClaims(body);
-        if (timed.violations.length > 0) {
-          console.warn(`[leadMagnetContent] §14b timed-claim check rejected ${format} "${input.title}" (attempt ${attempt}): ${timedClaimSummary(timed)}`);
-          failContext = timedClaimFailContext(timed.violations);
-          continue;
-        }
-        console.log(`[leadMagnetContent] generated ${format} body for "${input.title}"${attempt > 1 ? ` (attempt ${attempt})` : ""}${timed.exempt.length ? ` (${timed.exempt.length} timed phrase(s) exempt as quoted speech)` : ""}`);
-        return body;
-      }
-      console.warn(`[leadMagnetContent] thin/invalid ${format} body (attempt ${attempt}) for "${input.title}"`);
-      failContext = "";
-    } catch (err) {
-      console.warn(`[leadMagnetContent] generation error (attempt ${attempt}) for "${input.title}": ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-  console.warn(`[leadMagnetContent] no valid ${format} body after retries for "${input.title}" — leaving unset`);
-  return null;
+      return response.choices[0].message.content;
+    },
+  });
 }

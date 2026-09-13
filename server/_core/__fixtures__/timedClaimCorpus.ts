@@ -24,4 +24,18 @@ export const LIVE_EXEMPT: Record<string, string> = {
   x35a: "\"If my email had a 25% open rate and one reply that said 'this was exactly what I needed today,' would I still think it was bad? Because that is a realistic outcome for what I just sent. I will wait for actual responses before I decide it failed.\"",
   x35b: "\"I wrote something and put it in front of real people. That is the whole job. The copy gets better by publishing, not by not publishing. I did the thing today.\"",
   x44: "'So the question I'm actually answering right now is not 'is my niche ready?' The question is: 'am I willing to let someone else help me find it?' And I already said yes to that. That yes is the only clarity I need today.'",
+  // Captured from the live bonus-34 page on 2026-09-13. A counted timeframe that schedules an event in a
+  // third-person scene — the first narrowing of the exemption wrongly flagged it.
+  x34: "Example anchor: \"It's 9pm on a Sunday, she's staring at a half-written sales page she's been avoiding for two weeks, launch is in four days, and she just read her own headline back and it sounds exactly like every other coach on Instagram.\"",
+};
+
+/**
+ * Quoted speech that CLAIMS A FIGURE AS A RESULT — NOT scene-setting. MUST be flagged.
+ *
+ * Captured from the live bonus-44 page on 2026-09-13. The page renders `[INVESTMENT AMOUNT]` as its
+ * own element, so the line is rejoined here exactly as the body stores it. Arfeen ruled the 90-day
+ * figure fabricated, not coach-supplied; the first version of the exemption passed it.
+ */
+export const LIVE_QUOTED_OUTCOME_FIGURES: Record<string, string> = {
+  q44: "'It's [INVESTMENT AMOUNT]. The goal the programme is built around is three paying clients within 90 days of launching — clients in my former field, at a consulting or coaching fee, not a salaried role. If that happens, the investment is recovered inside the first month of client work. I'm treating this as a business cost, not a personal expense — because that's what it is.'",
 };
