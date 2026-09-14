@@ -1,4 +1,29 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-14
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-15
+
+### supersedes the 2026-09-14 block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-15_CONCEPT_GENERATOR_CAPTURE_NEXT.md`**
+> Read it first. From the file alone it answers: production and branch state (measured), what is closed, what is open,
+> what is authorised but not run, what is undecided, the next steps in order, and what a stray command destroys.
+
+| | |
+|---|---|
+| deployed | **`87596d7`, Railway SUCCESS.** Video scripts live and browser-proven (Ad Copy node → Video tab, kit 225, 8/8 scripts, 0 × "Coming Soon") |
+| held branch | `docs/held-2026-09-12` HEAD **`1befc9a`** + this checkpoint commit. Production + docs only; clean fast-forward; **no stills, no exclusion step** |
+| stills | **`personal/dab-stills` = `2562e64`** (local only). Never merge into ZAP |
+| closed | video scripts · item 15 (⚠️ the bonus-34/43 follow-ons were never run) · held-branch stills drift |
+| open, nothing built | shared `llm.ts` 8,192 ceiling · concept-generator truncation (a split is likely; **kit 187 unproven**) · concept re-arm race (reproduced; not spending, no coach activity) |
+| 🟡 **authorised, NOT executed** | **(1) kit 187 read-only gate capture: no non-persisting path exists, so choose harness vs dry-run first · (2) correct the false comments at `campaignKits.ts:164` and `conceptGenerator.ts:602-603`** |
+| not decided | reaper fix (a) reset `created_at` vs (b) reaper exclusion: **re-read the coupling analysis first** (split/re-arm investigation §B + token-cap investigation §4–5) |
+| next step | verify ground truth → kit 187 capture → the comments → decide the concept-generator fix shape |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.** Push the held branch as a fast-forward, no force, only on a go-ahead.
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-14, retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-15 RESTART BLOCK at the top of this file**.
 
 ### supersedes the 2026-09-13 block below, which is retained and marked, not deleted
 
