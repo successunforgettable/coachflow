@@ -9,18 +9,18 @@
 
 | | |
 |---|---|
-| deployed | **`9156875`, UNTOUCHED** for all of item 15. `origin/railway-build` `9156875`; `main` `67517e3` |
-| held branch | `docs/held-2026-09-12` — item-15 commits `2349d6e` `f889c7d` `7ce210e` `265207f` `d32e2c8` `f4a53fa` (checkpoint) **`d593331`** (declared-count gate) **`425a4cb`** (capture) + the checkpoint update. **Nothing pushed** (origin still `6d88070`) |
+| deployed | **`87596d7`, Railway SUCCESS** (build 2026-09-14T21:11:33Z, Arfeen's go-ahead): item 15 + video scripts + all held docs, **EXCEPT stills `2562e64`** (excluded by Arfeen: personal marketing content, never authorised for production). `origin/railway-build` `87596d7`; `main` `67517e3` |
+| ⚠️ **held branch is NOT a fast-forward base any more** | `docs/held-2026-09-12` (local `4a89ea9`, origin `6d88070`) still carries `2562e64` and the ORIGINAL hashes of the last three commits; `railway-build` carries cherry-picked copies (`7adb428→eab4feb`, `9102140→8d1bdd1`, `4a89ea9→87596d7`). **Any future deploy from the held branch must exclude `2562e64` again.** The exact push candidate is kept as local ref `deploy/railway-build-2026-09-15` = `87596d7` |
 | ✅ **committed** | all item-15 work. Working tree clean of tracked changes. **Do not re-attempt the gate or capture commits** |
 | ✅ **executed 2026-09-14** | bonus-35 closed as a **confirmed node defect**, root cause **UNCONFIRMED** (not `bonusGenerator.ts:121`). Closing summary: **`docs/handovers/ITEM15_2026-09-14_BONUS35_CLOSING_SUMMARY.md`** |
-| also on the held branch | `8940858` `62bfbff` `2562e64`: Digital Asset Blueprint creator stills (9 photos with text, 9 photo-textured cards, CW2 fixed). Record: `docs/handovers/DAB_STILLS_2026-09-14_OVERNIGHT.md` |
+| also on the held branch | `8940858` `62bfbff` `2562e64`: Digital Asset Blueprint creator stills (9 photos with text, 9 photo-textured cards, CW2 fixed). Record: `docs/handovers/DAB_STILLS_2026-09-14_OVERNIGHT.md`. **`2562e64` is NOT deployed and not authorised to be**; `8940858` `62bfbff` (the creator-scripts doc) went out inside the 33-commit push |
 | pages | 42 ✅ · 44 ✅ · 34 live, count-gate follow-on (12 → 9) · 43 live, count-gate follow-on (5 → 3) · **35 NODE DEFECT, closed, live with 17 → 13, no re-rolls** · 33 parked for item 14. All six re-fetched ×3 on 2026-09-14, unchanged |
-| ✅ **video scripts, moderate build — 2026-09-14** | per-concept generator reachable (batch owner, one job row per concept, `V2ConceptScripts` at Ad Copy → Video and Tool Library → Video Scripts, lengths by stage capped 60s). Committed on the held branch, **not deployed**. Production: kit 225 now holds **8/8 scripts in one set**; kit 187's no-concepts path stops at a **pre-existing concept-generator failure** (ICP 249). Record: **`docs/handovers/VIDEO_SCRIPTS_BUILD_2026-09-14.md`** |
-| ✅ **video scripts CLOSED — 2026-09-14** | complete pending deploy + browser proof (**Arfeen's separate go-ahead**). Summary: **`docs/handovers/VIDEO_SCRIPTS_CLOSING_SUMMARY_2026-09-14.md`** |
-| 📝 **logged, unscoped** | concept generator cut off at 8,192 on retry; its requested 4,000 cap is never applied (`_core/llm.ts:428`); reaper mismatch in other callers TO CHECK: **`docs/handovers/ITEM_CONCEPT_GENERATOR_TRUNCATION_UNSCOPED_2026-09-14.md`** |
-| next step | bonus-34/43 count-gate follow-ons. **Each is a production write: explicit go-ahead first**. Video scripts: deploy + browser proof on go-ahead. Concept-generator item: triage |
+| ✅ **video scripts — DEPLOYED + BROWSER-PROVEN 2026-09-15** | per-concept generator reachable (batch owner, one job row per concept, `V2ConceptScripts`, lengths by stage capped 60s). **Live in `87596d7`.** Proven in Arfeen's browser as user 1: Ad Copy node → Video tab for kit 225 shows the new caption, **8/8 scripts**, full script + teleprompter, **0 × "Coming Soon"**. Kit 187's no-concepts path stops at a **pre-existing concept-generator failure** (ICP 249). Records: **`docs/handovers/VIDEO_SCRIPTS_BUILD_2026-09-14.md`**, closing summary **`docs/handovers/VIDEO_SCRIPTS_CLOSING_SUMMARY_2026-09-14.md`** §6 |
+| ⚠️ **CORRECTED 2026-09-15** | the Tool Library was listed as a second entry point in the scoping, proposal, build record, closing summary and audit. **It never was one:** `V2ToolLibrary` is imported by `V2Dashboard` and never rendered. All five docs carry a dated banner or in-place `[CORRECTED 2026-09-15]` markers |
+| 📝 **logged, unscoped** | (1) concept generator cut off at 8,192 on retry; its requested 4,000 cap is never applied (`_core/llm.ts:428`); reaper mismatch in other callers TO CHECK: **`docs/handovers/ITEM_CONCEPT_GENERATOR_TRUNCATION_UNSCOPED_2026-09-14.md`** · (2) **Tool Library not reachable in the product**, a navigation decision: **`docs/handovers/ITEM_TOOL_LIBRARY_UNREACHABLE_UNSCOPED_2026-09-15.md`** · (3) a stale "Script: Free · Render: Credits" sub-label under the Ad Copy tabs |
+| next step | bonus-34/43 count-gate follow-ons. **Each is a production write: explicit go-ahead first**. Concept-generator item and Tool Library decision: triage |
 
-🔴 **PUSHING `railway-build` IS THE DEPLOY.** Nothing here is ready for it.
+🔴 **PUSHING `railway-build` IS THE DEPLOY.** The held branch can no longer be pushed as it stands: it carries `2562e64` and has diverged from `railway-build` (see the second row).
 
 ---
 

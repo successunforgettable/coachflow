@@ -1,5 +1,7 @@
 # PROPOSAL: video scripts, moderate build (make `generateScriptForConcept` reachable), 2026-09-14
 
+> ⚠️ **CORRECTION (2026-09-15): the Tool Library was never an entry point.** This document listed the Tool Library (the "Video Creator" / "Video Scripts" card in `V2ToolLibrary.tsx`) as a place coaches reach video. **That was wrong when it was written.** `V2Dashboard.tsx` imports `V2ToolLibrary` and never renders it. The "Jump to Tool Library" button sets an `activeTab` state that nothing reads, and none of the component's own strings exist in the production bundle, before or after deploy `87596d7`. It was found before the push, by the bundle-marker count (CLAUDE.md §15h). **The only live entry point is Ad Copy node → Video tab.** Each claim below is corrected in place and marked `[CORRECTED 2026-09-15]`; nothing was silently removed. Record: `docs/handovers/ITEM_TOOL_LIBRARY_UNREACHABLE_UNSCOPED_2026-09-15.md`.
+
 **Investigation and proposal only. Nothing built.** Scope was set by Arfeen on 2026-09-14: the moderate version only.
 Follows `SCOPING_VIDEO_SCRIPT_GENERATOR_GAP_2026-09-14.md`.
 
@@ -61,7 +63,7 @@ a progress screen would see it.
 1. **Ownership.** The ICP must belong to `ctx.user.id`.
 2. **No kit for this ICP → return `no_kit`, and never generate concepts.** Concepts are deliberately generated only
    once a kit exists, so that sharpening a profile cannot leave a stale set behind (`conceptGenerator.ts:588-595`;
-   `routers/icps.ts:314-321`). The Tool Library can select an ICP with no kit, so this guard is load-bearing.
+   `routers/icps.ts:314-321`). ~~The Tool Library can select an ICP with no kit~~ `[CORRECTED 2026-09-15]`: the Tool Library is never rendered. The guard is still correct and proven, for any caller that reaches an ICP with no kit.
 3. **Kit exists, no concepts** (21 of 22 production kits) → call `ensureConceptsForIcp({ userId, icpId, serviceId })`,
    which is safe once a kit exists, and return `preparing_concepts`.
 4. **Concepts exist** → start `ensureScriptsForIcp` in `setImmediate` and return `started`.
@@ -101,7 +103,7 @@ each concept's job status in one call.
 ## 3. Read screen: ONE new component, mounted where the old Video Creator is mounted
 
 **Recommendation: `client/src/v2/V2ConceptScripts.tsx` with props `{ icpId }`, mounted in the Ad Copy node's Video tab
-and in the Tool Library's Video panel. Not in the Campaign Kit.**
+and in the Tool Library's Video panel. Not in the Campaign Kit.** `[CORRECTED 2026-09-15]` The Tool Library panel is never rendered; the Video tab is the only real mount.
 
 **Why not the Campaign Kit.** That screen is built from kit slots (`V2CampaignKit.tsx:28-35`). A scripts section there
 either looks like a slot without being one, or invites a real slot, which is a migration and out of scope.
@@ -138,14 +140,14 @@ either looks like a slot without being one, or invites a real slot, which is a m
 | `V2AdCopyResultPanel.tsx` | accept `icpId` and render `<V2ConceptScripts icpId={icpId} />` in the Video tab |
 | `V2ToolLibrary.tsx` | render `<V2ConceptScripts icpId={effectiveIcpId} />`, using the existing ICP picker (`:179-205`) |
 
-**The screen a coach sees it on (§15d):** Ad Copy node → **🎬 Video** tab, and Tool Library → **Video** card.
+**The screen a coach sees it on (§15d):** Ad Copy node → **🎬 Video** tab. ~~and Tool Library → **Video** card~~ `[CORRECTED 2026-09-15]`: not a screen any coach can see.
 
-## 4. Repointing both entry points, and whether the Coming Soon gate conflicts
+## 4. Repointing the entry points, and whether the Coming Soon gate conflicts `[CORRECTED 2026-09-15]` (one real entry point, not two)
 
 | entry point | today | change |
 |---|---|---|
 | Ad Copy node Video tab | `V2AdCopyResultPanel.tsx:24` import, `:958` element; caption `:955` *"Optional — generate video ads with voiceover and motion graphics."* | swap to `V2ConceptScripts`; **the caption describes the old tool and needs new wording** |
-| Tool Library card | `V2ToolLibrary.tsx:14` import, `:491` element; card `:79-81` *"Video Creator … voiceover and motion graphics — script first (free), then render with credits."* | swap the element; **the card name and description describe the old tool and need new wording** |
+| ~~Tool Library card~~ `[CORRECTED 2026-09-15]` never rendered | `V2ToolLibrary.tsx:14` import, `:491` element; card `:79-81` *"Video Creator … voiceover and motion graphics — script first (free), then render with credits."* | swap the element; **the card name and description describe the old tool and need new wording** |
 
 **The gate, checked for conflicts: none in code.**
 
@@ -265,5 +267,5 @@ chosen, the code change is identical and lives in the one function above.
 ## 7. Decisions needed before the build
 
 1. **Length table** (§5): the research table capped at 60 (CC's recommendation), or the brief's tiering.
-2. **The Video tab caption and the Tool Library card name and description** (§4): Arfeen's wording.
+2. **The Video tab caption and the Tool Library card name and description** (§4): Arfeen's wording. `[CORRECTED 2026-09-15]` The card is never rendered.
 3. **Quota:** none this package (CC's recommendation), or add one later with its own migration.

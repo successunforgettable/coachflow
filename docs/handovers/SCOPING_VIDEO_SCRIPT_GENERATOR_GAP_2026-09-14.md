@@ -1,5 +1,7 @@
 # SCOPING: the video-script generator gap (investigation only, 2026-09-14)
 
+> ⚠️ **CORRECTION (2026-09-15): the Tool Library was never an entry point.** This document listed the Tool Library (the "Video Creator" / "Video Scripts" card in `V2ToolLibrary.tsx`) as a place coaches reach video. **That was wrong when it was written.** `V2Dashboard.tsx` imports `V2ToolLibrary` and never renders it. The "Jump to Tool Library" button sets an `activeTab` state that nothing reads, and none of the component's own strings exist in the production bundle, before or after deploy `87596d7`. It was found before the push, by the bundle-marker count (CLAUDE.md §15h). **The only live entry point is Ad Copy node → Video tab.** Each claim below is corrected in place and marked `[CORRECTED 2026-09-15]`; nothing was silently removed. Record: `docs/handovers/ITEM_TOOL_LIBRARY_UNREACHABLE_UNSCOPED_2026-09-15.md`.
+
 **Nothing was built, fixed or written.** Code was read at held-branch HEAD `7adb428`; production code is `9156875`. None
 of the files named below differ between the two (`git diff 9156875..HEAD` touches no file in `server/routers`,
 `server/conceptScriptGenerator.ts`, `server/conceptGenerator.ts`, `server/_core/conceptAxis.ts`,
@@ -15,7 +17,7 @@ of the files named below differ between the two (`git diff 9156875..HEAD` touche
 | question | answer | shares root with | blast radius | rough scope |
 |---|---|---|---|---|
 | **Generator has no caller?** | ✅ **still true** — no router, no job, no screen, no read endpoint; `conceptScripts` **0 rows** | the "machinery with no caller" law (CLAUDE.md §15d) | — | — |
-| **Where a coach hits the gap** | **eight points** (§B), two of them screens that *advertise* video and open a Coming Soon card | the gated Video Creator (a different pipeline) | wizard, Auto Mode, Tool Library, Campaign Kit, Asset Library, Meta push, V1 | — |
+| **Where a coach hits the gap** | **eight points listed; seven are real** (§B). ONE screen *advertises* video and opens a Coming Soon card; the second one listed, the Tool Library, is never rendered `[CORRECTED 2026-09-15]` | the gated Video Creator (a different pipeline) | wizard, Auto Mode, ~~Tool Library~~ (never rendered), Campaign Kit, Asset Library, Meta push, V1 | — |
 | **`scriptSetId` blocks batching?** | ✅ **still true** (`conceptScriptGenerator.ts:296`) — and the spec's own set-level checks need a set too (§C) | `campaignConcepts.conceptSetId` shows the working pattern | every script ever generated | the change itself is small; **the missing piece is anything that owns a batch** |
 | **Wiring it in** | not a missing button | concepts invisible to coaches; kit has no slot; no Meta video path | server, client, schema, orchestration, Meta | **a caller alone: moderate · what the spec describes: structural** |
 
@@ -84,7 +86,7 @@ A coach meets concepts only indirectly, as ad-copy variants.
 | # | where | what the coach sees / does | what actually happens |
 |---|---|---|---|
 | **1** | **Ad Copy node → "🎬 Video" tab** (`V2AdCopyResultPanel.tsx:848`, `:952-958`) | A top-level tab beside Copy and Images, captioned *"Optional — generate video ads with voiceover and motion graphics."* This is the moment the coach has just received concept-keyed ad copy | Renders `V2VideoCreator`, which returns `ComingSoonPlaceholder` (`V2VideoCreator.tsx:263-265`): *"Video Creator — Coming Soon … We're putting more polish into this before opening it up — check back soon."* |
-| **2** | **Tool Library → "Video Creator" card** (`V2ToolLibrary.tsx:79-81`, opens inline at `:214`) | Card copy: *"AI-generated video ads with voiceover and motion graphics — script first (free), then render with credits."* | The same component, the same Coming Soon card |
+| **2** | ~~**Tool Library → "Video Creator" card**~~ `[CORRECTED 2026-09-15]` **NOT A REAL POINT: `V2ToolLibrary` is never rendered, so no coach can reach this card** (`V2ToolLibrary.tsx:79-81`, opens inline at `:214`) | Card copy: *"AI-generated video ads with voiceover and motion graphics — script first (free), then render with credits."* | The same component, the same Coming Soon card |
 | **3** | **The 11-node trail / wizard** (`V2TrailIntake.tsx:102-114`) | Stops: Service · ICP · Offer · Method · Lead Magnet · Headlines · Ad Copy · Landing Page · Email · WhatsApp · Ad Images | **No stop produces a video script.** The coach finishes the path with no script and no prompt that one is missing |
 | **4** | **Auto Mode** (`_core/orchestration.ts:239-252`; `routers/autoMode.ts`) | "Signup → single-text intake → cascade → Campaign Kit ready" | No script step in the cascade. Auto Mode's promise of a finished kit is met without one |
 | **5** | **Campaign Kit screen** (`V2CampaignKit.tsx`; `campaignKits` schema) | The kit is the source of truth; "Use This & Continue" is the only completion action | **The kit has no concept, script or video slot**: none of its 9 `selected*Id` columns names one. There is nothing to select, review or continue from |
@@ -98,7 +100,7 @@ A coach meets concepts only indirectly, as ad-copy variants.
 
 - Its inputs are **service-keyed**: `serviceId`, `videoType`, `duration`, `visualStyle` (`:891-900`, `:1075-1084`).
 - It produces 5 render scenes and a voiceover. It knows nothing about concepts.
-- It is the pipeline **both advertised screens (B1, B2) would call** if the flag were flipped. Flipping
+- It is the pipeline **the advertised screen (B1) would call (B2 is never rendered `[CORRECTED 2026-09-15]`)** if the flag were flipped. Flipping
   `VIDEO_CREATOR_FEATURE_ENABLED` would **not** reach `generateScriptForConcept`.
 - `conceptScripts`' own schema comment says it is a separate table "to avoid the credit-render coupling".
 

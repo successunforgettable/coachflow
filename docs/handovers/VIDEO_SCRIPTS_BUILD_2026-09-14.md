@@ -1,5 +1,7 @@
 # VIDEO SCRIPTS — moderate build: the per-concept generator made reachable (2026-09-14)
 
+> ⚠️ **CORRECTION (2026-09-15): the Tool Library was never an entry point.** This document listed the Tool Library (the "Video Creator" / "Video Scripts" card in `V2ToolLibrary.tsx`) as a place coaches reach video. **That was wrong when it was written.** `V2Dashboard.tsx` imports `V2ToolLibrary` and never renders it. The "Jump to Tool Library" button sets an `activeTab` state that nothing reads, and none of the component's own strings exist in the production bundle, before or after deploy `87596d7`. It was found before the push, by the bundle-marker count (CLAUDE.md §15h). **The only live entry point is Ad Copy node → Video tab.** Each claim below is corrected in place and marked `[CORRECTED 2026-09-15]`; nothing was silently removed. Record: `docs/handovers/ITEM_TOOL_LIBRARY_UNREACHABLE_UNSCOPED_2026-09-15.md`.
+
 Branch `docs/held-2026-09-12`. **Not pushed, not deployed** (`railway-build` still `9156875`). Scope and design:
 `PROPOSAL_VIDEO_SCRIPTS_MODERATE_2026-09-14.md`, as decided by Arfeen 2026-09-14:
 - lengths from the research table, capped at 60 s;
@@ -16,7 +18,7 @@ Branch `docs/held-2026-09-12`. **Not pushed, not deployed** (`railway-build` sti
 | generator | `server/conceptScriptGenerator.ts` | optional `scriptSetId` (`?? randomUUID()` keeps the proof scripts); length-conditional prompt sentence; header |
 | length | `server/_core/conceptAxis.ts` | active lengths unaware 60 · problem 30 · solution 60 · product 30 · most 15; `ACTIVE_LENGTH_CEILING_SECONDS = 60` replaces the flat 30 s cap; `hasGroundedWordBudget` |
 | read screen | `client/src/v2/V2ConceptScripts.tsx` | concepts + scripts; states: no profile · no kit · preparing concepts · generate · writing n of N · missing retry; teleprompter + copy |
-| mounts | `V2AdCopyResultPanel.tsx` (+ `icpId` prop), `V2GeneratorWizard.tsx` (passes `activeIcp?.id`), `V2ToolLibrary.tsx` | both entry points now render `V2ConceptScripts`. **`V2VideoCreator.tsx` untouched and unmounted**; its gate and flag, and V1's, are unchanged |
+| mounts | `V2AdCopyResultPanel.tsx` (+ `icpId` prop), `V2GeneratorWizard.tsx` (passes `activeIcp?.id`), `V2ToolLibrary.tsx` | the Ad Copy Video tab now renders `V2ConceptScripts`. `[CORRECTED 2026-09-15]` "Both entry points" was wrong: the `V2ToolLibrary.tsx` edit is inert, because that component is never rendered. **`V2VideoCreator.tsx` untouched and unmounted**; its gate and flag, and V1's, are unchanged |
 | tests | `server/scriptBatch.test.ts` (new, 15) · `server/conceptAxis.test.ts` (updated) | |
 | harness | `server/scripts/verify-concept-scripts-batch.ts` | drives the real endpoints via `appRouter.createCaller` |
 
@@ -27,7 +29,7 @@ using your copy as context."*, and uses the same form:
 
 > *Optional — generate talk-to-camera video scripts, one for each of your ad concepts.*
 
-**Tool Library card.** Neighbouring cards use a plural product noun as the name ("Ad Images", "Email Sequences"), and a
+**Tool Library card** `[CORRECTED 2026-09-15]`: written and deployed, but on no live screen. The component is never rendered, so no coach sees this copy. Neighbouring cards use a plural product noun as the name ("Ad Images", "Email Sequences"), and a
 description of the form "what — details."
 
 - **name:** *Video Scripts*
