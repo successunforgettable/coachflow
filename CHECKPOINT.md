@@ -16,7 +16,9 @@
 | also on the held branch | `8940858` `62bfbff` `2562e64`: Digital Asset Blueprint creator stills (9 photos with text, 9 photo-textured cards, CW2 fixed). Record: `docs/handovers/DAB_STILLS_2026-09-14_OVERNIGHT.md` |
 | pages | 42 ✅ · 44 ✅ · 34 live, count-gate follow-on (12 → 9) · 43 live, count-gate follow-on (5 → 3) · **35 NODE DEFECT, closed, live with 17 → 13, no re-rolls** · 33 parked for item 14. All six re-fetched ×3 on 2026-09-14, unchanged |
 | ✅ **video scripts, moderate build — 2026-09-14** | per-concept generator reachable (batch owner, one job row per concept, `V2ConceptScripts` at Ad Copy → Video and Tool Library → Video Scripts, lengths by stage capped 60s). Committed on the held branch, **not deployed**. Production: kit 225 now holds **8/8 scripts in one set**; kit 187's no-concepts path stops at a **pre-existing concept-generator failure** (ICP 249). Record: **`docs/handovers/VIDEO_SCRIPTS_BUILD_2026-09-14.md`** |
-| next step | bonus-34/43 count-gate follow-ons. **Each is a production write: explicit go-ahead first**. Video scripts: deploy + browser screenshots; concept-generator failure (ICP 249) is its own package |
+| ✅ **video scripts CLOSED — 2026-09-14** | complete pending deploy + browser proof (**Arfeen's separate go-ahead**). Summary: **`docs/handovers/VIDEO_SCRIPTS_CLOSING_SUMMARY_2026-09-14.md`** |
+| 📝 **logged, unscoped** | concept generator cut off at 8,192 on retry; its requested 4,000 cap is never applied (`_core/llm.ts:428`); reaper mismatch in other callers TO CHECK: **`docs/handovers/ITEM_CONCEPT_GENERATOR_TRUNCATION_UNSCOPED_2026-09-14.md`** |
+| next step | bonus-34/43 count-gate follow-ons. **Each is a production write: explicit go-ahead first**. Video scripts: deploy + browser proof on go-ahead. Concept-generator item: triage |
 
 🔴 **PUSHING `railway-build` IS THE DEPLOY.** Nothing here is ready for it.
 

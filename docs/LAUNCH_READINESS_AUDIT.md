@@ -239,9 +239,13 @@ Node **8** is screened on 11 fields and blind on the rest — which is exactly h
 
 ### Half-built or disabled
 
-1. 🔴 **Video Creator — hard-disabled.** `VIDEO_CREATOR_FEATURE_ENABLED = false`
-   (`V2VideoCreator.tsx:28`), renders a "Coming Soon" placeholder (`:244`). `REMOTION_LAMBDA_FUNCTION`
-   is **not set on production**, consistent with the flag.
+1. ⚠️ **Video Creator (the render tool) — hard-disabled, and unmounted since 2026-09-14.**
+   `VIDEO_CREATOR_FEATURE_ENABLED = false` (`V2VideoCreator.tsx:28`) still renders a "Coming Soon" placeholder
+   (`:263-264`), but no screen mounts the component any more. Both of its entry points (Ad Copy node → Video tab,
+   Tool Library card) now open **Video Scripts** (`V2ConceptScripts.tsx`: per-concept talk-to-camera scripts;
+   record `docs/handovers/VIDEO_SCRIPTS_BUILD_2026-09-14.md`). `REMOTION_LAMBDA_FUNCTION` is **not set on
+   production**, consistent with the flag. ⚠️ As of 2026-09-14 that change sits on the held branch, not
+   deployed, so production still shows the Coming Soon card.
 2. ⚠️ **Landing page is not compliance-scored in the trail.** Deliberate and documented at
    `V2Trail.tsx:113-117` — `landingPages` has no `complianceScore` column, and showing a dial with no real
    score behind it would breach the honesty rule. Only 3 nodes carry a score dial (headlines, ad copy, +1).

@@ -15,8 +15,8 @@ interface UpgradePromptProps {
   /**
    * Optional two-line body copy. Defaults to the L-QUOTA quota-limit
    * messaging when omitted (preserves backward-compat with the 4
-   * existing call sites: V2Settings, V2AdImageCreator, V2VideoCreator,
-   * V2LandingPageResultPanel, ComplianceWarningPanel).
+   * existing call sites: V2Settings, V2AdImageCreator, V2VideoCreator
+   * (unmounted since 2026-09-14 — no screen renders it), V2LandingPageResultPanel, ComplianceWarningPanel).
    *
    * Phase F Item 1 (C0.1) uses this to render the Auto-Mode-specific
    * Pro-feature-gate copy instead of the generic quota-limit copy —

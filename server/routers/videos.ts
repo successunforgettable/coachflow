@@ -429,7 +429,8 @@ export const videosRouter = router({
 
   /**
    * getLatestByServiceId — returns the most recent succeeded video for a service.
-   * Used by V2VideoCreator to restore the last result on Tool Library re-open.
+   * Used by V2VideoCreator to restore the last result on Tool Library re-open. V2VideoCreator has been
+   * unmounted since 2026-09-14 (both of its entry points open V2ConceptScripts), so no screen calls this today.
    */
   getLatestByServiceId: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
