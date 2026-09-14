@@ -10,11 +10,12 @@
 | | |
 |---|---|
 | deployed | **`87596d7`, Railway SUCCESS.** Video scripts live and browser-proven (Ad Copy node → Video tab, kit 225, 8/8 scripts, 0 × "Coming Soon") |
-| held branch | `docs/held-2026-09-12` HEAD **`1befc9a`** + this checkpoint commit. Production + docs only; clean fast-forward; **no stills, no exclusion step** |
+| held branch | `docs/held-2026-09-12` = production + docs + **ONE undeployed code change**: the concept generator's `dryRun` / `onGate` addition (`server/conceptGenerator.ts`, gated and pinned, not live). Clean fast-forward; **no stills, no exclusion step** |
 | stills | **`personal/dab-stills` = `2562e64`** (local only). Never merge into ZAP |
 | closed | video scripts · item 15 (⚠️ the bonus-34/43 follow-ons were never run) · held-branch stills drift |
 | open, nothing built | shared `llm.ts` 8,192 ceiling · concept-generator truncation (a split is likely; **kit 187 unproven**) · concept re-arm race (reproduced; not spending, no coach activity) |
-| 🟡 **authorised, NOT executed** | **(1) kit 187 read-only gate capture: no non-persisting path exists, so choose harness vs dry-run first · (2) correct the false comments at `campaignKits.ts:164` and `conceptGenerator.ts:602-603`** |
+| ✅ **kit 187 capture EXECUTED 2026-09-14 22:02 UTC** | a `dryRun` flag on the real `generateConceptsForIcp`, pinned to share the production gate (5 pins, 3 mutations fire). **Zero writes (58 tables unchanged).** Result: **attempt 1 truncated at 8,192 before the gate** (in 4,427 / out 8,192), so **the gate rejection reason is STILL UNKNOWN**. New finding: a truncation is never retried. Record: **`docs/handovers/CAPTURE_KIT187_CONCEPT_DRY_RUN_2026-09-15.md`** |
+| 🟡 **authorised, NOT executed** | correct the two false comments (`campaignKits.ts` "one indexed SELECT"; `conceptGenerator.ts` "lost race cannot produce a doubled set") · a **re-run of the dry run** to catch a sub-8,192 first attempt and log the gate labels is **proposed, NOT authorised** |
 | not decided | reaper fix (a) reset `created_at` vs (b) reaper exclusion: **re-read the coupling analysis first** (split/re-arm investigation §B + token-cap investigation §4–5) |
 | next step | verify ground truth → kit 187 capture → the comments → decide the concept-generator fix shape |
 

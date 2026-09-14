@@ -209,6 +209,17 @@ export async function generateConceptsForIcp(params: {
   serviceId?: number | null;
   campaignId?: number | null;
   count?: number;
+  /**
+   * DRY RUN — runs the full production path (the same prompt, the same `gate`, the same retries, partial delivery,
+   * trim and top-up) and stops IMMEDIATELY before the only write. Nothing is deleted or inserted; the result reports
+   * what would have been written. For read-only captures of what production does on a real ICP.
+   */
+  dryRun?: boolean;
+  /**
+   * Observer called after every gate verdict and on every generation error, in BOTH modes. Absent, it is a no-op,
+   * so production behaviour is unchanged. It observes; it never alters a verdict or the control flow.
+   */
+  onGate?: (record: ConceptGateRecord) => void;
 }): Promise<ConceptGenerationResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -318,16 +329,28 @@ export async function generateConceptsForIcp(params: {
   };
 
   const { COMPLIANCE_RETRY_MAX_ATTEMPTS } = await import("./_core/complianceAxis");
-  let concepts = await invokeConcepts(prompt, "");
+  // Observation only (see `onGate`): records each verdict and each generation error, then gets out of the way.
+  const observe = params.onGate ?? (() => {});
+  const generateAttempt = async (attempt: number, failContext: string): Promise<RawConcept[]> => {
+    try {
+      return await invokeConcepts(prompt, failContext);
+    } catch (err) {
+      observe({ phase: "attempt", attempt, conceptsReturned: null, ok: null, labels: "", failContext: "", error: err instanceof Error ? err.message : String(err) });
+      throw err;
+    }
+  };
+  let concepts = await generateAttempt(1, "");
   let result = gate(concepts);
+  observe({ phase: "attempt", attempt: 1, conceptsReturned: concepts.length, ok: result.ok, labels: result.labels, failContext: result.failContext });
   // Captured BEFORE any regeneration — the first-pass verdict is the prevention signal.
   const firstPassOk = result.ok;
   const firstPassLabels = result.ok
     ? []
     : String(result.labels || "").split(",").map((x) => x.trim()).filter(Boolean);
   for (let attempt = 2; attempt <= COMPLIANCE_RETRY_MAX_ATTEMPTS && !result.ok; attempt++) {
-    concepts = await invokeConcepts(prompt, result.failContext);
+    concepts = await generateAttempt(attempt, result.failContext);
     result = gate(concepts);
+    observe({ phase: "attempt", attempt, conceptsReturned: concepts.length, ok: result.ok, labels: result.labels, failContext: result.failContext });
   }
   // BLOCK-RATE INSTRUMENTATION. Concepts already had the locked behaviour — hard-block via the
   // gate, regenerate up to COMPLIANCE_RETRY_MAX_ATTEMPTS, then throw rather than persist anything
@@ -485,6 +508,7 @@ export async function generateConceptsForIcp(params: {
         );
         const topUps = await invokeConcepts(topUpPrompt, "");
         const setResult = gate(topUps, topUpPlan);
+        observe({ phase: "topup", attempt: 1, conceptsReturned: topUps.length, ok: setResult.ok, labels: setResult.labels, failContext: setResult.failContext });
         // The set-level verdict is used as a fast path only. When it fails, the same
         // per-concept test the partial-delivery path uses decides who survives — a top-up
         // that is 1 concept has no meaningful set-level shape to check.
@@ -507,12 +531,24 @@ export async function generateConceptsForIcp(params: {
           );
         }
       } catch (err) {
+        observe({ phase: "topup", attempt: 1, conceptsReturned: null, ok: null, labels: "", failContext: "", error: err instanceof Error ? err.message : String(err) });
         // A failed top-up must never take the whole set down: the concepts already gated and
         // trimmed are good, and losing them to recover a distribution would be the worse trade.
         console.warn(`[conceptGenerator] top-up call failed, shipping the set as-is:`,
           err instanceof Error ? err.message : err);
       }
     }
+  }
+
+  // ── DRY RUN: STOP HERE, BEFORE THE ONLY WRITE ─────────────────────────────────────────────
+  // Everything above — prompt, gate, retries, partial delivery, trim, top-up — has run exactly as it does in
+  // production. The delete-then-insert below is this function's only write, and a dry run returns first.
+  if (params.dryRun) {
+    console.log(
+      `[conceptGenerator] DRY RUN for icp ${params.icpId}: gate path complete, ${concepts.length} concept(s) would be ` +
+      `persisted, ${skippedCount} skipped. Write SKIPPED.`,
+    );
+    return { persisted: 0, skipped: skippedCount, requested: count, dryRun: true, wouldPersist: concepts.map((c) => ({ ...c })) };
   }
 
   const conceptSetId = randomUUID();
@@ -558,6 +594,23 @@ export type ConceptGenerationResult = {
   skipped: number;
   /** How many were asked for. persisted + skipped === requested. */
   requested: number;
+  /** Present only on a dry run: nothing was written (`persisted` is 0). */
+  dryRun?: true;
+  /** Dry run only: the concepts the real path would have written. */
+  wouldPersist?: RawConcept[];
+};
+
+/** One observed gate verdict or generation error (see `onGate` on generateConceptsForIcp). */
+export type ConceptGateRecord = {
+  phase: "attempt" | "topup";
+  attempt: number;
+  /** Concepts the model returned; null when the generation call itself threw. */
+  conceptsReturned: number | null;
+  /** The gate's verdict; null when there was nothing to gate. */
+  ok: boolean | null;
+  labels: string;
+  failContext: string;
+  error?: string;
 };
 
 /** What ensureConceptsForIcp decided to do. Returned for logging and for proof scripts. */
