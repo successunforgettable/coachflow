@@ -1,4 +1,28 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-15
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-15 (b)
+
+### supersedes the 2026-09-15 block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-15_THREADS_A_B.md`**
+> It supersedes `CHECKPOINT_2026-09-15_CONCEPT_GENERATOR_CAPTURE_NEXT.md`. Measured 2026-09-14 22:11 UTC.
+
+| | |
+|---|---|
+| deployed | **`87596d7`, Railway SUCCESS.** Video scripts live and browser-proven. Nothing pushed beyond it |
+| held branch | HEAD **`82d1949`** + this checkpoint = production + docs + **ONE undeployed code change** (the concept `dryRun`/`onGate`). **A push would deploy it** |
+| stills | only `personal/dab-stills` (`2562e64`) + the backup ref. Not on origin, in no ZAP branch |
+| closed | video scripts · item 15 (⚠️ **bonus-34 and bonus-43 still live with count mismatches, no go-ahead**) · stills drift |
+| Thread A | dry-run tool proven · capture 1 truncated before the gate (a truncation is **never retried**) · 🟡 **capture 2 AUTHORISED, NOT RUN** · 🟡 **the two false comments AUTHORISED twice, NOT DONE** |
+| Thread B | quality measured (long sentences, formula repetition, mixed voice; the numbers are in the file's §6.1) · 🔴 **the grounding-check + fix-scoping follow-up was NEVER RECEIVED. Re-issue it; there is no response to wait for** |
+| job rows | ⚠️ **not expired:** at 22:11 UTC 2026-09-14 all present; the first cleanup is about 2026-09-15 21:12 UTC. Irrelevant to the dry run |
+| next step | verify → re-issue Thread B → capture 2 + the comments → decide priority (grounding first if fabricated) |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.** The held branch now includes code.
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-15 (a), retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-15 (b) RESTART BLOCK at the top of this file**.
 
 ### supersedes the 2026-09-14 block below, which is retained and marked, not deleted
 

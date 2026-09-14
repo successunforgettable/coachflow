@@ -1,4 +1,14 @@
-# 🟢 RESUME POINT — 2026-09-15: video scripts live; concept generator mid-investigation; kit 187 capture authorised, NOT run
+# 🗄️ SUPERSEDED — retained, NOT the entry point
+> ⚠️ **Superseded by `docs/handovers/CHECKPOINT_2026-09-15_THREADS_A_B.md`** (2026-09-15 b).
+>
+> **Since this was written:**
+> - the kit 187 capture ran, via a `dryRun` flag on the real generator (`82d1949`), and was truncated before the gate;
+> - capture 2 is now authorised;
+> - Thread B (script quality) was opened.
+>
+> Everything below is the point-in-time record as of commit `92948f3`.
+
+# RESUME POINT (historical) — 2026-09-15: video scripts live; concept generator mid-investigation; kit 187 capture authorised, NOT run
 
 **Written so a fresh terminal resumes from exactly this point with nothing lost.** Every figure was **measured at write time,
 2026-09-14 21:48 UTC** (2026-09-15 03:18 local) unless it says otherwise (§15f). Read this file first, then act.
