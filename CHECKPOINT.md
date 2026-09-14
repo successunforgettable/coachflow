@@ -12,9 +12,10 @@
 | deployed | **`9156875`, UNTOUCHED** for all of item 15. `origin/railway-build` `9156875`; `main` `67517e3` |
 | held branch | `docs/held-2026-09-12` — item-15 commits `2349d6e` `f889c7d` `7ce210e` `265207f` `d32e2c8` `f4a53fa` (checkpoint) **`d593331`** (declared-count gate) **`425a4cb`** (capture) + the checkpoint update. **Nothing pushed** (origin still `6d88070`) |
 | ✅ **committed** | all item-15 work. Working tree clean of tracked changes. **Do not re-attempt the gate or capture commits** |
-| 🛑 **held, not executed** | *"mark bonus-35 as confirmed node defect + write closing summary"* |
-| pages | 42 ✅ · 44 ✅ · 34 live, count-gate follow-on (12 → 9) · 43 live, count-gate follow-on (5 → 3) · **35 NODE DEFECT, live with 17 → 13** · 33 parked for item 14 |
-| next step | verify ground truth → execute the held bonus-35 instruction → bonus-34/43 follow-ons |
+| ✅ **executed 2026-09-14** | bonus-35 closed as a **confirmed node defect**, root cause **UNCONFIRMED** (not `bonusGenerator.ts:121`). Closing summary: **`docs/handovers/ITEM15_2026-09-14_BONUS35_CLOSING_SUMMARY.md`** |
+| also on the held branch | `8940858` `62bfbff` `2562e64`: Digital Asset Blueprint creator stills (9 photos with text, 9 photo-textured cards, CW2 fixed). Record: `docs/handovers/DAB_STILLS_2026-09-14_OVERNIGHT.md` |
+| pages | 42 ✅ · 44 ✅ · 34 live, count-gate follow-on (12 → 9) · 43 live, count-gate follow-on (5 → 3) · **35 NODE DEFECT, closed, live with 17 → 13, no re-rolls** · 33 parked for item 14. All six re-fetched ×3 on 2026-09-14, unchanged |
+| next step | bonus-34/43 count-gate follow-ons. **Each is a production write: explicit go-ahead first** |
 
 🔴 **PUSHING `railway-build` IS THE DEPLOY.** Nothing here is ready for it.
 
