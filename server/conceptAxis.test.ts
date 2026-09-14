@@ -4,10 +4,11 @@ import {
   CANDIDATE_HOOK_AWARENESS_MAP,
   AWARENESS_STAGES,
   LENGTH_BY_AWARENESS,
-  PLACEMENT_SAFE_CEILING_SECONDS,
+  ACTIVE_LENGTH_CEILING_SECONDS,
   TWO_CUT_ENABLED,
   activeLengthForStage,
   wordBudgetForSeconds,
+  hasGroundedWordBudget,
   awarenessPlanForCount,
   COLD_WEIGHTED_STAGE_MIX,
   DEFAULT_CONCEPT_COUNT,
@@ -44,7 +45,7 @@ describe("conceptAxis — 7 hook patterns + grounded APPROVED hook→awareness m
   });
 });
 
-describe("length config — research table stored, ACTIVE capped to placement-safe short", () => {
+describe("length config — research table stored, ACTIVE tiered by awareness stage, capped at 60s", () => {
   it("stores the full research-ideal ranges for every stage (so two-cut can enable later)", () => {
     expect(LENGTH_BY_AWARENESS.unaware.researchIdealSeconds).toEqual([60, 90]);
     expect(LENGTH_BY_AWARENESS.problem_aware.researchIdealSeconds).toEqual([30, 60]);
@@ -57,14 +58,43 @@ describe("length config — research table stored, ACTIVE capped to placement-sa
     expect(TWO_CUT_ENABLED).toBe(false);
   });
 
-  it("caps every stage's ACTIVE length to the placement-safe ceiling", () => {
-    for (const stage of AWARENESS_STAGES) {
-      expect(activeLengthForStage(stage)).toBeLessThanOrEqual(PLACEMENT_SAFE_CEILING_SECONDS);
-    }
-    // long-ideal stages collapse to the ceiling; Most-Aware stays 15.
-    expect(activeLengthForStage("unaware")).toBe(30);
-    expect(activeLengthForStage("solution_aware")).toBe(30);
+  it("sets each stage's ACTIVE length: unaware 60 · problem-aware 30 · solution-aware 60 · product-aware 30 · most-aware 15", () => {
+    expect(activeLengthForStage("unaware")).toBe(60);
+    expect(activeLengthForStage("problem_aware")).toBe(30);
+    expect(activeLengthForStage("solution_aware")).toBe(60);
+    expect(activeLengthForStage("product_aware")).toBe(30);
     expect(activeLengthForStage("most_aware")).toBe(15);
+  });
+
+  it("keeps every ACTIVE length inside its stage's research-ideal range and under the 60s ceiling", () => {
+    for (const stage of AWARENESS_STAGES) {
+      const [lo, hi] = LENGTH_BY_AWARENESS[stage].researchIdealSeconds;
+      const s = activeLengthForStage(stage);
+      expect(s, stage).toBeGreaterThanOrEqual(lo);
+      expect(s, stage).toBeLessThanOrEqual(hi);
+      expect(s, stage).toBeLessThanOrEqual(ACTIVE_LENGTH_CEILING_SECONDS);
+    }
+  });
+
+  it("tiering DIRECTION: cold and solution-aware get the LONGER read; product-aware (retargeting) and most-aware stay SHORT", () => {
+    // Source: script-research/Strategic Report_ Optimising Meta Video Ad Lengths…md lines 11–15.
+    // An inverted tiering (cold short, retargeting long) fails here even if every value is a valid duration.
+    const L = activeLengthForStage;
+    expect(L("unaware")).toBeGreaterThan(L("problem_aware"));
+    expect(L("unaware")).toBeGreaterThan(L("product_aware"));
+    expect(L("unaware")).toBeGreaterThan(L("most_aware"));
+    expect(L("solution_aware")).toBeGreaterThan(L("product_aware"));
+    expect(L("product_aware")).toBeGreaterThanOrEqual(L("most_aware"));
+  });
+
+  it("every ACTIVE length has a GROUNDED word budget — never the 3 words/second fallback", () => {
+    for (const stage of AWARENESS_STAGES) {
+      expect(hasGroundedWordBudget(activeLengthForStage(stage)), stage).toBe(true);
+    }
+    expect(hasGroundedWordBudget(90)).toBe(false); // the check can say no
+    const b60 = wordBudgetForSeconds(60);
+    expect(b60.min).toBe(150);
+    expect(b60.max).toBe(180);
   });
 
   it("uses the grounded per-duration word-budget table (reports), not the old 130-wpm formula", () => {

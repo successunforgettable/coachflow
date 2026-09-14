@@ -2843,6 +2843,7 @@ export default function V2GeneratorWizard({ step, serviceId, onBack }: V2Generat
             <V2AdCopyResultPanel
               adSetId={latestAdSetId}
               serviceId={activeService.id}
+              icpId={activeIcp?.id ?? null}
               onContinue={() => {
                 const next = getNextStep(step);
                 if (next) navigate(`/v2-dashboard/wizard/${next}`);

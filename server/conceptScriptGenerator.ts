@@ -3,8 +3,8 @@
  *
  * Takes a conceptId from campaignConcepts, writes ONE script to that concept's {persona, desire, awareness,
  * hookPattern}. N concepts → N distinct scripts. The concept's hookPattern drives the opening hook. Length
- * is the capped placement-safe short length for the concept's awareness stage (Advantage+ serves one asset
- * across Reels/Stories/Feed → short runs clean everywhere). Cascade-fed (getCascadeContext) for ad↔script↔
+ * is the concept's awareness-stage length (activeLengthForStage: the research table, capped at 60s).
+ * Batched as one set per ICP by conceptScriptBatch.ts (ensureScriptsForIcp). Cascade-fed (getCascadeContext) for ad↔script↔
  * page coherence. Reuses the paused generator's craft (scriptPromptCraft), scene-schema shape, and the
  * async-job / json_schema / validate→retry patterns.
  *
@@ -95,8 +95,9 @@ not just the opening, must survive the read-aloud test above.
 LENGTH — this is a ${targetSeconds}-SECOND script. Total spoken words: HARD FLOOR ${budget.min}, HARD CEILING ${budget.max}, aim ~${budget.target}.
 BOTH numbers are non-negotiable and they fail the same way — under ${budget.min} the read ends early and the slot sits half empty; over ${budget.max} it overruns the slot and the ending gets cut off.
 You have ${sceneCount} scenes. Each scene is ONE spoken line of ${perSceneMin}–${perSceneMax} words, aiming ~${perScene}. Holding EVERY scene inside that range is exactly what lands the total between ${budget.min} and ${budget.max}.
-Count as you write. Every word costs a fraction of a second on camera. Placement-safe short: Meta Advantage+ serves
-one asset across Reels, Stories and Feed, and the short end runs cleanly everywhere. Tight means FEWER, shorter
+Count as you write. Every word costs a fraction of a second on camera. ${targetSeconds <= 30
+  ? "Short by design: Meta Advantage+ serves one asset across Reels, Stories and Feed, and this length runs cleanly everywhere."
+  : "This stage gets the fuller read: spend the extra seconds on the problem and the turn, so the viewer is carried from one to the other."} Tight means FEWER, shorter
 sayable lines — one idea per breath — not denser sentences.
 
 SCENE MAP (${targetSeconds === 15 ? "3 tight scenes at 15s: hook → the turn (the one new-way point) → CTA — problem and solution fold into the turn" : targetSeconds <= 30 ? "4 scenes at 30s: hook → problem → turn → solution-and-CTA — fold the solution and the CTA into one closing scene so the whole thing fits the word cap" : "5 scenes: hook → problem → turn → solution → CTA"}):
@@ -163,7 +164,13 @@ async function invokeScript(prompt: string, failContext: string): Promise<RawScr
  * Generate the video script for one concept: fetch concept + cascade → LLM → structural validate +
  * compliance screen → retry once → persist to conceptScripts. Returns the new scriptId.
  */
-export async function generateScriptForConcept(params: { userId: number; conceptId: number }): Promise<number> {
+export async function generateScriptForConcept(params: {
+  userId: number;
+  conceptId: number;
+  /** Supplied by the batch owner (conceptScriptBatch.ts, ensureScriptsForIcp) so a set's scripts share one id.
+   *  Omitted → a set of one, which is what the hand-run proof scripts get. */
+  scriptSetId?: string;
+}): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -293,7 +300,7 @@ export async function generateScriptForConcept(params: { userId: number; concept
 
   const scenes = (script.scenes ?? []) as RawScriptScene[];
   const teleprompter = scenes.map((s) => s.spokenLine).filter(Boolean).join("\n\n");
-  const scriptSetId = randomUUID();
+  const scriptSetId = params.scriptSetId ?? randomUUID();
 
   const insert: any = await db.insert(conceptScripts).values({
     userId: params.userId,

@@ -48,6 +48,7 @@ import { placeholdersRouter } from "./routers/placeholders";
 import { trailRouter } from "./routers/trail";
 import { testimonialsRouter } from "./routers/testimonials";
 import { capturedLeadsRouter } from "./routers/capturedLeads";
+import { conceptScriptsRouter } from "./routers/conceptScripts";
 import { getQuotaLimit } from "./quotaLimits";
 
 export const appRouter = router({
@@ -263,6 +264,7 @@ export const appRouter = router({
   trail: trailRouter,
   testimonials: testimonialsRouter,
   capturedLeads: capturedLeadsRouter,
+  conceptScripts: conceptScriptsRouter,
 });
 
 export type AppRouter = typeof appRouter;

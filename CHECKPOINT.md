@@ -15,7 +15,8 @@
 | ✅ **executed 2026-09-14** | bonus-35 closed as a **confirmed node defect**, root cause **UNCONFIRMED** (not `bonusGenerator.ts:121`). Closing summary: **`docs/handovers/ITEM15_2026-09-14_BONUS35_CLOSING_SUMMARY.md`** |
 | also on the held branch | `8940858` `62bfbff` `2562e64`: Digital Asset Blueprint creator stills (9 photos with text, 9 photo-textured cards, CW2 fixed). Record: `docs/handovers/DAB_STILLS_2026-09-14_OVERNIGHT.md` |
 | pages | 42 ✅ · 44 ✅ · 34 live, count-gate follow-on (12 → 9) · 43 live, count-gate follow-on (5 → 3) · **35 NODE DEFECT, closed, live with 17 → 13, no re-rolls** · 33 parked for item 14. All six re-fetched ×3 on 2026-09-14, unchanged |
-| next step | bonus-34/43 count-gate follow-ons. **Each is a production write: explicit go-ahead first** |
+| ✅ **video scripts, moderate build — 2026-09-14** | per-concept generator reachable (batch owner, one job row per concept, `V2ConceptScripts` at Ad Copy → Video and Tool Library → Video Scripts, lengths by stage capped 60s). Committed on the held branch, **not deployed**. Production: kit 225 now holds **8/8 scripts in one set**; kit 187's no-concepts path stops at a **pre-existing concept-generator failure** (ICP 249). Record: **`docs/handovers/VIDEO_SCRIPTS_BUILD_2026-09-14.md`** |
+| next step | bonus-34/43 count-gate follow-ons. **Each is a production write: explicit go-ahead first**. Video scripts: deploy + browser screenshots; concept-generator failure (ICP 249) is its own package |
 
 🔴 **PUSHING `railway-build` IS THE DEPLOY.** Nothing here is ready for it.
 

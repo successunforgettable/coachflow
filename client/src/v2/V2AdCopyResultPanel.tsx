@@ -21,7 +21,7 @@ import { useFavourites } from "./hooks/useFavourites";
 import ExportButtons from "./components/ExportButtons";
 import { formatWhatsAppTxt, formatHeadlinesTxt, formatAdCopyTxt, formatOfferTxt, formatMechanismsTxt, formatHvcoTxt, formatIcpTxt, formatLandingPageTxt } from "./lib/exportUtils";
 import V2AdImageCreator from "./V2AdImageCreator";
-import V2VideoCreator from "./V2VideoCreator";
+import V2ConceptScripts from "./V2ConceptScripts";
 import PlaceholderBanner from "./components/PlaceholderBanner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -712,6 +712,7 @@ function TabPill({ label, count, active, onClick }: {
 export default function V2AdCopyResultPanel({
   adSetId,
   serviceId: _serviceId,
+  icpId,
   isFreeTier,
   selectedId,
   onChangeSelection,
@@ -719,6 +720,8 @@ export default function V2AdCopyResultPanel({
 }: {
   adSetId: string;
   serviceId: number;
+  /** The kit's ICP — the Video tab's per-concept scripts are keyed on it. */
+  icpId?: number | null;
   isFreeTier?: boolean;
   selectedId?: number | null;
   onChangeSelection?: (id: number) => void;
@@ -949,13 +952,13 @@ export default function V2AdCopyResultPanel({
         </div>
       )}
 
-      {/* ── VIDEO TAB — Video Creator inline ── */}
+      {/* ── VIDEO TAB — per-concept video scripts inline (V2VideoCreator is intact but no longer mounted) ── */}
       {topTab === "video" && (
         <div style={{ marginTop: "8px" }}>
           <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#888", marginBottom: "16px", fontStyle: "italic" }}>
-            Optional — generate video ads with voiceover and motion graphics.
+            Optional — generate talk-to-camera video scripts, one for each of your ad concepts.
           </p>
-          <V2VideoCreator isFreeTier={isFreeTier} />
+          <V2ConceptScripts icpId={icpId} />
         </div>
       )}
 

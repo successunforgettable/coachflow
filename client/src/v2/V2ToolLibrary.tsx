@@ -11,7 +11,7 @@ import ZappyMascot from "./ZappyMascot";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import V2AdImageCreator from "./V2AdImageCreator";
-import V2VideoCreator from "./V2VideoCreator";
+import V2ConceptScripts from "./V2ConceptScripts";
 
 // ─── Generator definitions ────────────────────────────────────────────────────
 const GENERATORS = [
@@ -76,9 +76,9 @@ const GENERATORS = [
     emoji: "🖼️",
   },
   {
-    step: "videoCreator",
-    name: "Video Creator",
-    description: "AI-generated video ads with voiceover and motion graphics — script first (free), then render with credits.",
+    step: "videoScripts",
+    name: "Video Scripts",
+    description: "Talk-to-camera video ad scripts, one per ad concept — scene-by-scene lines, on-screen text, and a teleprompter view.",
     emoji: "🎬",
   },
 ];
@@ -210,9 +210,9 @@ export default function V2ToolLibrary() {
       setOpenPanel("adImages");
       return;
     }
-    // Video Creator opens inline in the Tool Library (no route change)
-    if (step === "videoCreator") {
-      setOpenPanel("videoCreator");
+    // Video Scripts opens inline in the Tool Library (no route change)
+    if (step === "videoScripts") {
+      setOpenPanel("videoScripts");
       return;
     }
     // Pass selected ICP id as query param so wizard can use it
@@ -479,8 +479,8 @@ export default function V2ToolLibrary() {
         </div>
       )}
 
-      {/* ── Video Creator inline panel ── */}
-      {openPanel === "videoCreator" && (
+      {/* ── Video Scripts inline panel (V2VideoCreator is intact but no longer mounted) ── */}
+      {openPanel === "videoScripts" && (
         <div style={{ marginBottom: "32px" }}>
           <button
             onClick={() => setOpenPanel(null)}
@@ -488,7 +488,7 @@ export default function V2ToolLibrary() {
           >
             ← Back to Tool Library
           </button>
-          <V2VideoCreator isFreeTier={isFreeTier} />
+          <V2ConceptScripts icpId={effectiveIcpId} />
         </div>
       )}
 

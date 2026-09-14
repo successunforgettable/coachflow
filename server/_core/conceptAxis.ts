@@ -299,41 +299,50 @@ export function isHookPattern(v: unknown): v is HookPattern {
 // SOURCE (banked 2026-08-03): docs/andromeda/script-research/Strategic Report_ Optimising Meta Video
 // Ad Lengths for the 2026 AI Ecosystem.md
 //
-// DECISION: one length per concept, anchored SHORT / placement-safe. Meta Advantage+ auto-distributes ONE
-// asset across Reels/Stories/Feed and decides per-user, so the short end runs cleanly everywhere. We store
-// the FULL research-ideal range per stage (so the two-cut / long-Feed option can be enabled later WITHOUT a
-// rebuild), but ACTIVE generation caps every stage to the placement-safe ceiling.
-export const PLACEMENT_SAFE_CEILING_SECONDS = 30;
+// The report's stage table (lines 11–15): Unaware 60–90s · Problem-Aware 30–60s · Solution-Aware 60–90s ·
+// Product-Aware 15–30s ("Retargeting audiences") · Most-Aware 15s. It is untiered research (a NotebookLM
+// synthesis); performance-research/ holds no length-by-stage finding.
+//
+// DECISION (Arfeen, 2026-09-14): one length per concept, TIERED BY AWARENESS STAGE from that table, capped at
+// ACTIVE_LENGTH_CEILING_SECONDS. Cold (unaware) and solution-aware scripts get the longer read; product-aware
+// and most-aware stay short. This replaces the flat 30s placement-safe cap (PLACEMENT_SAFE_CEILING_SECONDS),
+// which collapsed every stage to the short end.
+//
+// The ceiling is 60 because WORD_BUDGET_TABLE below has no grounded 90s entry: 90 would fall back to 3 words
+// per second, the ceiling-used-as-target error script-rule-spec.md §1.2 names. Every ACTIVE length must be a
+// WORD_BUDGET_TABLE key (conceptAxis.test.ts enforces it).
+export const ACTIVE_LENGTH_CEILING_SECONDS = 60;
 
 // TWO_CUT (short + long-Feed asset per placement, via Meta placement asset customization) is PARKED.
 // When true, generation would emit a second research-ideal-length cut for Feed. Not built — config only.
 export const TWO_CUT_ENABLED = false;
 
 export interface AwarenessLength {
-  /** Full research-ideal range (low, high) in seconds — stored for the parked long-Feed cut. */
+  /** Full research-ideal range (low, high) in seconds, from the report. The ACTIVE length sits inside it. */
   researchIdealSeconds: readonly [number, number];
-  /** The ACTIVE length used NOW — capped to PLACEMENT_SAFE_CEILING_SECONDS. */
+  /** The ACTIVE length used NOW — the low end of the research range, capped to ACTIVE_LENGTH_CEILING_SECONDS. */
   activeSeconds: number;
 }
 
 export const LENGTH_BY_AWARENESS: Record<AwarenessStage, AwarenessLength> = {
-  unaware: { researchIdealSeconds: [60, 90], activeSeconds: 30 },
+  unaware: { researchIdealSeconds: [60, 90], activeSeconds: 60 },
   problem_aware: { researchIdealSeconds: [30, 60], activeSeconds: 30 },
-  solution_aware: { researchIdealSeconds: [60, 90], activeSeconds: 30 },
+  solution_aware: { researchIdealSeconds: [60, 90], activeSeconds: 60 },
   product_aware: { researchIdealSeconds: [15, 30], activeSeconds: 30 },
   most_aware: { researchIdealSeconds: [15, 15], activeSeconds: 15 },
 };
 
+/** THE length decision for a video script: its concept's awareness stage. conceptScriptGenerator.ts is the caller. */
 export function activeLengthForStage(stage: AwarenessStage): number {
-  return Math.min(LENGTH_BY_AWARENESS[stage].activeSeconds, PLACEMENT_SAFE_CEILING_SECONDS);
+  return Math.min(LENGTH_BY_AWARENESS[stage].activeSeconds, ACTIVE_LENGTH_CEILING_SECONDS);
 }
 
 // Spoken word budget — the GROUNDED per-duration table from the 7 NotebookLM scriptwriting reports
 // (banked 2026-08-03 at docs/andromeda/script-research/ — see its README for the per-report index)
 // (Zizzo conservative range + JL max), replacing the old ~130-wpm formula which under-targeted and
 // over-capped (30s gave target 65 / max 98, letting a 94-word script pass; reports want 75–85 / max 90).
-// Scripts are written ~2–3s shy of the slot; pace ≈ 3 words/sec. Only 15s/30s are used operationally
-// (activeLengthForStage caps there); 60s kept for completeness; other durations fall back to ~3 w/s.
+// Scripts are written ~2–3s shy of the slot; pace ≈ 3 words/sec. 15s, 30s and 60s are all used operationally
+// (activeLengthForStage); other durations fall back to ~3 w/s and must never be made an ACTIVE length.
 const WORD_BUDGET_TABLE: Record<number, { min: number; target: number; max: number }> = {
   15: { min: 30, target: 35, max: 45 },
   30: { min: 75, target: 80, max: 90 },
@@ -346,6 +355,11 @@ export function wordBudgetForSeconds(seconds: number): { min: number; target: nu
   // Fallback (non-standard durations): ~3 words/sec, written 2s shy of the slot, with a small tolerance band.
   const target = Math.round(Math.max(0, seconds - 2) * 3);
   return { min: Math.round(target * 0.85), target, max: Math.round(target * 1.15) };
+}
+
+/** True when a duration has a grounded row in WORD_BUDGET_TABLE rather than the ~3 w/s fallback. */
+export function hasGroundedWordBudget(seconds: number): boolean {
+  return Object.prototype.hasOwnProperty.call(WORD_BUDGET_TABLE, seconds);
 }
 
 /**
