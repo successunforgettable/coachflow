@@ -52,8 +52,12 @@ Ordered by how much they change the build.
   - **30 s:** 27–28 s × 2.7 = 72–75 words, against a floor of 75. **A 3 s buffer is impossible; a 2 s buffer allows exactly 75.**
 - The spec itself carries this tension: §1.3's corpus anchors (75–85 for 30 s) predate §1.2's switch to 2.7 w/s.
 - 🟡 **Decision D-j:** keep ZAP's table, adopt the buffer and re-derive the floors, or buffer only the ceiling. **CC recommends
-  re-deriving both bounds from 2.7 w/s** — 30 s = 67–75, 60 s = 140–156 — because the floor is what makes the buffer impossible.
-  It must be re-validated against the human benchmark (28–43 s scripts at 76–116 words ✔) before adoption.
+  re-deriving both bounds from 2.7 w/s**, because the floor is what makes the buffer impossible.
+  - **Ceiling:** (slot − 2 s) × 2.7, rounded down → **30 s ≤ 75, 60 s ≤ 156**.
+  - **Floor:** needs its own rule, i.e. how short a read may leave the slot. No floor figure is proposed here; that is part of D-j.
+  - `[CORRECTED 2026-09-16: an earlier draft of this line gave floors of 67 and 140 with no stated method; removed.]`
+
+  Whatever is chosen must be re-validated against the human benchmark (28–43 s scripts at 76–116 words ✔) before adoption.
 
 ### K3 · The structural check would fire on repetition the concept generator creates by design
 
