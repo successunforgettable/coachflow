@@ -775,7 +775,7 @@ function protectedAttributeAtEnd(loweredTail: string): string | undefined {
   };
   const term = PROTECTED_ATTRIBUTE_TERMS.find((t) => endRe(t, termRe(t).source).test(loweredTail));
   if (term) return term;
-  return endRe(" health-condition", HEALTH_CONDITION_RE.source).exec(loweredTail)?.[0];
+  return endRe("\u0000health-condition", HEALTH_CONDITION_RE.source).exec(loweredTail)?.[0];
 }
 function clinicalOutcomeMatch(text: string): { verb: string; cond: string } | undefined {
   for (const m of Array.from(text.matchAll(new RegExp(CLINICAL_OUTCOME_VERB.source, "gi")))) {
