@@ -164,13 +164,26 @@ async function invokeScript(prompt: string, failContext: string): Promise<RawScr
  * Generate the video script for one concept: fetch concept + cascade → LLM → structural validate +
  * compliance screen → retry once → persist to conceptScripts. Returns the new scriptId.
  */
+export async function generateScriptForConcept(params: ScriptGenerationParams & { dryRun: true }): Promise<ScriptDryRunResult>;
+export async function generateScriptForConcept(params: ScriptGenerationParams & { dryRun?: false }): Promise<number>;
 export async function generateScriptForConcept(params: {
   userId: number;
   conceptId: number;
   /** Supplied by the batch owner (conceptScriptBatch.ts, ensureScriptsForIcp) so a set's scripts share one id.
    *  Omitted → a set of one, which is what the hand-run proof scripts get. */
   scriptSetId?: string;
-}): Promise<number> {
+  /**
+   * DRY RUN — runs the full production path (the same prompt, the same `gate`, the same retries and attempt budget)
+   * and stops IMMEDIATELY before the only write. Nothing is inserted; the result carries the row that would have been
+   * written. For read-only captures of what production does on a real concept. The batch path never passes it.
+   */
+  dryRun?: boolean;
+  /**
+   * Observer called after every gate verdict and on every generation error, in BOTH modes. Absent, it is a no-op,
+   * so production behaviour is unchanged. It observes; it never alters a verdict or the control flow.
+   */
+  onGate?: (record: ScriptGateRecord) => void;
+}): Promise<number | ScriptDryRunResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -239,6 +252,9 @@ export async function generateScriptForConcept(params: {
       }
     : undefined;
 
+  // Observation only (see `onGate`): the LAST gate call's three sub-verdicts, copied from the objects `gate` already
+  // built. Read by nothing but the observer; no verdict is ever taken from it.
+  const lastAxes: { current: ScriptGateAxes | null } = { current: null };
   const gate = (s: RawScript): { ok: boolean; failContext: string; labels: string } => {
     const structure = validateScriptStructure(s, { hookPattern: concept.hookPattern, targetSeconds });
     const compliance = screenScriptCompliance(s.scenes ?? []);
@@ -251,6 +267,14 @@ export async function generateScriptForConcept(params: {
       // FAIL CLOSED — scripts are free spoken prose, the highest-risk surface for invented proof.
       { requireGrounding: true },
     );
+    lastAxes.current = {
+      structureOk: structure.ok,
+      complianceOk: compliance.ok,
+      outputOk: output.ok,
+      structureLabels: structure.ok ? [] : structure.hits.map((h) => h.classId),
+      complianceLabels: compliance.ok ? [] : compliance.hits.map((h) => h.classId),
+      outputLabels: output.blocking.map((h) => h.classId),
+    };
     if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
     const parts = [
       structure.ok ? "" : structure.failContext,
@@ -269,16 +293,28 @@ export async function generateScriptForConcept(params: {
   // word cap, structurally sound, compliance-clean) usually lands within a few tries. The validator still
   // enforces the cap every time — we just give it more draws rather than shipping an overrun.
   const MAX_ATTEMPTS = 3;
-  let script = await invokeScript(prompt, "");
+  // Observation only (see `onGate`): records each verdict and each generation error, then gets out of the way.
+  const observe = params.onGate ?? (() => {});
+  const generateAttempt = async (attempt: number, failContext: string): Promise<RawScript> => {
+    try {
+      return await invokeScript(prompt, failContext);
+    } catch (err) {
+      observe({ attempt, scenesReturned: null, ok: null, axes: null, labels: "", failContext: "", error: err instanceof Error ? err.message : String(err) });
+      throw err;
+    }
+  };
+  let script = await generateAttempt(1, "");
   let result = gate(script);
+  observe({ attempt: 1, scenesReturned: Array.isArray(script?.scenes) ? script.scenes.length : null, ok: result.ok, axes: lastAxes.current, labels: result.labels, failContext: result.failContext });
   // Captured BEFORE any regeneration — the first-pass verdict is the PREVENTION signal.
   const firstPassOk = result.ok;
   const firstPassLabels = result.ok
     ? []
     : String(result.labels || "").split(",").map((x) => x.trim()).filter(Boolean);
   for (let attempt = 2; attempt <= MAX_ATTEMPTS && !result.ok; attempt++) {
-    script = await invokeScript(prompt, result.failContext);
+    script = await generateAttempt(attempt, result.failContext);
     result = gate(script);
+    observe({ attempt, scenesReturned: Array.isArray(script?.scenes) ? script.scenes.length : null, ok: result.ok, axes: lastAxes.current, labels: result.labels, failContext: result.failContext });
   }
 
   // BLOCK-RATE INSTRUMENTATION — completes the set (adCopy, concepts, scripts). Scripts are free
@@ -302,7 +338,7 @@ export async function generateScriptForConcept(params: {
   const teleprompter = scenes.map((s) => s.spokenLine).filter(Boolean).join("\n\n");
   const scriptSetId = params.scriptSetId ?? randomUUID();
 
-  const insert: any = await db.insert(conceptScripts).values({
+  const row = {
     userId: params.userId,
     conceptId: params.conceptId,
     icpId: concept.icpId,
@@ -316,6 +352,59 @@ export async function generateScriptForConcept(params: {
     teleprompter,
     status: "draft" as const,
     source: "generated" as const,
-  });
+  };
+
+  // ── DRY RUN: STOP HERE, BEFORE THE ONLY WRITE ─────────────────────────────────────────────
+  // Everything above — prompt, gate, retries, the attempt budget, the throw on a final failure — has run exactly as it
+  // does in production. The insert below is this function's only write, and a dry run returns first. `row` is the very
+  // object the insert receives, so what a dry run reports is what production would have written, by construction.
+  if (params.dryRun) {
+    console.log(
+      `[conceptScriptGenerator] DRY RUN for concept ${params.conceptId}: gate path complete, 1 script would be ` +
+      `inserted (${scenes.length} scene(s)). Write SKIPPED.`,
+    );
+    return { dryRun: true, scriptId: null, wouldInsert: row };
+  }
+
+  const insert: any = await db.insert(conceptScripts).values(row);
   return insert[0].insertId;
 }
+
+type ScriptGenerationParams = {
+  userId: number;
+  conceptId: number;
+  scriptSetId?: string;
+  onGate?: (record: ScriptGateRecord) => void;
+};
+
+/** The gate's three sub-verdicts for one attempt, copied from the objects `gate` built (see `onGate`). */
+export type ScriptGateAxes = {
+  structureOk: boolean;
+  complianceOk: boolean;
+  outputOk: boolean;
+  structureLabels: string[];
+  complianceLabels: string[];
+  outputLabels: string[];
+};
+
+/** One observed gate verdict or generation error (see `onGate` on generateScriptForConcept). */
+export type ScriptGateRecord = {
+  attempt: number;
+  /** Scenes the model returned; null when the generation call itself threw. */
+  scenesReturned: number | null;
+  /** The gate's combined verdict; null when there was nothing to gate. */
+  ok: boolean | null;
+  /** The three sub-verdicts behind `ok`; null when there was nothing to gate. */
+  axes: ScriptGateAxes | null;
+  labels: string;
+  failContext: string;
+  error?: string;
+};
+
+/** Returned only on a dry run: nothing was written. */
+export type ScriptDryRunResult = {
+  dryRun: true;
+  scriptId: null;
+  /** The exact values object the conceptScripts insert would have received. */
+  wouldInsert: Record<string, unknown>;
+};
