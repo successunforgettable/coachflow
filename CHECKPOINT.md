@@ -1,4 +1,27 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-15 (c)
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-16
+
+### supersedes the 2026-09-15 (c) block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-16_SCRIPT_QUALITY_BUILD.md`**
+> It supersedes `CHECKPOINT_2026-09-15_THREADS_A_B.md`. Measured at write time: git/GitHub/Railway, plus a production DB read at
+> 2026-09-15 22:07:17 UTC.
+
+| | |
+|---|---|
+| production code | **`87596d7`**, Railway SUCCESS. GitHub `railway-build` = `87596d7`. **Nothing pushed past it** |
+| production DB | **59 tables** (0111 `coachFacts` applied 2026-09-15 21:19:49 UTC, **0 rows**) |
+| held branch | 24 commits over production + this checkpoint. **CODE included** (sprints 0a, 8, 1, 1b, 2; concept dryRun). **Deploy on HOLD** |
+| Thread A | **parked**: kit 187 has no working path; fix shapes not decided |
+| Thread B | sprints **0a `dbfe389` · 8 `5c2d34e`+`51bda65` · 1 `799bd84` · 1b `41c817c` · 2 `d04a08c`** built and verified. D-b wording + retry-note sourcing approved and **ship with sprint 3** |
+| next step | verify → **sprint 0b** (authorised; design arm (b) + concept selection first) → investigate the F5 pension-line false positive → investigate splitting beat labelling (~8 s/call) |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.**
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-15 (c), retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-16 RESTART BLOCK at the top of this file**.
 
 ### supersedes the 2026-09-15 (b) block below, which is retained and marked, not deleted
 

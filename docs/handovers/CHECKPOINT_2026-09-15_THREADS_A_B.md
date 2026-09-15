@@ -1,4 +1,8 @@
-# 🟢 RESUME POINT — 2026-09-15 (b): Thread A capture 2 authorised, not run · Thread B follow-up NOT RECEIVED
+> # 🗄️ SUPERSEDED 2026-09-16 — NOT THE ENTRY POINT
+> The live resume point is **`docs/handovers/CHECKPOINT_2026-09-16_SCRIPT_QUALITY_BUILD.md`**. This file is retained as history.
+> Everything it lists as authorised-not-run (capture 2, the two comments, the Thread B follow-up) has since been done.
+
+# 🗄️ (superseded) RESUME POINT — 2026-09-15 (b): Thread A capture 2 authorised, not run · Thread B follow-up NOT RECEIVED
 
 **Supersedes `CHECKPOINT_2026-09-15_CONCEPT_GENERATOR_CAPTURE_NEXT.md` (commit `92948f3`),** which is retained and marked
 superseded. Written so a fresh terminal resumes from exactly this point with nothing lost.
