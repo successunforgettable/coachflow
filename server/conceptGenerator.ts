@@ -652,8 +652,14 @@ export function conceptJobId(icpId: number): string {
  *   1. an existing concept set short-circuits before any work;
  *   2. a deterministic job id (one row per ICP) means a second caller collides on
  *      the primary key rather than starting a second generation;
- *   3. generateConceptsForIcp itself deletes-then-inserts per ICP, so even a lost
- *      race cannot produce a doubled set.
+ *   3. generateConceptsForIcp itself deletes-then-inserts per ICP. The delete and
+ *      the insert are two separate statements with NO transaction, so this does not
+ *      make a lost race safe: two generations that both reach the write can
+ *      interleave (delete, delete, insert, insert) and leave a doubled set. Layer 2
+ *      does not stop that on the re-arm path either: the re-arm is an unconditional
+ *      UPDATE, not a primary-key insert, so two callers that both read a
+ *      non-pending job can both start a generation. A doubled set has not been
+ *      observed; nothing here prevents one.
  *
  * ── STILL NON-BLOCKING ──────────────────────────────────────────────────────
  * The work stays in setImmediate. "Durable" here means the ATTEMPT is recorded and

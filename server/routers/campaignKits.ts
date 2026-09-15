@@ -159,9 +159,13 @@ export async function ensureCampaignKit(
   //
   // Fired on EVERY call, not only on the insert branch, which makes it
   // self-healing: a set that failed to generate gets another attempt on the next
-  // auto-select rather than never being retried. ensureConceptsForIcp is idempotent
-  // three ways (existing set, deterministic job id, delete-then-insert), so the
-  // repeat calls cost one indexed SELECT each and nothing more.
+  // auto-select rather than never being retried. ensureConceptsForIcp guards against
+  // duplicate work with an existing-set check, a deterministic job id and a
+  // delete-then-insert, but repeat calls are NOT free: they stop at one indexed
+  // SELECT while a set exists, and at two while this ICP's job is pending or
+  // running. In any other job state (failed, or complete with no rows) every call
+  // re-arms the job and pays for a full LLM generation again, on every auto-select,
+  // until one produces a set.
   //
   // Never awaited — the cascade must not wait on concepts, which is the whole
   // reason this generation is asynchronous in the first place.
