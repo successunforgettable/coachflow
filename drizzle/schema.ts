@@ -1021,6 +1021,52 @@ export type CoachMethod = typeof coachMethods.$inferSelect;
 export type InsertCoachMethod = typeof coachMethods.$inferInsert;
 
 /**
+ * COACH FACTS — one row per fact the COACH supplied, with where it came from and when (migration 0111).
+ *
+ * Why a table: the fabrication gate grounds claims against a flattened corpus in which model-written
+ * text cannot be told apart from what the coach typed, and in which an old figure still grounds. No
+ * existing column carries a per-fact source or time (`updatedAt` is row-level and moves when generated
+ * text overwrites the row). This table is that record.
+ *
+ * - `sourceChannel` names a COACH channel only. There is deliberately no value for generated text:
+ *   model output can never be written here as a fact.
+ * - `coach_confirmed_rewording` is evidence for `practice` facts only, never biography (decision D-a,
+ *   enforced by `buildCoachFacts`, server/_core/coachFacts.ts).
+ * - Single-valued slots (people trained, countries, years, clients, headline credential): the latest
+ *   `sourcedAt` is canonical; older rows get `supersededAt`, never deleted.
+ * - `sourcedAt` has NO default: the writer states when the coach supplied the value. A default would
+ *   stamp a backfill with today's date and make an old figure look current.
+ * - `factScope` exists because `serviceId` is ON DELETE SET NULL: without it a service-scoped fact
+ *   whose service is deleted would silently become account-wide. `service` + NULL serviceId = orphaned,
+ *   and the builder drops it.
+ *
+ * §15d: NO WRITER until the coach screen (sprint 6) or a separately approved backfill; NO production
+ * reader until sprint 2 (F2).
+ */
+export const coachFacts = mysqlTable("coachFacts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  serviceId: int("serviceId").references(() => services.id, { onDelete: "set null" }),
+  factScope: mysqlEnum("factScope", ["account", "service"]).notNull(),
+  slot: varchar("slot", { length: 64 }).notNull(),
+  slotKind: mysqlEnum("slotKind", ["practice", "biography", "credential", "offer"]).notNull(),
+  factValue: text("factValue").notNull(),
+  sourceChannel: mysqlEnum("sourceChannel", [
+    "coach_typed", "coach_confirmed_rewording", "ladder_answer", "operator_capture", "account_profile",
+  ]).notNull(),
+  sourceRef: varchar("sourceRef", { length: 255 }).notNull(),
+  sourcedAt: timestamp("sourcedAt").notNull(),
+  supersededAt: timestamp("supersededAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userSlotSupersededIdx: index("idx_coachFacts_user_slot_superseded").on(table.userId, table.slot, table.supersededAt),
+  serviceIdIdx: index("idx_coachFacts_serviceId").on(table.serviceId),
+}));
+
+export type CoachFactRow = typeof coachFacts.$inferSelect;
+export type InsertCoachFactRow = typeof coachFacts.$inferInsert;
+
+/**
  * Analytics Events - Track individual user interactions
  * Supports email opens, clicks, conversions, and purchases
  */
