@@ -1,4 +1,28 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-15 (b)
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-15 (c)
+
+### supersedes the 2026-09-15 (b) block below, which is retained and marked, not deleted
+
+> Full context is still `docs/handovers/CHECKPOINT_2026-09-15_THREADS_A_B.md`; this block records what 2026-09-15 (c) settled.
+> Its §6.1 "6 of 8" is corrected in place to **7 of 8**.
+
+| | |
+|---|---|
+| deployed | **`87596d7`, Railway SUCCESS** (measured 2026-09-15). Nothing pushed beyond it |
+| held branch | `docs/held-2026-09-12` = production + docs + `82d1949` (dryRun code) + **`54c7555` (comment-only code change)**. **A push would deploy both** |
+| stills | only `personal/dab-stills` `2562e64` + backup ref; positive-controlled absent from every ZAP branch and origin |
+| ✅ Thread A comments | **DONE `54c7555`**: the "one indexed SELECT" and "lost race cannot produce a doubled set" claims corrected. Comment lines only (filter positive-controlled), tsc 34, 17/17 |
+| ✅ Thread A capture 2 | **DONE, zero writes (58 tables, 0 diff lines).** Record: **`CAPTURE2_KIT187_CONCEPT_DRY_RUN_2026-09-15.md`**. Gate rejection for ICP 249 finally known: 2 × `invented_statistic` "90%" = **TRUE positive** (figure exists only in generated ICP prose) · 4 × `second_person_protected_attribute` = **mostly FALSE positives** ("conviction" read as criminal record ×2; the idiom "can't afford to get this wrong"). The retry then **truncated at 8,192** (2 of 2 measured retries truncated), and truncation is never retried |
+| 🔴 Thread B grounding | **`THREADB_GROUNDING_CHECK_2026-09-15.md`** (HIGH): script 229's "forty-four", "since 2021", "procurement", "a global firm" are in NOTHING supplied or generated; "twelve years", "my husband" etc. come only from generated text. **General blind spot:** `checkFabrication` detects only client/proof-shaped claims; first-person biography (age, family, job, employer, tenure in words) passes on concepts, scripts, headlines, ad copy, landing pages, persistence and the Meta publish check. Negative control rerun byte-identical |
+| 🟡 Thread B scoping | **`THREADB_FIX_SCOPING_2026-09-15.md`**: sentence/hook checks tie to spec §1.4/§1.9 (HIGH); repetition to §2.2 (name check HIGH, phrase check MEDIUM); **narrator voice ties to NO written rule**. Likely cause of long sentences: the per-scene "30–36 words" prompt line. Spec's SD floor and 4-gram rule both FAIL the human set, and §2.2 contradicts itself on the 4-word mechanism name |
+| not decided | fix priority (grounding blind spot is cross-surface) · the scoping doc's decision list · concept-generator fix shape · protected-attribute word-sense false positives (new, unscoped) · everything in the (b) block's "not decided" |
+| next step | Arfeen: priority call. Nothing is building |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.**
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-15 (b), retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-15 (c) RESTART BLOCK at the top of this file**.
 
 ### supersedes the 2026-09-15 block below, which is retained and marked, not deleted
 

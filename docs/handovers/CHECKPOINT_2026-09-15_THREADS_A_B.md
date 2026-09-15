@@ -217,7 +217,7 @@ creator scripts in `docs/andromeda/worked-examples/final-shoot-2026-09-10/nine-c
 | metric | 9 human | 8 generated |
 |---|---|---|
 | contractions / 100 words | 5.9 (3.9–7.9) | **4.0** (1.8–6.3) |
-| **longest sentence** | 15.8 (13–18) | **25.2 (14–32)** · 6 of 8 exceed the human max of 18 |
+| **longest sentence** | 15.8 (13–18) | **25.2 (14–32)** · ~~6 of 8~~ **7 of 8** exceed the human max of 18 `[CORRECTED 2026-09-15 (c): recomputed per script — 223:29 · 224:14 · 225:32 · 226:22 · 227:30 · 228:22 · 229:31 · 230:22; only 224 is inside. See THREADB_FIX_SCOPING_2026-09-15.md]` |
 | sentence-length SD | 4.6 | 7.4 (driven by long sentences, not rhythm) |
 | mean sentence | 7.8 | 11.8 |
 | **hook (first sentence)** | 7.6 (4–10) | **16 (5–31)** · 5 of 8 over the spec's 10 |
