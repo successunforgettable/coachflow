@@ -75,6 +75,10 @@ Ordered by how much they change the build.
 
 ### K4 · The human benchmark itself shares beat order within a stage — and it is the wrong voice
 
+> `[CORRECTED 2026-09-16 (b)]` **The statement below that the coach-voice nine "is not in the repo" is WRONG.** The set is
+> `docs/andromeda/worked-examples/final-shoot-2026-09-10/1-script-and-talent-brief.md` (commit `a1ab84e`). It is now measured, and
+> the calibration consequences are in §5.2. The attendee-voice point stands for the attendee file only.
+
 - **Already recorded** (addendum §2): the nine human scripts share one beat order within each stage triplet by design.
 - **Newly weighed:**
   - **they are attendee voice** ("I did the SMB programme"). The file states a *separate* set of nine coach-voice scripts exists ✔;
@@ -261,3 +265,55 @@ Thread A truncation fix ──────────────────�
 - label-only before blocking;
 - §15j (tighten, never delete);
 - every production write and push needs its own go-ahead.
+
+---
+
+## 5. DECISIONS (Arfeen, 2026-09-16) AND FOUNDATIONS STATE
+
+### 5.1 · Decisions as given, with what checking them found
+
+| decision | as given | found on checking |
+|---|---|---|
+| **D-a** | AI-reworded coach text counts for practice facts once confirmed, never for biography | **ZAP stores no record that a coach confirmed a rewording** (sprint 1b, `SPRINT1_COACH_FACTS_2026-09-16.md`). "That's me" goes straight to `services.create`, and TweakBox edits look identical. So the builder fails closed: `description`, `targetCustomer` and `mainBenefit` never ground. A confirmation flag needs its own screen and migration |
+| **D-b** | investigate why `copywritingRules.ts` is DO-NOT-TOUCH; no edit until reported and a specific change is confirmed | **It was a scope constraint on one fix, not a standing lock.** The only occurrence is CHECKPOINT:6086, inside the 2026-08-30 HVCO-title fix plan ("the fix composes around those imports and lives entirely inside hvcoGenerator.ts"), with no reason stated. The file has been edited since: `265207f` (2026-09-13) rewrote a rule positive-only. **The real risk is blast radius: 19 server files import it** (REGISTER_STANDARD 11, BANNED_COPYWRITING_WORDS 7, registerPersonGuidance 4). **No edit made; waiting on confirmation of a specific change (sprint 5)** |
+| **D-c** | distinguish unspecific narrative colour (no checkable fact) from specific invented biography (a name, age, employer, year, number); only the latter blocks | recorded for sprint 2's extraction scope |
+| **D-g / D-h** | F5 and certainty-overstatement stay record-only, like F2 | recorded; they change sprint 7 |
+| **D-j** | a duration-proportional buffer of ~5% | computed at 2.7 w/s: **30 s → 28.5 s read → 76.95 words → ceiling 76** (floor 75); **60 s → 57.0 s read → 153.90 words → ceiling 153** (floor 150). **Provisional:** it needs timed reads of real generated scripts, and no ZAP-generated script has been filmed. Not implemented (sprint 4) |
+| **D-l** | fragment run ≤ 3 | ✅ the coach-voice nine all pass (max 3) |
+| **D-m** | confirmed, sequenced behind Thread A's concept-truncation fix | recorded |
+| **D-n** | find the coach-voice nine; use it if found; attendee set record-only otherwise | **FOUND, already in git:** `docs/andromeda/worked-examples/final-shoot-2026-09-10/1-script-and-talent-brief.md` (`a1ab84e`, 2026-09-10; the same stored copy on production). First person, P1–P3 / E1–E3 / W1–W3. **§1 K4's statement that it is not in the repo is WRONG, corrected here.** The file name contains neither "nine" nor "coach" |
+| **quoting ruling** | retry notes never quote the model's flagged text back; describe it in the abstract | ⚠️ **Conflicts with live code:** today's compliance/fabrication failContext and `timedClaimFailContext` quote the flagged text (capture 2's saved failContext carries the quoted lines). Applied to new code from sprint 3 on; **changing the live generators is a separate decision** |
+| **deploy** | hold; bundle with the next substantive deploy | nothing pushed |
+
+### 5.2 · The coach-voice nine, measured (same instrument as §6.1 / spec §3.2 rule 7)
+
+**It changes calibrations that were derived from the attendee set:**
+
+| metric | coach-voice nine | attendee nine | consequence |
+|---|---|---|---|
+| words | 112–114 (~41–42 s) | 76–116 | still no 60 s benchmark |
+| hook | 4–10 | 4–10 | hook ≤ 10 holds |
+| longest sentence | 13–18 (0 over 18) | 13–18 | sentence ≤ 18 holds |
+| SD | 3.92–5.78 | 3.71–5.35 | three coach scripts above the attendee range |
+| contractions / 100 w | **2.6–7.0** (mean 4.42) | 3.9–7.9 (5.9) | **5 of 9 below the attendee minimum: the attendee range is not a coach-voice reference** |
+| fragment share | **0.08–0.38** | max 0.33 | **the proposed share cap ≤ 0.33 fails W1 (0.38); needs recalibration** |
+| longest fragment run | max 3 | max 2 | D-l ≤ 3 holds |
+| pairwise overlap | **28.12%** raw (P3–E3) · 27.37% stripping "Shez" · **25.81%** stripping "Shez" + "four patterns" | 27.4% raw | **the ≤ ~27% cap passes only if the exemption covers the presenter's name AND the method device**, not just a product name |
+| 4-grams in 3+ scripts | 4: "then my brother shez", "one of four patterns", "two hours free and", "hours free and live" | 16 | **§2.2's literal "no 4-gram in more than two" fails the real benchmark**; the matches are the presenter name, the method device and the logistics tail |
+
+### 5.3 · Foundations — built and on the held branch (not pushed)
+
+| sprint | commit | gates re-run on the held branch |
+|---|---|---|
+| **0a** script dry run | `dbfe389` | tsc 34 · 8 suites / 497 tests · the dry-run block removed fails 2 of 5 pins |
+| **8** checker precision | `5c2d34e` + **`51bda65`** | tsc 34 · 16 files / 749 tests · disabling `DIGITAL_ASSET_RE` fails 4 of 63. **`51bda65` fixes a raw NUL byte sprint 8 put in complianceAxis.ts:778**, which made the file read as binary and blinded grep (runtime string identical) |
+| **1** coachFacts table + migration 0111 | `799bd84` | isolated commit. **0111 NOT applied anywhere:** no reachable local DB (Homebrew 3306 refused root; the 3307 scratch data dir is gone). The SQL is checked against the schema by a test only, which is weaker than an apply plus INFORMATION_SCHEMA read. **Production apply needs a go-ahead, and must land before any code that reads or writes the table deploys** |
+| **1b** `buildCoachFacts` | `41c817c` | tsc 34 · 16 files / 775 tests (coachFacts 21) · adding `painPoints` as coach-typed fails 2 of 21 (the negative control and the generated-sources test) |
+
+**Known consequences and findings:**
+- **Sprint 8 removed a wrong-reason catch.** "Your savings are sitting in a fixed deposit doing nothing" was blocked only as a clinical claim; it now passes. Only F5 (sprint 2) will catch it for the right reason.
+- **Sprint 8 did not widen** today's pre-existing misses. These already pass: "Can't afford the course?", "a criminal conviction", "spent convictions", "heal your gut in 30 days". Belief-sense "conviction" without "with" still blocks in live bonus-35 copy.
+- **Sprint 0a** confirmed that a thrown model error on the script loop is never retried and skips `recordComplianceGate`, as in the concept loop. `maxTokens: 2000` at conceptScriptGenerator.ts:156 is read by nothing (`llm.ts:428` sends 8192).
+- **`readLadderAnswers`** (groundingCorpus.ts:80-84) returns `{}` before its string branch can run, so a JSON-string `groundingMeta` yields no ladder answers to the live corpus. **Code-verified; live impact unverified** (it depends on whether the driver hands the column over as a string). Logged, not fixed.
+- **§15d:** `buildCoachFacts` has no caller until sprint 2. The `coachFacts` table has no writer until sprint 6 or an approved backfill. The script dry run's only caller is its harness until 0b.
+- **Every agent worktree was created at `67517e3`** (main), not the held branch; each agent caught it and reset. The worktrees were verified identical to their commits before removal.
