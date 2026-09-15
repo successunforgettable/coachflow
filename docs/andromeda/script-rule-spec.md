@@ -455,9 +455,46 @@ ads cannot tell they refer to the same thing. **A branded mechanism must have on
 variation exercise is what split it.**
 
 **The tests, both required:**
-1. No n-gram of 4+ tokens may appear in more than two scripts in a set.
+1. No n-gram of 4+ tokens may appear in more than two scripts in a set — **subject to the three exemptions below (amended
+   2026-09-16).**
 2. **Cross-script consistency of any named mechanism** — one canonical term, and no two scripts may
    assert incompatible superlatives about the same finite set.
+
+### ⚖️ AMENDMENT 2026-09-16 — exemptions to test 1 and to the pairwise-overlap cap (Arfeen)
+
+**Why.** Read literally, test 1 fails the accepted coach-voice benchmark (`worked-examples/final-shoot-2026-09-10/1-script-and-talent-brief.md`,
+the nine filmed coach-voice scripts). Four 4-grams appear in three or more of those scripts, and every one is repetition the set is
+*meant* to carry: the presenter's name ("then my brother Shez"), the method device ("one of four patterns"), and the shared
+logistics tail ("two hours free and live"). A rule that rejects the accepted benchmark is miscalibrated, not strict (§15c).
+
+**The three exemption categories — they apply to test 1 AND to the ZAP pairwise content-word overlap cap (≤ 27%):**
+
+| category | what is exempt | how it is removed before measuring |
+|---|---|---|
+| **presenter name** | the name of any person presenting or co-presenting (the coach, a co-host) | the exact name string is stripped as a whole phrase |
+| **method / mechanism name** | the one canonical name of the method or device (test 2 already requires it to repeat word for word) | the exact name string is stripped as a whole phrase — never token by token, because its words ("first", "client", "process") are ordinary words elsewhere |
+| **logistics tail** | the closing sentences that carry only event logistics and the call to action | **test 1 only:** 4-grams wholly inside the tail are not counted. The tail is the maximal run of FINAL sentences that each contain a logistics marker: a weekday, "hour(s)", "minute(s)", "free", "live", "link", "below", "underneath", "register", "seat", "session", "masterclass", "webinar", "Zoom" |
+
+**Parameters (§3.2 rule 7).**
+- 4-grams: tokens are `[a-z']+` on the lower-cased text, no stoplist, counted by presence per script.
+- Overlap: the §3.2 stoplist method, unchanged.
+- Names are supplied from the record (the kit's presenter and its selected mechanism), never inferred from the text.
+
+**Verified 2026-09-16, both directions:**
+
+| set | test | raw | with exemptions |
+|---|---|---|---|
+| **coach-voice nine — positive control, must pass** | 4-grams in 3+ scripts | 4 | **0** |
+| | max pairwise overlap | 28.12% (P3–E3), 1 of 36 pairs over 27% | **25.81%, 0 of 36 pairs over** |
+| | longest fragment run (cap ≤ 3) | 3 | 3 — passes |
+| **ZAP kit 225 — negative control, must still fail** | 4-grams in 3+ scripts | 29 | **23** — still fails |
+| | pairwise overlap | 14 of 28 pairs over 27% | **11 of 28 pairs over** — still fails |
+
+The exemptions remove only what the benchmark is designed to share. Kit 225's formula repetition ("first three outreach
+conversations", "former industry will actually pay", "the notes app stays closed") is none of the three, and is still caught.
+
+**Still true (§2.2 above):** Entity ID is assigned to meaning. Passing test 1 with these exemptions is a check for the human
+viewer, not proof of semantic diversity.
 
 ## 2.3 · Shortening a shared tail can delete the CTA
 
