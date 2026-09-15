@@ -326,6 +326,37 @@ const APPEARANCE_COMPARISON = [
 // §1.8 — the boundary is ENDORSEMENT of buying or selling. Education, events, news,
 // blockchain technology and non-currency products are permitted without permission.
 const CRYPTO_TERMS = ["crypto", "cryptocurrency", "bitcoin", "ethereum", "altcoin", "coin", "coins", "token", "tokens", "blockchain", "web3", "wallet"];
+
+/**
+ * "DIGITAL ASSET(S)" — added to the crypto topic (sprint 8, 2026-09-16). WIDENS coverage, so the
+ * word-sense protection is what keeps it safe: "digital asset management" is a software category,
+ * and coaches sell "digital assets" meaning templates, presets and brand files (addendum §6).
+ *
+ * An occurrence is NOT crypto when it is followed by management/manager/library, or when its
+ * sentence names a creative-file sense (templates, presets, logos, photos, DAM, …). Everything
+ * else reads as the crypto topic, which on its own still blocks nothing: the existing
+ * TRADE_ENDORSEMENT and CRYPTO_TRANSACTIONAL_RE conjunctions decide, so education passes.
+ */
+const DIGITAL_ASSET_RE = /\bdigital[\s-]+assets?\b/gi;
+const DIGITAL_ASSET_SOFTWARE_FOLLOWER_RE = /^\s+(?:management|managers?|library|libraries)\b/i;
+const DIGITAL_ASSET_CREATIVE_SENSE_RE =
+  /\b(?:templates?|presets?|logos?|photos?|photographs?|images?|graphics?|fonts?|icons?|illustrations?|mockups?|printables?|e-?books?|brands?|branding|dam|canva|lightroom|etsy|stock\s+(?:photos?|footage|images?))\b/i;
+function cryptoDigitalAssetMatch(text: string): string | undefined {
+  for (const sentence of splitSentences(text)) {
+    if (DIGITAL_ASSET_CREATIVE_SENSE_RE.test(sentence)) continue;
+    for (const m of Array.from(sentence.matchAll(new RegExp(DIGITAL_ASSET_RE.source, "gi")))) {
+      const rest = sentence.slice((m.index ?? 0) + m[0].length);
+      if (DIGITAL_ASSET_SOFTWARE_FOLLOWER_RE.test(rest)) continue;
+      return m[0];
+    }
+  }
+  return undefined;
+}
+/** The crypto TOPIC half of both crypto checks. CRYPTO_TERMS unchanged; digital assets join it. */
+function cryptoTopicMatch(text: string): string | undefined {
+  return containsAny(text.toLowerCase(), CRYPTO_TERMS) ?? cryptoDigitalAssetMatch(text);
+}
+
 const TRADE_ENDORSEMENT = [
   "buy now", "start buying", "start trading", "trade now", "invest now", "start investing",
   "buy the dip", "get in early", "get in now", "before the price", "moon", "pump",
@@ -435,11 +466,35 @@ function adjacentToReader(sentence: string, term: string): boolean {
     || new RegExp(`\\b${t}\\b[^.?!]{0,45}\\byou\\b`, "i").test(sentence);
 }
 
+/**
+ * WORD-SENSE GUARDS on individual list terms (sprint 8, 2026-09-16). Tighten-only (§15j): the
+ * term stays on the list and keeps every other reading; one occurrence is skipped only when it
+ * sits in the named non-attribute construction. Because the guard lives inside termRe, every
+ * consumer — containsAny, protectedAttributeMatch, adjacentToReader, the non-neutral test — agrees.
+ *
+ *   "can't afford to get this wrong" — the STAKES idiom, not the reader's finances. Closed verb
+ *     list; money complements ("to pay rent", "to lose your home", "rent", "it") still match.
+ *     Measured on capture 2 (concept[1].longText) and addendum §4.
+ *   "say it with conviction" — CERTAINTY, not a criminal record. Only "with" + an optional
+ *     intensifier; "with a conviction" (a determiner) and "your convictions" still match.
+ *     Measured on capture 2 (concept[9].shortText and longText).
+ */
+const AFFORD_IDIOM_GUARD =
+  "(?!\\s+to\\s+(?:wait|ignore|guess|delay|overlook|hesitate|postpone|procrastinate|get\\s+(?:this|it|that)\\s+wrong|make\\s+(?:a|another|the\\s+same)\\s+mistakes?)\\b)";
+const CONVICTION_CERTAINTY_GUARD =
+  "(?<!\\bwith\\s+(?:(?:real|actual|genuine|total|complete|full|absolute|quiet|calm|deep|great|clear|true|utter|such|more|renewed|fresh|new|steady|firm|strong)\\s+)?)";
+const TERM_SENSE_GUARDS: Record<string, { before?: string; after?: string }> = {
+  "can't afford": { after: AFFORD_IDIOM_GUARD },
+  "cannot afford": { after: AFFORD_IDIOM_GUARD },
+  "conviction": { before: CONVICTION_CERTAINTY_GUARD },
+};
+
 const TERM_RE_CACHE = new Map<string, RegExp>();
 function termRe(term: string): RegExp {
   let re = TERM_RE_CACHE.get(term);
   if (!re) {
-    re = new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:s|es|ed|d|ing)?\\b`, "i");
+    const guard = TERM_SENSE_GUARDS[term];
+    re = new RegExp(`${guard?.before ?? ""}\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:s|es|ed|d|ing)?\\b${guard?.after ?? ""}`, "i");
     TERM_RE_CACHE.set(term, re);
   }
   return re;
@@ -690,6 +745,59 @@ const FINANCIAL_SERVICE_ACTION_RE =
  */
 const CLINICAL_OUTCOME_VERB =
   /\b(?:reverse[sd]?|cure[sd]?|heal(?:s|ed)?|eliminate[sd]?|fix(?:es|ed)?|get\s+rid\s+of)\b/i;
+
+/**
+ * ADJACENCY for check 10 (sprint 8, 2026-09-16).
+ *
+ * 🔴 THE DEFECT. Check 10 fired when the verb appeared ANYWHERE in a field and a protected term
+ * appeared ANYWHERE in the same field, so the verdict depended on how the caller split text into
+ * fields: "Savings. Fixed deposits." blocked as one field and passed as two (addendum §6). Real
+ * copy blocked on the product name "Reverse-Map", "the fix" as a noun and "Fix:" as a label.
+ *
+ * THE RULE NOW. The condition must be the verb's object, or its subject in the same clause:
+ *   object  — within the next CLINICAL_OBJECT_WINDOW_WORDS words, before a clause boundary
+ *             ("fix your back pain for good", "this protocol cures anxiety");
+ *   subject — ending the clause right before the verb, across only auxiliaries and punctuation
+ *             ("Your diabetes can be reversed.", "Your eczema, healed.", "anxiety cured").
+ * A verb joined by a hyphen ("fixed-rate", "Reverse-Map") is a compound modifier, not a verb.
+ * The verb list, the condition vocabulary and the class are unchanged (§15j).
+ */
+const CLINICAL_OBJECT_WINDOW_WORDS = 6;
+const CLINICAL_FORWARD_CLAUSE_END_RE = /[.!?;:\n]|\s(?:but|so|because|while|although|though|whereas|unless|until|if|when)\s/i;
+const CLINICAL_SUBJECT_AUX_TAIL_RE =
+  /(?:[\s,—–-]|\b(?:is|are|was|were|be|been|being|gets?|got|can|could|will|would|should|may|might|finally|completely|fully|totally)\b)*$/i;
+const END_ANCHORED_CACHE = new Map<string, RegExp>();
+function protectedAttributeAtEnd(loweredTail: string): string | undefined {
+  const endRe = (key: string, source: string) => {
+    let re = END_ANCHORED_CACHE.get(key);
+    if (!re) { re = new RegExp(`(?:${source})$`, "i"); END_ANCHORED_CACHE.set(key, re); }
+    return re;
+  };
+  const term = PROTECTED_ATTRIBUTE_TERMS.find((t) => endRe(t, termRe(t).source).test(loweredTail));
+  if (term) return term;
+  return endRe(" health-condition", HEALTH_CONDITION_RE.source).exec(loweredTail)?.[0];
+}
+function clinicalOutcomeMatch(text: string): { verb: string; cond: string } | undefined {
+  for (const m of Array.from(text.matchAll(new RegExp(CLINICAL_OUTCOME_VERB.source, "gi")))) {
+    const start = m.index ?? 0;
+    const end = start + m[0].length;
+    if (text[end] === "-") continue;
+
+    const after = text.slice(end);
+    const cut = after.search(CLINICAL_FORWARD_CLAUSE_END_RE);
+    const objectWindow = (cut < 0 ? after : after.slice(0, cut)).trim().split(/\s+/).slice(0, CLINICAL_OBJECT_WINDOW_WORDS).join(" ");
+    const object = objectWindow ? protectedAttributeMatch(lower(objectWindow)) : undefined;
+    if (object) return { verb: m[0], cond: object };
+
+    const before = text.slice(0, start);
+    const lastBoundary = Math.max(...[".", "!", "?", ";", ":", "\n"].map((c) => before.lastIndexOf(c)));
+    const head = before.slice(lastBoundary + 1).slice(-120).replace(CLINICAL_SUBJECT_AUX_TAIL_RE, "");
+    const subjectTail = head.trim().split(/\s+/).slice(-4).join(" ");
+    const subject = subjectTail ? protectedAttributeAtEnd(lower(subjectTail)) : undefined;
+    if (subject) return { verb: m[0], cond: subject };
+  }
+  return undefined;
+}
 
 /**
  * SELF-PERCEPTION — self-directed disgust or shame, which §1.3 polices but the existing
@@ -950,7 +1058,7 @@ export function checkComplianceAxis(
     // ── Check 4 — §1.8. Permitted without prior permission: education, events, news,
     // blockchain technology, non-currency products. The line is ENDORSING buying or
     // selling. Fires only where the copy is about crypto AND endorses trading.
-    if (containsAny(hay, CRYPTO_TERMS)) {
+    if (cryptoTopicMatch(text)) {
       const endorse = containsAny(hay, TRADE_ENDORSEMENT);
       if (endorse) {
         push("crypto_trade_endorsement", 1,
@@ -1012,7 +1120,7 @@ export function checkComplianceAxis(
 
     // ── Check 8 — CRYPTO, widened. §1.8 + Cryptocurrency Permission Requirements.
     // Conjunctive with CRYPTO_TERMS, so the document's education/news safe harbour survives.
-    if (containsAny(hay, CRYPTO_TERMS) && CRYPTO_TRANSACTIONAL_RE.test(text)) {
+    if (cryptoTopicMatch(text) && CRYPTO_TRANSACTIONAL_RE.test(text)) {
       const m = text.match(CRYPTO_TRANSACTIONAL_RE);
       push("crypto_trade_endorsement", 1,
         "This directs someone toward buying, selling or timing a crypto asset, which needs Meta's prior written permission. How the technology works, industry news and events are permitted without it.",
@@ -1034,13 +1142,14 @@ export function checkComplianceAxis(
 
     // ── Check 10 — CLINICAL OUTCOME CLAIMS. Physical Health Signalling §2.2: compliance means
     // mechanism framing, not a promise to reverse or cure a named condition.
+    // Sprint 8: the condition must be the verb's object or subject in the same clause — see
+    // clinicalOutcomeMatch. Field-wide co-occurrence made the verdict depend on field splitting.
     if (CLINICAL_OUTCOME_VERB.test(text)) {
-      const cond = protectedAttributeMatch(hay);
-      if (cond) {
-        const v = text.match(CLINICAL_OUTCOME_VERB);
+      const clinical = clinicalOutcomeMatch(text);
+      if (clinical) {
         push("clinical_outcome_claim", 1,
           "This promises to resolve a named health condition. Describing what the protocol does — and what it supports — carries the same weight without claiming a clinical outcome.",
-          `${v?.[0] ?? ""} … ${cond}`.trim(), f.location);
+          `${clinical.verb} … ${clinical.cond}`.trim(), f.location);
       }
     }
 
