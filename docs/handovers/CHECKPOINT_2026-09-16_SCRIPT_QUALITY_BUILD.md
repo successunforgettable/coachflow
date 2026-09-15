@@ -222,7 +222,7 @@ Gates re-run on the held branch by the main session, not only by the building ag
 
 | command | loses |
 |---|---|
-| `git reset --hard origin/railway-build`, or a re-clone | **every held commit over production (25 at `870d262`): local only.** GitHub's held copy is `6d88070`, **38 commits behind** local at `870d262` (measured). This includes sprints 0a, 8, 1, 1b and 2 |
+| `git reset --hard origin/railway-build`, or a re-clone | **every held commit over production (25 at `870d262`): local only.** GitHub's held copy is `6d88070`, **39 commits behind** local at `870d262` (measured with `git rev-list --count origin/docs/held-2026-09-12..870d262`; a later commit on the held branch adds one each). `[CORRECTED: commit fd0839d wrote 38, a count taken at 7303b99 before 870d262 existed]` This includes sprints 0a, 8, 1, 1b and 2 |
 | `git clean -fd` | 322 untracked files |
 | deleting `personal/dab-stills` and the backup ref | `2562e64`, the stills: local only |
 | `DROP TABLE coachFacts` | nothing today (0 rows, no writer); coach facts once sprint 6 writes |
