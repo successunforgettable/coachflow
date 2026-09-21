@@ -1,4 +1,10 @@
-# 🟢 RESUME POINT — 2026-09-16: script-quality + grounding build, sprints 0a · 8 · 1 · 1b · 2 done; 0b next
+# 🗄️ SUPERSEDED — 2026-09-16
+> ## ⚠️ NOT THE ENTRY POINT. Superseded by `docs/handovers/CHECKPOINT_2026-09-22_F5_HOOK_AND_SPRINT4.md` (2026-09-22).
+> Retained for its decision record (D-a…D-n, the foundations table, Thread A). Its state figures are stale.
+> ⚠️ Its §5.3 next-steps are DONE or SUPERSEDED: sprint 0b ran (arm (b) closed), the F5 pension investigation
+> concluded in a label ruling, and the beat-labelling split shipped.
+
+# (original heading) RESUME POINT — 2026-09-16: script-quality + grounding build, sprints 0a · 8 · 1 · 1b · 2 done; 0b next
 
 **Supersedes `CHECKPOINT_2026-09-15_THREADS_A_B.md`**, which is retained and marked superseded. Written so a fresh terminal resumes from
 exactly this point with nothing lost.

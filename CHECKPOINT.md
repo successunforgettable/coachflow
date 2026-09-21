@@ -1,4 +1,29 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-16
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-22
+
+### supersedes the 2026-09-16 block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-22_F5_HOOK_AND_SPRINT4.md`**
+> It supersedes `CHECKPOINT_2026-09-16_SCRIPT_QUALITY_BUILD.md`. Every figure measured at write time:
+> git, GitHub, Railway, a read-only 59-table DB snapshot, and raw run JSON from tonight.
+
+| | |
+|---|---|
+| production code | **`87596d7`**, Railway SUCCESS. GitHub `railway-build` = `87596d7`. **Nothing pushed past it** |
+| held branch | **`60ec85f`**, **34 commits over production**, clean fast-forward. **NOT pushed.** Deploy on HOLD |
+| production DB | 59 tables, `coachFacts` 0 rows. **Zero writes** — snapshot identical either side of 168 generations |
+| locked 2026-09-22 | **D-i: arm (a); arm (b) CLOSED** (0% first-pass, 58% completion) · conditional clause LANDED (control 14/15 → 0/15, recall 45/45) · **F5 pension line ruled an accepted hook → `financialAmbiguous`** (reported, never gating) · hook steering KEPT, **`script_hook_too_long` demoted to LABEL-ONLY** (blocking cost 22/24 → 11/24) · beats off the checker (−30% output, −20% latency) |
+| 🔴 not deployed, live-relevant | **the scenes non-array crash fix `231e655`** — production loses ~8% of generations today. **Needs its own go-ahead to push** |
+| still open | **K9 event facts (untested, no fixture)** · **D-g F5 tier (undecided)** · repetition (40% upstream from a shared cascade context, 60% downstream incl. the "twelve years" fabrication propagating — **no gate built or approved**) · F2 FP drift 0-1 → 2 per 42 runs (seen twice, uninvestigated) · fragment detector not calibrated to D-l |
+| next step | **Sprint 4 step 2 (max-sentence ≤ 18, count-only retry) — NEXT AND HELD**, on step 1's hook-check convergence. Do NOT touch the per-scene "30–36 words" line: measured, it is not the cause |
+| gates | tsc **34** · **623 tests / 11 suites** · 5 mutation checks all fail-on-mutate · NUL clean · **0 production writes** · **0 pushes** |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.**
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-16, retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-22 RESTART BLOCK at the top of this file**.
 
 ### supersedes the 2026-09-15 (c) block below, which is retained and marked, not deleted
 
