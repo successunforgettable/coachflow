@@ -70,7 +70,7 @@ async function main() {
   const dcRuns = runs.filter((r) => r.score.dcPass !== null);
   const attempts = runs.flatMap((r) => r.result.attempts);
   const statuses = runs.reduce<Record<string, number>>((m, r) => ((m[r.result.status] = (m[r.result.status] ?? 0) + 1), m), {});
-  const errKeys = ["callErrors", "malformedResponses", "unverifiedClaimQuotes", "unverifiedFinancialQuotes", "unverifiedBeatQuotes", "responsesWithoutBeats", "total"] as const;
+  const errKeys = ["callErrors", "malformedResponses", "unverifiedClaimQuotes", "unverifiedFinancialQuotes", "unverifiedCopyRead", "total"] as const;
   const errs = Object.fromEntries(errKeys.map((k) => [k, runs.reduce((n, r) => n + r.result.extractionErrors[k], 0)]));
   const models = Array.from(new Set(runs.flatMap((r) => r.result.usage.models)));
   const conflictFp = all((s) => s.conflicts.falsePositives);

@@ -7,7 +7,7 @@
  *   sprint 3. Its only callers are its unit test and `server/scripts/grounding-checker-eval.ts`.
  *
  * SHAPE (proposal §2 F2, addendum §2–§5): one model call per checked asset reads all its text fields
- * together and returns three lists — speaker claims, viewer financial findings, beat labels. Nothing the
+ * together and returns two lists — speaker claims and viewer financial findings — plus an O(1) reading proof. Nothing the
  * model says is trusted as a verdict:
  *   - every quote must be a substring of the checked text (after normalising whitespace, quote marks and
  *     dashes), else it is an EXTRACTION ERROR, counted and reported;
@@ -67,6 +67,12 @@ export const FINANCIAL_ATTRIBUTES = [
 ] as const;
 export type FinancialAttribute = (typeof FINANCIAL_ATTRIBUTES)[number];
 
+/**
+ * The sentence-role vocabulary. Beat labelling left the synchronous call in the latency pass: it cost one verbatim
+ * re-emission of the whole asset (~a third of generated output) for labels NOTHING reads — their only intended
+ * consumer is D-m's set-level structural check, which is parked behind Thread A and is not a publish-time question.
+ * The vocabulary stays here for whatever computes beats off-path.
+ */
 export const BEAT_LABELS = ["hook", "problem", "reframe", "mechanism", "credential", "offer", "logistics", "cta"] as const;
 export type BeatLabel = (typeof BEAT_LABELS)[number];
 
@@ -124,7 +130,22 @@ export type SpeakerClaimFinding = {
 };
 
 export type ViewerFinancialFinding = { field: string; quote: string; attribute: FinancialAttribute };
-export type BeatFinding = { field: string; quote: string; beat: BeatLabel };
+/**
+ * §15k LIVENESS CONTROL. Beats used to serve this: "a response that read the copy labels at least one sentence."
+ * The right control at the wrong price — O(number of sentences). This is the same control at O(1): the model
+ * returns the FIRST and LAST sentence verbatim plus its sentence count, and the code checks the two quotes against
+ * the copy's own first and last sentence. A model that did not read to the end cannot produce the last one.
+ * SILENCE MUST FAIL, NEVER PASS: an unverified copyRead is `unverifiable`, never "no findings".
+ */
+export type CopyRead = {
+  sentenceCount: number;
+  firstSentence: string;
+  lastSentence: string;
+  /** Both quotes matched the copy's actual first and last sentence. The whole point of the control. */
+  verified: boolean;
+  /** The model's count against the code's. Recorded, never gating: sentence splitting legitimately differs. */
+  countMatches: boolean;
+};
 
 export type AttemptOutcome = "ok" | "call_error" | "malformed" | "unverifiable";
 
@@ -143,8 +164,7 @@ export type ExtractionErrorCounts = {
   malformedResponses: number;
   unverifiedClaimQuotes: number;
   unverifiedFinancialQuotes: number;
-  unverifiedBeatQuotes: number;
-  responsesWithoutBeats: number;
+  unverifiedCopyRead: number;
   total: number;
 };
 
@@ -161,7 +181,8 @@ export type GroundingCheckResult = {
   assetId: string | number | null;
   speakerClaims: SpeakerClaimFinding[];
   viewerFinancialFindings: ViewerFinancialFinding[];
-  beats: BeatFinding[];
+  /** §15k: null until a response verifies it. A `checked` result ALWAYS carries a verified one. */
+  copyRead: CopyRead | null;
   sentenceCount: number;
   counts: {
     byVerdict: Record<ClaimVerdict, number>;
@@ -175,7 +196,7 @@ export type GroundingCheckResult = {
   };
   extractionErrors: ExtractionErrorCounts;
   /** Model quotes that failed verification, for humans and logs. */
-  rejectedQuotes: Array<{ attempt: number; list: "speaker_claims" | "viewer_financial_findings" | "beats"; quote: string }>;
+  rejectedQuotes: Array<{ attempt: number; list: "speaker_claims" | "viewer_financial_findings" | "copy_read"; quote: string }>;
   attempts: AttemptRecord[];
   usage: { calls: number; inputTokens: number; outputTokens: number; latencyMs: number; models: string[] };
 };
@@ -431,7 +452,7 @@ export function judgeClaim(raw: RawClaim, field: string, coachFacts: CoachFactsR
  * A CHECKER prompt. §14's spirit applies: it describes the categories and carries no canned copy of any
  * kind — no sample sentences to reproduce.
  */
-export const GROUNDING_CHECKER_SYSTEM_PROMPT = `You read marketing copy written in a coach's voice and return three lists. Every quote you return is copied character for character from COPY: one sentence, or the clause of a sentence that carries the item.
+export const GROUNDING_CHECKER_SYSTEM_PROMPT = `You read marketing copy written in a coach's voice and return two lists and a reading proof. Every quote you return is copied character for character from COPY: one sentence, or the clause of a sentence that carries the item.
 
 LIST 1 · speaker_claims: every statement in which the speaker asserts something about their own life, history or practice, and every statement of what the viewer will get, see, learn or know from the offer.
 kind:
@@ -459,9 +480,9 @@ LIST 2 · viewer_financial_findings: every statement that asserts or implies the
 This list holds statements about the viewer's own finances only. Statements about people in general or a third-party group, the speaker's own money, conditionals that let the viewer decide whether they apply, figures of speech, and what the offer covers are outside it.
 attribute: income, pay, savings, money_location, investments, debts_credit, net_worth, business_revenue or spending.
 
-LIST 3 · beats: one entry for every sentence of COPY, in order, labelled with the job the sentence does: hook, problem, reframe, mechanism, credential, offer, logistics or cta.
+copy_read: proof you read all of COPY. sentence_count is how many sentences COPY holds. first_sentence is its opening sentence and last_sentence is its closing sentence, each copied character for character. When COPY holds one sentence, both are that sentence.
 
-Return an empty list for LIST 1 or LIST 2 when COPY holds nothing that belongs in it.`;
+Return an empty list for LIST 1 or LIST 2 when COPY holds nothing that belongs in it. Return copy_read every time.`;
 
 export const GROUNDING_CHECKER_SCHEMA = {
   type: "object",
@@ -492,17 +513,18 @@ export const GROUNDING_CHECKER_SCHEMA = {
         additionalProperties: false,
       },
     },
-    beats: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: { quote: { type: "string" }, beat: { type: "string", enum: [...BEAT_LABELS] } },
-        required: ["quote", "beat"],
-        additionalProperties: false,
+    copy_read: {
+      type: "object",
+      properties: {
+        sentence_count: { type: "number" },
+        first_sentence: { type: "string" },
+        last_sentence: { type: "string" },
       },
+      required: ["sentence_count", "first_sentence", "last_sentence"],
+      additionalProperties: false,
     },
   },
-  required: ["speaker_claims", "viewer_financial_findings", "beats"],
+  required: ["speaker_claims", "viewer_financial_findings", "copy_read"],
   additionalProperties: false,
 } as const;
 
@@ -519,6 +541,18 @@ export function buildUserMessage(asset: CheckedAsset, coachFacts: CoachFactsResu
   return `COACH FACTS (each numbered entry is one fact the coach supplied; the text after the label is the fact):\n${factLines}\n\nCOPY:\n${copy}`;
 }
 
+/**
+ * §15k: the model's sentence quote against the copy's own. Normalised on both sides (the same normaliser every
+ * other quote check uses) so punctuation and quote-mark drift never fails an honest read, and trailing terminal
+ * punctuation is ignored — a model may return "Link's below" for "Link's below.".
+ */
+export function sentenceEquals(modelQuote: string, copySentence: string): boolean {
+  const trim = (x: string) => normaliseForMatch(x).replace(/[.!?]+$/, "").trim();
+  const a = trim(modelQuote);
+  const b = trim(copySentence);
+  return a.length > 0 && b.length > 0 && a === b;
+}
+
 export function splitSentences(text: string): string[] {
   return String(text ?? "").split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => hasContent(normaliseForMatch(s)));
 }
@@ -526,7 +560,8 @@ export function splitSentences(text: string): string[] {
 const isStr = (v: unknown): v is string => typeof v === "string";
 const inSet = (set: readonly string[], v: unknown) => typeof v === "string" && set.includes(v);
 
-type Parsed = { claims: RawClaim[]; financial: Array<{ quote: string; attribute: FinancialAttribute }>; beats: Array<{ quote: string; beat: BeatLabel }> };
+type RawCopyRead = { sentence_count: number; first_sentence: string; last_sentence: string };
+type Parsed = { claims: RawClaim[]; financial: Array<{ quote: string; attribute: FinancialAttribute }>; copyRead: RawCopyRead };
 
 /** Shape validation. Any item out of shape makes the whole response malformed (A3). */
 export function parseExtraction(content: unknown): { ok: true; value: Parsed } | { ok: false; problems: string[] } {
@@ -538,11 +573,14 @@ export function parseExtraction(content: unknown): { ok: true; value: Parsed } |
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { ok: false, problems: ["response is not an object"] };
   const o = obj as Record<string, unknown>;
   const problems: string[] = [];
-  for (const k of ["speaker_claims", "viewer_financial_findings", "beats"]) if (!Array.isArray(o[k])) problems.push(`${k} is not an array`);
+  for (const k of ["speaker_claims", "viewer_financial_findings"]) if (!Array.isArray(o[k])) problems.push(`${k} is not an array`);
+  const cr = o.copy_read as any;
+  if (!cr || typeof cr !== "object" || typeof cr.sentence_count !== "number" || !isStr(cr.first_sentence) || !isStr(cr.last_sentence))
+    problems.push("copy_read is missing or out of shape");
   if (problems.length) return { ok: false, problems };
   const claims = o.speaker_claims as any[];
   const financial = o.viewer_financial_findings as any[];
-  const beats = o.beats as any[];
+
   claims.forEach((c, i) => {
     if (!c || typeof c !== "object" || !isStr(c.quote) || !inSet(SPEAKER_CLAIM_KINDS, c.kind) || !inSet(SPECIFICITY, c.specificity)
       || !inSet(CLAIM_SLOTS, c.slot) || !isStr(c.normalised_value) || !isStr(c.evidence)
@@ -551,11 +589,9 @@ export function parseExtraction(content: unknown): { ok: true; value: Parsed } |
   financial.forEach((f, i) => {
     if (!f || typeof f !== "object" || !isStr(f.quote) || !inSet(FINANCIAL_ATTRIBUTES, f.attribute)) problems.push(`viewer_financial_findings[${i}] out of shape`);
   });
-  beats.forEach((b, i) => {
-    if (!b || typeof b !== "object" || !isStr(b.quote) || !inSet(BEAT_LABELS, b.beat)) problems.push(`beats[${i}] out of shape`);
-  });
+
   if (problems.length) return { ok: false, problems };
-  return { ok: true, value: { claims, financial, beats } as Parsed };
+  return { ok: true, value: { claims, financial, copyRead: cr } as Parsed };
 }
 
 const emptyVerdictCounts = (): Record<ClaimVerdict, number> =>
@@ -574,9 +610,14 @@ export async function checkGrounding(
   const fields = (asset.fields ?? []).filter((f) => typeof f?.text === "string" && f.text.trim());
   const index: FieldIndex = fields.map((f) => ({ name: f.name, norm: normaliseForMatch(f.text) }));
   const sentenceCount = fields.reduce((n, f) => n + splitSentences(f.text).length, 0);
+  // §15k anchors: the opening sentence of the first field and the closing sentence of the last.
+  const firstFieldSentences = fields.length ? splitSentences(fields[0].text) : [];
+  const lastFieldSentences = fields.length ? splitSentences(fields[fields.length - 1].text) : [];
+  const firstSentenceOfCopy = firstFieldSentences[0] ?? "";
+  const lastSentenceOfCopy = lastFieldSentences[lastFieldSentences.length - 1] ?? "";
   const errors: ExtractionErrorCounts = {
     callErrors: 0, malformedResponses: 0, unverifiedClaimQuotes: 0, unverifiedFinancialQuotes: 0,
-    unverifiedBeatQuotes: 0, responsesWithoutBeats: 0, total: 0,
+    unverifiedCopyRead: 0, total: 0,
   };
   const result: GroundingCheckResult = {
     status: "empty_input",
@@ -585,7 +626,7 @@ export async function checkGrounding(
     assetId: asset.assetId ?? null,
     speakerClaims: [],
     viewerFinancialFindings: [],
-    beats: [],
+    copyRead: null,
     sentenceCount,
     counts: {
       byVerdict: emptyVerdictCounts(), specificBiographyUngrounded: 0, conflicts: 0, overstated: 0, notCheckable: 0,
@@ -646,7 +687,6 @@ export async function checkGrounding(
     // Verify every quote. Unverified quotes are extraction errors, never findings.
     const speakerClaims: SpeakerClaimFinding[] = [];
     const viewerFinancialFindings: ViewerFinancialFinding[] = [];
-    const beats: BeatFinding[] = [];
     let unverifiedHere = 0;
     for (const c of parsed.value.claims) {
       const field = verifyQuote(c.quote, index);
@@ -658,23 +698,29 @@ export async function checkGrounding(
       if (!field) { unverifiedHere++; errors.unverifiedFinancialQuotes++; result.rejectedQuotes.push({ attempt, list: "viewer_financial_findings", quote: f.quote }); continue; }
       viewerFinancialFindings.push({ field, quote: f.quote, attribute: f.attribute });
     }
-    for (const b of parsed.value.beats) {
-      const field = verifyQuote(b.quote, index);
-      if (!field) { errors.unverifiedBeatQuotes++; result.rejectedQuotes.push({ attempt, list: "beats", quote: b.quote }); continue; }
-      beats.push({ field, quote: b.quote, beat: b.beat });
-    }
+    // §15k: the O(1) reading proof, checked against the copy's OWN first and last sentence — not merely
+    // "found somewhere", which a model could satisfy by quoting the opening twice.
+    const cr = parsed.value.copyRead;
+    const copyRead: CopyRead = {
+      sentenceCount: cr.sentence_count,
+      firstSentence: cr.first_sentence,
+      lastSentence: cr.last_sentence,
+      verified: sentenceEquals(cr.first_sentence, firstSentenceOfCopy) && sentenceEquals(cr.last_sentence, lastSentenceOfCopy),
+      countMatches: cr.sentence_count === sentenceCount,
+    };
 
     // The last well-formed attempt's verified findings are what the result carries.
     result.speakerClaims = speakerClaims;
     result.viewerFinancialFindings = viewerFinancialFindings;
-    result.beats = beats;
+    result.copyRead = copyRead;
 
-    // §15k: a response that read the copy labels at least one sentence. No verified beat on non-empty copy
-    // is silence, and silence must not pass as "no findings".
-    if (beats.length === 0) {
-      errors.responsesWithoutBeats++;
+    // §15k: a response that read the copy can quote its first and last sentence. Without that proof, empty
+    // lists are silence, and silence must not pass as "no findings".
+    if (!copyRead.verified) {
+      errors.unverifiedCopyRead++;
       rec.outcome = "unverifiable";
-      rec.detail.push("no verified beat label for non-empty copy");
+      rec.detail.push("copy_read did not match the copy's first and last sentence");
+      result.rejectedQuotes.push({ attempt, list: "copy_read", quote: `${cr.first_sentence} … ${cr.last_sentence}`.slice(0, 200) });
       continue;
     }
     if (unverifiedHere > 0) {
@@ -687,7 +733,7 @@ export async function checkGrounding(
 
   result.status = clean ? "checked" : "extraction_failed";
   errors.total = errors.callErrors + errors.malformedResponses + errors.unverifiedClaimQuotes
-    + errors.unverifiedFinancialQuotes + errors.unverifiedBeatQuotes + errors.responsesWithoutBeats;
+    + errors.unverifiedFinancialQuotes + errors.unverifiedCopyRead;
   const counts = result.counts;
   for (const c of result.speakerClaims) {
     counts.byVerdict[c.verdict]++;

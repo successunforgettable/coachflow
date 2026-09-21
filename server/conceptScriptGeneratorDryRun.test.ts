@@ -64,6 +64,30 @@ describe("generateScriptForConcept dryRun — shares the production gate, skips 
     expect(fn.slice(attemptStart, attemptEnd)).toMatch(/catch \(err\) \{[\s\S]*observe\([\s\S]*throw err;/);
   });
 
+  // ── promptTransform (sprint 0b): a measurement seam that must be INERT in production ────────────
+  it("promptTransform is applied to the built prompt and nothing else; absent, the built prompt is used as-is", () => {
+    const build = fn.indexOf("const builtPrompt = buildConceptScriptPrompt(");
+    const apply = fn.indexOf("const prompt = params.promptTransform ? params.promptTransform(builtPrompt) : builtPrompt;");
+    expect(build).toBeGreaterThan(-1);
+    expect(apply).toBeGreaterThan(build);
+    // exactly one build site and one application site — no second prompt path
+    expect(src.match(/buildConceptScriptPrompt\(/g)?.length).toBe(2); // the definition and this one call
+    expect(fn.match(/params\.promptTransform/g)?.length).toBe(2);     // the ternary's test and its call
+  });
+
+  it("promptTransform touches ONLY the prompt: the gate, the attempt budget and the write are downstream of it", () => {
+    const apply = fn.indexOf("params.promptTransform ? params.promptTransform(builtPrompt)");
+    const gate = fn.indexOf("const gate = (");
+    const budget = fn.indexOf("const MAX_ATTEMPTS = 3");
+    const insert = fn.indexOf("db.insert(conceptScripts)");
+    for (const i of [apply, gate, budget, insert]) expect(i).toBeGreaterThan(-1);
+    expect(gate).toBeGreaterThan(apply);
+    expect(budget).toBeGreaterThan(apply);
+    expect(insert).toBeGreaterThan(apply);
+    // it is never consulted again after the prompt is built
+    expect(fn.slice(gate).includes("promptTransform")).toBe(false);
+  });
+
   it("the default path is unchanged: same budget and loop, and the batch path never reaches the dry run", () => {
     expect(fn).toContain("const MAX_ATTEMPTS = 3;");
     expect(fn).toContain("for (let attempt = 2; attempt <= MAX_ATTEMPTS && !result.ok; attempt++)");

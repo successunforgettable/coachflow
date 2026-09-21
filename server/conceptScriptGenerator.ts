@@ -183,6 +183,14 @@ export async function generateScriptForConcept(params: {
    * so production behaviour is unchanged. It observes; it never alters a verdict or the control flow.
    */
   onGate?: (record: ScriptGateRecord) => void;
+  /**
+   * SPRINT 0b MEASUREMENT ONLY — receives the prompt this function just built and returns the one to send.
+   * Absent (production, always), the prompt is used exactly as built and this function is byte-for-byte what it was.
+   * A TRANSFORM rather than a replacement string on purpose: an arm derived FROM production's own prompt cannot
+   * drift away from it, and the cascade context and craft blocks never have to be rebuilt outside this file.
+   * The gate, the retries, the attempt budget and the validators are untouched. Only caller: the 0b harness (§15d).
+   */
+  promptTransform?: (prompt: string) => string;
 }): Promise<number | ScriptDryRunResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -221,7 +229,8 @@ export async function generateScriptForConcept(params: {
     hasRealClientMaterial = !!(svc && (svc.t1 || svc.t2 || svc.t3));
   }
 
-  const prompt = buildConceptScriptPrompt(concept as ScriptConceptInput, cascadeContext, targetSeconds, hasRealClientMaterial);
+  const builtPrompt = buildConceptScriptPrompt(concept as ScriptConceptInput, cascadeContext, targetSeconds, hasRealClientMaterial);
+  const prompt = params.promptTransform ? params.promptTransform(builtPrompt) : builtPrompt;
 
   // ONE SHARED PASS — structure + policy + compliance axis + fabrication in a single gate,
   // so one retry satisfies all of them. onScreenText is checked as a SHORT field: it is
@@ -375,6 +384,8 @@ type ScriptGenerationParams = {
   conceptId: number;
   scriptSetId?: string;
   onGate?: (record: ScriptGateRecord) => void;
+  /** See the implementation signature: sprint-0b measurement only, absent in production. */
+  promptTransform?: (prompt: string) => string;
 };
 
 /** The gate's three sub-verdicts for one attempt, copied from the objects `gate` built (see `onGate`). */
