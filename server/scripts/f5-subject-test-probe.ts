@@ -24,7 +24,8 @@ const OUT = arg("out", join(tmpdir(), "f5-subject-test-probe"));
 const CONCURRENCY = 4;
 
 // ── The two arms, derived so they differ by exactly the inserted clause ────────────────────────────
-const CLAUSE_START = "SUBJECT TEST, applied first:";
+/** The candidate clause's opening marker. Arm "before" is the live prompt with every line starting with it removed. */
+const CLAUSE_START = arg("clause", "SPECIFIC STATE, NOT CATEGORY:");
 const AFTER = GROUNDING_CHECKER_SYSTEM_PROMPT;
 const clauseLine = AFTER.split("\n").find((l) => l.startsWith(CLAUSE_START));
 if (!clauseLine) throw new Error("the SUBJECT TEST clause is not in the live prompt; nothing to A/B");
