@@ -63,7 +63,13 @@ export function validateScriptStructure(
   opts: { hookPattern: string; targetSeconds: number },
 ): ScriptResult {
   const hits: ScriptHit[] = [];
-  const scenes = script.scenes ?? [];
+  // `?? []` guards null/undefined only. The model can return `scenes` as an OBJECT, a STRING or a NUMBER —
+  // `json_schema` is steering on the Anthropic tool-use path, never enforcement (§15i) — and a wrong TYPE sailed
+  // straight through into `.forEach`, killing the whole generation with "scenes.forEach is not a function".
+  // Measured live in the sprint-0b run: 2 of 24 arm-(a) cells. A non-array now reads as no scenes, which the very
+  // next check turns into `script_too_few_scenes` — a normal gate failure that RETRIES, instead of a crash that
+  // escapes the attempt loop and skips recordComplianceGate.
+  const scenes = Array.isArray(script.scenes) ? script.scenes : [];
 
   if (scenes.length < MIN_SCENES) {
     hits.push({ classId: "script_too_few_scenes", description: `only ${scenes.length} scene(s); need ≥${MIN_SCENES}`, location: "scenes" });
@@ -104,7 +110,9 @@ export function validateScriptStructure(
 }
 
 // ─── Compliance screen — same complianceFilter path the concept generator uses ───────────────────
-export function screenScriptCompliance(scenes: RawScriptScene[]): ScriptResult {
+export function screenScriptCompliance(scenesIn: RawScriptScene[]): ScriptResult {
+  // Same free guard as validateScriptStructure: a wrong type reads as no scenes, never as a crash (§15j).
+  const scenes = Array.isArray(scenesIn) ? scenesIn : [];
   const hits: ScriptHit[] = [];
   scenes.forEach((sc, i) => {
     for (const field of ["spokenLine", "onScreenText"] as const) {

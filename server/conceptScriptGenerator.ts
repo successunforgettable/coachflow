@@ -240,10 +240,12 @@ export async function generateScriptForConcept(params: {
     : undefined;
 
   const gate = (s: RawScript): { ok: boolean; failContext: string; labels: string } => {
+    // One normalisation for all three axes: a non-array `scenes` is no scenes, never a throw (see the validator).
+    const sceneList: any[] = Array.isArray(s.scenes) ? s.scenes : [];
     const structure = validateScriptStructure(s, { hookPattern: concept.hookPattern, targetSeconds });
-    const compliance = screenScriptCompliance(s.scenes ?? []);
+    const compliance = screenScriptCompliance(sceneList);
     const output = checkOutput(
-      (s.scenes ?? []).flatMap((sc: any, i: number) => [
+      sceneList.flatMap((sc: any, i: number) => [
         { location: `scene[${i}].spokenLine`, text: sc.spokenLine, role: "body" as const },
         { location: `scene[${i}].onScreenText`, text: sc.onScreenText, role: "short" as const },
       ]),
@@ -298,7 +300,7 @@ export async function generateScriptForConcept(params: {
   }
   if (!result.ok) throw new Error(`Script failed validation after ${MAX_ATTEMPTS} attempts: ${result.labels}`);
 
-  const scenes = (script.scenes ?? []) as RawScriptScene[];
+  const scenes = (Array.isArray(script.scenes) ? script.scenes : []) as RawScriptScene[];
   const teleprompter = scenes.map((s) => s.spokenLine).filter(Boolean).join("\n\n");
   const scriptSetId = params.scriptSetId ?? randomUUID();
 
