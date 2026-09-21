@@ -477,6 +477,7 @@ certainty_markers: the words in the quote that make the claim absolute, such as 
 This list is about the speaker and the offer. Statements about the viewer, about other people or groups, and descriptions of what the method or offer is are outside it.
 
 LIST 2 · viewer_financial_findings: every statement that asserts or implies the advertiser knows the viewer's own financial situation: their income, pay, savings, where their money is kept, their investments, debts or credit, net worth, business revenue or spending. Statements addressed to the viewer count, whether direct or indirect, and so do questions that presume the answer.
+SPECIFIC STATE, NOT CATEGORY: a finding names something about this viewer's money that could be true of one person in the audience and false of another — an amount, a balance, where the money sits, how it has moved or failed to move, a debt, a shortfall, a way of handling it. Taking for granted only the broad condition that puts someone in this audience at all — that they work, earn, are paid, have savings, hold a pension or run a business — is not a finding, whether or not the words for money are there.
 This list holds statements about the viewer's own finances only. Statements about people in general or a third-party group, the speaker's own money, conditionals that let the viewer decide whether they apply, figures of speech, and what the offer covers are outside it.
 attribute: income, pay, savings, money_location, investments, debts_credit, net_worth, business_revenue or spending.
 
