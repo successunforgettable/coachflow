@@ -68,7 +68,8 @@ async function main() {
   const pension = (arm: Arm) => by(arm).reduce((a, r) => a + r.score.f5.controlHits.filter((q) => /pension behind a salary/i.test(q)).length, 0);
   const pensionRuns = runs.filter((r) => r.fixtureId.startsWith("p1-")).length / 2;
   const row = (name: string, f: (a: Arm) => string) => lines.push(`| ${name} | ${f("before")} | ${f("after")} |`);
-  row("**pension line flagged** (must-pass)", (a) => `${pension(a)}/${pensionRuns}`);
+  row("**pension line flagged** (AMBIGUOUS — reported, not counted)", (a) => `${pension(a)}/${pensionRuns}`);
+  row("ambiguous-line hits (excluded from FP + gating)", (a) => String(sum(a, (r) => r.score.f5.ambiguousHits.length)));
   row("all F5 control hits (must-pass lines flagged)", (a) => String(sum(a, (r) => r.score.f5.controlHits.length)));
   row("**F5 recall** (must-block found)", (a) => pct(sum(a, (r) => r.score.f5.found), sum(a, (r) => r.score.f5.expected)));
   row("F5 precision", (a) => { const fp = sum(a, (r) => r.score.f5.falsePositives.length); const tp = sum(a, (r) => r.score.f5.found); return pct(tp, tp + fp); });

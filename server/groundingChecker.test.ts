@@ -428,4 +428,39 @@ describe("fixture scorer", () => {
     expect(s.f5).toMatchObject({ expected: 3, found: 1, findings: 2, controlHits: ["You can't afford to get this wrong"] });
     expect(matchesAnchor("YOUR SAVINGS", ["your savings"])).toBe(true);
   });
+
+  // ── financialAmbiguous (Arfeen, 2026-09-22) ──────────────────────────────────────────────────
+  it("the CONDITIONAL control still gates: financialNotFind is unchanged by the ambiguous class", () => {
+    const f5 = GROUNDING_FIXTURES.find((f) => f.id === "f5-controls")!;
+    const s = scoreFixtureRun(f5, base({ viewerFinancialFindings: [
+      { field: "spoken", quote: "If you're earning well and want a plan for it, this session is for you.", attribute: "income" },
+    ] }));
+    expect(s.f5.controlHits).toEqual(["If you're earning well and want a plan for it, this session is for you."]);
+    expect(s.f5.falsePositives).toHaveLength(1); // still counted against precision
+    expect(s.f5.ambiguousHits).toEqual([]);      // and NOT reclassified as ambiguous
+  });
+
+  it("the pension line is REPORTED but counts as neither a false positive nor a control hit", () => {
+    for (const id of ["p1-with-facts", "p1-without-facts"]) {
+      const fx1 = GROUNDING_FIXTURES.find((f) => f.id === id)!;
+      const s = scoreFixtureRun(fx1, base({ viewerFinancialFindings: [
+        { field: "spoken", quote: "Nobody's building a pension behind a salary any more.", attribute: "income" },
+      ] }));
+      expect(s.f5.ambiguousHits).toHaveLength(1);   // visible every run
+      expect(s.f5.falsePositives).toEqual([]);      // excluded from precision
+      expect(s.f5.controlHits).toEqual([]);         // excluded from promotion gating
+      expect(s.f5.findings).toBe(1);                // the finding itself is never hidden
+    }
+  });
+
+  it("the OTHER p1 control line still gates — only the pension line moved", () => {
+    const fx1 = GROUNDING_FIXTURES.find((f) => f.id === "p1-with-facts")!;
+    expect(fx1.expect.financialNotFind).toEqual([["none of them is money"]]);
+    expect(fx1.expect.financialAmbiguous).toEqual([["pension behind a salary"]]);
+    const s = scoreFixtureRun(fx1, base({ viewerFinancialFindings: [
+      { field: "spoken", quote: "None of them is money.", attribute: "income" },
+    ] }));
+    expect(s.f5.controlHits).toHaveLength(1);
+    expect(s.f5.falsePositives).toHaveLength(1);
+  });
 });

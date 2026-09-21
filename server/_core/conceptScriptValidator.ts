@@ -45,7 +45,13 @@ export interface ScriptHit {
   location: string;
 }
 
-export type ScriptResult = { ok: true } | { ok: false; hits: ScriptHit[]; failContext: string };
+/**
+ * `labels` are OBSERVED, never blocking: they are recorded on a pass and on a fail alike and change no verdict.
+ * A class lives here until measurement shows the attempt budget can absorb it (label-only before blocking).
+ */
+export type ScriptResult =
+  | { ok: true; labels: ScriptHit[] }
+  | { ok: false; hits: ScriptHit[]; failContext: string; labels: ScriptHit[] };
 
 const MIN_SCENES = 3;
 
@@ -67,10 +73,10 @@ export function firstSentenceOf(line: string | undefined): string {
   return (m ? m[0] : t).trim();
 }
 
-function build(hits: ScriptHit[], tail: string): ScriptResult {
-  if (hits.length === 0) return { ok: true };
+function build(hits: ScriptHit[], tail: string, labels: ScriptHit[] = []): ScriptResult {
+  if (hits.length === 0) return { ok: true, labels };
   const lines = hits.slice(0, 8).map((h) => `- ${h.location}: ${h.description}`);
-  return { ok: false, hits, failContext: `Your previous script failed validation and must be regenerated:\n${lines.join("\n")}\n\n${tail}` };
+  return { ok: false, hits, failContext: `Your previous script failed validation and must be regenerated:\n${lines.join("\n")}\n\n${tail}`, labels };
 }
 
 export function validateScriptStructure(
@@ -78,6 +84,8 @@ export function validateScriptStructure(
   opts: { hookPattern: string; targetSeconds: number },
 ): ScriptResult {
   const hits: ScriptHit[] = [];
+  /** Observed, never blocking. See ScriptResult. */
+  const labels: ScriptHit[] = [];
   // `?? []` guards null/undefined only. The model can return `scenes` as an OBJECT, a STRING or a NUMBER —
   // `json_schema` is steering on the Anthropic tool-use path, never enforcement (§15i) — and a wrong TYPE sailed
   // straight through into `.forEach`, killing the whole generation with "scenes.forEach is not a function".
@@ -97,11 +105,15 @@ export function validateScriptStructure(
   });
 
   // THE HOOK — the first sentence of scene 1, not the whole scene.
+  // 🟡 LABEL-ONLY (Arfeen, 2026-09-22). As a BLOCKING check it produced the right copy and far too little of
+  // it: hook ≤ 10 went 18% → 100%, and generations completing within the 3-attempt budget went 22/24 → 11/24.
+  // It is recorded on every attempt and blocks nothing. Promotion to blocking waits on the steering converging
+  // — the measure to watch is how often it fires on the FIRST attempt (19/24 when last measured blocking).
   if (scenes.length > 0) {
     const hook = firstSentenceOf(scenes[0].spokenLine);
     const hookWords = countWords(hook);
     if (hookWords > HOOK_MAX_WORDS) {
-      hits.push({
+      labels.push({
         classId: "script_hook_too_long",
         // A count, never the sentence itself: a retry note never shows the model its own flagged text
         // (the 2026-09-16 quoting ruling).
@@ -136,6 +148,7 @@ export function validateScriptStructure(
   return build(
     hits,
     `Regenerate the full script so: there are ≥${MIN_SCENES} scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the opening SENTENCE of scene 1 is ${HOOK_MAX_WORDS} words or fewer, with the rest of scene 1 carrying on in its own sentences after it; the top-level hookPattern is exactly "${opts.hookPattern}"; and total spoken words fit a ${opts.targetSeconds}-second read (~${budget.target} words, hard max ${budget.max}). Keep it tight — this length runs clean across Reels, Stories and Feed.`,
+    labels,
   );
 }
 

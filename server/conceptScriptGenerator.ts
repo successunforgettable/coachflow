@@ -285,6 +285,9 @@ export async function generateScriptForConcept(params: {
       structureLabels: structure.ok ? [] : structure.hits.map((h) => h.classId),
       complianceLabels: compliance.ok ? [] : compliance.hits.map((h) => h.classId),
       outputLabels: output.blocking.map((h) => h.classId),
+      // Observed, never blocking — recorded on a pass and a fail alike so a label-only class can be
+      // measured before anyone argues about promoting it.
+      observedLabels: structure.labels.map((h) => h.classId),
     };
     if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
     const parts = [
@@ -398,6 +401,8 @@ export type ScriptGateAxes = {
   structureLabels: string[];
   complianceLabels: string[];
   outputLabels: string[];
+  /** Non-blocking observations (label-only classes). Present on a PASS as well as a fail. */
+  observedLabels: string[];
 };
 
 /** One observed gate verdict or generation error (see `onGate` on generateScriptForConcept). */

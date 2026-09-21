@@ -35,6 +35,16 @@ export type GroundingFixtureExpectations = {
   financialFind: AnchorSet[];
   /** Explicit F5 controls: any finding on these lines is a false positive, reported by name. */
   financialNotFind: AnchorSet[];
+  /**
+   * F5 lines RULED ambiguous by Arfeen (2026-09-22), not by the checker's behaviour: a personal-voice hook
+   * that reads as a finance claim to every rule tried against it. Findings on these lines are REPORTED every
+   * run, and counted as neither a false positive nor a promotion blocker.
+   *
+   * §15-PARENT: this exists so the flag stays VISIBLE. Deleting the line from `financialNotFind` instead would
+   * have stopped the scorer reporting it while the checker went on flagging it in production — the failure
+   * moved out of sight rather than out of the product.
+   */
+  financialAmbiguous: AnchorSet[];
   /** D-c control: zero flagged specific biography AND at least this many `not_checkable` claims (§15k). */
   dcControl: { minNotCheckable: number } | null;
 };
@@ -50,7 +60,7 @@ export type GroundingFixture = {
 
 const NONE: GroundingFixtureExpectations = {
   flagBiography: [], groundBiography: [], conflicts: [], overstated: [], groundedNotOverstated: [],
-  financialFind: [], financialNotFind: [], dcControl: null,
+  financialFind: [], financialNotFind: [], financialAmbiguous: [], dcControl: null,
 };
 
 const script = (id: string, text: string): CheckedAsset => ({ assetType: "script", assetId: id, fields: [{ name: "spoken", text }] });
@@ -218,7 +228,8 @@ export const GROUNDING_FIXTURES: GroundingFixture[] = [
     expect: {
       ...NONE,
       groundBiography: [["twenty-five years"], ["shez"]],
-      financialNotFind: [["pension behind a salary"], ["none of them is money"]],
+      financialNotFind: [["none of them is money"]],
+      financialAmbiguous: [["pension behind a salary"]],
     },
   },
   {
@@ -230,7 +241,8 @@ export const GROUNDING_FIXTURES: GroundingFixture[] = [
     expect: {
       ...NONE,
       flagBiography: [["twenty-five years"], ["shez"]],
-      financialNotFind: [["pension behind a salary"], ["none of them is money"]],
+      financialNotFind: [["none of them is money"]],
+      financialAmbiguous: [["pension behind a salary"]],
     },
   },
   {
@@ -288,7 +300,7 @@ export type FixtureRunScore = {
   conflicts: ItemScore & { falsePositives: string[] };
   overstated: ItemScore & { falsePositives: string[] };
   groundedNotOverstated: ItemScore;
-  f5: ItemScore & { findings: number; falsePositives: string[]; controlHits: string[] };
+  f5: ItemScore & { findings: number; falsePositives: string[]; controlHits: string[]; ambiguousHits: string[] };
   notCheckable: number;
   dcPass: boolean | null;
 };
@@ -335,8 +347,13 @@ export function scoreFixtureRun(fx: GroundingFixture, r: GroundingCheckResult): 
     f5: {
       ...items(e.financialFind, (s) => fins.some((f) => matchesAnchor(f.quote, s)), usable),
       findings: fins.length,
-      falsePositives: fins.filter((f) => !e.financialFind.some((s) => matchesAnchor(f.quote, s))).map((f) => f.quote),
+      // An ambiguous line is neither a hit nor a miss: excluded from falsePositives, and reported on its own below.
+      falsePositives: fins
+        .filter((f) => !e.financialFind.some((s) => matchesAnchor(f.quote, s)))
+        .filter((f) => !e.financialAmbiguous.some((s) => matchesAnchor(f.quote, s)))
+        .map((f) => f.quote),
       controlHits: fins.filter((f) => e.financialNotFind.some((s) => matchesAnchor(f.quote, s))).map((f) => f.quote),
+      ambiguousHits: fins.filter((f) => e.financialAmbiguous.some((s) => matchesAnchor(f.quote, s))).map((f) => f.quote),
     },
     notCheckable,
     dcPass: e.dcControl ? usable && flagged.length === 0 && notCheckable >= e.dcControl.minNotCheckable : null,

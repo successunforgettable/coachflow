@@ -23,46 +23,61 @@ describe("the hook is the FIRST SENTENCE of scene 1, 10 words or fewer", () => {
     scenes: [{ sceneNumber: 1, sceneType: "hook", spokenLine: line, onScreenText: "X", deliveryNote: "d" },
       ...(okScript().scenes ?? []).slice(1)],
   });
-  const hookHit = (r: ReturnType<typeof validateScriptStructure>) =>
-    r.ok ? undefined : r.hits.find((h) => h.classId === "script_hook_too_long");
+  // LABEL-ONLY (Arfeen 2026-09-22): recorded on `labels`, present whether the script passes or fails,
+  // and never in `hits`, so it changes no verdict.
+  const hookLabel = (r: ReturnType<typeof validateScriptStructure>) =>
+    r.labels.find((h) => h.classId === "script_hook_too_long");
+  const blockedForHook = (r: ReturnType<typeof validateScriptStructure>) =>
+    !r.ok && r.hits.some((h) => h.classId === "script_hook_too_long");
 
   it("counts the FIRST SENTENCE, not the whole scene: a long scene with a short opener passes", () => {
     // 8-word opener, then 30 more words in the same scene — the shape the prompt actually asks for
     const r = validateScriptStructure(
       withHook("The Sunday dread arrives before Monday even does. You are good at the job and that is exactly why the thought of leaving it feels completely insane to you."),
       { hookPattern: "problem_first", targetSeconds: 30 });
-    expect(hookHit(r)).toBeUndefined();
+    expect(hookLabel(r)).toBeUndefined();
   });
 
-  it("an 11-word opening sentence fails — this is the boundary", () => {
+  it("an 11-word opening sentence is LABELLED and does NOT block — this is the boundary", () => {
     const r = validateScriptStructure(
       withHook("Every Sunday at 6pm the dread arrives before Monday even does."),
       { hookPattern: "problem_first", targetSeconds: 30 });
-    expect(hookHit(r)?.description).toContain("11 words");
+    expect(hookLabel(r)?.description).toContain("11 words");
+    expect(blockedForHook(r)).toBe(false);
+    expect(r.ok).toBe(true); // the verdict is unchanged by the label
   });
 
-  it("exactly 10 words passes", () => {
+  it("exactly 10 words is not labelled", () => {
     const r = validateScriptStructure(
       withHook("Every Sunday the dread arrives well before Monday even does."),
       { hookPattern: "problem_first", targetSeconds: 30 });
-    expect(hookHit(r)).toBeUndefined();
+    expect(hookLabel(r)).toBeUndefined();
   });
 
-  it("the retry note carries the COUNT and never the sentence (2026-09-16 quoting ruling)", () => {
+  it("the label carries the COUNT and never the sentence (2026-09-16 quoting ruling)", () => {
     const line = "Every Sunday at 6pm the dread arrives before Monday even does.";
     const r = validateScriptStructure(withHook(line), { hookPattern: "problem_first", targetSeconds: 30 });
+    const l = hookLabel(r)!;
+    expect(l.description).toContain("11 words");
+    expect(l.description).not.toContain("the dread arrives");
+    expect(l.description).not.toContain(line);
+  });
+
+  it("labels are recorded on a FAILING script too, not only a passing one", () => {
+    const r = validateScriptStructure(
+      { hookPattern: "wrong_pattern", scenes: [{ sceneNumber: 1, sceneType: "hook", spokenLine: "Every Sunday at 6pm the dread arrives before Monday even does.", onScreenText: "X", deliveryNote: "d" }] } as any,
+      { hookPattern: "problem_first", targetSeconds: 30 });
     expect(r.ok).toBe(false);
+    expect(hookLabel(r)?.description).toContain("11 words");
     if (r.ok) return;
-    expect(r.failContext).toContain("11 words");
-    expect(r.failContext).not.toContain("the dread arrives");
-    expect(r.failContext).not.toContain(line);
+    expect(r.hits.some((h) => h.classId === "script_hook_too_long")).toBe(false);
   });
 
   it("a scene 1 with no terminal punctuation is read whole", () => {
     const r = validateScriptStructure(
       withHook("one two three four five six seven eight nine ten eleven twelve"),
       { hookPattern: "problem_first", targetSeconds: 30 });
-    expect(hookHit(r)?.description).toContain("12 words");
+    expect(hookLabel(r)?.description).toContain("12 words");
   });
 });
 
