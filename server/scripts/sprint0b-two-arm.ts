@@ -74,7 +74,9 @@ async function main() {
   if (!process.env.ANTHROPIC_API_KEY) { console.error("ANTHROPIC_API_KEY is not set; nothing was run."); process.exit(2); }
   mkdirSync(OUT, { recursive: true });
   const jobs: Array<{ arm: Arm; conceptId: number; run: number }> = [];
-  for (const arm of ["a", "b"] as Arm[]) for (const c of CONCEPTS) for (let run = 0; run < RUNS; run++) jobs.push({ arm, conceptId: c, run });
+  // D-i is locked on arm (a); `--arms a` is how every measurement after sprint 0b runs.
+  const ARMS = arg("arms", "a,b").split(",").map((x) => x.trim()).filter(Boolean) as Arm[];
+  for (const arm of ARMS) for (const c of CONCEPTS) for (let run = 0; run < RUNS; run++) jobs.push({ arm, conceptId: c, run });
   const cells: Cell[] = [];
   let next = 0;
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {

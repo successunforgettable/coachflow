@@ -33,6 +33,7 @@ export type ScriptStructureClass =
   | "script_too_few_scenes"
   | "script_missing_spoken_line"
   | "script_opening_not_hook"
+  | "script_hook_too_long"
   | "script_hook_pattern_mismatch"
   | "script_length_over_budget"
   | "script_compliance_reject"
@@ -50,6 +51,20 @@ const MIN_SCENES = 3;
 
 function countWords(s: string | undefined): number {
   return (s ?? "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * The hook is the FIRST SENTENCE of scene 1 — not the whole scene. The prompt used to say "the opening,
+ * under ~10 words" while sizing scene 1 at 30-36 words, and the bigger number won: measured over 22 generated
+ * scripts the opening sentence ran a mean of 21.0 words against the coach-voice benchmark's 8.6, with 4 of 22
+ * inside 10. Both halves of that contradiction are fixed together — the wording, and this check.
+ */
+export const HOOK_MAX_WORDS = 10;
+export function firstSentenceOf(line: string | undefined): string {
+  const t = String(line ?? "").trim();
+  if (!t) return "";
+  const m = t.match(/^[\s\S]*?[.!?](?=\s|$)/);
+  return (m ? m[0] : t).trim();
 }
 
 function build(hits: ScriptHit[], tail: string): ScriptResult {
@@ -81,6 +96,21 @@ export function validateScriptStructure(
     }
   });
 
+  // THE HOOK — the first sentence of scene 1, not the whole scene.
+  if (scenes.length > 0) {
+    const hook = firstSentenceOf(scenes[0].spokenLine);
+    const hookWords = countWords(hook);
+    if (hookWords > HOOK_MAX_WORDS) {
+      hits.push({
+        classId: "script_hook_too_long",
+        // A count, never the sentence itself: a retry note never shows the model its own flagged text
+        // (the 2026-09-16 quoting ruling).
+        description: `the opening sentence runs ${hookWords} words; the hook is ${HOOK_MAX_WORDS} or fewer`,
+        location: "scene[0].spokenLine",
+      });
+    }
+  }
+
   if (scenes.length > 0 && (scenes[0].sceneType ?? "").toLowerCase() !== "hook") {
     hits.push({ classId: "script_opening_not_hook", description: `opening scene is "${scenes[0].sceneType ?? ""}", must be "hook"`, location: "scene[0]" });
   }
@@ -105,7 +135,7 @@ export function validateScriptStructure(
 
   return build(
     hits,
-    `Regenerate the full script so: there are ≥${MIN_SCENES} scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly "${opts.hookPattern}"; and total spoken words fit a ${opts.targetSeconds}-second read (~${budget.target} words, hard max ${budget.max}). Keep it tight — this length runs clean across Reels, Stories and Feed.`,
+    `Regenerate the full script so: there are ≥${MIN_SCENES} scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the opening SENTENCE of scene 1 is ${HOOK_MAX_WORDS} words or fewer, with the rest of scene 1 carrying on in its own sentences after it; the top-level hookPattern is exactly "${opts.hookPattern}"; and total spoken words fit a ${opts.targetSeconds}-second read (~${budget.target} words, hard max ${budget.max}). Keep it tight — this length runs clean across Reels, Stories and Feed.`,
   );
 }
 

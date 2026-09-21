@@ -9,7 +9,7 @@ function okScript(overrides: Partial<RawScript> = {}): RawScript {
   return {
     hookPattern: "problem_first",
     scenes: [
-      { sceneNumber: 1, sceneType: "hook", spokenLine: "Every Sunday at 6pm the dread arrives before Monday even does.", onScreenText: "THE SUNDAY DREAD", deliveryNote: "Direct to camera, low and honest." },
+      { sceneNumber: 1, sceneType: "hook", spokenLine: "The Sunday dread arrives before Monday even does.", onScreenText: "THE SUNDAY DREAD", deliveryNote: "Direct to camera, low and honest." },
       { sceneNumber: 2, sceneType: "problem", spokenLine: "You are good at the job. That is exactly why leaving feels insane.", onScreenText: "GOOD ≠ RIGHT", deliveryNote: "Slow, let it land." },
       { sceneNumber: 3, sceneType: "solution", spokenLine: "There is a ninety day way to a role that actually fits, without a pay cut.", onScreenText: "90 DAYS", deliveryNote: "Lift energy." },
       { sceneNumber: 4, sceneType: "cta", spokenLine: "Tap learn more and map your pivot this week.", onScreenText: "LEARN MORE", deliveryNote: "Warm, inviting." },
@@ -17,6 +17,54 @@ function okScript(overrides: Partial<RawScript> = {}): RawScript {
     ...overrides,
   };
 }
+
+describe("the hook is the FIRST SENTENCE of scene 1, 10 words or fewer", () => {
+  const withHook = (line: string) => okScript({
+    scenes: [{ sceneNumber: 1, sceneType: "hook", spokenLine: line, onScreenText: "X", deliveryNote: "d" },
+      ...(okScript().scenes ?? []).slice(1)],
+  });
+  const hookHit = (r: ReturnType<typeof validateScriptStructure>) =>
+    r.ok ? undefined : r.hits.find((h) => h.classId === "script_hook_too_long");
+
+  it("counts the FIRST SENTENCE, not the whole scene: a long scene with a short opener passes", () => {
+    // 8-word opener, then 30 more words in the same scene — the shape the prompt actually asks for
+    const r = validateScriptStructure(
+      withHook("The Sunday dread arrives before Monday even does. You are good at the job and that is exactly why the thought of leaving it feels completely insane to you."),
+      { hookPattern: "problem_first", targetSeconds: 30 });
+    expect(hookHit(r)).toBeUndefined();
+  });
+
+  it("an 11-word opening sentence fails — this is the boundary", () => {
+    const r = validateScriptStructure(
+      withHook("Every Sunday at 6pm the dread arrives before Monday even does."),
+      { hookPattern: "problem_first", targetSeconds: 30 });
+    expect(hookHit(r)?.description).toContain("11 words");
+  });
+
+  it("exactly 10 words passes", () => {
+    const r = validateScriptStructure(
+      withHook("Every Sunday the dread arrives well before Monday even does."),
+      { hookPattern: "problem_first", targetSeconds: 30 });
+    expect(hookHit(r)).toBeUndefined();
+  });
+
+  it("the retry note carries the COUNT and never the sentence (2026-09-16 quoting ruling)", () => {
+    const line = "Every Sunday at 6pm the dread arrives before Monday even does.";
+    const r = validateScriptStructure(withHook(line), { hookPattern: "problem_first", targetSeconds: 30 });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.failContext).toContain("11 words");
+    expect(r.failContext).not.toContain("the dread arrives");
+    expect(r.failContext).not.toContain(line);
+  });
+
+  it("a scene 1 with no terminal punctuation is read whole", () => {
+    const r = validateScriptStructure(
+      withHook("one two three four five six seven eight nine ten eleven twelve"),
+      { hookPattern: "problem_first", targetSeconds: 30 });
+    expect(hookHit(r)?.description).toContain("12 words");
+  });
+});
 
 describe("validateScriptStructure — structural only (NOT an ICP-fabrication truth check)", () => {
   it("passes a well-formed script that matches the concept hookPattern + length", () => {
