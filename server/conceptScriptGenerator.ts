@@ -101,7 +101,7 @@ Count as you write. Every word costs a fraction of a second on camera. ${targetS
 sayable lines — one idea per breath — not denser sentences.
 
 SCENE MAP (${targetSeconds === 15 ? "3 tight scenes at 15s: hook → the turn (the one new-way point) → CTA — problem and solution fold into the turn" : targetSeconds <= 30 ? "4 scenes at 30s: hook → problem → turn → solution-and-CTA — fold the solution and the CTA into one closing scene so the whole thing fits the word cap" : "5 scenes: hook → problem → turn → solution → CTA"}):
-- Scene 1 is the HOOK, written in the ${concept.hookPattern} style, opening on the leading desire above.
+- Scene 1 OPENS with the hook: a first sentence of 10 words or fewer, in the ${concept.hookPattern} style, on the leading desire above.
 - Include a TURN beat — the "here's the new way" shift from problem to solution (sceneType: "turn"). Keep it short.
 - Total spoken words: HARD FLOOR ${budget.min}, HARD CEILING ${budget.max}, aim ~${budget.target}. BOTH bounds are non-negotiable, and each is repaired a WHOLE BEAT at a time: if a draft lands near ${budget.max}, cut a WHOLE sentence — never shave words; if it lands near ${budget.min}, add a WHOLE line to an existing scene — never pad the sentences you already have.
 - Each scene is for a HUMAN presenter recording themselves — no stock footage, no render directions.
