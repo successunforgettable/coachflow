@@ -1,0 +1,5123 @@
+{
+  "user": 1,
+  "runs": 3,
+  "concepts": [
+    223,
+    224,
+    225,
+    226,
+    227,
+    228,
+    229,
+    230
+  ],
+  "cells": [
+    {
+      "arm": "a",
+      "conceptId": 223,
+      "run": 2,
+      "ok": true,
+      "attempts": 1,
+      "firstPassOk": true,
+      "firstPassLabels": [],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 9
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me at 9am: today I'm finally building the business. Me at 11am: I've reorganised my notes app, read four LinkedIn posts, and I still don't know what to actually do first. The niche-down exercise everyone sends you? It was built for someone who doesn't have experience yet. You have twelve years of it. So the worksheet doesn't work, and then you think you're the problem. The real work isn't finding a niche. It's separating the expertise your former industry will actually pay for from the background knowledge everyone assumes is just free. I built a free masterclass around a process I call Career Layer Excavation. You walk in without a niche or a single paying client. You walk out holding the exact slice of your experience that becomes a sellable consulting offer — and your first three outreach conversations scripted at the sentence level. Every quarter you go without this is another quarter the notes app stays closed. The link's right below. It's free. Come get the blueprint.",
+      "metrics": {
+        "id": "c223",
+        "words": 168,
+        "sentences": 15,
+        "hookWords": 9,
+        "longestSentence": 27,
+        "sentenceSD": 6.89,
+        "contractionsPer100": 5.95,
+        "fragmentShare": 0.07,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-223-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "I built a free masterclass around a process I call Career Layer Excavation.",
+            "kind": "career",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk in without a niche or a single paying client.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk out holding the exact slice of your experience that becomes a sellable consulting offer — and your first three outreach conversations scripted at the sentence level.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exact"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 14,
+          "firstSentence": "Me at 9am: today I'm finally building the business.",
+          "lastSentence": "Come get the blueprint.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 15,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 5943,
+            "inputTokens": 2555,
+            "outputTokens": 308
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2555,
+          "outputTokens": 308,
+          "latencyMs": 5943,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 25575,
+      "summary": {
+        "attempts": 1,
+        "firstPassOk": true,
+        "firstPassBlockingLabels": [],
+        "firstPassObservedLabels": [],
+        "observedLabelsByAttempt": [
+          []
+        ],
+        "firstPassHookWords": 9,
+        "firstPassHookTooLong": false,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 223,
+      "run": 1,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 9
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 190 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 10
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me: I'll use this morning to work on the business. Also me: forty-five minutes later, staring at a niche worksheet asking what I enjoy. Girl. You had a career. This worksheet was not built for you. Those niche exercises were designed for people starting from scratch. Not for women who spent twelve years in a real industry. They don't separate your actual expertise from the background knowledge everyone expects for free. There's a different process for that. It's called Career Layer Excavation. It goes into what you actually built, layer by layer, and pulls out the part your former industry will pay consulting rates for. I put the whole process inside a free masterclass called The First Client Blueprint. You walk in without a niche. You walk out with your offer identified and your first three outreach conversations scripted, sentence by sentence. It's free. Link's right below. Every quarter you go without this, the notes app stays closed and the business stays in your head. Go grab it now.",
+      "metrics": {
+        "id": "c223",
+        "words": 170,
+        "sentences": 18,
+        "hookWords": 10,
+        "longestSentence": 23,
+        "sentenceSD": 6.08,
+        "contractionsPer100": 3.53,
+        "fragmentShare": 0.17,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-223-1",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "There's a different process for that.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called Career Layer Excavation.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It goes into what you actually built, layer by layer, and pulls out the part your former industry will pay consulting rates for.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "I put the whole process inside a free masterclass called The First Client Blueprint.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk in without a niche.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk out with your offer identified and your first three outreach conversations scripted, sentence by sentence.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 18,
+          "firstSentence": "Me: I'll use this morning to work on the business.",
+          "lastSentence": "Go grab it now.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 18,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 5,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 1,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 1,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 9084,
+            "inputTokens": 2551,
+            "outputTokens": 461
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2551,
+          "outputTokens": 461,
+          "latencyMs": 9084,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 43883,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [],
+        "observedLabelsByAttempt": [
+          [],
+          []
+        ],
+        "firstPassHookWords": 9,
+        "firstPassHookTooLong": false,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 223,
+      "run": 0,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 11
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 183 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 9
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me at 9am: today I'm building my consulting business. Me at 11am: I've colour-coded my Notion board, watched a niche-down video, and opened — then closed — the notes app. Again. That niche-down worksheet wasn't built for you. It was built for someone who doesn't have experience yet. You've got twelve years of it. The worksheet can't tell the difference between your real expertise and the stuff everyone just assumes is free. There's a different process. It's called Career Layer Excavation. Instead of asking what you're good at, it goes forensic — into what your former industry was actually paying for, underneath the job title. Inside the free First Client Blueprint masterclass, I walk you through the exact excavation process — and you leave with the first three outreach conversations scripted, sentence by sentence. No more blank mornings. The link is right below this video. Click it, grab your spot, and let's find the offer that's already sitting inside everything you've already done. Every quarter you wait, that notes app stays closed.",
+      "metrics": {
+        "id": "c223",
+        "words": 171,
+        "sentences": 15,
+        "hookWords": 9,
+        "longestSentence": 28,
+        "sentenceSD": 7.84,
+        "contractionsPer100": 7.02,
+        "fragmentShare": 0.13,
+        "longestFragmentRun": 2
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-223-0",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "It's called Career Layer Excavation.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Instead of asking what you're good at, it goes forensic — into what your former industry was actually paying for, underneath the job title.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Inside the free First Client Blueprint masterclass, I walk you through the exact excavation process — and you leave with the first three outreach conversations scripted, sentence by sentence.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exact"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 15,
+          "firstSentence": "Me at 9am: today I'm building my consulting business.",
+          "lastSentence": "Every quarter you wait, that notes app stays closed.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 15,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 8244,
+            "inputTokens": 2571,
+            "outputTokens": 324
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2571,
+          "outputTokens": 324,
+          "latencyMs": 8244,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 47511,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          []
+        ],
+        "firstPassHookWords": 11,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 224,
+      "run": 2,
+      "ok": true,
+      "attempts": 1,
+      "firstPassOk": true,
+      "firstPassLabels": [],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 9
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "Someone asks what you do and you still hedge. After twelve years of real expertise, you're still hedging. The niche-down worksheet wasn't built for you. It was built for people starting with nothing — you're starting with everything. There's a different approach — one that separates your actual expertise from the background knowledge your old employer assumed was free. It's called the Career Layer Excavation Process. Grab the free masterclass — link's right below. Walk in without a niche, walk out with one.",
+      "metrics": {
+        "id": "c224",
+        "words": 81,
+        "sentences": 8,
+        "hookWords": 9,
+        "longestSentence": 20,
+        "sentenceSD": 4.01,
+        "contractionsPer100": 7.41,
+        "fragmentShare": 0.25,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-224-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "After twelve years of real expertise, you're still hedging.",
+            "kind": "tenure",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "years_experience",
+            "modelNormalisedValue": "12",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "no_canonical",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called the Career Layer Excavation Process.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Grab the free masterclass — link's right below.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Walk in without a niche, walk out with one.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "walk out with one"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 9,
+          "firstSentence": "Someone asks what you do and you still hedge.",
+          "lastSentence": "Walk in without a niche, walk out with one.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 8,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 4,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6200,
+            "inputTokens": 2449,
+            "outputTokens": 348
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2449,
+          "outputTokens": 348,
+          "latencyMs": 6200,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 19026,
+      "summary": {
+        "attempts": 1,
+        "firstPassOk": true,
+        "firstPassBlockingLabels": [],
+        "firstPassObservedLabels": [],
+        "observedLabelsByAttempt": [
+          []
+        ],
+        "firstPassHookWords": 9,
+        "firstPassHookTooLong": false,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 224,
+      "run": 0,
+      "ok": true,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 22
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 93 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"problem_first\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 5
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 99 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"problem_first\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 5
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "Someone asks what you do. You start a sentence, stop, restart — and leave the conversation hating yourself a little. The niche worksheets aren't working because they were built for people who need experience — not for women who already have twelve years of it. There's a different process — it separates your actual expertise from the background knowledge your old employer assumed was free. The First Client Blueprint masterclass walks you through it — free. Link's below. Come out with one clear sentence that's yours.",
+      "metrics": {
+        "id": "c224",
+        "words": 82,
+        "sentences": 7,
+        "hookWords": 5,
+        "longestSentence": 24,
+        "sentenceSD": 7.23,
+        "contractionsPer100": 4.88,
+        "fragmentShare": 0,
+        "longestFragmentRun": 0
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-224-0",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "There's a different process — it separates your actual expertise from the background knowledge your old employer assumed was free.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The First Client Blueprint masterclass walks you through it — free.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Come out with one clear sentence that's yours.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 7,
+          "firstSentence": "Someone asks what you do.",
+          "lastSentence": "Come out with one clear sentence that's yours.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 7,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6294,
+            "inputTokens": 2444,
+            "outputTokens": 289
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2444,
+          "outputTokens": 289,
+          "latencyMs": 6294,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 44478,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [],
+          []
+        ],
+        "firstPassHookWords": 22,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 224,
+      "run": 1,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 25
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 94 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"problem_first\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 12
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "Someone asks what you do and you hear yourself hedge — again. Twelve years of real expertise and the sentence still won't come out clean. The niche worksheets don't help — because they were built for people who don't have experience yet. You have the opposite problem. There's a different process — one that separates genuine expertise from the identity your corporate career trained you to perform. It's called the Career Layer Excavation Process — and it's inside the free masterclass. Link's below. Come find your one clear sentence.",
+      "metrics": {
+        "id": "c224",
+        "words": 85,
+        "sentences": 8,
+        "hookWords": 11,
+        "longestSentence": 19,
+        "sentenceSD": 5.45,
+        "contractionsPer100": 8.24,
+        "fragmentShare": 0.13,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-224-1",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "There's a different process — one that separates genuine expertise from the identity your corporate career trained you to perform.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called the Career Layer Excavation Process — and it's inside the free masterclass.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Come find your one clear sentence.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 9,
+          "firstSentence": "Someone asks what you do and you hear yourself hedge — again.",
+          "lastSentence": "Come find your one clear sentence.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 8,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 5805,
+            "inputTokens": 2451,
+            "outputTokens": 295
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2451,
+          "outputTokens": 295,
+          "latencyMs": 5805,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 30582,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 25,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 225,
+      "run": 2,
+      "ok": true,
+      "attempts": 1,
+      "firstPassOk": true,
+      "firstPassLabels": [
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 36
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Imagine opening your laptop and sending a real consulting proposal — not a draft, not a maybe, an actual send — and knowing every word in it came from twelve years of expertise you already own. Here's what I kept watching happen. Women with a decade-plus of real corporate expertise sitting down with AI tools, getting back something so generic they'd close the tab. Because the tool had no idea which part of what they knew was actually sellable. The fix isn't a better prompt. It's knowing exactly which layer of your experience your former industry will pay for — before you open any tool at all. I built a free masterclass called The First Client Blueprint. It walks you through the forensic process I use to separate genuine expertise from background knowledge — and your first three outreach conversations get scripted at the sentence level. Click the link below and grab your spot. Every quarter you go without this is another quarter your notes app stays closed. Let's change that today.",
+      "metrics": {
+        "id": "c225",
+        "words": 169,
+        "sentences": 11,
+        "hookWords": 34,
+        "longestSentence": 34,
+        "sentenceSD": 9.47,
+        "contractionsPer100": 2.96,
+        "fragmentShare": 0.18,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-225-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "Imagine opening your laptop and sending a real consulting proposal — not a draft, not a maybe, an actual send — and knowing every word in it came from twelve years of expertise you already own.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "every word"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Here's what I kept watching happen.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "Women with a decade-plus of real corporate expertise sitting down with AI tools, getting back something so generic they'd close the tab.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Because the tool had no idea which part of what they knew was actually sellable.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The fix isn't a better prompt.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's knowing exactly which layer of your experience your former industry will pay for — before you open any tool at all.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exactly"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "I built a free masterclass called The First Client Blueprint.",
+            "kind": "life_event",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It walks you through the forensic process I use to separate genuine expertise from background knowledge — and your first three outreach conversations get scripted at the sentence level.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 8,
+          "firstSentence": "Imagine opening your laptop and sending a real consulting proposal — not a draft, not a maybe, an actual send — and knowing every word in it came from twelve years of expertise you already own.",
+          "lastSentence": "Let's change that today.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 11,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 7,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 1,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 1,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 12241,
+            "inputTokens": 2539,
+            "outputTokens": 659
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2539,
+          "outputTokens": 659,
+          "latencyMs": 12241,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 22512,
+      "summary": {
+        "attempts": 1,
+        "firstPassOk": true,
+        "firstPassBlockingLabels": [],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 36,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 225,
+      "run": 0,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 10
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 189 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"aspirational_transformation\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 36
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Imagine opening your laptop on a Monday morning and sending a real consulting proposal — not a draft, not a maybe, an actual proposal — to someone who already knows exactly what they're hiring you for. But right now you're sitting there with twelve years of real expertise and an AI tool spitting out the same hollow email everyone else is sending. It doesn't know what you actually did. So it guesses. The fix isn't a better prompt. It's knowing which part of your experience is a sellable offer first — and then the words write themselves. I built the Career Layer Excavation Process specifically for this. It separates the expertise your former industry will pay for from everything else — and gives you the first three outreach conversations scripted at the sentence level. It's a free masterclass. Link's below. Every quarter you spend without this is another quarter that notes app stays closed. Come get it.",
+      "metrics": {
+        "id": "c225",
+        "words": 153,
+        "sentences": 12,
+        "hookWords": 34,
+        "longestSentence": 34,
+        "sentenceSD": 10.41,
+        "contractionsPer100": 4.58,
+        "fragmentShare": 0.17,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-225-0",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "I built the Career Layer Excavation Process specifically for this.",
+            "kind": "life_event",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It separates the expertise your former industry will pay for from everything else — and gives you the first three outreach conversations scripted at the sentence level.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's a free masterclass.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 10,
+          "firstSentence": "Imagine opening your laptop on a Monday morning and sending a real consulting proposal — not a draft, not a maybe, an actual proposal — to someone who already knows exactly what they're hiring you for.",
+          "lastSentence": "Come get it.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 12,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6842,
+            "inputTokens": 2528,
+            "outputTokens": 323
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2528,
+          "outputTokens": 323,
+          "latencyMs": 6842,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 40375,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [],
+        "observedLabelsByAttempt": [
+          [],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 10,
+        "firstPassHookTooLong": false,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 225,
+      "run": 1,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 17
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 199 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"aspirational_transformation\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 36
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Imagine finishing a client proposal in one afternoon — not a draft, the actual thing — because you finally knew how to tell AI exactly which part of your twelve years it should be writing from. The reason AI keeps giving you generic garbage isn't the tool. It's that you haven't separated your real expertise from the background knowledge your old industry just assumed everyone had. Those are not the same thing. There's a different approach. It's called Career Layer Excavation — and it's built specifically to pull out the sellable expertise buried inside a long career, not help someone without experience find a direction. Once you know exactly what your expertise is, you can give AI a real brief. That's when it stops producing filler and starts drafting proposals and outreach emails you can actually send. I put the whole process in a free masterclass. It's called The First Client Blueprint. Click the link, grab your spot, and walk out holding your first three outreach conversations scripted at the sentence level.",
+      "metrics": {
+        "id": "c225",
+        "words": 169,
+        "sentences": 11,
+        "hookWords": 34,
+        "longestSentence": 34,
+        "sentenceSD": 9.09,
+        "contractionsPer100": 4.73,
+        "fragmentShare": 0,
+        "longestFragmentRun": 0
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-225-1",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "It's called Career Layer Excavation — and it's built specifically to pull out the sellable expertise buried inside a long career, not help someone without experience find a direction.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Once you know exactly what your expertise is, you can give AI a real brief.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exactly"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "That's when it stops producing filler and starts drafting proposals and outreach emails you can actually send.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "I put the whole process in a free masterclass.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called The First Client Blueprint.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Click the link, grab your spot, and walk out holding your first three outreach conversations scripted at the sentence level.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 11,
+          "firstSentence": "Imagine finishing a client proposal in one afternoon — not a draft, the actual thing — because you finally knew how to tell AI exactly which part of your twelve years it should be writing from.",
+          "lastSentence": "Click the link, grab your spot, and walk out holding your first three outreach conversations scripted at the sentence level.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 11,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 6,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 8372,
+            "inputTokens": 2546,
+            "outputTokens": 542
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2546,
+          "outputTokens": 542,
+          "latencyMs": 8372,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 39719,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 17,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 226,
+      "run": 2,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 27
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 100 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 7
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "The niche worksheet asked what I enjoyed. I had twelve years of expertise. That question was built for someone who had nothing yet. Those worksheets can't separate what you actually know from the background knowledge your old industry assumes everyone gives away free. There's a different process. It's called Career Layer Excavation — and it's built to find exactly which part of your experience someone will pay for. The free masterclass walks you through it — and your first three outreach conversations are scripted for you. Link's below.",
+      "metrics": {
+        "id": "c226",
+        "words": 86,
+        "sentences": 8,
+        "hookWords": 7,
+        "longestSentence": 20,
+        "sentenceSD": 6.8,
+        "contractionsPer100": 5.81,
+        "fragmentShare": 0,
+        "longestFragmentRun": 0
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-226-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "I had twelve years of expertise.",
+            "kind": "tenure",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "years_experience",
+            "modelNormalisedValue": "12",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "no_canonical",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "There's a different process.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called Career Layer Excavation — and it's built to find exactly which part of your experience someone will pay for.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exactly"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The free masterclass walks you through it — and your first three outreach conversations are scripted for you.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 8,
+          "firstSentence": "The niche worksheet asked what I enjoyed.",
+          "lastSentence": "Link's below.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 8,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 1,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 1,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6415,
+            "inputTokens": 2448,
+            "outputTokens": 351
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2448,
+          "outputTokens": 351,
+          "latencyMs": 6415,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 33936,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          []
+        ],
+        "firstPassHookWords": 27,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 226,
+      "run": 0,
+      "ok": false,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 26
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 103 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 24
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 99 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": false,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [
+              "unearned_authority"
+            ],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 13
+          },
+          "labels": "unearned_authority",
+          "failContext": "The previous draft carried claims the coach's own material does not establish:\n- scene[3].spokenLine: \"three client\" — A count of real people appears that the coach has not supplied. Numbers of people served come from what the coach has told us.\n\nWrite it again with the same energy and the same specific detail. Every number, percentage, client story, named person, guarantee and stated track record in the copy comes from the supplied material above. Where the supplied material does not carry one, the copy speaks from the coach's own experience — the moment they remember — and to the method and the shift it creates, which is what makes launch-stage copy land."
+        }
+      ],
+      "targetSeconds": null,
+      "text": "",
+      "metrics": null,
+      "grounding": null,
+      "wallMs": 47842,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 26,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      },
+      "error": "Script failed validation after 3 attempts: unearned_authority"
+    },
+    {
+      "arm": "a",
+      "conceptId": 226,
+      "run": 1,
+      "ok": true,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 25
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 108 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": false,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [
+              "unearned_authority"
+            ],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 26
+          },
+          "labels": "script_length_over_budget, unearned_authority",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 92 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed.\n\nThe previous draft carried claims the coach's own material does not establish:\n- scene[3].spokenLine: \"three client\" — A count of real people appears that the coach has not supplied. Numbers of people served come from what the coach has told us.\n\nWrite it again with the same energy and the same specific detail. Every number, percentage, client story, named person, guarantee and stated track record in the copy comes from the supplied material above. Where the supplied material does not carry one, the copy speaks from the coach's own experience — the moment they remember — and to the method and the shift it creates, which is what makes launch-stage copy land."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 21
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "The niche-down exercise kept stopping me — and I finally figured out why it was never built for someone like me. It asks what you enjoy and what you're good at. But twelve years of real expertise doesn't fit inside that worksheet. There's a different process — it's called Career Layer Excavation — and it separates genuine expertise from background knowledge everyone assumes is free. The First Client Blueprint masterclass walks you through it free. Link below — your first paying client starts with knowing exactly what you're selling.",
+      "metrics": {
+        "id": "c226",
+        "words": 86,
+        "sentences": 6,
+        "hookWords": 21,
+        "longestSentence": 21,
+        "sentenceSD": 4.82,
+        "contractionsPer100": 5.81,
+        "fragmentShare": 0,
+        "longestFragmentRun": 0
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-226-1",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "twelve years of real expertise doesn't fit inside that worksheet",
+            "kind": "tenure",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "years_experience",
+            "modelNormalisedValue": "12",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "no_canonical",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "There's a different process — it's called Career Layer Excavation — and it separates genuine expertise from background knowledge everyone assumes is free.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The First Client Blueprint masterclass walks you through it free.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "your first paying client starts with knowing exactly what you're selling",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exactly"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 7,
+          "firstSentence": "The niche-down exercise kept stopping me — and I finally figured out why it was never built for someone like me.",
+          "lastSentence": "Link below — your first paying client starts with knowing exactly what you're selling.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 6,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 4,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6965,
+            "inputTokens": 2447,
+            "outputTokens": 382
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2447,
+          "outputTokens": 382,
+          "latencyMs": 6965,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 45017,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 25,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 227,
+      "run": 0,
+      "ok": true,
+      "attempts": 1,
+      "firstPassOk": true,
+      "firstPassLabels": [
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 26
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me, opening the notes app for the forty-seventh time to look at the consulting niche I wrote six months ago — and then closing it again. Because apparently that's my whole business plan. The niche-down worksheet tells you to find the overlap between what you're good at and what you enjoy. That exercise was built for people who don't have twelve years of expertise yet. It was never built for you. There's a different way to read what you actually have. It's called Career Layer Excavation — and it separates the expertise your former industry will pay for from the professional identity that corporate trained you to perform. I put the whole process inside a free masterclass called The First Client Blueprint. You walk in without a niche. You walk out holding the forensic process — and your first three outreach conversations scripted at the sentence level. Every quarter without this is another quarter the notes app stays closed. The link is right below this video. It's free. Grab the masterclass and let's make the timeline real.",
+      "metrics": {
+        "id": "c227",
+        "words": 176,
+        "sentences": 14,
+        "hookWords": 26,
+        "longestSentence": 26,
+        "sentenceSD": 7.15,
+        "contractionsPer100": 3.98,
+        "fragmentShare": 0.07,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-227-0",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "It's called Career Layer Excavation — and it separates the expertise your former industry will pay for from the professional identity that corporate trained you to perform.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "I put the whole process inside a free masterclass called The First Client Blueprint.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk in without a niche.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk out holding the forensic process — and your first three outreach conversations scripted at the sentence level.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 15,
+          "firstSentence": "Me, opening the notes app for the forty-seventh time to look at the consulting niche I wrote six months ago — and then closing it again.",
+          "lastSentence": "Grab the masterclass and let's make the timeline real.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 14,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 4,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6460,
+            "inputTokens": 2555,
+            "outputTokens": 394
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2555,
+          "outputTokens": 394,
+          "latencyMs": 6460,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 22019,
+      "summary": {
+        "attempts": 1,
+        "firstPassOk": true,
+        "firstPassBlockingLabels": [],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 26,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 227,
+      "run": 2,
+      "ok": true,
+      "attempts": 1,
+      "firstPassOk": true,
+      "firstPassLabels": [],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 8
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me: I'll launch my consulting business this quarter. Also me: opens notes app, stares at the blank page, closes it, makes a coffee, and repeats this for six months straight. The niche-down exercise tells you to find what you love and what you're good at and find the overlap. That worksheet was built for people who don't have experience yet. You have twelve years of it. The real problem isn't that you don't know your niche. It's that nobody has shown you how to separate the expertise your former industry will pay for from the background knowledge you've always given away free. I built a forensic process called Career Layer Excavation that digs through your work history and surfaces the exact sellable offer sitting inside it — and then scripts your first three outreach conversations at the sentence level. It's a free masterclass called The First Client Blueprint. Click the link, grab your spot, and walk out holding the offer and the first three scripts — so the notes app finally gets opened.",
+      "metrics": {
+        "id": "c227",
+        "words": 172,
+        "sentences": 10,
+        "hookWords": 8,
+        "longestSentence": 36,
+        "sentenceSD": 9.36,
+        "contractionsPer100": 4.65,
+        "fragmentShare": 0.1,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-227-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "I built a forensic process called Career Layer Excavation that digs through your work history and surfaces the exact sellable offer sitting inside it — and then scripts your first three outreach conversations at the sentence level.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exact"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's a free masterclass called The First Client Blueprint.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Click the link, grab your spot, and walk out holding the offer and the first three scripts — so the notes app finally gets opened.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 11,
+          "firstSentence": "Me: I'll launch my consulting business this quarter.",
+          "lastSentence": "Click the link, grab your spot, and walk out holding the offer and the first three scripts — so the notes app finally gets opened.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 10,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6555,
+            "inputTokens": 2552,
+            "outputTokens": 350
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2552,
+          "outputTokens": 350,
+          "latencyMs": 6555,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 22971,
+      "summary": {
+        "attempts": 1,
+        "firstPassOk": true,
+        "firstPassBlockingLabels": [],
+        "firstPassObservedLabels": [],
+        "observedLabelsByAttempt": [
+          []
+        ],
+        "firstPassHookWords": 8,
+        "firstPassHookTooLong": false,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 227,
+      "run": 1,
+      "ok": false,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 7
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 194 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 8
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 185 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": false,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [
+              "unearned_authority"
+            ],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 16
+          },
+          "labels": "script_length_over_budget, unearned_authority",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 190 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed.\n\nThe previous draft carried claims the coach's own material does not establish:\n- scene[0].spokenLine: \"my first client\" — Copy refers to the coach's own clients or students, which asserts people they have not told us about. What the method is designed to do needs no client behind it.\n\nWrite it again with the same energy and the same specific detail. Every number, percentage, client story, named person, guarantee and stated track record in the copy comes from the supplied material above. Where the supplied material does not carry one, the copy speaks from the coach's own experience — the moment they remember — and to the method and the shift it creates, which is what makes launch-stage copy land."
+        }
+      ],
+      "targetSeconds": null,
+      "text": "",
+      "metrics": null,
+      "grounding": null,
+      "wallMs": 59924,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [],
+        "observedLabelsByAttempt": [
+          [],
+          [],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 7,
+        "firstPassHookTooLong": false,
+        "hookInstrumentMismatch": false
+      },
+      "error": "Script failed validation after 3 attempts: script_length_over_budget, unearned_authority"
+    },
+    {
+      "arm": "a",
+      "conceptId": 228,
+      "run": 1,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 8
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 97 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"problem_first\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 5
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "You open the notes app. You type a name. You close it. You've done that twelve times this month. The niche-down exercise tells you to find what you love. It was built for people who don't have your experience. There's a different process. It starts with the expertise you already built — and shows you which part your former industry will pay for. It's a free masterclass. You leave with your first three outreach conversations scripted. Link's below — go grab it.",
+      "metrics": {
+        "id": "c228",
+        "words": 81,
+        "sentences": 11,
+        "hookWords": 5,
+        "longestSentence": 19,
+        "sentenceSD": 4.5,
+        "contractionsPer100": 6.17,
+        "fragmentShare": 0.18,
+        "longestFragmentRun": 2
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-228-1",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "There's a different process.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "It starts with the expertise you already built — and shows you which part your former industry will pay for.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's a free masterclass.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You leave with your first three outreach conversations scripted.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 11,
+          "firstSentence": "You open the notes app.",
+          "lastSentence": "Link's below — go grab it.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 11,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 1,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 1,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 5783,
+            "inputTokens": 2444,
+            "outputTokens": 329
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2444,
+          "outputTokens": 329,
+          "latencyMs": 5783,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 28295,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [],
+        "observedLabelsByAttempt": [
+          [],
+          []
+        ],
+        "firstPassHookWords": 8,
+        "firstPassHookTooLong": false,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 228,
+      "run": 0,
+      "ok": true,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 22
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 92 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"problem_first\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 6
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 96 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"problem_first\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [],
+            "hookWords": 5
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "You've opened the notes app. You've typed names. Then you've closed it and told yourself you're not ready yet. The niche-down exercise wasn't built for someone with your experience. It was built for people starting from zero. There's a different process. It separates the expertise your former industry will pay for from everything you're giving away free. The First Client Blueprint is a free masterclass. Link's below. Walk in with no clients — walk out with your first three outreach conversations scripted.",
+      "metrics": {
+        "id": "c228",
+        "words": 82,
+        "sentences": 10,
+        "hookWords": 5,
+        "longestSentence": 16,
+        "sentenceSD": 4.51,
+        "contractionsPer100": 9.76,
+        "fragmentShare": 0.1,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-228-0",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "The niche-down exercise wasn't built for someone with your experience.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "It was built for people starting from zero.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "There's a different process.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "It separates the expertise your former industry will pay for from everything you're giving away free.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The First Client Blueprint is a free masterclass.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Walk in with no clients — walk out with your first three outreach conversations scripted.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 8,
+          "firstSentence": "You've opened the notes app.",
+          "lastSentence": "Walk in with no clients — walk out with your first three outreach conversations scripted.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 10,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 3,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 3,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6589,
+            "inputTokens": 2447,
+            "outputTokens": 459
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2447,
+          "outputTokens": 459,
+          "latencyMs": 6589,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 40220,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [],
+          []
+        ],
+        "firstPassHookWords": 22,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 228,
+      "run": 2,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 23
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 96 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"problem_first\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 21
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "You open the LinkedIn app, you find someone you actually know, and then you close it again without typing a word. That's not a confidence problem. The niche worksheets you've tried were built for people who don't have your twelve years of experience. There's a different approach. It's called Career Layer Excavation — it separates your real expertise from the background knowledge your industry assumes is free. Grab the free First Client Blueprint. You'll leave with three outreach conversations scripted sentence by sentence. Link's below.",
+      "metrics": {
+        "id": "c228",
+        "words": 84,
+        "sentences": 8,
+        "hookWords": 21,
+        "longestSentence": 21,
+        "sentenceSD": 6.98,
+        "contractionsPer100": 8.33,
+        "fragmentShare": 0.13,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-228-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "The niche worksheets you've tried were built for people who don't have your twelve years of experience.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "There's a different approach.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "unspecific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "not_checkable"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called Career Layer Excavation — it separates your real expertise from the background knowledge your industry assumes is free.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Grab the free First Client Blueprint.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You'll leave with three outreach conversations scripted sentence by sentence.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 7,
+          "firstSentence": "You open the LinkedIn app, you find someone you actually know, and then you close it again without typing a word.",
+          "lastSentence": "Link's below.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 8,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 2,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 2,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6333,
+            "inputTokens": 2450,
+            "outputTokens": 420
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2450,
+          "outputTokens": 420,
+          "latencyMs": 6333,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 25847,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 23,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 229,
+      "run": 0,
+      "ok": true,
+      "attempts": 1,
+      "firstPassOk": true,
+      "firstPassLabels": [
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 20
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me, explaining to my friend that I'm 'still figuring out my niche' — for the third year in a row. The niche-down worksheet has seventeen tabs. The notes app has never been opened. Here's the thing. Those niche exercises were built for someone who has no experience yet. You have twelve years of it. So when the worksheet asks what you're good at — it cannot tell you which part of that is actually sellable. There's a different approach. Instead of starting with what you enjoy, you start by excavating the layers of what your former industry was already paying for — and finding the piece that only you can deliver. I put the whole process into a free masterclass called The First Client Blueprint. You walk in without a niche and without a client. You walk out with your offer identified and your first three outreach conversations scripted — sentence by sentence. The link is right below this video. Click it, grab the free masterclass, and let's stop letting another quarter go by with the notes app still closed.",
+      "metrics": {
+        "id": "c229",
+        "words": 177,
+        "sentences": 14,
+        "hookWords": 19,
+        "longestSentence": 31,
+        "sentenceSD": 7.66,
+        "contractionsPer100": 2.82,
+        "fragmentShare": 0.07,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-229-0",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "Those niche exercises were built for someone who has no experience yet.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You have twelve years of it.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "I put the whole process into a free masterclass called The First Client Blueprint.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk in without a niche and without a client.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk out with your offer identified and your first three outreach conversations scripted — sentence by sentence.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 16,
+          "firstSentence": "Me, explaining to my friend that I'm 'still figuring out my niche' — for the third year in a row.",
+          "lastSentence": "Click it, grab the free masterclass, and let's stop letting another quarter go by with the notes app still closed.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 14,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 5,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6736,
+            "inputTokens": 2559,
+            "outputTokens": 434
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2559,
+          "outputTokens": 434,
+          "latencyMs": 6736,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 20272,
+      "summary": {
+        "attempts": 1,
+        "firstPassOk": true,
+        "firstPassBlockingLabels": [],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 20,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 230,
+      "run": 0,
+      "ok": true,
+      "attempts": 1,
+      "firstPassOk": true,
+      "firstPassLabels": [
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 23
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "The night I realised I'd been telling my husband 'almost there' for six months — and I still had nothing to show him. The niche worksheet wasn't built for women with twelve years of real expertise. It was built for people who don't have any yet. There's a different process — it separates your actual sellable expertise from the background knowledge your old industry assumes is just free. It's called the Career Layer Excavation Process. The free masterclass walks you through it. Link's right below — go grab your spot.",
+      "metrics": {
+        "id": "c230",
+        "words": 87,
+        "sentences": 7,
+        "hookWords": 22,
+        "longestSentence": 22,
+        "sentenceSD": 6.09,
+        "contractionsPer100": 6.9,
+        "fragmentShare": 0,
+        "longestFragmentRun": 0
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-230-0",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "The night I realised I'd been telling my husband 'almost there' for six months — and I still had nothing to show him.",
+            "kind": "life_event",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The niche worksheet wasn't built for women with twelve years of real expertise.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "There's a different process — it separates your actual sellable expertise from the background knowledge your old industry assumes is just free.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called the Career Layer Excavation Process.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The free masterclass walks you through it.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 7,
+          "firstSentence": "The night I realised I'd been telling my husband 'almost there' for six months — and I still had nothing to show him.",
+          "lastSentence": "Link's right below — go grab your spot.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 7,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 5,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 7152,
+            "inputTokens": 2453,
+            "outputTokens": 443
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2453,
+          "outputTokens": 443,
+          "latencyMs": 7152,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 16255,
+      "summary": {
+        "attempts": 1,
+        "firstPassOk": true,
+        "firstPassBlockingLabels": [],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 23,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 229,
+      "run": 1,
+      "ok": true,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 19
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 181 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 35
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 181 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 15
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me at forty-four: opens notes app, types 'consulting niche ideas', stares at it, closes app. Me at forty-four and three quarters: opens notes app, stares at it, closes app. Here's what I kept seeing. Women with twelve-plus years of real industry expertise sitting on a niche worksheet designed for someone who's never done anything yet. That worksheet was never built for you. It can't see what you actually have. The shift is this: stop trying to find a niche and start excavating what your former industry already knows it needs from someone exactly like you. That's a completely different question. I built a free masterclass that walks you through the exact forensic process for pulling that out — plus the first three outreach conversations scripted at the sentence level, ready to send. It's called the First Client Blueprint and it's free. Click the link, grab your spot, and let's get that notes app closed for good.",
+      "metrics": {
+        "id": "c229",
+        "words": 158,
+        "sentences": 11,
+        "hookWords": 16,
+        "longestSentence": 31,
+        "sentenceSD": 8.46,
+        "contractionsPer100": 4.43,
+        "fragmentShare": 0,
+        "longestFragmentRun": 0
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-229-1",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "Me at forty-four: opens notes app, types 'consulting niche ideas', stares at it, closes app.",
+            "kind": "age",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "Me at forty-four and three quarters: opens notes app, stares at it, closes app.",
+            "kind": "age",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "I built a free masterclass that walks you through the exact forensic process for pulling that out — plus the first three outreach conversations scripted at the sentence level, ready to send.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exact"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "It's called the First Client Blueprint and it's free.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 11,
+          "firstSentence": "Me at forty-four: opens notes app, types 'consulting niche ideas', stares at it, closes app.",
+          "lastSentence": "Click the link, grab your spot, and let's get that notes app closed for good.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 11,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 4,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 2,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6824,
+            "inputTokens": 2543,
+            "outputTokens": 411
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2543,
+          "outputTokens": 411,
+          "latencyMs": 6824,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 54423,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 19,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 229,
+      "run": 2,
+      "ok": true,
+      "attempts": 2,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 5,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 34
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 181 spoken words exceeds the 60s budget (max 180)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"meme_humor\"; and total spoken words fit a 60-second read (~160 words, hard max 180). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 5,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 27
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 60,
+      "text": "Me at brunch: 'I'm actually thinking about launching a consulting business.' Me at eleven PM: staring at a notes app with four words and a question mark. Every single Sunday for eight months. The niche worksheet asks what you enjoy and what you're good at. That was never built for someone with twelve years of real expertise. It can't tell you which part of what you know is actually sellable. There's a different approach. It starts by excavating your career layer by layer — not to find a passion, but to separate genuine expertise from the background knowledge your old industry just assumed was free. I put the whole process into a free masterclass called The First Client Blueprint. You walk in without a niche. You walk out holding the exact offer your former industry will pay for — and your first three outreach conversations, scripted line by line. The link is right below this video. Grab it free. Every quarter you wait is another quarter that notes app stays closed — and you already know what that feels like.",
+      "metrics": {
+        "id": "c229",
+        "words": 178,
+        "sentences": 13,
+        "hookWords": 28,
+        "longestSentence": 30,
+        "sentenceSD": 8.66,
+        "contractionsPer100": 2.25,
+        "fragmentShare": 0.15,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "extraction_failed",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-229-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "It starts by excavating your career layer by layer — not to find a passion, but to separate genuine expertise from the background knowledge your old industry just assumed was free.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "I put the whole process into a free masterclass called The First Client Blueprint.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk in without a niche.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "You walk out holding the exact offer your former industry will pay for — and your first three outreach conversations, scripted line by line.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exact"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 14,
+          "firstSentence": "Me at brunch: 'I'm actually thinking about launching a consulting business.'",
+          "lastSentence": "Every quarter you wait is another quarter that notes app stays closed — and you already know what that feels like.",
+          "verified": false,
+          "countMatches": false
+        },
+        "sentenceCount": 13,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 4,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 0,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 2,
+          "total": 2
+        },
+        "rejectedQuotes": [
+          {
+            "attempt": 1,
+            "list": "copy_read",
+            "quote": "Me at brunch: 'I'm actually thinking about launching a consulting business.' … Every quarter you wait is another quarter that notes app stays closed — and you already know what that feels like."
+          },
+          {
+            "attempt": 2,
+            "list": "copy_read",
+            "quote": "Me at brunch: 'I'm actually thinking about launching a consulting business.' … Every quarter you wait is another quarter that notes app stays closed — and you already know what that feels like."
+          }
+        ],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "unverifiable",
+            "detail": [
+              "copy_read did not match the copy's first and last sentence"
+            ],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6782,
+            "inputTokens": 2554,
+            "outputTokens": 447
+          },
+          {
+            "attempt": 2,
+            "outcome": "unverifiable",
+            "detail": [
+              "copy_read did not match the copy's first and last sentence"
+            ],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6169,
+            "inputTokens": 2554,
+            "outputTokens": 397
+          }
+        ],
+        "usage": {
+          "calls": 2,
+          "inputTokens": 5108,
+          "outputTokens": 844,
+          "latencyMs": 12951,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 40812,
+      "summary": {
+        "attempts": 2,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 34,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 230,
+      "run": 1,
+      "ok": true,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 23
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 93 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 26
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 106 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 20
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "I watched a woman with twelve years of corporate experience get stopped cold by a worksheet asking what she enjoys. That niche-down exercise was built for people without experience. It was never built to find what your former industry will actually pay for. There's a different process — one that excavates your career layers and separates real expertise from background knowledge everyone assumes is free. The free masterclass walks you through it — and gives you your first three outreach conversations scripted. Link's below.",
+      "metrics": {
+        "id": "c230",
+        "words": 83,
+        "sentences": 6,
+        "hookWords": 20,
+        "longestSentence": 21,
+        "sentenceSD": 6.44,
+        "contractionsPer100": 2.41,
+        "fragmentShare": 0,
+        "longestFragmentRun": 0
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-230-1",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "I watched a woman with twelve years of corporate experience get stopped cold by a worksheet asking what she enjoys.",
+            "kind": "witnessed_event",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "There's a different process — one that excavates your career layers and separates real expertise from background knowledge everyone assumes is free.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The free masterclass walks you through it — and gives you your first three outreach conversations scripted.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 5,
+          "firstSentence": "I watched a woman with twelve years of corporate experience get stopped cold by a worksheet asking what she enjoys.",
+          "lastSentence": "Link's below.",
+          "verified": true,
+          "countMatches": false
+        },
+        "sentenceCount": 6,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6097,
+            "inputTokens": 2440,
+            "outputTokens": 318
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2440,
+          "outputTokens": 318,
+          "latencyMs": 6097,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 38912,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 23,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    },
+    {
+      "arm": "a",
+      "conceptId": 230,
+      "run": 2,
+      "ok": true,
+      "attempts": 3,
+      "firstPassOk": false,
+      "firstPassLabels": [
+        "script_length_over_budget",
+        "script_hook_too_long"
+      ],
+      "gate": [
+        {
+          "attempt": 1,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 22
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 92 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 2,
+          "scenesReturned": 4,
+          "ok": false,
+          "axes": {
+            "structureOk": false,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [
+              "script_length_over_budget"
+            ],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 25
+          },
+          "labels": "script_length_over_budget",
+          "failContext": "Your previous script failed validation and must be regenerated:\n- scenes: 93 spoken words exceeds the 30s budget (max 90)\n\nRegenerate the full script so: there are ≥3 scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly \"founder_authenticity\"; and total spoken words fit a 30-second read (~80 words, hard max 90). Keep it tight — this length runs clean across Reels, Stories and Feed."
+        },
+        {
+          "attempt": 3,
+          "scenesReturned": 4,
+          "ok": true,
+          "axes": {
+            "structureOk": true,
+            "complianceOk": true,
+            "outputOk": true,
+            "structureLabels": [],
+            "complianceLabels": [],
+            "outputLabels": [],
+            "observedLabels": [
+              "script_hook_too_long"
+            ],
+            "hookWords": 20
+          },
+          "labels": "",
+          "failContext": ""
+        }
+      ],
+      "targetSeconds": 30,
+      "text": "I watched a woman with twelve years of corporate expertise stare at a niche worksheet and come up completely blank. That worksheet wasn't built for her. It was built for someone without experience — not someone trying to sort expertise from background knowledge. There's a different process — one that digs into what your former industry will actually pay for, not what you enjoy. The First Client Blueprint shows you exactly that. It's free. Grab it at the link below.",
+      "metrics": {
+        "id": "c230",
+        "words": 78,
+        "sentences": 7,
+        "hookWords": 20,
+        "longestSentence": 20,
+        "sentenceSD": 6.83,
+        "contractionsPer100": 3.85,
+        "fragmentShare": 0.29,
+        "longestFragmentRun": 1
+      },
+      "grounding": {
+        "status": "checked",
+        "recordOnly": true,
+        "assetType": "script",
+        "assetId": "0b-a-230-2",
+        "speakerClaims": [
+          {
+            "field": "spoken",
+            "quote": "I watched a woman with twelve years of corporate expertise stare at a niche worksheet and come up completely blank.",
+            "kind": "witnessed_event",
+            "biography": true,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "There's a different process — one that digs into what your former industry will actually pay for, not what you enjoy.",
+            "kind": "practice",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          },
+          {
+            "field": "spoken",
+            "quote": "The First Client Blueprint shows you exactly that.",
+            "kind": "offer_outcome",
+            "biography": false,
+            "specificity": "specific",
+            "slot": "none",
+            "modelNormalisedValue": "",
+            "evidence": "",
+            "evidenceVerified": false,
+            "evidenceSourceRefs": [],
+            "evidenceRejection": "no_evidence",
+            "certaintyMarkers": [
+              "exactly"
+            ],
+            "certaintyMarkersMissingFromEvidence": [],
+            "slotCheck": "not_applicable",
+            "conflict": null,
+            "verdict": "ungrounded"
+          }
+        ],
+        "viewerFinancialFindings": [],
+        "copyRead": {
+          "sentenceCount": 7,
+          "firstSentence": "I watched a woman with twelve years of corporate expertise stare at a niche worksheet and come up completely blank.",
+          "lastSentence": "Grab it at the link below.",
+          "verified": true,
+          "countMatches": true
+        },
+        "sentenceCount": 7,
+        "counts": {
+          "byVerdict": {
+            "grounded": 0,
+            "ungrounded": 3,
+            "conflicts_with_current_fact": 0,
+            "not_checkable": 0,
+            "overstated": 0
+          },
+          "specificBiographyUngrounded": 1,
+          "conflicts": 0,
+          "overstated": 0,
+          "notCheckable": 0,
+          "viewerFinancial": 0,
+          "unverifiedEvidence": 0
+        },
+        "extractionErrors": {
+          "callErrors": 0,
+          "malformedResponses": 0,
+          "unverifiedClaimQuotes": 0,
+          "unverifiedFinancialQuotes": 0,
+          "unverifiedCopyRead": 0,
+          "total": 0
+        },
+        "rejectedQuotes": [],
+        "attempts": [
+          {
+            "attempt": 1,
+            "outcome": "ok",
+            "detail": [],
+            "model": "claude-sonnet-4-6",
+            "latencyMs": 6293,
+            "inputTokens": 2435,
+            "outputTokens": 315
+          }
+        ],
+        "usage": {
+          "calls": 1,
+          "inputTokens": 2435,
+          "outputTokens": 315,
+          "latencyMs": 6293,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        }
+      },
+      "wallMs": 38748,
+      "summary": {
+        "attempts": 3,
+        "firstPassOk": false,
+        "firstPassBlockingLabels": [
+          "script_length_over_budget"
+        ],
+        "firstPassObservedLabels": [
+          "script_hook_too_long"
+        ],
+        "observedLabelsByAttempt": [
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ],
+          [
+            "script_hook_too_long"
+          ]
+        ],
+        "firstPassHookWords": 22,
+        "firstPassHookTooLong": true,
+        "hookInstrumentMismatch": false
+      }
+    }
+  ]
+}

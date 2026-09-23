@@ -91,3 +91,34 @@ the scenes guard doing its job.
 4. **Wording alone has not got the hook near zero.** Across six measured prompt states, every state with a short
    first-pass hook (B 1, C 4, kept note 12) overran on length (23, 24, 22/24); every state with tolerable length
    (baseline, H0, H1) left the hook long in two-thirds of drafts or more.
+
+---
+
+## 6. Same-day control — the pre-hook prompt, measured 2026-09-24 (§15f)
+
+Evidence: `runs/hook-ctrl-prehook-2026-09-24/`. HEAD `d076ecb` with `scriptPromptCraft.ts` restored whole to `0288828^`
+and the structure retry line restored to its `0288828^` text — both verified byte-identical. The generator's prompt
+was already identical (H0). The label-only hook check and `hookWords` stayed in: they never reach a verdict or the
+retry text (`build()` puts only blocking hits in `failContext`). Temporary, uncommitted; restored after the run.
+59-table snapshots 21:24:51Z / 21:31:01Z UTC, diff empty.
+
+| | recorded pre-hook (09-21/22) | **control today** | H1 today |
+|---|---|---|---|
+| produced within 3 attempts | 22/24 | **22/24** | 19/24 |
+| first-pass gate PASS | 11/24 | **7/24** | 7/24 |
+| first-pass `hook_too_long` | 18/22 on final text† | **17/24** (mean 19.2, max 36) | 16/24 |
+| first-pass `over_budget` | 10/24 | **17/24** | 17/24 |
+
+† the check did not exist then; 4 of 22 final hooks were ≤ 10.
+
+**Answer: today's baseline is NOT close to the recorded 10/24 — it is 17/24, identical to H1.** The gap is not the
+remaining hook wording; the unchanged pre-hook prompt shows it too. Either the model's first-pass length has shifted
+since 2026-09-21/22, or the recorded 10/24 was a low draw (two-sided p ≈ 0.08 against it — suggestive, not proof).
+Every earlier over-budget figure in this document was compared against 10/24 and must be re-read against 17/24.
+
+Consequences:
+1. **The remaining hook wording (H1 state) does nothing to the first-pass hook** — 16/24 against the control's 17/24.
+   Its only measured effect was via the scene-1 note, and that cost length.
+2. **Over-budget: H1 = control (17 = 17).** The note was the one measured length cost (22/24), and H0 removed it.
+3. **Production within 3 attempts: H1 19/24 vs control 22/24** — inside noise at n = 24, but in the direction of the
+   retry line still instructing on a hook that no longer blocks. Not established.
