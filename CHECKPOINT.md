@@ -1,4 +1,30 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-22
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-24
+
+### supersedes the 2026-09-22 block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-24_HOOK_WORDING_SETTLED_H2_NEXT.md`**
+> It supersedes `CHECKPOINT_2026-09-22_F5_HOOK_AND_SPRINT4.md`. Every figure measured at write time: git, GitHub,
+> Railway, four read-only 59-table snapshot pairs, and raw run JSON committed under `docs/handovers/runs/`.
+
+| | |
+|---|---|
+| production code | **`87596d7`**, Railway SUCCESS. GitHub `railway-build` = `87596d7`. **Untouched all session** |
+| held branch | **`a36f68f`**, **39 commits over production**, clean fast-forward. **GitHub backup = `a36f68f`** (the checkpoint commit sits on top). Deploy on HOLD |
+| scenes fix | **`fix/scenes-array-guard` = `94ae237`**, 1 commit over production, on GitHub, tested (negative control 14/15 fail). **NOT merged, NOT deployed — needs its own go-ahead; ships independently of the held branch** |
+| production DB | **Zero writes** — four 59-table snapshot pairs, every diff empty |
+| settled 2026-09-24 | harness blind to label-only classes → **fixed** (`lib-gate-summary.ts`, keep using it) · **H0** scene-1 note reverted (the only wording change that cost length) · **H1** "carries on" phrase removed (does nothing on its own) · **same-day control: wording is not the lever** |
+| 🔴 baseline | **the recorded pre-hook 10/24 over-budget is STALE — do not use it.** Current baseline = the 2026-09-24 control: **22/24 produced · 7/24 first-pass PASS · 17/24 hook_too_long · 17/24 over-budget** |
+| still open | **K9** event facts (no fixture) · **D-g** F5 tier (undecided) · **F2 FP drift** (uninvestigated) · the scenes-fix deploy decision · Sprint 4 step 2 held behind H2 · repetition (no gate approved) |
+| next step | **H2 — the hook as its own output field. NOT designed, NOT started. Investigate and propose first** |
+| gates | tsc **34** · **629 tests / 12 suites** · NUL clean · **0 production writes** · **0 pushes or merges to `railway-build`** |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.**
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-22, retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-24 RESTART BLOCK at the top of this file**.
 
 ### supersedes the 2026-09-16 block below, which is retained and marked, not deleted
 

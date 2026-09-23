@@ -1,4 +1,7 @@
-# 🟢 RESUME POINT — 2026-09-22: F5 label class, the hook fix, and where sprint 4 actually stands
+> 🗄️ **SUPERSEDED 2026-09-24 — NOT THE ENTRY POINT.** Resume from `CHECKPOINT_2026-09-24_HOOK_WORDING_SETTLED_H2_NEXT.md`.
+> ⚠️ This document's over-budget comparisons use the recorded 10/24 pre-hook baseline, which a same-day control showed to be stale (17/24 on 2026-09-24).
+
+# 🗄️ RESUME POINT (SUPERSEDED) — 2026-09-22: F5 label class, the hook fix, and where sprint 4 actually stands
 
 **Supersedes `CHECKPOINT_2026-09-16_SCRIPT_QUALITY_BUILD.md`**, which is retained and marked superseded.
 Written so a cold terminal resumes from exactly this point.
