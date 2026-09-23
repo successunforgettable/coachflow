@@ -151,7 +151,7 @@ export function validateScriptStructure(
 
   return build(
     hits,
-    `Regenerate the full script so: there are ≥${MIN_SCENES} scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the opening SENTENCE of scene 1 is ${HOOK_MAX_WORDS} words or fewer, with the rest of scene 1 carrying on in its own sentences after it; the top-level hookPattern is exactly "${opts.hookPattern}"; and total spoken words fit a ${opts.targetSeconds}-second read (~${budget.target} words, hard max ${budget.max}). Keep it tight — this length runs clean across Reels, Stories and Feed.`,
+    `Regenerate the full script so: there are ≥${MIN_SCENES} scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the opening SENTENCE of scene 1 is ${HOOK_MAX_WORDS} words or fewer; the top-level hookPattern is exactly "${opts.hookPattern}"; and total spoken words fit a ${opts.targetSeconds}-second read (~${budget.target} words, hard max ${budget.max}). Keep it tight — this length runs clean across Reels, Stories and Feed.`,
     labels,
   );
 }

@@ -1,0 +1,8 @@
+cells 24 | produced 19/24 | firstPassOk 7/24
+first-pass hook_too_long 16/24 | hook<=10 8/24 mean 16.6 median 14.5 max 40
+first-pass over_budget 17/24
+instrument: null hook counts 0 | mismatches 0
+first-pass blocking families {'script_length_over_budget': 17, 'unearned_authority': 1}
+failed cells, last-attempt labels {'script_length_over_budget': 4, 'unearned_authority': 1}
+produced words mean 136
+223:[ok/h12,ok/h29,ok/h12] 224:[ok/h9,FAIL/h12,ok/h16] 225:[ok/h34,ok/h40,ok/h18] 226:[FAIL/h20,ok/h10,FAIL/h18] 227:[ok/h5,ok/h8,ok/h13] 228:[ok/h17,ok/h20,FAIL/h10] 229:[ok/h9,ok/h6,ok/h9] 230:[ok/h21,ok/h22,FAIL/h28]

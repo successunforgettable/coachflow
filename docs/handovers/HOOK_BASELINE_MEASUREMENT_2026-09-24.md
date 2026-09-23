@@ -56,3 +56,38 @@ Zero writes: 59-table snapshot (count, max id, max updatedAt, CHECKSUM) before 1
   retry still instructs on a hook that no longer blocks.
 - A's 10 → 14/24 over-budget is **not significant** (p ≈ 0.19) and A changed several lines at once, so it does not
   show that this phrase does damage on its own. The measured damage sits with the scene-1 note (§3.2).
+
+---
+
+## 5. H0 and H1 — measured 2026-09-24, one change each, same 24 cells, zero writes
+
+Evidence: `runs/hook-h0-2026-09-24/`, `runs/hook-h1-2026-09-24/` (each: raw JSON, the exact worktree diff the run
+used, before/after 59-table snapshots — both diffs empty).
+
+- **H0** — scene-1 note at `conceptScriptGenerator.ts:105` reverted to the pre-hook wording, byte-identical to `0288828^`.
+- **H1** — H0 plus: "Scene 1 carries on after it in its own sentences" removed from HOOK_RULE, and ", with the rest of
+  scene 1 carrying on in its own sentences after it" removed from the structure retry line.
+
+| | kept note (ae175bc) | **H0** | **H1** |
+|---|---|---|---|
+| produced within 3 attempts | 13/24 | **17/24** | **19/24** |
+| first-pass gate PASS | 2/24 | 5/24 | **7/24** |
+| first-pass `hook_too_long` | 12/24 | **16/24** | **16/24** |
+| first-pass hook ≤ 10 · mean · max | 12/24 · 13.2 · 29 | 7/23 · 19.3 · 41 | 8/24 · 16.6 · 40 |
+| first-pass `over_budget` | 22/24 | **17/24** | **17/24** |
+| failed cells' last-attempt label | over_budget 10, authority 1 | over_budget 7 | over_budget 4, authority 1 |
+
+H0's one null hook count is a first pass that returned no scenes: `script_too_few_scenes`, retried and produced —
+the scenes guard doing its job.
+
+**Reading, with n = 24 per arm (a 5-cell gap is p ≈ 0.07 — suggestive, not proof):**
+1. **H0 prediction partly confirmed.** Hook drifted back toward 19 as predicted (12 → 16/24). Over-budget fell
+   (22 → 17/24) but not to the predicted ~14.
+2. **H1 moved neither first-pass metric** (hook 16 → 16, over-budget 17 → 17). The "carries on" phrase is not doing
+   measurable damage on its own; production within 3 attempts rose 17 → 19/24, inside noise.
+3. **Over-budget 17/24 is still well above the recorded pre-hook 10/24.** What remains between H1 and the pre-hook
+   prompt is the "FIRST SENTENCE … 10 words or fewer" wording in HOOK_RULE, SCRIPT_STRUCTURE_CRAFT and the retry
+   line — or day-to-day drift. The 10/24 was measured 2026-09-21/22 and has not been re-measured (§15f).
+4. **Wording alone has not got the hook near zero.** Across six measured prompt states, every state with a short
+   first-pass hook (B 1, C 4, kept note 12) overran on length (23, 24, 22/24); every state with tolerable length
+   (baseline, H0, H1) left the hook long in two-thirds of drafts or more.

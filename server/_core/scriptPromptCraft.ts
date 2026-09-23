@@ -24,8 +24,7 @@ thing" — correct world.
 
 export const HOOK_RULE = `
 HOOK RULE — the FIRST SENTENCE of scene 1, the first 3 seconds. One job: make the RIGHT person stop scrolling.
-That first sentence is 10 words or fewer. Scene 1 carries on after it in its own sentences; the hook is the
-sentence that opens the script, not the whole scene.
+That first sentence is 10 words or fewer. The hook is the sentence that opens the script, not the whole scene.
 - Names a specific moment the coach has lived or watched close up in this work — concrete, and
   told from their side.
 - Creates an open loop — a tension that cannot be resolved until they watch the rest.
