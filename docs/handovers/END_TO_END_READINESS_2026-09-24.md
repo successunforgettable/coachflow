@@ -1,0 +1,240 @@
+# END-TO-END READINESS — 2026-09-24 (overnight investigation, read-only)
+
+**Question:** can Arfeen run ONE full campaign through the wizard next session, watch every asset generate, confirm
+Meta compliance and cross-asset coherence, and push it successfully to GoHighLevel and Meta?
+
+**Short answer: nearly. Generation is ready today; the PUSH is not.** The wizard path works end-to-end for a pro
+account. Three things stand between Arfeen and a clean walkthrough, all on the push side: **GHL cannot push at all
+today** (expired token, no refresh code, snapshot link unset), **the Meta token expires 2026-10-05**, and **no landing
+page is currently published**, which Meta push requires. None needs a code change for a one-off walkthrough on
+Arfeen's own account — but two of them are real defects that need a sprint before any other coach can use this.
+
+**Method.** Read-only throughout. Code read at production `87596d7` (the wizard/Trail client is identical on the
+held branch). Production DB read with SELECT-only queries through a guarded runner (it refuses anything but
+SELECT/SHOW/DESCRIBE, and runs inside a READ ONLY transaction; negative control: a `DELETE` was refused). Env vars
+checked for presence only, values never printed. Four code investigations ran in parallel; every claim that decides
+a recommendation was re-verified directly (cited ✔). **No writes, no code changes, no pushes.**
+
+Legend: ✔ verified tonight in code or DB · 📄 claimed in a doc, not re-verified.
+
+---
+
+## 0. THE WALKTHROUGH BLOCKERS, IN PRIORITY ORDER
+
+| # | blocker | effect on the walkthrough | fix for the walkthrough | fix for real coaches |
+|---|---|---|---|---|
+| **1** | **GHL token expired 2026-07-10; no refresh code exists** ✔ | "Push to GHL" throws *"GHL token expired — please reconnect"* | Arfeen reconnects GHL **in the same sitting as the push** (a fresh token lasts ~24 h) | Build token refresh (the refresh token is stored, never used) |
+| **2** | **`GHL_MASTER_SNAPSHOT_ID` is UNSET on production** ✔ | The "Apply ZAP Master Snapshot" link is hidden; the Push-to-GHL button stays disabled unless ≥12 `zap…` workflows already exist in the location | Arfeen's location `yfK7u2subVFh1BJHPSyg` IS the master — it probably already has the workflows; **confirm after reconnect** (the status pill) | Set the env var (Arfeen has the snapshot ID in GHL) |
+| **3** | **No landing page is published** ✔ (all 8 rows: no `publicUrl`) | Meta push needs the page's `publicUrl`; a kit whose page is `needs_publish` cannot go to Meta | Run a **fresh** kit whose page publishes during the run (see §5 for the campaign type) | — |
+| **4** | **Meta token expires 2026-10-05** ✔ (11 days) | After that, Meta reads as disconnected | Walk through before 10-05, or reconnect Meta first | Wire the existing but uncalled `meta.refreshToken` |
+| **5** | **"Skip — I already have this" in the manual Trail silently breaks completion** ✔ | Skipping any node leaves its kit field empty → kit never `complete` → **Push button stays disabled**, while the chat still says "11 of 11" | **Do not skip any node** in the walkthrough | Make skip either capture content or stop blocking completion |
+| **6** | **Landing-page publish can fail on a compliance or `[INSERT_*]` hit** and the cascade swallows it ✔ | Page lands `needs_publish`; the chat still says "every piece built" | Watch the Trail bar's landing-page stop — if it is not green, the walk stops there | Surface the failure; stop the false "11 of 11" |
+| **7** | **GHL push reports success even when every slot failed** ✔ | A green toast proves nothing | **Verify in GHL itself** (Settings → Custom Values, look for `ZAP …` entries) | Return real per-asset results |
+| 8 | Ad-copy deck may show zero cards on an already-generated node 📄 (memory 2026-07-23; code unchanged ✔) | A stuck node | Regenerate that node rather than skip it | Own pass |
+| 9 | Zombie jobs ✔ (reaper sweeps `pending` only) | A deploy or crash mid-step leaves a job `running` forever; after 600 s the Trail says "timed out"; 3 zombies lock the account | **No deploy during the walkthrough.** `jobs` table is empty today ✔ | Liveness/heartbeat fix |
+
+**Not blockers for the walkthrough** (state them so nobody chases them): the video-script `scenes` crash
+(scripts are not a Trail node — only generated on a click in the legacy wizard or Tool Library ✔); Meta App Review
+Advanced Access (only needed for OTHER coaches' ad accounts); the held branch (nothing on it is needed).
+
+---
+
+## 1. CAN A FULL END-TO-END CAMPAIGN BE RUN TODAY?
+
+**Yes — on Arfeen's own admin account, as a fresh kit. There is no real third-party coach in the system.**
+
+Production holds exactly **3 users** ✔, all `subscriptionTier = pro`:
+
+| user | who | services | kits | notes |
+|---|---|---|---|---|
+| **1** | Arfeen (admin) | 285 (copywriting-for-coaches, **has testimonials**), 318 (women returning to work) — both with an **empty name** | **200** webinar/manual/complete · **225** lead_magnet/**auto**/complete (2026-08-30) | **Meta connected** (ad account "KS 1", page set) · **GHL connected to the master location, token expired** |
+| 1613 | the reviewer account | — | — | |
+| 117174 | the smoke coach (Playwright) | 6× "The Career Pivot Intensive" | 187–192 real-ish, 204–218 `ZZ-…` throwaways | test data |
+
+**Why not reuse an existing kit.** Every landing page is unpublished ✔ — the 2026-09-02 takedown removed them
+(pages 235 and 241 carry that day's timestamp), and magnet 7293 (kit 225's) had its Cloudinary files deleted. Pushing
+kit 225 or 200 means republishing assets that were taken down for fabricated testimonials. **A fresh kit is cleaner
+and is itself the test the launch bar asks for.**
+
+**The smallest real setup:** Arfeen as the coach, describing his real business in the intake, on user 1 — it is pro
+(passes the tier gate), already Meta-connected, and already GHL-linked to the master location. Nothing to create in
+the DB.
+
+⚠️ **Tier gate, found tonight and in no doc:** every Trail node — **manual too** — runs through
+`autoMode.orchestrateStep`, which rejects anyone not pro/agency/admin/superuser (`autoMode.ts:76-88, 202-205` ✔). A
+**trial** coach on the manual path gets "Still stuck on Offer (Auto Mode is a Pro feature…)" on the first node. Not a
+walkthrough blocker (Arfeen is pro); a launch blocker for trial signups.
+
+### What the manual walkthrough actually is
+Dashboard → **Start New Campaign** → `/v2-dashboard/trail/new` (the Trail, not the legacy wizard).
+1. Service (one text box, ≥120 chars → extracted → "That's me") · 2. ICP (generated, optional sharpen ladder) →
+campaign type → fork chip **"I'll pick as we go"** (manual).
+3–11 run one node at a time, each as its own job: **Offer → Method → Lead Magnet → Headlines → Ad Copy → Landing
+Page → Email → WhatsApp → Ad Images**. Offer … Landing Page deal cards ("Show me options" / "Lock it in →"); Email,
+WhatsApp and Ad Images show a single result. A testimonial prompt and up to 12 campaign-fact questions come before
+the Offer on a fresh build.
+End: chip **"Open my Campaign Kit"** → `/v2-dashboard/campaign-kit/:id` → **"Push to Meta / GHL"** (enabled only
+when the kit is `complete`) → `PushKitModal` with Push to GHL / Push to Meta / Push to both.
+
+---
+
+## 2. WHAT IS ACTUALLY PUSHABLE RIGHT NOW
+
+### GoHighLevel — **not pushable today**
+- **What push does** (`ghl.ts:482-961`): writes **Custom Values only** — email subjects/bodies, WhatsApp messages,
+  landing-page text, headlines, ad copy, offer copy, lead magnet + URL, mechanism, ad-creative headlines and image
+  URLs, with orphan-slot cleanup. Templates, funnels and workflows were removed in May as impossible under v2 OAuth.
+  **No tags, no contacts** ✔ — matches the 2026-05-27 decision.
+- **Token:** expired **2026-07-10** ✔; refresh token stored ✔ but **no code ever uses it** ✔. Every GHL connection in
+  production dies ~24 h after connecting.
+- **Snapshot detection** counts workflows named `zap…` (≥12 = installed), cached 1 h, **not cleared on reconnect**; any
+  error — including an expired token — reads as "not installed". `GHL_MASTER_SNAPSHOT_ID` **unset** ✔.
+- **Gate is client-only and bypassable:** "Push to both" fires GHL even when the GHL button is disabled.
+- **Last live GHL push on record: 2026-05-13** (`878a911`) 📄. Every GHL change since (the gate, creative slots, the
+  lead-magnet URL) has **never been pushed live**.
+
+### Meta — **pushable, image ads only, own account**
+- `publishToMeta` (`meta.ts:473-767`): budget floor → token → **compliance gate** (fails closed; blocks Tier-1 hits;
+  checks ad-to-page match against the live page angle) → campaign → ad set → creative → ad. **Default PAUSED**; the
+  modal also offers ACTIVE (real spend).
+- **Images only.** No video push exists anywhere ✔ — Andromeda scripts and Remotion videos never reach Meta. The 9:16
+  `asset_feed_spec` path has never run live 📄.
+- OAuth **auto-picks** the first active ad account and first page — the coach cannot choose.
+- Errors: generic messages to the user, detail only in Railway logs; a partial failure leaves orphan PAUSED objects.
+- **Last full end-to-end Meta push: August 2026** (`64f5dc8`) — one real PAUSED image ad on Arfeen's account, read
+  back and deleted 📄. `meta_published_ads` ✔ shows the latest row **2026-09-04** ("ZZ-GATE-POSITIVE-ARM", PAUSED).
+- The multi-ad path (`publishAssembledAds`) is built, **not wired**, never proven.
+- App Review Advanced Access for other coaches' accounts: **not started** 📄.
+
+**Has either been verified end-to-end recently? No — only in pieces.** Meta's single-ad path was proven in August on
+a script-driven call, not from the Campaign Kit page. GHL has not pushed live since May. **The two have never been
+pushed together from one kit through the UI.** That is exactly what the walkthrough would prove.
+
+---
+
+## 3. AUTO MODE — REAL CURRENT STATE
+
+**Two things are called "Auto Mode", and only one is alive.**
+- **Dead:** the old 3-screen flow (Intake → Confirm → Progress) and its server orchestrator `autoMode.orchestrate` →
+  `runOrchestration`. The routes redirect to the Trail; nothing calls the orchestrator ✔. Docs that describe Auto Mode
+  as this flow (memory `project_auto_mode_full_state_map.md`, superseded `STATE.md` §13) are stale.
+- **Alive:** the Trail's fork chip **"Build it all for me ⚡"** (`path='auto'`). The **client** runs the 9 cascade
+  steps one job at a time through `autoMode.orchestrateStep`, polling each. **It has produced a complete kit on
+  production: kit 225, 2026-08-30** ✔.
+
+### A new user trying Auto Mode right now, step by step
+1. **Sign up** — works. New users are **`trial`**.
+2. **Dashboard** → "Have Zappy Build It For You" → Trail intake — works.
+3. **Single-text intake** — works (three of six extracted fields are never shown to the coach 📄).
+4. **Campaign type → "Build it all for me ⚡" → 🛑 A TRIAL USER STOPS HERE**: *"Building it for you is a Pro
+   feature"*, with no upgrade path in the chat. (The manual chip fails one step later — see §1.)
+5. **Pro user**: profile expand → ICP → kit (`path='auto'`) → the Trail — works.
+6. **Cascade** — works one node at a time, 2 automatic tries per step then a manual "Try again". **Breaks when:**
+   - **no campaign facts are ever asked in auto mode** ✔ — webinar, event and sales pages generate but cannot publish
+     (need date, venue, price); discovery pages need a booking URL. **Only lead-magnet campaigns publish cleanly.**
+   - a deploy or crash mid-step leaves a zombie job (600 s timeout; 3 zombies lock the account).
+   - **ad creatives fail** → the kit never becomes `complete` → push disabled; the Trail loops on "Try again".
+   - lead-magnet body, bonuses, the Cloudflare page publish and the free-next-step page **fail silently** (warn only).
+7. **Completion** — posts *"11 of 11 — every piece built"* **unconditionally**, even when the page did not publish.
+8. **Push** — manual, never automatic. Needs `complete` + Meta connected + a published page (+ GHL connected, which
+   today is impossible past 24 h).
+
+**So:** for a **pro** user choosing a **lead-magnet** campaign, Auto Mode builds a full kit today. For anyone else it
+stops at the tier gate (trial) or produces a page that cannot publish (every other campaign type). The "signup →
+one text → ready-to-push kit" vision holds for exactly one campaign type and one tier.
+
+---
+
+## 4. EXISTING-ASSETS IMPORT PATH
+
+**Alive, and wired only to the Auto loop.** Trail fork chip **"I have some — use mine"** (`path='has_assets'`):
+upload (≤5 files) or paste → `extractFromAssets` (verbatim-rules LLM extraction) → coherence check → confirm cards
+per category → "describe it" or "create one for me" for gaps → quick-fill → ICP imported (and the client **waits for
+enrichment**, which fixes the old thin-ICP race) → offer, method and lead magnet imported, marked `source='imported'`
+→ the Trail. Imported nodes are **skipped, not regenerated**; the rest generate through the same auto loop with the
+imports as upstream context ✔.
+
+### Where an existing-assets coach breaks
+1. **Trial coach**: goes through upload, extraction (LLM cost, **no tier gate**), confirm cards and quick-fill — and
+   only then hits FORBIDDEN at import: *"that one fizzled"*.
+2. **Price dropped**: extracted and shown, but the import schema has no price field → the offer ships
+   `[INSERT_PRICE]` unless re-entered in quick-fill (which then blocks page publish if missed). Duration also dropped.
+3. **Testimonials discarded**: shown, never stored ("future work"); the testimonial ask only fires when the Offer is
+   the first pending node, so an importer is never asked → no real proof on the page.
+4. **Imported material is NOT ground truth for the anti-fabrication gates**: `buildCoachCorpus` has an
+   `importedText` parameter that none of its 10 callers pass; the imported guarantee is invisible to
+   `buildProofSupplied`. The coach's own claims can be blocked as invented.
+5. **Correction text leaks**: a coach's correction is appended as `"User correction: …"` into the stored copy, and
+   long corrections can exceed a 2,000-char limit and kill the flow.
+6. Imported method has 8 empty context columns, never enriched · imported lead magnet gets **no body** (a lead-magnet
+   campaign then has nothing to download) · the "already N of 11 done" count double-counts the ICP · the coach's
+   service name is overwritten by the offer name.
+7. **The manual wizard has no import at all** — "Skip — I already have this" stores nothing (see blocker 5).
+
+Docs disagree with each other: memory 2026-06-29 says "has-assets FULLY VERIFIED" (one run); superseded `STATE.md`
+says the has-assets shape was never run.
+
+---
+
+## 5. PROPOSAL — THE SMALLEST PATH TO ONE FULL WALKTHROUGH (not built)
+
+**No code is required for one walkthrough on Arfeen's account.** Two decisions and a short sequence are.
+
+### Decisions for Arfeen (morning)
+- **D1 — campaign type: LEAD MAGNET (recommended).** It is the one type whose page publishes without date, venue,
+  price or booking URL, and the one type Auto Mode has completed on production (kit 225). Webinar/event/sales need
+  every operator fact answered or the page will not publish, and Meta push stops there.
+- **D2 — manual or Auto for the walkthrough.** He asked for manual; that works. Auto on the same account is the same
+  cascade and would additionally prove the next-to-fix product. Recommend **manual first**, as planned.
+- **D3 — Meta ad status: keep PAUSED** (the default). ACTIVE spends money on creation.
+
+### Sequence
+1. **Before starting (5 min, Arfeen in the UI):** Settings → reconnect **GHL**; check the snapshot pill is green for
+   the master location. If it is not green, stop — that needs `GHL_MASTER_SNAPSHOT_ID` set (an env change I will
+   not make without a go-ahead). Confirm **Meta** shows connected.
+2. **No deploys during the walkthrough** (zombie-job risk). The scenes fix and the held branch stay where they are.
+3. Dashboard → Start New Campaign → describe the real business → **Lead Magnet** → **"I'll pick as we go"**.
+   Answer the testimonial and fact questions. **Never press "Skip — I already have this."**
+4. At each node, watch it generate; lock a card. **At Landing Page, confirm the Trail stop turns complete, not
+   pending** — if it stays pending the page did not publish; stop and send me the kit id.
+5. **Coherence check — by eye**, on the Campaign Kit page: the same promise, audience and lead magnet name across
+   offer → headline → ad copy → landing page → emails. (There is no automated cross-asset coherence check beyond the
+   ad-to-page match inside the Meta gate.)
+6. Push to **Meta** (PAUSED). The compliance gate runs here; a block names its class.
+7. Push to **GHL** within 24 h of reconnecting. **Then open GHL → Settings → Custom Values and confirm the `ZAP …`
+   entries hold this kit's copy** — the app's success toast is not evidence (blocker 7).
+8. In Meta Ads Manager, confirm the paused campaign, ad set and ad exist with the right image, copy and page URL.
+
+**What I can prepare in the morning, read-only, before he starts:** confirm after his reconnect that the master
+location reports ≥12 `zap…` workflows; watch the Railway logs live during the push (Meta and GHL errors are only
+visible there).
+
+### After the walkthrough — the build queue this investigation points to (priority order)
+1. **GHL token refresh** — without it GHL push works for one day per connection, for every coach.
+2. **Tier gate on the manual path + an upgrade path in chat** — a trial signup cannot generate a single node.
+3. **Honest completion** — stop "11 of 11" when the page did not publish or a node was skipped; fix skip.
+4. **Campaign facts in Auto Mode** — the only reason non-lead-magnet Auto kits cannot publish.
+5. **GHL push truthfulness** — real per-asset results; server-side snapshot gate; fix the "Push to both" bypass.
+6. **Zombie-job liveness.**
+7. Existing-assets: price field, testimonials stored, imported text into the grounding corpus.
+8. Scenes crash fix deploy (`fix/scenes-array-guard`, ready) — independent, affects only the script tool.
+
+---
+
+## 6. EVIDENCE INDEX (all read-only, 2026-09-24)
+
+| check | result |
+|---|---|
+| DB identity | `@@version_comment` = MySQL Community Server - GPL, `DATABASE()` = railway — production ✔ |
+| users / tiers | 3 users (1 admin, 1613, 117174), all `pro` |
+| `ghl_access_tokens` | 1 row, user 1, location `yfK7u2subVFh1BJHPSyg`, `tokenExpiresAt` 2026-07-10 13:33:11, refresh token present, never updated since 2026-07-09 |
+| `meta_access_tokens` | 1 row, user 1, `tokenExpiresAt` 2026-10-05 13:36:31, ad account + page set, last refreshed 2026-08-06 |
+| `meta_published_ads` | 3 rows, all PAUSED; latest 2026-09-04 |
+| `landingPages` for all 8 kit pages | no `publicSlug`, no `publicUrl` |
+| `jobs` | 0 rows |
+| env presence | `GHL_MASTER_SNAPSHOT_ID` **UNSET** · `GHL_CLIENT_ID`, `META_APP_ID`, `TOKEN_ENCRYPTION_KEY` set |
+| GHL refresh code | `refresh_token` appears only where tokens are **stored** (`ghl.ts:452-456`, `ghlOAuth.ts:110-158`); no refresh grant anywhere |
+| production code | `87596d7`; wizard/Trail client identical on the held branch |
+
+⚠️ Historical row counts in older documents (e.g. `hvcoTitles` 6,749, `landingPages` 92) no longer match production
+(467 and 8 today). Production data has been pruned since; never compute a delta against an old document (§15f).
