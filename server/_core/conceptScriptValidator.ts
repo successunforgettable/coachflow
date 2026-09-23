@@ -72,6 +72,11 @@ export function firstSentenceOf(line: string | undefined): string {
   const m = t.match(/^[\s\S]*?[.!?](?=\s|$)/);
   return (m ? m[0] : t).trim();
 }
+/** Words in a line's opening sentence. The ONE count both the hook check and the gate's observer use, so a
+ *  measurement of the hook can never drift from what the check itself saw. */
+export function hookWordCount(line: string | undefined): number {
+  return countWords(firstSentenceOf(line));
+}
 
 function build(hits: ScriptHit[], tail: string, labels: ScriptHit[] = []): ScriptResult {
   if (hits.length === 0) return { ok: true, labels };
@@ -110,8 +115,7 @@ export function validateScriptStructure(
   // It is recorded on every attempt and blocks nothing. Promotion to blocking waits on the steering converging
   // — the measure to watch is how often it fires on the FIRST attempt (19/24 when last measured blocking).
   if (scenes.length > 0) {
-    const hook = firstSentenceOf(scenes[0].spokenLine);
-    const hookWords = countWords(hook);
+    const hookWords = hookWordCount(scenes[0].spokenLine);
     if (hookWords > HOOK_MAX_WORDS) {
       labels.push({
         classId: "script_hook_too_long",

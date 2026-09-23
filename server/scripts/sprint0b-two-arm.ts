@@ -14,6 +14,7 @@ import { tmpdir } from "os";
 import { generateScriptForConcept, type ScriptGateRecord } from "../conceptScriptGenerator";
 import { armBPrompt } from "./lib-arm-b";
 import { metricsFor, setMetrics, type ScriptMetrics } from "./lib-script-metrics";
+import { summariseGate, type GateSummary } from "./lib-gate-summary";
 import { checkGrounding, type GroundingCheckResult } from "../_core/groundingChecker";
 import { buildCoachFacts } from "../_core/coachFacts";
 import { GROUNDING_FIXTURES } from "../__fixtures__/groundingCheckerScripts";
@@ -34,12 +35,14 @@ type Cell = {
   attempts: number; firstPassOk: boolean | null; firstPassLabels: string[];
   gate: ScriptGateRecord[]; targetSeconds: number | null; text: string;
   metrics: ScriptMetrics | null; grounding: GroundingCheckResult | null; wallMs: number;
+  /** Observed (label-only) classes on every attempt + the first attempt's hook word count (lib-gate-summary). */
+  summary: GateSummary | null;
 };
 
 async function one(arm: Arm, conceptId: number, run: number): Promise<Cell> {
   const gate: ScriptGateRecord[] = [];
   const t0 = Date.now();
-  const cell: Cell = { arm, conceptId, run, ok: false, attempts: 0, firstPassOk: null, firstPassLabels: [], gate, targetSeconds: null, text: "", metrics: null, grounding: null, wallMs: 0 };
+  const cell: Cell = { arm, conceptId, run, ok: false, attempts: 0, firstPassOk: null, firstPassLabels: [], gate, targetSeconds: null, text: "", metrics: null, grounding: null, wallMs: 0, summary: null };
   try {
     const r = await generateScriptForConcept({
       userId: USER, conceptId, dryRun: true,
@@ -54,10 +57,13 @@ async function one(arm: Arm, conceptId: number, run: number): Promise<Cell> {
     cell.error = String(e?.message ?? e).slice(0, 300);
   }
   cell.wallMs = Date.now() - t0;
-  const gated = gate.filter((g) => g.ok !== null);
-  cell.attempts = gated.length;
-  cell.firstPassOk = gated.length ? gated[0].ok : null;
-  cell.firstPassLabels = gated.length && !gated[0].ok ? String(gated[0].labels || "").split(",").map((s) => s.trim()).filter(Boolean) : [];
+  // Blocking labels of a failed first pass AND the label-only observations of every attempt: a label-only class
+  // (script_hook_too_long) never reaches `labels`, so reading `labels` alone reported it as zero (§15k).
+  const summary = summariseGate(gate);
+  cell.summary = summary;
+  cell.attempts = summary.attempts;
+  cell.firstPassOk = summary.firstPassOk;
+  cell.firstPassLabels = [...summary.firstPassBlockingLabels, ...summary.firstPassObservedLabels];
   if (cell.text) {
     cell.metrics = metricsFor(`c${conceptId}`, cell.text);
     cell.grounding = await checkGrounding(
@@ -66,7 +72,7 @@ async function one(arm: Arm, conceptId: number, run: number): Promise<Cell> {
     );
   }
   console.log(`[${arm}] c${conceptId} run${run + 1}: ok=${cell.ok} attempts=${cell.attempts} firstPass=${cell.firstPassOk} ` +
-    `words=${cell.metrics?.words ?? "-"} bioUngrounded=${cell.grounding?.counts.specificBiographyUngrounded ?? "-"} f5=${cell.grounding?.counts.viewerFinancial ?? "-"} ms=${cell.wallMs}`);
+    `hook1=${summary.firstPassHookWords ?? "-"}${summary.hookInstrumentMismatch ? "(MISMATCH)" : ""} words=${cell.metrics?.words ?? "-"} bioUngrounded=${cell.grounding?.counts.specificBiographyUngrounded ?? "-"} f5=${cell.grounding?.counts.viewerFinancial ?? "-"} ms=${cell.wallMs}`);
   return cell;
 }
 

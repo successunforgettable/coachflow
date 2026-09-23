@@ -1,0 +1,59 @@
+__drizzle_migrations	56	56	NULL	4217091776
+adCopy	73	6207	2026-08-30 16:46:14	212615270
+adCreatives	33	511	2026-08-30 16:51:15	93682883
+admin_audit_log	2	2	NULL	4211438883
+analytics_events	0	NULL	NULL	0
+banned_phrases	0	NULL	NULL	0
+bonuses	6	44	2026-09-13 20:51:35	400130017
+campaignConcepts	8	230	2026-08-30 16:48:24	856889182
+campaignKits	22	225	2026-08-30 16:51:15	2035403106
+campaign_alerts	0	NULL	NULL	0
+campaign_assets	0	NULL	NULL	0
+campaign_links	0	NULL	NULL	0
+campaign_metrics	0	NULL	NULL	0
+campaigns	0	NULL	NULL	0
+capturedLeads	0	NULL	NULL	0
+chatTranscripts	8	72	2026-08-30 16:51:28	3688294412
+coachAssets	0	NULL	NULL	0
+coachFacts	0	NULL	NULL	0
+coachMethods	0	NULL	NULL	0
+complianceRewrites	0	NULL	NULL	0
+compliance_history	0	NULL	NULL	0
+compliance_versions	0	NULL	NULL	0
+conceptScripts	8	9	2026-09-14 18:43:00	3382901420
+content_flags	0	NULL	NULL	0
+demoVideos	0	NULL	NULL	0
+emailSequences	8	424	2026-08-30 16:48:16	490400199
+emailVerificationTokens	1	41	NULL	3560879752
+favourites	0	NULL	NULL	0
+ghl_access_tokens	1	11	2026-07-09 13:33:12	1382168193
+headlines	74	2377	2026-08-30 16:45:38	2140240103
+heroMechanisms	117	1285	2026-08-30 16:40:47	3394076359
+hvcoTitles	467	7342	2026-09-10 15:52:34	2642115332
+icp_angle_suggestions	0	NULL	NULL	0
+idealCustomerProfiles	8	291	2026-08-30 16:37:35	141609236
+jobs	0	NULL	NULL	0
+landingPages	8	241	2026-09-02 19:08:20	3231073413
+metaConnections	0	NULL	NULL	0
+meta_access_tokens	1	3	2026-08-06 13:36:31	3399145075
+meta_published_ads	3	5	2026-09-04 20:29:27	500249294
+nodeSkips	6	13	NULL	2486131694
+nodeStatuses	7	178	2026-08-03 18:06:45	2838323693
+node_skips	0	NULL	NULL	0
+offers	8	218	2026-08-30 16:47:42	3450585035
+passwordResetTokens	0	NULL	NULL	0
+phrase_usage_stats	0	NULL	NULL	0
+placeholderValues	0	NULL	NULL	0
+product_events	27	989	NULL	858059702
+services	8	318	2026-08-30 16:29:18	1716968225
+sourceOfTruth	0	NULL	NULL	0
+system_health_metrics	0	NULL	NULL	0
+testimonials	0	NULL	NULL	0
+user_notes	0	NULL	NULL	0
+user_onboarding	1	1	2026-03-22 17:42:46	440986154
+users	3	117174	2026-09-14 21:19:01	59466184
+videoCreditTransactions	19	23	NULL	1165763700
+videoCredits	2	6	2026-07-30 16:50:39	1427360710
+videoScripts	0	NULL	NULL	0
+videos	0	NULL	NULL	0
+whatsappSequences	7	293	2026-08-30 16:48:37	2573192835

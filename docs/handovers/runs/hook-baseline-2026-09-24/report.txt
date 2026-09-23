@@ -1,0 +1,17 @@
+cells 24 produced 13 firstPassOk 2
+mismatch 0 hookWords null 0
+firstpass hook_too_long 12 / 24  hook<=10 12 / 24  mean 13.2 median 10.5 max 29
+hook words sorted [5, 5, 5, 6, 7, 7, 8, 9, 9, 9, 10, 10, 11, 13, 14, 15, 15, 16, 18, 19, 25, 25, 26, 29]
+first-pass blocking families {'script_length_over_budget': 22, 'unearned_authority': 1}
+failed cells: last-attempt blocking labels {'script_length_over_budget': 10, 'unearned_authority': 1}
+all-attempt blocking labels {'script_length_over_budget': 46, 'unearned_authority': 3}
+errors ['Script failed validation after 3 attempts: script_length_over_budget', 'Script failed validation after 3 attempts: script_length_over_budget', 'Script failed validation after 3 attempts: script_length_over_budget']
+223 [(True, 10), (True, 15), (True, 19)]
+224 [(False, 9), (False, 9), (False, 10)]
+225 [(True, 8), (False, 25), (True, 25)]
+226 [(False, 13), (False, 9), (False, 6)]
+227 [(True, 7), (True, 15), (True, 7)]
+228 [(True, 5), (True, 5), (True, 5)]
+229 [(True, 18), (False, 11), (True, 14)]
+230 [(False, 26), (False, 16), (False, 29)]
+hook label any attempt 12

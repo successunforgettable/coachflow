@@ -22,6 +22,7 @@ import { activeLengthForStage, wordBudgetForSeconds, type AwarenessStage } from 
 import {
   validateScriptStructure,
   screenScriptCompliance,
+  hookWordCount,
   type RawScript,
   type RawScriptScene,
 } from "./_core/conceptScriptValidator";
@@ -288,6 +289,8 @@ export async function generateScriptForConcept(params: {
       // Observed, never blocking — recorded on a pass and a fail alike so a label-only class can be
       // measured before anyone argues about promoting it.
       observedLabels: structure.labels.map((h) => h.classId),
+      // The opening sentence's word count, from the same helper the hook check uses; null with no scene 1.
+      hookWords: sceneList.length > 0 ? hookWordCount(sceneList[0]?.spokenLine) : null,
     };
     if (structure.ok && compliance.ok && output.ok) return { ok: true, failContext: "", labels: "" };
     const parts = [
@@ -403,6 +406,8 @@ export type ScriptGateAxes = {
   outputLabels: string[];
   /** Non-blocking observations (label-only classes). Present on a PASS as well as a fail. */
   observedLabels: string[];
+  /** Words in scene 1's opening sentence (the hook), counted as the hook check counts them. Null with no scenes. */
+  hookWords: number | null;
 };
 
 /** One observed gate verdict or generation error (see `onGate` on generateScriptForConcept). */
