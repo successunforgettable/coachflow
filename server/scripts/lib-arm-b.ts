@@ -30,7 +30,7 @@ export function armBPrompt(built: string): string {
   // The arithmetic is gone; the craft is not.
   for (const leak of ["HARD FLOOR", "HARD CEILING", "Count as you write", "Each scene is ONE spoken line of"])
     if (p.includes(leak)) throw new Error(`arm (b): "${leak}" survived the transform`);
-  for (const keep of ["Tight means FEWER", "one idea per breath", "Scene 1 OPENS with the hook", "Include a TURN beat"])
+  for (const keep of ["Tight means FEWER", "one idea per breath", "Scene 1 is the HOOK", "Include a TURN beat"])
     if (!p.includes(keep)) throw new Error(`arm (b): craft line "${keep}" was lost — the arms differ by more than the budget`);
   if (p.length >= built.length) throw new Error("arm (b): transform did not shorten the prompt");
   return p;

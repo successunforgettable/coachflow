@@ -1,0 +1,26 @@
+diff --git a/server/conceptScriptGenerator.ts b/server/conceptScriptGenerator.ts
+index 85bea1d..6ef1a3c 100644
+--- a/server/conceptScriptGenerator.ts
++++ b/server/conceptScriptGenerator.ts
+@@ -102,7 +102,7 @@ Count as you write. Every word costs a fraction of a second on camera. ${targetS
+ sayable lines — one idea per breath — not denser sentences.
+ 
+ SCENE MAP (${targetSeconds === 15 ? "3 tight scenes at 15s: hook → the turn (the one new-way point) → CTA — problem and solution fold into the turn" : targetSeconds <= 30 ? "4 scenes at 30s: hook → problem → turn → solution-and-CTA — fold the solution and the CTA into one closing scene so the whole thing fits the word cap" : "5 scenes: hook → problem → turn → solution → CTA"}):
+-- Scene 1 OPENS with the hook: a first sentence of 10 words or fewer, in the ${concept.hookPattern} style, on the leading desire above.
++- Scene 1 is the HOOK, written in the ${concept.hookPattern} style, opening on the leading desire above.
+ - Include a TURN beat — the "here's the new way" shift from problem to solution (sceneType: "turn"). Keep it short.
+ - Total spoken words: HARD FLOOR ${budget.min}, HARD CEILING ${budget.max}, aim ~${budget.target}. BOTH bounds are non-negotiable, and each is repaired a WHOLE BEAT at a time: if a draft lands near ${budget.max}, cut a WHOLE sentence — never shave words; if it lands near ${budget.min}, add a WHOLE line to an existing scene — never pad the sentences you already have.
+ - Each scene is for a HUMAN presenter recording themselves — no stock footage, no render directions.
+diff --git a/server/scripts/lib-arm-b.ts b/server/scripts/lib-arm-b.ts
+index 8d06567..0eb4a83 100644
+--- a/server/scripts/lib-arm-b.ts
++++ b/server/scripts/lib-arm-b.ts
+@@ -30,7 +30,7 @@ export function armBPrompt(built: string): string {
+   // The arithmetic is gone; the craft is not.
+   for (const leak of ["HARD FLOOR", "HARD CEILING", "Count as you write", "Each scene is ONE spoken line of"])
+     if (p.includes(leak)) throw new Error(`arm (b): "${leak}" survived the transform`);
+-  for (const keep of ["Tight means FEWER", "one idea per breath", "Scene 1 OPENS with the hook", "Include a TURN beat"])
++  for (const keep of ["Tight means FEWER", "one idea per breath", "Scene 1 is the HOOK", "Include a TURN beat"])
+     if (!p.includes(keep)) throw new Error(`arm (b): craft line "${keep}" was lost — the arms differ by more than the budget`);
+   if (p.length >= built.length) throw new Error("arm (b): transform did not shorten the prompt");
+   return p;
