@@ -161,6 +161,11 @@ export function registerGhlOAuthRoutes(app: Express) {
         locationName,
         companyId,
       });
+      // A fresh connection must never be shown the previous connection's cached snapshot status.
+      try {
+        const { clearWorkflowStatusCache } = await import("../routers/ghl");
+        clearWorkflowStatusCache(userId);
+      } catch { /* non-fatal — the cache expires within the hour */ }
 
       console.log(`[GHL OAuth] Successfully connected user ${userId} to GHL location ${locationId} ("${locationName ?? "unnamed"}")`);
 

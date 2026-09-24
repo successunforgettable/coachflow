@@ -18,7 +18,7 @@ import {
   adCreatives,
 } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { encryptToken, decryptToken } from "../_core/tokenCrypto";
+import { getGhlAccess, GhlConnectionCause, ghlConnectionMessage, type GhlConnectionKind } from "../_core/ghlToken";
 import { buildResolvedMap, resolveTokensInText, type ResolvedEntry } from "../lib/placeholderResolver";
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
@@ -52,100 +52,244 @@ const ZAP_WORKFLOW_NAMES = [
 const ZAP_WORKFLOW_THRESHOLD = Math.ceil(ZAP_WORKFLOW_NAMES.length * 0.75);
 
 // ─── In-memory workflow-status cache (1-hour TTL, keyed by userId) ────────────
+export type GhlWorkflowState = "installed" | "partial" | "missing" | "unreachable" | "reconnect_required" | "not_connected";
+type WorkflowStatus = { installed: boolean; count: number; total: number; checkedAt: string; state: GhlWorkflowState };
+/** Called by the OAuth callback on (re)connect, so a fresh connection is never shown a stale status. */
+export function clearWorkflowStatusCache(userId: number): void {
+  workflowStatusCache.delete(userId);
+}
 const workflowStatusCache = new Map<number, {
-  data: { installed: boolean; count: number; total: number; checkedAt: string };
+  data: WorkflowStatus;
   expiresAt: number;
 }>();
 const WORKFLOW_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// ─── D1 Helper: Upsert Custom Value ───────────────────────────────────────────
-async function upsertCustomValue(
-  locationId: string,
-  headers: Record<string, string>,
-  name: string,
-  value: string
-): Promise<boolean> {
-  // Phase C C3 follow-on 7: forensic outbound-URL log, mirrors the Meta
-  // a71efc1 instrumentation pattern. GHL uses Bearer Authorization header
-  // (not URL access_token query param like Meta), so no redaction needed —
-  // URLs are safe to log as-is. Closes the GHL observability gap so any
-  // future Custom Value push failure is byte-level diagnosable from the
-  // first cycle.
-  try {
-    const listUrl = `${GHL_BASE}/locations/${locationId}/customValues`;
-    console.log(`[GHL API] upsertCustomValue LIST GET ${listUrl} (name="${name}")`);
-    const listRes = await fetch(listUrl, {
-      method: "GET",
-      headers,
-    });
-    if (listRes.ok) {
-      const listData = await listRes.json() as { customValues?: Array<{ id: string; name: string }> };
-      const existing = (listData.customValues || []).find((cv) => cv.name === name);
-      if (existing) {
-        const putUrl = `${GHL_BASE}/locations/${locationId}/customValues/${existing.id}`;
-        console.log(`[GHL API] upsertCustomValue PUT ${putUrl}`);
-        const putRes = await fetch(putUrl, {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ name, value }),
-        });
-        if (!putRes.ok) console.warn(`[GHL] PUT customValue failed for "${name}":`, await putRes.text());
-        return putRes.ok;
-      }
-    }
-    const postUrl = `${GHL_BASE}/locations/${locationId}/customValues`;
-    console.log(`[GHL API] upsertCustomValue POST ${postUrl}`);
-    const postRes = await fetch(postUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ name, value }),
-    });
-    if (!postRes.ok) console.warn(`[GHL] POST customValue failed for "${name}":`, await postRes.text());
-    return postRes.ok;
-  } catch (e) {
-    console.warn(`[GHL] upsertCustomValue error for "${name}":`, e);
-    return false;
+// ─── D1: Custom Value push session — write, then READ BACK ─────────────────────
+//
+// GHL_DELIVERY_RELIABILITY_PROPOSAL §B. The standard (Arfeen): the coach is only told "success" when the values
+// are confirmed present in GHL. Before this, each value was a LIST + PUT/POST with the HTTP status as its only
+// evidence, a failed LIST fell through to a blind POST (duplicates), and the push window said "Pushed
+// successfully" whatever the flags were.
+//
+// Now: ONE list at the start (if it fails the push does not start), every write recorded with GHL's own status
+// and message, ONE list at the end, and every value marked confirmed / rejected / missing / changed. A slot with
+// nothing to send is "nothing to send", never a failure.
+
+export type GhlValueStatus = "confirmed" | "rejected" | "missing" | "changed";
+export type GhlSlotKey =
+  | "email" | "whatsapp" | "landingPage" | "headlines" | "adCopy" | "offer"
+  | "leadMagnet" | "leadMagnetUrl" | "mechanism" | "adCreatives";
+export type GhlSlotStatus = "confirmed" | "not_confirmed" | "nothing_to_send";
+export type GhlPushReport = {
+  confirmed: boolean;
+  confirmedCount: number;
+  expectedCount: number;
+  slots: Array<{
+    key: GhlSlotKey;
+    label: string;
+    status: GhlSlotStatus;
+    reason?: string;
+    values: Array<{ name: string; status: GhlValueStatus; reason?: string }>;
+  }>;
+};
+
+export const GHL_SLOTS: Array<{ key: GhlSlotKey; label: string }> = [
+  { key: "offer", label: "Offer" },
+  { key: "mechanism", label: "Method" },
+  { key: "leadMagnet", label: "Lead magnet" },
+  { key: "leadMagnetUrl", label: "Lead magnet link" },
+  { key: "headlines", label: "Headlines" },
+  { key: "adCopy", label: "Ad copy" },
+  { key: "landingPage", label: "Landing page" },
+  { key: "email", label: "Email sequence" },
+  { key: "whatsapp", label: "WhatsApp sequence" },
+  { key: "adCreatives", label: "Ad images" },
+];
+
+/** Which slot a Custom Value belongs to, from its stable name. */
+export function slotForName(name: string): GhlSlotKey {
+  if (/^ZAP Email /.test(name)) return "email";
+  if (/^ZAP WhatsApp /.test(name)) return "whatsapp";
+  if (name === "ZAP Landing Page") return "landingPage";
+  if (name === "ZAP Headlines") return "headlines";
+  if (name === "ZAP Ad Copy") return "adCopy";
+  if (name === "ZAP Offer Copy") return "offer";
+  if (name === "ZAP Lead Magnet URL") return "leadMagnetUrl";
+  if (name === "ZAP Lead Magnet") return "leadMagnet";
+  if (name === "ZAP Hero Mechanism") return "mechanism";
+  if (/^ZAP Ad Creative /.test(name)) return "adCreatives";
+  throw new Error(`Unmapped GHL Custom Value name: ${name}`);
+}
+
+/** GHL may normalise line endings or trailing whitespace; nothing else counts as "the same". */
+function sameValue(a: string, b: string): boolean {
+  const norm = (v: string) => v.replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "").trimEnd();
+  return norm(a) === norm(b);
+}
+
+type CustomValue = { id: string; name: string; value?: string };
+
+/** The start-of-push list failed. The push does not start. */
+export class GhlListError extends Error {
+  constructor(public readonly status: number, public readonly body: string) {
+    super(`GoHighLevel list failed: ${status}`);
+    this.name = "GhlListError";
   }
 }
 
-// ─── Orphan cleanup: DELETE stale per-message CVs from prior longer pushes ───
-//
-// Phase C C3 follow-on 8 (Phase 1) — when a user previously pushed a 7-email
-// kit then re-pushes a 3-email kit, the granular email CVs at slots 4-7 from
-// the prior push are now stale. The elastic workflow's count-based If/Else
-// branches won't read them (correct behavior gated by `ZAP Email Count`),
-// but defensive cleanup keeps the GHL location's CV list tidy AND prevents
-// any future workflow-design edit by Arfeen from accidentally referencing a
-// stale orphan.
-//
-// Pattern: LIST all customValues, regex-match orphan names where N > current
-// push length, DELETE each by id. One LIST + variable DELETEs per cleanup
-// call. Forensic logs on every outbound URL per the C3 observability pattern.
-async function cleanupOrphanCustomValues(
-  locationId: string,
-  headers: Record<string, string>,
-  orphanNameRegex: RegExp,
-): Promise<number> {
+async function listCustomValues(locationId: string, headers: Record<string, string>): Promise<CustomValue[]> {
+  const listUrl = `${GHL_BASE}/locations/${locationId}/customValues`;
+  console.log(`[GHL API] upsertCustomValue LIST GET ${listUrl}`);
+  let res: Response;
   try {
-    const listUrl = `${GHL_BASE}/locations/${locationId}/customValues`;
-    console.log(`[GHL API] cleanupOrphans LIST GET ${listUrl} (pattern=${orphanNameRegex})`);
-    const listRes = await fetch(listUrl, { method: "GET", headers });
-    if (!listRes.ok) return 0;
-    const listData = await listRes.json() as { customValues?: Array<{ id: string; name: string }> };
-    const orphans = (listData.customValues || []).filter((cv) => orphanNameRegex.test(cv.name));
-    let deleted = 0;
-    for (const cv of orphans) {
-      const deleteUrl = `${GHL_BASE}/locations/${locationId}/customValues/${cv.id}`;
-      console.log(`[GHL API] cleanupOrphans DELETE ${deleteUrl} (orphan="${cv.name}")`);
-      const delRes = await fetch(deleteUrl, { method: "DELETE", headers });
-      if (delRes.ok) deleted++;
-      else console.warn(`[GHL] DELETE orphan failed for "${cv.name}":`, await delRes.text());
-    }
-    return deleted;
+    res = await fetch(listUrl, { method: "GET", headers });
   } catch (e) {
-    console.warn(`[GHL] cleanupOrphanCustomValues error:`, e);
-    return 0;
+    throw new GhlListError(0, `network: ${String(e).slice(0, 200)}`);
   }
+  if (!res.ok) throw new GhlListError(res.status, (await res.text().catch(() => "")).slice(0, 300));
+  const data = await res.json() as { customValues?: CustomValue[] };
+  return data.customValues || [];
+}
+
+export class GhlPushSession {
+  private byName = new Map<string, CustomValue>();
+  private writes = new Map<string, { value: string; accepted: boolean; reason?: string }>();
+  private slotErrors = new Map<GhlSlotKey, string>();
+
+  private constructor(readonly locationId: string, readonly headers: Record<string, string>) {}
+
+  /** ONE list at the start. Throws GhlListError if GHL won't list — no blind writes follow. */
+  static async open(locationId: string, headers: Record<string, string>): Promise<GhlPushSession> {
+    const session = new GhlPushSession(locationId, headers);
+    for (const cv of await listCustomValues(locationId, headers)) {
+      if (!session.byName.has(cv.name)) session.byName.set(cv.name, cv); // first wins, consistently
+    }
+    return session;
+  }
+
+  /** The existing values, as listed at the start (orphan cleanup reads this — no second list). */
+  existing(): CustomValue[] {
+    return Array.from(this.byName.values());
+  }
+
+  async upsert(name: string, value: string): Promise<boolean> {
+    slotForName(name); // an unmapped name is a programming error — fail loudly, never report it as sent
+    const existing = this.byName.get(name);
+    const url = existing
+      ? `${GHL_BASE}/locations/${this.locationId}/customValues/${existing.id}`
+      : `${GHL_BASE}/locations/${this.locationId}/customValues`;
+    const method = existing ? "PUT" : "POST";
+    console.log(`[GHL API] upsertCustomValue ${method} ${url}`);
+    try {
+      const res = await fetch(url, { method, headers: this.headers, body: JSON.stringify({ name, value }) });
+      if (!res.ok) {
+        const body = (await res.text().catch(() => "")).slice(0, 300);
+        console.warn(`[GHL] ${method} customValue failed for "${name}": ${res.status} ${body}`);
+        // GHL's own words, not its JSON envelope.
+        let detail = body;
+        try {
+          const j = JSON.parse(body) as { message?: unknown; error?: unknown };
+          const m = Array.isArray(j.message) ? j.message.join("; ") : j.message ?? j.error;
+          if (m) detail = String(m);
+        } catch { /* not JSON — keep the text */ }
+        this.writes.set(name, { value, accepted: false, reason: `GoHighLevel said ${res.status}${detail ? `: ${detail}` : ""}` });
+        return false;
+      }
+      if (!existing) {
+        const created = await res.json().catch(() => null) as { customValue?: CustomValue } | null;
+        if (created?.customValue?.id) this.byName.set(name, created.customValue);
+      }
+      this.writes.set(name, { value, accepted: true });
+      return true;
+    } catch (e) {
+      this.writes.set(name, { value, accepted: false, reason: `no response from GoHighLevel (${String(e).slice(0, 120)})` });
+      return false;
+    }
+  }
+
+  async remove(cv: CustomValue): Promise<boolean> {
+    const deleteUrl = `${GHL_BASE}/locations/${this.locationId}/customValues/${cv.id}`;
+    console.log(`[GHL API] cleanupOrphans DELETE ${deleteUrl} (orphan="${cv.name}")`);
+    try {
+      const delRes = await fetch(deleteUrl, { method: "DELETE", headers: this.headers });
+      if (!delRes.ok) console.warn(`[GHL] DELETE orphan failed for "${cv.name}":`, await delRes.text());
+      return delRes.ok;
+    } catch (e) {
+      console.warn(`[GHL] DELETE orphan error for "${cv.name}":`, e);
+      return false;
+    }
+  }
+
+  /** A slot's values could not even be built (e.g. its asset failed to load). It counts as not confirmed. */
+  slotError(slot: GhlSlotKey, e: unknown): void {
+    this.slotErrors.set(slot, `ZAP couldn't prepare this (${String((e as Error)?.message ?? e).slice(0, 160)})`);
+  }
+
+  /** ONE list at the end, and the verdict for every value that was sent. */
+  async verify(): Promise<GhlPushReport> {
+    let after: Map<string, CustomValue> | null = new Map();
+    let readBackError = "";
+    try {
+      for (const cv of await listCustomValues(this.locationId, this.headers)) if (!after.has(cv.name)) after.set(cv.name, cv);
+    } catch (e) {
+      after = null;
+      readBackError = e instanceof GhlListError ? `GoHighLevel couldn't be read back to confirm (${e.status || "no response"})` : "GoHighLevel couldn't be read back to confirm";
+    }
+
+    const valuesBySlot = new Map<GhlSlotKey, Array<{ name: string; status: GhlValueStatus; reason?: string }>>();
+    for (const [name, w] of Array.from(this.writes.entries())) {
+      let status: GhlValueStatus;
+      let reason: string | undefined;
+      if (!w.accepted) { status = "rejected"; reason = w.reason; }
+      else if (!after) { status = "missing"; reason = readBackError; }
+      else {
+        const found = after.get(name);
+        if (!found) { status = "missing"; reason = "GoHighLevel accepted it, but it isn't there on read-back"; }
+        else if (!sameValue(String(found.value ?? ""), w.value)) { status = "changed"; reason = "GoHighLevel holds a different value"; }
+        else status = "confirmed";
+      }
+      const slot = slotForName(name);
+      if (!valuesBySlot.has(slot)) valuesBySlot.set(slot, []);
+      valuesBySlot.get(slot)!.push({ name, status, ...(reason ? { reason } : {}) });
+    }
+
+    const slots = GHL_SLOTS.map(({ key, label }) => {
+      const values = valuesBySlot.get(key) ?? [];
+      const err = this.slotErrors.get(key);
+      let status: GhlSlotStatus;
+      if (err) status = "not_confirmed";
+      else if (values.length === 0) status = "nothing_to_send";
+      else status = values.every((v) => v.status === "confirmed") ? "confirmed" : "not_confirmed";
+      return { key, label, status, ...(err ? { reason: err } : {}), values };
+    });
+    const allValues = slots.flatMap((s) => s.values);
+    const confirmedCount = allValues.filter((v) => v.status === "confirmed").length;
+    const expectedCount = allValues.length;
+    return {
+      // Success only when something was sent and EVERY slot that had something to send is confirmed.
+      confirmed: expectedCount > 0 && slots.every((s) => s.status !== "not_confirmed"),
+      confirmedCount,
+      expectedCount,
+      slots,
+    };
+  }
+}
+
+/** Write one Custom Value through the verified session (kept as the call-site name the push blocks use). */
+async function upsertCustomValue(session: GhlPushSession, name: string, value: string): Promise<boolean> {
+  return session.upsert(name, value);
+}
+
+/**
+ * Delete stale over-N slot values (a previous, longer push). Reads the START-of-push list — no extra list call,
+ * and no chance of deleting something this push just wrote (orphan patterns only match slots above the new N).
+ */
+async function cleanupOrphanCustomValues(session: GhlPushSession, orphanNameRegex: RegExp): Promise<number> {
+  let deleted = 0;
+  for (const cv of session.existing().filter((c) => orphanNameRegex.test(c.name))) {
+    if (await session.remove(cv)) deleted++;
+  }
+  return deleted;
 }
 
 // ─── D2 Helpers: Email Template + Landing Page Funnel — REMOVED in C3 f-o 7 ──
@@ -246,35 +390,27 @@ export const ghlRouter = router({
    * Get current user's GHL connection status
    */
   getConnectionStatus: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
-
-    const [connection] = await db
-      .select()
-      .from(ghlAccessTokens)
-      .where(eq(ghlAccessTokens.userId, ctx.user.id))
-      .limit(1);
-
-    if (!connection) {
-      return { connected: false };
+    // One shared helper renews a lapsed token on read (§A). The state tells the client exactly what to show:
+    // connected · not_connected · reconnect_required ("Your GoHighLevel connection has ended") · unreachable.
+    // Phase C C3 follow-on 8 (Phase 1): masterSnapshotId surfaces to the client so the post-push banner and the
+    // Settings link can build the GHL deep link; null when not configured.
+    const masterSnapshotId = process.env.GHL_MASTER_SNAPSHOT_ID ?? null;
+    try {
+      const access = await getGhlAccess(ctx.user.id);
+      return {
+        connected: true,
+        state: "connected" as const,
+        locationId: access.locationId,
+        locationName: access.locationName,
+        connectedAt: access.connectedAt,
+        expiresAt: access.tokenExpiresAt,
+        masterSnapshotId: process.env.GHL_MASTER_SNAPSHOT_ID ?? null,
+      };
+    } catch (e) {
+      if (!(e instanceof GhlConnectionCause)) throw e;
+      const state = e.kind === "unavailable" ? ("unreachable" as const) : e.kind;
+      return { connected: false, state, message: ghlConnectionMessage(e.kind), masterSnapshotId };
     }
-
-    const now = new Date();
-    const isExpired = new Date(connection.tokenExpiresAt) < now;
-
-    return {
-      connected: !isExpired,
-      locationId: connection.locationId,
-      locationName: connection.locationName,
-      connectedAt: connection.connectedAt,
-      expiresAt: connection.tokenExpiresAt,
-      isExpired,
-      // Phase C C3 follow-on 8 (Phase 1): surface the master snapshot ID
-      // to the client so the post-push banner + Settings link can build
-      // the GHL deep link. null when not configured — banner/link hide
-      // gracefully (graceful degradation pre-snapshot-build window).
-      masterSnapshotId: process.env.GHL_MASTER_SNAPSHOT_ID ?? null,
-    };
   }),
 
   /**
@@ -285,11 +421,13 @@ export const ghlRouter = router({
    */
   getWorkflowStatus: protectedProcedure
     .input(z.object({ force: z.boolean().optional() }).optional())
-    .query(async ({ ctx, input }) => {
+    .query(async ({ ctx, input }): Promise<WorkflowStatus> => {
       const force = input?.force ?? false;
       const userId = ctx.user.id;
+      const total = ZAP_WORKFLOW_NAMES.length as number;
+      const blank = (state: GhlWorkflowState): WorkflowStatus => ({ installed: false, count: 0, total, checkedAt: new Date().toISOString(), state });
 
-      // Check cache (unless force-refresh)
+      // Check cache (unless force-refresh). Only real answers are cached — never "can't check".
       if (!force) {
         const cached = workflowStatusCache.get(userId);
         if (cached && cached.expiresAt > Date.now()) {
@@ -297,30 +435,44 @@ export const ghlRouter = router({
         }
       }
 
-      const db = await getDb();
-      if (!db) return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+      // A connection problem is NOT "Snapshot not applied": it gets its own state (§A4.4).
+      const connectionState = (e: unknown): WorkflowStatus => {
+        if (e instanceof GhlConnectionCause) {
+          return blank(e.kind === "unavailable" ? "unreachable" : e.kind);
+        }
+        console.warn("[GHL] getWorkflowStatus error:", e);
+        return blank("unreachable");
+      };
 
-      const [ghl] = await db.select().from(ghlAccessTokens).where(eq(ghlAccessTokens.userId, userId)).limit(1);
-      if (!ghl || !ghl.locationId || new Date(ghl.tokenExpiresAt) < new Date()) {
-        return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+      let access;
+      try {
+        access = await getGhlAccess(userId);
+      } catch (e) {
+        return connectionState(e);
       }
+      if (!access.locationId) return blank("not_connected");
+
+      const fetchWorkflows = async (token: string) => {
+        const url = `${GHL_BASE}/workflows/?locationId=${access!.locationId}`;
+        console.log(`[GHL API] getWorkflowStatus GET ${url}`);
+        return fetch(url, { method: "GET", headers: { Authorization: `Bearer ${token}`, Version: "2021-07-28", Accept: "application/json" } });
+      };
 
       try {
-        const url = `${GHL_BASE}/workflows/?locationId=${ghl.locationId}`;
-        console.log(`[GHL API] getWorkflowStatus GET ${url}`);
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${decryptToken(ghl.accessToken)}`,
-            Version: "2021-07-28",
-            Accept: "application/json",
-          },
-        });
-
+        let res = await fetchWorkflows(access.accessToken);
+        if (res.status === 401) {
+          // A token we believed valid was refused: renew once, retry once.
+          try {
+            access = await getGhlAccess(userId, { forceRenew: true });
+          } catch (e) {
+            return connectionState(e);
+          }
+          res = await fetchWorkflows(access.accessToken);
+        }
         if (!res.ok) {
           const errText = await res.text();
           console.warn(`[GHL] getWorkflowStatus failed: HTTP ${res.status} — ${errText.substring(0, 200)}`);
-          return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+          return blank("unreachable");
         }
 
         const data = await res.json() as { workflows?: Array<{ id: string; name: string; status?: string; published?: boolean }> };
@@ -331,11 +483,12 @@ export const ghlRouter = router({
         const count = zapWorkflows.length;
         const installed = count >= ZAP_WORKFLOW_THRESHOLD;
 
-        const result = {
+        const result: WorkflowStatus = {
           installed,
           count,
-          total: ZAP_WORKFLOW_NAMES.length as number,
+          total,
           checkedAt: new Date().toISOString(),
+          state: installed ? "installed" : count > 0 ? "partial" : "missing",
         };
 
         // Cache the result
@@ -346,8 +499,7 @@ export const ghlRouter = router({
 
         return result;
       } catch (e) {
-        console.warn("[GHL] getWorkflowStatus error:", e);
-        return { installed: false, count: 0, total: ZAP_WORKFLOW_NAMES.length, checkedAt: new Date().toISOString() };
+        return connectionState(e);
       }
     }),
 
@@ -412,59 +564,6 @@ export const ghlRouter = router({
   }),
 
   /**
-   * Exchange auth code for access token
-   */
-  exchangeCode: protectedProcedure
-    .input(z.object({ code: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const clientId = process.env.GHL_CLIENT_ID;
-      const clientSecret = process.env.GHL_CLIENT_SECRET;
-      if (!clientId || !clientSecret) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "GHL credentials not configured" });
-      }
-
-      const redirectUri = `${process.env.APP_URL || "https://zapcampaigns.com"}/api/oauth/gohighlevel/callback`;
-
-      const tokenRes = await fetch(`${GHL_BASE}/oauth/token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          grant_type: "authorization_code",
-          code: input.code,
-          redirect_uri: redirectUri,
-        }),
-      });
-
-      if (!tokenRes.ok) {
-        const errText = await tokenRes.text();
-        console.error("[GHL] Token exchange failed:", errText);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "GHL token exchange failed" });
-      }
-
-      const tokenData = await tokenRes.json();
-      const expiresAt = new Date(Date.now() + (tokenData.expires_in || 86400) * 1000);
-
-      await db.delete(ghlAccessTokens).where(eq(ghlAccessTokens.userId, ctx.user.id));
-      const rawRefresh = tokenData.refresh_token || null;
-      await db.insert(ghlAccessTokens).values({
-        userId: ctx.user.id,
-        accessToken: encryptToken(tokenData.access_token),
-        refreshToken: rawRefresh ? encryptToken(rawRefresh) : null,
-        tokenExpiresAt: expiresAt,
-        locationId: tokenData.locationId || null,
-        locationName: null,
-        companyId: tokenData.companyId || null,
-      });
-
-      return { success: true, locationId: tokenData.locationId };
-    }),
-
-  /**
    * Disconnect GHL account
    */
   disconnect: protectedProcedure.mutation(async ({ ctx }) => {
@@ -488,12 +587,22 @@ export const ghlRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const [ghl] = await db.select().from(ghlAccessTokens).where(eq(ghlAccessTokens.userId, ctx.user.id)).limit(1);
-      if (!ghl) throw new TRPCError({ code: "FORBIDDEN", message: "GHL not connected" });
-
-      if (new Date(ghl.tokenExpiresAt) < new Date()) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "GHL token expired — please reconnect" });
+      // The shared helper renews a lapsed token (§A). A connection problem stops the push BEFORE anything is
+      // written, with the coach-facing sentence and a machine-readable cause (data.ghlConnection).
+      const connectionError = (kind: GhlConnectionKind) =>
+        new TRPCError({
+          code: kind === "unavailable" ? "SERVICE_UNAVAILABLE" : "FORBIDDEN",
+          message: ghlConnectionMessage(kind),
+          cause: new GhlConnectionCause(kind),
+        });
+      let access;
+      try {
+        access = await getGhlAccess(ctx.user.id);
+      } catch (e) {
+        if (e instanceof GhlConnectionCause) throw connectionError(e.kind);
+        throw e;
       }
+      if (!access.locationId) throw connectionError("reconnect_required");
 
       const [kit] = await db
         .select()
@@ -503,7 +612,7 @@ export const ghlRouter = router({
       if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign kit not found" });
 
       const kitName = kit.name || "Campaign";
-      const locationId = ghl.locationId!;
+      const locationId = access.locationId;
 
       // Resolve [INSERT_*] tokens to their filled registry values before each
       // Custom Value is written to GHL. The registry is keyed (userId, serviceId);
@@ -545,11 +654,36 @@ export const ghlRouter = router({
         adCreativesPushed: false,
       };
 
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${decryptToken(ghl.accessToken)}`,
+      const headersFor = (token: string): Record<string, string> => ({
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         Version: "2021-07-28",
-      };
+      });
+
+      // ONE list at the start. If GHL won't list, the push does not start — no blind writes, no duplicates.
+      // A 401 on a token we believed valid: renew once, retry once.
+      let session: GhlPushSession;
+      try {
+        try {
+          session = await GhlPushSession.open(locationId, headersFor(access.accessToken));
+        } catch (e) {
+          if (!(e instanceof GhlListError) || e.status !== 401) throw e;
+          access = await getGhlAccess(ctx.user.id, { forceRenew: true });
+          session = await GhlPushSession.open(locationId, headersFor(access.accessToken));
+        }
+      } catch (e) {
+        if (e instanceof GhlConnectionCause) throw connectionError(e.kind);
+        if (e instanceof GhlListError) {
+          console.warn(`[GHL] push aborted — start-of-push list failed: ${e.status} ${e.body}`);
+          if (e.status === 401) throw connectionError("reconnect_required");
+          if (e.status === 0 || e.status >= 500 || e.status === 429) throw connectionError("unavailable");
+          throw new TRPCError({
+            code: "BAD_GATEWAY",
+            message: `GoHighLevel wouldn't list your Custom Values (${e.status}), so nothing was sent. Try again, or reconnect GoHighLevel if it keeps happening.`,
+          });
+        }
+        throw e;
+      }
 
       // ─── 1. Email Sequence ─────────────────────────────────────────────────────
       if (kit.selectedEmailSequenceId) {
@@ -581,14 +715,14 @@ export const ghlRouter = router({
             let emailSlotsOk = 0;
             for (let i = 0; i < emailCount; i++) {
               const em = emails[i] as { subject?: string; body?: string };
-              const okSubj = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Subject`, rt(em.subject || ""));
-              const okBody = await upsertCustomValue(locationId, headers, `ZAP Email ${i + 1} Body`, rt(em.body || ""));
+              const okSubj = await upsertCustomValue(session, `ZAP Email ${i + 1} Subject`, rt(em.subject || ""));
+              const okBody = await upsertCustomValue(session, `ZAP Email ${i + 1} Body`, rt(em.body || ""));
               if (okSubj && okBody) emailSlotsOk++;
             }
 
             // Count + type indicator CVs (snapshot reads these for branching)
-            const okCount = await upsertCustomValue(locationId, headers, "ZAP Email Count", String(emailCount));
-            const okType = await upsertCustomValue(locationId, headers, "ZAP Email Sequence Type", sequenceType);
+            const okCount = await upsertCustomValue(session, "ZAP Email Count", String(emailCount));
+            const okType = await upsertCustomValue(session, "ZAP Email Sequence Type", sequenceType);
 
             // emailPushed = true only when every per-message slot AND the
             // two indicator CVs landed. Partial-success surfaces as ✗ to
@@ -605,11 +739,11 @@ export const ghlRouter = router({
               (_, k) => k + emailCount + 1,
             );
             await cleanupOrphanCustomValues(
-              locationId, headers,
+              session,
               new RegExp(`^ZAP Email (?:${orphanEmailSlots.join("|")}) (Subject|Body)$`),
             );
           }
-        } catch (e) { console.warn("[GHL] Email push error:", e); }
+        } catch (e) { console.warn("[GHL] Email push error:", e); session.slotError("email", e); }
       }
 
       // ─── 2. WhatsApp Sequence ──────────────────────────────────────────────────
@@ -638,13 +772,13 @@ export const ghlRouter = router({
             let waSlotsOk = 0;
             for (let i = 0; i < whatsappCount; i++) {
               const m = messages[i] as { text?: string; message?: string };
-              const ok = await upsertCustomValue(locationId, headers, `ZAP WhatsApp ${i + 1}`, rt(m.text || m.message || ""));
+              const ok = await upsertCustomValue(session, `ZAP WhatsApp ${i + 1}`, rt(m.text || m.message || ""));
               if (ok) waSlotsOk++;
             }
 
             // Count + type indicator CVs
-            const okWaCount = await upsertCustomValue(locationId, headers, "ZAP WhatsApp Count", String(whatsappCount));
-            const okWaType = await upsertCustomValue(locationId, headers, "ZAP WhatsApp Sequence Type", waSequenceType);
+            const okWaCount = await upsertCustomValue(session, "ZAP WhatsApp Count", String(whatsappCount));
+            const okWaType = await upsertCustomValue(session, "ZAP WhatsApp Sequence Type", waSequenceType);
 
             results.whatsappPushed = waSlotsOk === whatsappCount && okWaCount && okWaType && whatsappCount > 0;
 
@@ -655,11 +789,11 @@ export const ghlRouter = router({
               (_, k) => k + whatsappCount + 1,
             );
             await cleanupOrphanCustomValues(
-              locationId, headers,
+              session,
               new RegExp(`^ZAP WhatsApp (?:${orphanWaSlots.join("|")})$`),
             );
           }
-        } catch (e) { console.warn("[GHL] WhatsApp push error:", e); }
+        } catch (e) { console.warn("[GHL] WhatsApp push error:", e); session.slotError("whatsapp", e); }
       }
 
       // ─── 3. Landing Page ───────────────────────────────────────────────────────
@@ -721,7 +855,7 @@ export const ghlRouter = router({
               lpText = sections.join("\n\n");
             }
             results.landingPagePushed = await upsertCustomValue(
-              locationId, headers,
+              session,
               `ZAP Landing Page`,
               rt(lpText)
             );
@@ -735,7 +869,7 @@ export const ghlRouter = router({
             // Custom Value as content reference. See tombstone block above
             // for full rationale.
           }
-        } catch (e) { console.warn("[GHL] Landing page push error:", e); }
+        } catch (e) { console.warn("[GHL] Landing page push error:", e); session.slotError("landingPage", e); }
       }
 
       // ─── 4. Headlines ──────────────────────────────────────────────────────────
@@ -760,12 +894,12 @@ export const ghlRouter = router({
                 }).join("\n\n")
               : `1. ${selectedHL.headline}`;
             results.headlinesPushed = await upsertCustomValue(
-              locationId, headers,
+              session,
               `ZAP Headlines`,
               rt(hlText)
             );
           }
-        } catch (e) { console.warn("[GHL] Headlines push error:", e); }
+        } catch (e) { console.warn("[GHL] Headlines push error:", e); session.slotError("headlines", e); }
       }
 
       // ─── 5. Ad Copy ────────────────────────────────────────────────────────────
@@ -794,12 +928,12 @@ export const ghlRouter = router({
               sections.push("LINK DESCRIPTIONS\n" + adLinks.map((a, i) => `${i + 1}. ${a.content}`).join("\n"));
 
             results.adCopyPushed = await upsertCustomValue(
-              locationId, headers,
+              session,
               `ZAP Ad Copy`,
               rt(sections.join("\n\n") || "No ad copy")
             );
           }
-        } catch (e) { console.warn("[GHL] Ad copy push error:", e); }
+        } catch (e) { console.warn("[GHL] Ad copy push error:", e); session.slotError("adCopy", e); }
       }
 
       // ─── 6. Offer Copy ─────────────────────────────────────────────────────────
@@ -834,12 +968,12 @@ export const ghlRouter = router({
             ].join("\n\n");
 
             results.offerPushed = await upsertCustomValue(
-              locationId, headers,
+              session,
               `ZAP Offer Copy`,
               rt(offerText)
             );
           }
-        } catch (e) { console.warn("[GHL] Offer push error:", e); }
+        } catch (e) { console.warn("[GHL] Offer push error:", e); session.slotError("offer", e); }
       }
 
       // ─── 7. HVCO / Lead Magnet Title ───────────────────────────────────────────
@@ -857,7 +991,7 @@ export const ghlRouter = router({
               `Topic: ${hvco.hvcoTopic || ""}`,
             ].join("\n");
             results.hvcoTitlePushed = await upsertCustomValue(
-              locationId, headers,
+              session,
               `ZAP Lead Magnet`,
               rt(hvcoText)
             );
@@ -868,13 +1002,13 @@ export const ghlRouter = router({
             // the magnet has been published (lead_magnet_download campaigns).
             if (hvco.magnetHtmlUrl) {
               results.leadMagnetUrlPushed = await upsertCustomValue(
-                locationId, headers,
+                session,
                 `ZAP Lead Magnet URL`,
                 hvco.magnetHtmlUrl
               );
             }
           }
-        } catch (e) { console.warn("[GHL] HVCO push error:", e); }
+        } catch (e) { console.warn("[GHL] HVCO push error:", e); session.slotError("leadMagnet", e); }
       }
 
       // ─── 8. Hero Mechanism ─────────────────────────────────────────────────────
@@ -893,12 +1027,12 @@ export const ghlRouter = router({
               mech.application ? `Application: ${mech.application}` : null,
             ].filter(Boolean).join("\n");
             results.heroMechanismPushed = await upsertCustomValue(
-              locationId, headers,
+              session,
               `ZAP Hero Mechanism`,
               rt(mechText)
             );
           }
-        } catch (e) { console.warn("[GHL] Hero mechanism push error:", e); }
+        } catch (e) { console.warn("[GHL] Hero mechanism push error:", e); session.slotError("mechanism", e); }
       }
 
       // ─── 9. Ad Creatives ─────────────────────────────────────────────────────
@@ -922,12 +1056,12 @@ export const ghlRouter = router({
             for (let i = 0; i < creatives.length; i++) {
               const c = creatives[i];
               const okHeadline = await upsertCustomValue(
-                locationId, headers,
+                session,
                 `ZAP Ad Creative ${i + 1} Headline`,
                 rt(c.headline || ""),
               );
               const okImage = await upsertCustomValue(
-                locationId, headers,
+                session,
                 `ZAP Ad Creative ${i + 1} Image`,
                 c.imageUrl || "",
               );
@@ -935,7 +1069,7 @@ export const ghlRouter = router({
             }
 
             const okCount = await upsertCustomValue(
-              locationId, headers,
+              session,
               "ZAP Ad Creative Count",
               String(creatives.length),
             );
@@ -952,14 +1086,16 @@ export const ghlRouter = router({
             );
             if (orphanSlots.length > 0) {
               await cleanupOrphanCustomValues(
-                locationId, headers,
+                session,
                 new RegExp(`^ZAP Ad Creative (?:${orphanSlots.join("|")}) (?:Headline|Image)$`),
               );
             }
           }
-        } catch (e) { console.warn("[GHL] Ad creatives push error:", e); }
+        } catch (e) { console.warn("[GHL] Ad creatives push error:", e); session.slotError("adCreatives", e); }
       }
 
-      return results;
+      // The write-level flags stay in the log for diagnosis; the coach is told what the READ-BACK confirms.
+      console.log(`[GHL] push write flags: ${JSON.stringify(results)}`);
+      return session.verify();
     }),
 });

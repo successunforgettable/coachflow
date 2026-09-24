@@ -153,3 +153,33 @@ it.
 **Sources:** [HighLevel — OAuth 2.0](https://marketplace.gohighlevel.com/docs/Authorization/OAuth2.0/index.html) ·
 [HighLevel — Get Access Token](https://marketplace.gohighlevel.com/docs/ghl/oauth/get-access-token/) ·
 [HighLevel changelog — refresh token handling for distributed systems](https://ideas.gohighlevel.com/changelog/marketplace-api-oauth-smarter-refresh-token-handling-for-distributed-systems)
+
+---
+
+## D. BUILD RECORD (2026-09-24, held branch — not deployed)
+
+Both fixes built as proposed. **Migration `drizzle/0112_ghl_reconnect_required.sql` is written and NOT applied to
+production.** 🔴 **Deploy order: 0112 first, then this code** — the schema names the two new columns, so every read of
+`ghl_access_tokens` would fail with "Unknown column" if the code went live first. No real renewal was attempted with
+the stored July key; no real GHL call was made anywhere.
+
+- **Renewal:** `server/_core/ghlToken.ts` `getGhlAccess` — the only way to get a token; used by Settings status,
+  the snapshot check and the push (plus a forced renewal on a 401). Compare-and-set save; in-process sharing; a
+  rejected key marks `reconnectRequiredAt`; GHL down marks nothing. The unused `exchangeCode` (no caller anywhere)
+  is removed.
+- **States:** connection `connected · not_connected · reconnect_required · unreachable`; snapshot check adds
+  `unreachable` / `reconnect_required` as their own states — "Can't check the connection right now", never
+  "Snapshot not applied". The OAuth callback clears the cached snapshot status on reconnect.
+- **Push:** `GhlPushSession` in `routers/ghl.ts` — one list at the start (the push stops if it fails: no blind
+  POSTs), every write recorded with GHL's own status and message, one list at the end, each value confirmed /
+  rejected / missing / changed, empty slots "nothing to send". The coach sees "Saved to GoHighLevel — N values
+  confirmed" only when every value that had something to send is confirmed; otherwise what didn't make it, why,
+  and Retry. The "Render your kit in GHL" banner only after a confirmed push. "Push to both" now pushes only the
+  platforms that are ready (it used to fire GHL even when GHL's own button was disabled).
+
+**Browser check** (local build, throwaway local MySQL with production's schema only + 0112 applied LOCALLY, and a
+fake GHL answering every GHL request inside the local server — 48 requests, all answered by the fake):
+`docs/screenshots/ghl-reliability/` — 01 confirmed (9 values, banner) · 02 not everything (Offer *changed*, Email
+*rejected — "GoHighLevel said 422: The value for ZAP Email 2 Body is too long"*, Retry, no banner; Retry then
+confirmed) · 03 push window, reconnect required · 04 Settings, reconnect required · 05 Settings, GHL down ·
+06 push window, GHL down (row NOT marked afterwards).

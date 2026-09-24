@@ -1350,8 +1350,10 @@ describe("Phase C C3 — Meta + GHL push wire-up", () => {
       join(__dirname, "../client/src/v2/PushKitModal.tsx"),
       "utf8",
     );
-    // Banner gating condition
-    expect(src).toMatch(/showSnapshotBanner\s*=\s*ghlSuccessfulPush\s*&&\s*!!masterSnapshotId/);
+    // Banner gating condition. 2026-09-24 (GHL reliability §B): "succeeded" now means CONFIRMED by GHL's read-back,
+    // not merely "the call returned" — the variable was renamed to say so.
+    expect(src).toMatch(/showSnapshotBanner\s*=\s*ghlConfirmed\s*&&\s*!!masterSnapshotId/);
+    expect(src).toMatch(/const ghlConfirmed = results\.some\(r => r\.platform === "ghl" && r\.ok\)/);
     // Banner copy includes the canonical CTA
     expect(src).toMatch(/Apply ZAP Master Snapshot/);
     // Deep link helper imported from the new lib

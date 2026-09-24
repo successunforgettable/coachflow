@@ -61,6 +61,9 @@ function IntegrationsSection() {
   const ghlOAuthUrl = trpc.ghl.getOAuthUrl.useQuery(undefined, { enabled: false });
   const ghlDisconnect = trpc.ghl.disconnect.useMutation({ onSuccess: () => ghlConn.refetch() });
   const ghlConnected = !!ghlConn.data?.connected;
+  // connected · not_connected · reconnect_required · unreachable (server/_core/ghlToken.ts)
+  const ghlState = (ghlConn.data as { state?: string } | undefined)?.state ?? (ghlConnected ? "connected" : "not_connected");
+  const ghlMessage = (ghlConn.data as { message?: string } | undefined)?.message;
   const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
   const workflowStatus = trpc.ghl.getWorkflowStatus.useQuery(undefined, { enabled: ghlConnected });
 
@@ -104,7 +107,7 @@ function IntegrationsSection() {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: T.dark }}>GoHighLevel</span>
-          <span style={pillBtn(ghlConnected)}>{ghlConnected ? "Connected" : "Not connected"}</span>
+          <span style={pillBtn(ghlConnected)}>{ghlConnected ? "Connected" : ghlState === "reconnect_required" ? "Needs reconnecting" : ghlState === "unreachable" ? "Can't check right now" : "Not connected"}</span>
         </div>
         {ghlConnected ? (
           <>
@@ -116,7 +119,7 @@ function IntegrationsSection() {
               </button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-              {workflowStatus.data && <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />}
+              {workflowStatus.data && <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} state={(workflowStatus.data as { state?: string }).state} />}
               <button onClick={() => workflowStatus.refetch()} style={{ background: "none", border: "none", fontSize: 12, color: T.orange, fontFamily: T.fontB, fontWeight: 600, cursor: "pointer", padding: 0 }}>↻ Recheck</button>
             </div>
             {snapshotId && (
@@ -125,10 +128,22 @@ function IntegrationsSection() {
               </button>
             )}
           </>
+        ) : ghlState === "unreachable" ? (
+          <div style={{ fontSize: 13, color: "#555" }}>
+            <p data-testid="settings-ghl-message" style={{ margin: "0 0 8px", fontFamily: T.fontB }}>{ghlMessage ?? "GoHighLevel didn't respond — try again in a minute."}</p>
+            <button onClick={() => ghlConn.refetch()} style={{ background: "none", border: "none", fontSize: 12, color: T.orange, fontFamily: T.fontB, fontWeight: 600, cursor: "pointer", padding: 0 }}>Check again</button>
+          </div>
         ) : (
+          <>
+          {ghlState === "reconnect_required" && (
+            <p data-testid="settings-ghl-message" style={{ margin: "0 0 8px", fontSize: 13, color: "#B12121", fontWeight: 600, fontFamily: T.fontB }}>
+              {ghlMessage ?? "Your GoHighLevel connection has ended — reconnect GoHighLevel."}
+            </p>
+          )}
           <button onClick={handleGhlConnect} style={{ padding: "8px 18px", background: T.orange, color: "#fff", border: "none", borderRadius: 9999, fontSize: 13, fontWeight: 600, fontFamily: T.fontB, cursor: "pointer" }}>
-            Connect GoHighLevel
+            {ghlState === "reconnect_required" ? "Reconnect GoHighLevel" : "Connect GoHighLevel"}
           </button>
+          </>
         )}
       </div>
     </div>

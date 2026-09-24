@@ -1251,6 +1251,10 @@ export const ghlAccessTokens = mysqlTable("ghl_access_tokens", {
   connectedAt: timestamp("connectedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  // Migration 0112 (NOT yet applied to production — code reading these must not deploy before it is).
+  // Set when GHL rejects the renewal key: the coach must reconnect. NULL = no known problem.
+  reconnectRequiredAt: timestamp("reconnectRequiredAt"),
+  lastRenewalError: varchar("lastRenewalError", { length: 512 }),
 });
 
 export type GhlAccessToken = typeof ghlAccessTokens.$inferSelect;

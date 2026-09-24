@@ -10,7 +10,23 @@
  * Settings, PushKitModal pre-push, and Node 11 wizard completion.
  */
 
-export function WorkflowStatusPill({ count, total }: { count: number; total: number }) {
+export function WorkflowStatusPill({ count, total, state }: { count: number; total: number; state?: string }) {
+  // A connection problem is NOT "Snapshot not applied" — it gets its own, neutral, state (GHL reliability §A4.4).
+  if (state === "unreachable" || state === "reconnect_required" || state === "not_connected") {
+    const text = state === "unreachable" ? "Can't check the connection right now" : "Connection ended — reconnect GoHighLevel";
+    return (
+      <span data-testid="ghl-status-cant-check" style={{
+        display: "inline-block",
+        padding: "5px 12px",
+        borderRadius: 9999,
+        background: state === "unreachable" ? "rgba(26,22,36,0.08)" : "rgba(220,38,38,0.14)",
+        color: state === "unreachable" ? "#555" : "#B12121",
+        fontSize: 12,
+        fontWeight: 700,
+        fontFamily: "'Instrument Sans', 'Inter', system-ui, sans-serif",
+      }}>{state === "unreachable" ? "?" : "\u2717"} {text}</span>
+    );
+  }
   const installed = count >= Math.ceil(total * 0.75);
   const partial = count > 0 && !installed;
   const tone = installed ? "ok" : partial ? "partial" : "missing";

@@ -35,6 +35,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { openSnapshotApplyTab } from "./lib/ghlSnapshot";
 import { WorkflowStatusPill } from "./components/WorkflowStatusPill";
+import type { GhlPushReport } from "../../../server/routers/ghl";
 import KitPlaceholderBanner from "./components/KitPlaceholderBanner";
 import type { PlaceholderReport } from "./lib/placeholderDetector";
 
@@ -231,6 +232,9 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
     enabled: !!ghlConn.data?.connected,
   });
   const snapshotInstalled = !!workflowStatus.data?.installed;
+  // connected · not_connected · reconnect_required · unreachable (server/_core/ghlToken.ts)
+  const ghlState = ((ghlConn.data as { state?: string } | undefined)?.state ?? (ghlConn.data?.connected ? "connected" : "not_connected")) as
+    "connected" | "not_connected" | "reconnect_required" | "unreachable";
   const snapshotId = (ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null;
 
   // ─── Derived UI states ─────────────────────────────────────────────────────
@@ -308,8 +312,9 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
   type PushResult =
     | { platform: "meta"; ok: true; campaignId: string }
     | { platform: "meta"; ok: false; error: string }
-    | { platform: "ghl";  ok: true; flags: Record<string, boolean>; pushedCount: number; totalCount: number }
-    | { platform: "ghl";  ok: false; error: string };
+    // ok is TRUE ONLY when GHL's read-back confirms every value that had something to send.
+    | { platform: "ghl";  ok: boolean; report: GhlPushReport }
+    | { platform: "ghl";  ok: false; error: string; connectionKind?: string };
 
   const [results, setResults] = useState<PushResult[] | null>(null);
   const [pushing, setPushing] = useState<boolean>(false);
@@ -325,12 +330,12 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
 
   async function fireGhl(): Promise<PushResult> {
     try {
-      const flags = await pushGhl.mutateAsync({ kitId });
-      const entries = Object.entries(flags);
-      const pushedCount = entries.filter(([, v]) => v).length;
-      return { platform: "ghl", ok: true, flags, pushedCount, totalCount: entries.length };
+      const report = await pushGhl.mutateAsync({ kitId });
+      return { platform: "ghl", ok: report.confirmed, report };
     } catch (err) {
-      return { platform: "ghl", ok: false, error: err instanceof Error ? err.message : "Unknown GHL error" };
+      const connectionKind = (err as { data?: { ghlConnection?: { kind?: string } } } | null)?.data?.ghlConnection?.kind;
+      if (connectionKind) ghlConn.refetch();
+      return { platform: "ghl", ok: false, error: err instanceof Error ? err.message : "Unknown GHL error", connectionKind };
     }
   }
 
@@ -345,11 +350,15 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
         const r = await fireGhl();
         setResults([r]);
       } else {
-        const settled = await Promise.allSettled([fireMeta(), fireGhl()]);
+        // Only the platforms that are ready. (It used to fire GHL even when GHL's own button was disabled.)
+        const jobs: Array<{ platform: "meta" | "ghl"; run: () => Promise<PushResult> }> = [];
+        if (metaPushable) jobs.push({ platform: "meta", run: fireMeta });
+        if (ghlPushable) jobs.push({ platform: "ghl", run: fireGhl });
+        const settled = await Promise.allSettled(jobs.map((j) => j.run()));
         const out: PushResult[] = settled.map((s, i) =>
           s.status === "fulfilled"
             ? s.value
-            : ({ platform: i === 0 ? "meta" : "ghl", ok: false, error: "Unexpected rejection" } as PushResult)
+            : ({ platform: jobs[i].platform, ok: false, error: "Unexpected rejection" } as PushResult)
         );
         setResults(out);
       }
@@ -462,6 +471,8 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
             results={results}
             onClose={onClose}
             onRetry={() => setResults(null)}
+            onRetryGhl={() => handlePush("ghl")}
+            onReconnectGhl={handleConnectGhl}
             masterSnapshotId={(ghlConn.data as { masterSnapshotId?: string | null } | undefined)?.masterSnapshotId ?? null}
           />
         ) : (
@@ -560,14 +571,24 @@ export default function PushKitModal({ kitId, kitName, serviceId, onClose, place
                   workflowStatus.isLoading ? (
                     <PillBadge tone="warn">Checking workflows…</PillBadge>
                   ) : workflowStatus.data ? (
-                    <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} />
+                    <WorkflowStatusPill count={workflowStatus.data.count} total={workflowStatus.data.total} state={(workflowStatus.data as { state?: string }).state} />
                   ) : (
                     <PillBadge tone="ok">✓ {(ghlConn.data as any)?.locationName || "Connected"}</PillBadge>
                   )
+                ) : ghlState === "reconnect_required" ? (
+                  <button data-testid="ghl-reconnect" onClick={handleConnectGhl} style={{ ...inputStyle, width: "auto", padding: "6px 12px", cursor: "pointer", background: "var(--v2-primary-btn, #FF5B1D)", border: "none", color: "#fff", fontWeight: 700 }}>Reconnect GoHighLevel</button>
+                ) : ghlState === "unreachable" ? (
+                  <button data-testid="ghl-check-again" onClick={() => ghlConn.refetch()} style={{ ...inputStyle, width: "auto", padding: "6px 12px", cursor: "pointer" }}>Check again</button>
                 ) : (
                   <button onClick={handleConnectGhl} style={{ ...inputStyle, width: "auto", padding: "6px 12px", cursor: "pointer", background: "var(--v2-primary-btn, #FF5B1D)", border: "none", color: "#fff", fontWeight: 700 }}>Connect GHL</button>
                 )}
               </div>
+              {(ghlState === "reconnect_required" || ghlState === "unreachable") && (
+                <p data-testid="ghl-connection-message" style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: "13px", color: ghlState === "reconnect_required" ? "#B12121" : "#555", margin: "0 0 8px", lineHeight: 1.5, fontWeight: 600 }}>
+                  {(ghlConn.data as { message?: string } | undefined)?.message
+                    ?? (ghlState === "reconnect_required" ? "Your GoHighLevel connection has ended — reconnect GoHighLevel." : "GoHighLevel didn't respond — try again in a minute.")}
+                </p>
+              )}
               <p style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: "13px", color: "#555", margin: 0, lineHeight: 1.5 }}>
                 Pushes the kit's content into your GHL location as Custom Values — offer, lead magnet, mechanism, headlines, ad copy, landing page, plus the email + WhatsApp sequences split per message. Apply ZAP's Master Snapshot once to your sub-account and every push auto-renders functional templates, funnels, and workflows from these values.
               </p>
@@ -644,22 +665,22 @@ function actionButtonStyle(weight: "primary" | "secondary", enabled: boolean): R
 }
 
 // ─── Post-push results view ──────────────────────────────────────────────────
-function ResultsView({ results, onClose, onRetry, masterSnapshotId }: {
+// GHL is reported from its READ-BACK (server ghl.ts GhlPushSession.verify): "Saved to GoHighLevel" only when every
+// value that had something to send is confirmed present. Otherwise: what didn't make it, why, and Retry.
+function ResultsView({ results, onClose, onRetry, onRetryGhl, onReconnectGhl, masterSnapshotId }: {
   results: { platform: "meta" | "ghl"; ok: boolean; [k: string]: any }[];
   onClose: () => void;
   onRetry: () => void;
+  onRetryGhl: () => void;
+  onReconnectGhl: () => void;
   masterSnapshotId: string | null;
 }) {
-  const allOk = results.every(r => r.ok);
-  // Phase C C3 follow-on 8 (Phase 1): Apply Snapshot banner renders after
-  // any GHL push (success or partial) when masterSnapshotId is configured
-  // server-side. Hides gracefully pre-snapshot-build window when the env
-  // var isn't yet set. Deep link opens GHL's snapshot apply UI in a new
-  // tab; user applies once per sub-account, then every future kit push
-  // auto-renders functional templates/workflows/funnels from the Custom
-  // Values via the elastic per-sequence-type workflow architecture.
-  const ghlSuccessfulPush = results.some(r => r.platform === "ghl" && r.ok);
-  const showSnapshotBanner = ghlSuccessfulPush && !!masterSnapshotId;
+  const allOk = results.length > 0 && results.every(r => r.ok);
+  // Phase C C3 follow-on 8: the Apply Snapshot banner — now ONLY after a CONFIRMED GHL push.
+  const ghlConfirmed = results.some(r => r.platform === "ghl" && r.ok);
+  const showSnapshotBanner = ghlConfirmed && !!masterSnapshotId;
+  const ghlNotConfirmed = results.some(r => r.platform === "ghl" && !r.ok);
+  const body = { fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: "13px", margin: "0 0 4px" } as const;
   return (
     <div>
       <div style={{
@@ -668,31 +689,31 @@ function ResultsView({ results, onClose, onRetry, masterSnapshotId }: {
         background: allOk ? "rgba(88,204,2,0.08)" : "rgba(220,38,38,0.06)",
         marginBottom: "16px",
       }}>
-        <p style={{
+        <p data-testid="push-result-headline" style={{
           fontFamily: "var(--v2-font-heading, 'Fraunces', serif)",
           fontWeight: 800,
           fontSize: "18px",
           color: allOk ? "#2E7D00" : "#A06200",
           margin: "0 0 12px",
         }}>
-          {allOk ? "Pushed successfully" : "Partial push"}
+          {allOk ? "Pushed successfully" : "Not everything went through"}
         </p>
         {results.map((r, i) => (
           <div key={i} style={{ marginBottom: i === results.length - 1 ? 0 : "12px" }}>
-            <p style={{ fontFamily: "var(--v2-font-body)", fontSize: "13px", margin: "0 0 4px" }}>
-              <strong>{r.platform === "meta" ? "Meta Ads" : "Go High Level"}: </strong>
-              {r.ok ? "✓" : "✗"} {r.ok
-                ? (r.platform === "meta"
-                    ? `Campaign ${r.campaignId} created`
-                    : `${r.pushedCount} of ${r.totalCount} slots pushed`)
-                : (r.error || "Failed")}
-            </p>
-            {r.ok && r.platform === "ghl" && r.flags && (
-              <ul style={{ margin: "4px 0 0 16px", padding: 0, fontFamily: "var(--v2-font-body)", fontSize: "12px", color: "#555" }}>
-                {Object.entries(r.flags as Record<string, boolean>).map(([k, v]) => (
-                  <li key={k} style={{ color: v ? "#2E7D00" : "#A06200" }}>{v ? "✓" : "✗"} {k}</li>
-                ))}
-              </ul>
+            {r.platform === "meta" ? (
+              <p style={body}>
+                <strong>Meta Ads: </strong>
+                {r.ok ? `✓ Campaign ${r.campaignId} created` : `✗ ${r.error || "Failed"}`}
+              </p>
+            ) : r.report ? (
+              <GhlReportView report={r.report as GhlPushReport} />
+            ) : (
+              <>
+                <p data-testid="ghl-push-error" style={body}><strong>Go High Level: </strong>✗ {r.error || "Failed"}</p>
+                {r.connectionKind === "reconnect_required" && (
+                  <button data-testid="ghl-result-reconnect" onClick={onReconnectGhl} style={{ ...actionButtonStyle("primary", true), marginTop: "6px" }}>Reconnect GoHighLevel</button>
+                )}
+              </>
             )}
           </div>
         ))}
@@ -739,9 +760,47 @@ function ResultsView({ results, onClose, onRetry, masterSnapshotId }: {
         </div>
       )}
       <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+        {ghlNotConfirmed && (
+          <button data-testid="ghl-retry" onClick={onRetryGhl} style={actionButtonStyle("secondary", true)}>Retry</button>
+        )}
         <button onClick={onRetry} style={actionButtonStyle("secondary", true)}>Push again</button>
         <button onClick={onClose} style={actionButtonStyle("primary", true)}>Done</button>
       </div>
+    </div>
+  );
+}
+
+/** One GHL push, as GHL's read-back reported it. */
+function GhlReportView({ report }: { report: GhlPushReport }) {
+  const body = { fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: "13px", margin: "0 0 4px" } as const;
+  const failed = report.slots.filter((s) => s.status === "not_confirmed");
+  const nothing = report.slots.filter((s) => s.status === "nothing_to_send");
+  return (
+    <div data-testid="ghl-report">
+      <p data-testid="ghl-report-summary" style={body}>
+        <strong>Go High Level: </strong>
+        {report.confirmed
+          ? `✓ Saved to GoHighLevel — ${report.confirmedCount} values confirmed`
+          : report.expectedCount === 0
+            ? "✗ Nothing was sent — this kit has nothing to push to GoHighLevel yet"
+            : `✗ Not everything reached GoHighLevel — ${report.confirmedCount} of ${report.expectedCount} values confirmed`}
+      </p>
+      {failed.length > 0 && (
+        <ul data-testid="ghl-report-missing" style={{ ...body, margin: "4px 0 0 16px", padding: 0, fontSize: "12px", color: "#A06200" }}>
+          {failed.map((slot) => {
+            const bad = slot.values.filter((v) => v.status !== "confirmed");
+            const first = bad[0];
+            const why = slot.reason
+              ?? (first ? `${first.status === "rejected" ? "rejected" : first.status === "missing" ? "missing" : "changed"}${first.reason ? ` — ${first.reason}` : ""}` : "not confirmed");
+            return <li key={slot.key}>✗ {slot.label}{bad.length > 1 ? ` (${bad.length} values)` : ""}: {why}</li>;
+          })}
+        </ul>
+      )}
+      {nothing.length > 0 && (
+        <p data-testid="ghl-report-nothing" style={{ ...body, fontSize: "12px", color: "#777", marginTop: "6px" }}>
+          Nothing to send: {nothing.map((s) => s.label).join(", ")}
+        </p>
+      )}
     </div>
   );
 }

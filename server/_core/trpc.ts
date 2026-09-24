@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
 import { UsageLimitCause } from "../lib/tierAccess";
+import { GhlConnectionCause } from "./ghlToken";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -12,6 +13,11 @@ const t = initTRPC.context<TrpcContext>().create({
     const cause = error.cause;
     if (cause instanceof UsageLimitCause) {
       return { ...shape, data: { ...shape.data, usageLimit: { kind: cause.kind, generator: cause.generator } } };
+    }
+    // A GoHighLevel connection problem (not connected, reconnect required, GHL down) — the push window and Settings
+    // show the matching message and button from this, never by parsing text.
+    if (cause instanceof GhlConnectionCause) {
+      return { ...shape, data: { ...shape.data, ghlConnection: { kind: cause.kind } } };
     }
     return shape;
   },
