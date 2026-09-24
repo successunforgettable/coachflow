@@ -2,9 +2,19 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { UsageLimitCause } from "../lib/tierAccess";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  // A trial limit (quota, expiry, Pro-only) carries a UsageLimitCause. Surface it as `data.usageLimit` so the client
+  // recognises a limit without parsing the message; every other error keeps its default shape.
+  errorFormatter({ shape, error }) {
+    const cause = error.cause;
+    if (cause instanceof UsageLimitCause) {
+      return { ...shape, data: { ...shape.data, usageLimit: { kind: cause.kind, generator: cause.generator } } };
+    }
+    return shape;
+  },
 });
 
 export const router = t.router;

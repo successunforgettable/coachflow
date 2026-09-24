@@ -766,39 +766,17 @@ export function generateAdImagePrompt(
   return `${who} dressed and styled for the ${niche} world, ${stageAction} ${register} ${stageComposition} ${zonePersonFor(known, aspectRatio)} ${baseStyle}. ${backdrop} ${nicheContextPerson} ${scene} ${cleanPlate} ${complianceNotePerson}`;
 }
 
-// Free-tier ad image gate — stops trial/free users from spamming Generate or
-// Regenerate. Each click triggers a paid Replicate image call, so unlimited
-// free usage is a direct money leak. Paid tiers (pro/agency) are ungated here
-// (separate credit-deduction sprint will cover them).
-// Threshold: once the user has ≥ FREE_TIER_AD_IMAGE_LIMIT total adCreatives
-// rows across all their campaigns, both Generate and Regenerate are blocked.
-const FREE_TIER_AD_IMAGE_LIMIT = 2;
-
+// Trial ad image gate — each Generate / Regenerate is a paid image call. A trial user gets exactly the ad images one
+// campaign needs: ONE batch (5 variations), not a flat 2 rows (D3, Arfeen 2026-09-24). Pro, agency and staff are
+// never counted or refused (D5). The rule lives in lib/quotaEnforcement.ts so the Trail's orchestrateStep applies
+// the same one.
 async function enforceFreeTierAdImageGate(
   userId: number,
-  subscriptionTier: string | null | undefined,
+  _subscriptionTier: string | null | undefined,
   userRole: string | null | undefined,
 ): Promise<void> {
-  // Superusers and paid tiers (pro/agency) are ungated
-  if (userRole === "superuser") return;
-  const tier = subscriptionTier || "trial";
-  if (tier !== "trial") return;
-
-  const db = await getDb();
-  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-
-  const [row] = await db
-    .select({ n: count() })
-    .from(adCreatives)
-    .where(eq(adCreatives.userId, userId));
-
-  const total = row?.n ?? 0;
-  if (total >= FREE_TIER_AD_IMAGE_LIMIT) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Free tier ad image limit reached. Upgrade to Pro to regenerate.",
-    });
-  }
+  const { enforceTrialAdImageBatchLimit } = await import("../lib/quotaEnforcement");
+  await enforceTrialAdImageBatchLimit(userId, userRole);
 }
 
 const generateAdCreativesSchema = z.object({

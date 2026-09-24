@@ -4,7 +4,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { emailSequences, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { getQuotaLimit } from "../quotaLimits";
+import { enforceQuota } from "../lib/quotaEnforcement";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
@@ -123,15 +123,7 @@ export const emailSequencesRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      if (ctx.user.role !== "superuser") {
-        const limit = getQuotaLimit(ctx.user.subscriptionTier, "email");
-        if (ctx.user.emailSeqGeneratedCount >= limit) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.`,
-          });
-        }
-      }
+      await enforceQuota(ctx.user.id, "email", ctx.user.role);
 
       const { id } = await runEmailSequenceGeneration({
         userId: ctx.user.id,
@@ -163,12 +155,7 @@ export const emailSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      if (user.role !== "superuser") {
-        const limit = getQuotaLimit(user.subscriptionTier, "email");
-        if (user.emailSeqGeneratedCount >= limit) {
-          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.` });
-        }
-      }
+      await enforceQuota(user.id, "email", user.role);
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");

@@ -309,6 +309,7 @@ export default function V2Trail() {
   const liveRef = useRef<ChatMessage[]>([]);
   useEffect(() => { liveRef.current = live; }, [live]);
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
+  const liveNarrationTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const liveCounter = useRef(0);
   const addLive = (m: Omit<ChatMessage, "id">): ChatMessage => {
     liveCounter.current += 1;
@@ -365,8 +366,11 @@ export default function V2Trail() {
     const early = getEarlyLines(step);
     const line1 = addLive({ type: "zappy-bubble", mood: "thinking", text: early[0] });
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const at = (ms: number, text: string) =>
-      timers.push(setTimeout(() => addLive({ type: "zappy-bubble", mood: "thinking", text }), ms));
+    const at = (ms: number, text: string) => {
+      const t = setTimeout(() => addLive({ type: "zappy-bubble", mood: "thinking", text }), ms);
+      timers.push(t);
+      liveNarrationTimers.current.add(t);
+    };
     // Early lines at 4s intervals (variable count: 2 or 3)
     const earlyGap = early.length >= 3 ? 4_000 : 6_000;
     for (let i = 1; i < early.length; i++) at(i * earlyGap, early[i]);
@@ -374,7 +378,22 @@ export default function V2Trail() {
     for (const [ms, text] of getNodePatience(step)) {
       at(ms, text);
     }
-    return { line1, stop: () => timers.forEach(clearTimeout) };
+    return { line1, stop: () => timers.forEach((t) => { clearTimeout(t); liveNarrationTimers.current.delete(t); }) };
+  };
+
+  // ── Trial limits (quota used, trial ended, Pro-only) ──
+  // The server marks them with data.usageLimit (server/_core/trpc.ts errorFormatter). They are final: a retry cannot
+  // succeed, so instead of "Hm — that one fizzled" and a "Still stuck… Try again" loop the Trail stops narrating,
+  // puts back any selection it cleared to regenerate, and states the limit once in plain words.
+  const haltOnUsageLimit = async (err: unknown, restore?: () => Promise<unknown>): Promise<boolean> => {
+    const usageLimit = (err as { data?: { usageLimit?: unknown } } | null)?.data?.usageLimit;
+    if (!usageLimit) return false;
+    liveNarrationTimers.current.forEach(clearTimeout);
+    liveNarrationTimers.current.clear();
+    if (restore) { try { await restore(); } catch { /* non-fatal — the kit keeps whatever it has */ } }
+    setGeneratingKey(null);
+    addLive({ type: "zappy-bubble", mood: "idle", text: err instanceof Error ? err.message : String(err) });
+    return true;
   };
 
   // ── Reveal builder — existing per-asset reads ──
@@ -569,6 +588,7 @@ export default function V2Trail() {
       const kitId = kit.id as number | undefined;
       const icpId = kit.icpId as number | undefined;
       if (!kitId || !icpId || tokenServiceId == null) return;
+      const priorMechanismId = (kit.selectedMechanismId ?? null) as number | null;
       try {
         await updateSelection.mutateAsync({ kitId, selectedMechanismId: null } as any);
       } catch { /* non-fatal — the step would skip, which is safe */ }
@@ -585,10 +605,18 @@ export default function V2Trail() {
         await trailState.refetch();
         walkthroughEmit.zappy("Here's your method, rebuilt from what you told me.", "celebrating");
       } catch (e) {
-        walkthroughEmit.zappy(
-          `Your method is saved, but the rebuild didn't take (${e instanceof Error ? e.message : "please try again"}). Tap Tweak whenever you want another run.`,
-          "idle",
-        );
+        const usageLimit = (e as { data?: { usageLimit?: unknown } } | null)?.data?.usageLimit;
+        if (usageLimit) {
+          // A trial limit: put back the method this rebuild cleared, and say the limit plainly.
+          try { await updateSelection.mutateAsync({ kitId, selectedMechanismId: priorMechanismId } as any); } catch { /* non-fatal */ }
+          await trailState.refetch();
+          walkthroughEmit.zappy(e instanceof Error ? e.message : String(e), "idle");
+        } else {
+          walkthroughEmit.zappy(
+            `Your method is saved, but the rebuild didn't take (${e instanceof Error ? e.message : "please try again"}). Tap Tweak whenever you want another run.`,
+            "idle",
+          );
+        }
       } finally {
         setGeneratingKey(null);
       }
@@ -793,6 +821,7 @@ export default function V2Trail() {
         if (job.result?.skipped) throw new Error("Step was skipped — field not cleared");
         ok = true;
       } catch (err) {
+        if (await haltOnUsageLimit(err, () => updateSelection.mutateAsync({ kitId, selectedAdCreativeBatchId: kit0.selectedAdCreativeBatchId ?? null } as any))) return;
         lastError = err instanceof Error ? err.message : String(err);
         if (attempt === 1)
           addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
@@ -819,6 +848,7 @@ export default function V2Trail() {
           if (rj.result?.skipped) throw new Error("Step was skipped — field not cleared");
           ok = true;
         } catch (re) {
+          if (await haltOnUsageLimit(re, () => updateSelection.mutateAsync({ kitId, selectedAdCreativeBatchId: kit0.selectedAdCreativeBatchId ?? null } as any))) return;
           lastError = re instanceof Error ? re.message : String(re);
           if (ra === 1) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
         }
@@ -877,6 +907,7 @@ export default function V2Trail() {
           if (job.result?.skipped) throw new Error("Step was skipped — field not cleared");
           ok = true;
         } catch (err) {
+          if (await haltOnUsageLimit(err, () => updateSelection.mutateAsync({ kitId, [stepDef.field]: kit0[stepDef.field] ?? null } as any))) return;
           lastError = err instanceof Error ? err.message : String(err);
           if (attempt === 1 && !cancelled.current)
             addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
@@ -903,6 +934,7 @@ export default function V2Trail() {
             if (rj.result?.skipped) throw new Error("Step was skipped — field not cleared");
             ok = true;
           } catch (re) {
+            if (await haltOnUsageLimit(re, () => updateSelection.mutateAsync({ kitId, [stepDef.field]: kit0[stepDef.field] ?? null } as any))) return;
             lastError = re instanceof Error ? re.message : String(re);
             if (ra === 1 && !cancelled.current) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
           }
@@ -1296,6 +1328,7 @@ export default function V2Trail() {
           if (job.status === "failed") throw new Error(job.error || "Generation failed");
           ok = true;
         } catch (err) {
+          if (await haltOnUsageLimit(err)) return;
           lastError = err instanceof Error ? err.message : String(err);
           if (attempt === 1 && !cancelled.current) {
             addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
@@ -1324,6 +1357,7 @@ export default function V2Trail() {
             if (retryJob.status === "failed") throw new Error(retryJob.error || "Generation failed");
             ok = true;
           } catch (retryErr) {
+            if (await haltOnUsageLimit(retryErr)) return;
             lastError = retryErr instanceof Error ? retryErr.message : String(retryErr);
             if (retryAttempt === 1 && !cancelled.current)
               addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
@@ -1827,6 +1861,7 @@ export default function V2Trail() {
             if (job.status === "failed") throw new Error(job.error || "Generation failed");
             ok = true;
           } catch (err) {
+            if (await haltOnUsageLimit(err)) return;
             lastError = err instanceof Error ? err.message : String(err);
             if (attempt === 1 && !cancelled.current)
               addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
@@ -1852,6 +1887,7 @@ export default function V2Trail() {
               if (rj.status === "failed") throw new Error(rj.error || "Generation failed");
               ok = true;
             } catch (re) {
+              if (await haltOnUsageLimit(re)) return;
               lastError = re instanceof Error ? re.message : String(re);
               if (ra === 1 && !cancelled.current) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
             }
@@ -1915,6 +1951,7 @@ export default function V2Trail() {
           jobResult = job.result;
           ok = true;
         } catch (err) {
+          if (await haltOnUsageLimit(err)) return;
           lastError = err instanceof Error ? err.message : String(err);
           if (attempt === 1 && !cancelled.current)
             addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
@@ -1941,6 +1978,7 @@ export default function V2Trail() {
             jobResult = rj.result;
             ok = true;
           } catch (re) {
+            if (await haltOnUsageLimit(re)) return;
             lastError = re instanceof Error ? re.message : String(re);
             if (ra === 1 && !cancelled.current) addLive({ type: "zappy-bubble", mood: "idle", text: "Hm — that one fizzled. Let me try again." });
           }
@@ -2060,7 +2098,14 @@ export default function V2Trail() {
             if (job2.status === "failed") throw new Error(job2.error || "failed");
             jr2 = job2.result;
             ok2 = true;
-          } catch { /* handled below */ }
+          } catch (err2) {
+            // A trial limit: the current options stay, the selection that was cleared to regenerate is put back.
+            if (await haltOnUsageLimit(err2, () => updateSelection.mutateAsync({ kitId, [stepDef.field]: priorSelectedId } as any))) {
+              narration2.stop();
+              await quotaStatus.refetch();
+              continue;
+            }
+          }
           narration2.stop();
           if (!ok2 || !jr2) {
             addLive({ type: "zappy-bubble", mood: "idle", text: "Couldn't generate a fresh set. Pick from the current options." });

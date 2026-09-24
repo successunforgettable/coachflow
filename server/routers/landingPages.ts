@@ -2,8 +2,6 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { getQuotaLimit } from "../quotaLimits";
 import { getDb } from "../db";
 import { landingPages, services, users, campaigns, idealCustomerProfiles, sourceOfTruth, jobs, campaignKits, offers, heroMechanisms, hvcoTitles, coachAssets, complianceRewrites } from "../../drizzle/schema";
 import { eq, and, desc, like } from "drizzle-orm";
@@ -494,21 +492,15 @@ export const landingPagesRouter = router({
       const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "landingPage");
       if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
 
+      // enforceQuota runs the monthly reset first, then the trial-only check (lib/quotaEnforcement.ts). The second,
+      // hardcoded { trial: 2, pro: 50, agency: 500 } table that stood here refused Pro users (D5) and checked before
+      // the reset; removed.
       await enforceQuota(ctx.user.id, "landingPages");
-      await checkAndResetQuotaIfNeeded(ctx.user.id);
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
       if (!user) throw new Error("User not found");
-
-      if (user.role !== "superuser") {
-        const quotaLimits = { trial: 2, pro: 50, agency: 500 };
-        const limit = quotaLimits[user.subscriptionTier || "trial"];
-        if (user.landingPageGeneratedCount >= limit) {
-          throw new Error(`Landing page generation limit reached (${limit}). Please upgrade your plan.`);
-        }
-      }
 
       // ── The free-next-step page. Everything in this block is inert on the primary path. ──
       const isAdditional = input.pageRole === "additional";
@@ -600,15 +592,10 @@ export const landingPagesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      // Reset-then-check, trial only (see generate above); the duplicate hardcoded table is removed.
       await enforceQuota(ctx.user.id, "landingPages");
-      await checkAndResetQuotaIfNeeded(ctx.user.id);
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
       if (!user) throw new Error("User not found");
-      if (user.role !== "superuser") {
-        const quotaLimits = { trial: 2, pro: 50, agency: 500 };
-        const limit = quotaLimits[user.subscriptionTier || "trial"];
-        if (user.landingPageGeneratedCount >= limit) throw new Error(`Landing page generation limit reached (${limit}). Please upgrade your plan.`);
-      }
       const [service] = await db.select().from(services).where(and(eq(services.id, input.serviceId), eq(services.userId, ctx.user.id))).limit(1);
       if (!service) throw new Error("Service not found");
 

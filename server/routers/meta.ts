@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assertCanPush } from "../lib/tierAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 
@@ -330,6 +331,8 @@ export const metaRouter = router({
       status: z.enum(["ACTIVE", "PAUSED"]).default("PAUSED"),
     }))
     .mutation(async ({ ctx, input }) => {
+      // D6: pushing to Meta / GoHighLevel is Pro-only; a trial user can generate and preview (lib/tierAccess.ts).
+      assertCanPush(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -513,6 +516,8 @@ export const metaRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // D6: pushing to Meta / GoHighLevel is Pro-only; a trial user can generate and preview (lib/tierAccess.ts).
+      assertCanPush(ctx.user);
       // Currency-aware budget floor, BEFORE the first of the four Graph creates.
       await assertDailyBudgetForAccount(ctx.user.id, input.dailyBudget);
 

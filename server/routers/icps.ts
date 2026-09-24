@@ -11,7 +11,7 @@ import { ICP_SYSTEM_PROMPT, hasLadderContent, type ICPLadderAnswers, type ICPSer
 import { runIcpGeneration } from "../_core/icpGenerate";
 import { normalizeDemographics } from "../_core/icpGrounding";
 import { stripObjectionScaffolding } from "../_core/icpSanitize";
-import { getQuotaLimit } from "../quotaLimits";
+import { enforceQuota, countTrialUsage } from "../lib/quotaEnforcement";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
@@ -127,17 +127,8 @@ export const icpsRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Superusers have unlimited quota
-      if (ctx.user.role !== "superuser") {
-        // Check quota limit
-        const limit = getQuotaLimit(ctx.user.subscriptionTier, "icp");
-        if (ctx.user.icpGeneratedCount >= limit) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.`,
-          });
-        }
-      }
+      // Quotas ration trial users only; Pro and staff are never counted or refused (lib/tierAccess.ts)
+      await enforceQuota(ctx.user.id, "icp", ctx.user.role);
 
       // Get service details
       const [service] = await db
@@ -210,6 +201,9 @@ export const icpsRouter = router({
         .where(eq(idealCustomerProfiles.id, insertResult[0].insertId))
         .limit(1);
 
+      // Trial quota — counted here rather than in runIcpGeneration so a sharpen (below) never charges (D5: trial only).
+      await countTrialUsage(ctx.user.id, "icp");
+
       return newICP;
     }),
 
@@ -223,12 +217,7 @@ export const icpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      if (user.role !== "superuser") {
-        const limit = getQuotaLimit(user.subscriptionTier, "icp");
-        if (user.icpGeneratedCount >= limit) {
-          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.` });
-        }
-      }
+      await enforceQuota(user.id, "icp", user.role);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const [service] = await db.select().from(services)
@@ -290,6 +279,9 @@ export const icpsRouter = router({
           const [newICP] = await bgDb.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.id, insertResult[0].insertId)).limit(1);
 
+          // Trial quota, after the insert (D5: trial only). Not in runIcpGeneration, so a sharpen never charges.
+          await countTrialUsage(ctx.user.id, "icp");
+
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ icpId: newICP?.id }) })
             .where(eq(jobs.id, jobId));
@@ -324,10 +316,9 @@ export const icpsRouter = router({
    * produce a structurally valid profile, so a failed sharpen leaves the original
    * profile exactly as it was.
    *
-   * Deliberately does NOT touch icpGeneratedCount — that counter is checked but never
-   * incremented anywhere (a pre-existing bug). Sharpening a profile the coach already
-   * has is not a new generation, so if that counter is ever fixed this must not
-   * double-charge.
+   * Deliberately does NOT touch icpGeneratedCount. That counter is now incremented by
+   * generate / generateAsync (2026-09-24, trial only); sharpening a profile the coach
+   * already has is not a new generation, so this must never charge it.
    */
   sharpenWithLadder: protectedProcedure
     .input(z.object({ id: z.number(), ladder: ladderSchema }))

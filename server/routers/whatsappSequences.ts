@@ -4,7 +4,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { whatsappSequences, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { getQuotaLimit } from "../quotaLimits";
+import { enforceQuota } from "../lib/quotaEnforcement";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runWhatsappSequenceGeneration, buildWhatsappRules } from "../whatsappSequenceGenerator";
@@ -124,15 +124,7 @@ export const whatsappSequencesRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      if (ctx.user.role !== "superuser") {
-        const limit = getQuotaLimit(ctx.user.subscriptionTier, "whatsapp");
-        if (ctx.user.whatsappSeqGeneratedCount >= limit) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `You've reached your monthly limit of ${limit} WhatsApp sequences. Upgrade to generate more.`,
-          });
-        }
-      }
+      await enforceQuota(ctx.user.id, "whatsapp", ctx.user.role);
 
       const { id } = await runWhatsappSequenceGeneration({
         userId: ctx.user.id,
@@ -166,12 +158,7 @@ export const whatsappSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      if (user.role !== "superuser") {
-        const limit = getQuotaLimit(user.subscriptionTier, "whatsapp");
-        if (user.whatsappSeqGeneratedCount >= limit) {
-          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} WhatsApp sequences. Upgrade to generate more.` });
-        }
-      }
+      await enforceQuota(user.id, "whatsapp", user.role);
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");

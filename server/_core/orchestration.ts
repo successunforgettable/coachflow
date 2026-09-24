@@ -269,6 +269,14 @@ export type OrchestrationStepName = (typeof ORCHESTRATION_STEPS)[number]["name"]
 
 export const ORCHESTRATION_STEP_NAMES = ORCHESTRATION_STEPS.map(s => s.name) as OrchestrationStepName[];
 
+/** The kit column a step fills. The same field the skip-already-populated guard reads — exported so the trial gate
+ *  in autoMode.orchestrateStep can let an already-filled node through (it will skip, and generate nothing). */
+export function kitFieldForStep(name: OrchestrationStepName): string {
+  const step = ORCHESTRATION_STEPS.find((s) => s.name === name);
+  if (!step) throw new Error(`Unknown orchestration step: ${name}`);
+  return step.kitField;
+}
+
 export type OrchestrationStepRunResult = {
   skipped: boolean;
   generatedId: number | string | null;

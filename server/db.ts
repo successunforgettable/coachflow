@@ -2,6 +2,7 @@ import { eq, and, or, desc, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, headlines, hvcoTitles, InsertHvcoTitle, heroMechanisms, InsertHeroMechanism, campaigns, campaignAssets, campaignLinks, analyticsEvents, campaignMetrics, services, videoCredits, videoCreditTransactions } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { trialUsageWhere } from './lib/tierAccess';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -173,7 +174,8 @@ export async function incrementHeadlineCount(userId: number) {
   await db
     .update(users)
     .set({ headlineGeneratedCount: sql`${users.headlineGeneratedCount} + 1` })
-    .where(eq(users.id, userId));
+    // Trial users only — Pro, agency and staff are never counted (D5, lib/tierAccess.ts).
+    .where(trialUsageWhere(userId));
 }
 
 
@@ -273,7 +275,8 @@ export async function incrementHvcoCount(userId: number) {
   await db
     .update(users)
     .set({ hvcoGeneratedCount: sql`${users.hvcoGeneratedCount} + 1` })
-    .where(eq(users.id, userId));
+    // Trial users only — Pro, agency and staff are never counted (D5, lib/tierAccess.ts).
+    .where(trialUsageWhere(userId));
 }
 
 // ============================================================================
@@ -373,7 +376,8 @@ export async function incrementHeroMechanismCount(userId: number) {
   await db
     .update(users)
     .set({ heroMechanismGeneratedCount: sql`${users.heroMechanismGeneratedCount} + 1` })
-    .where(eq(users.id, userId));
+    // Trial users only — Pro, agency and staff are never counted (D5, lib/tierAccess.ts).
+    .where(trialUsageWhere(userId));
 }
 
 

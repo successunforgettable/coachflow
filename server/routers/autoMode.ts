@@ -27,9 +27,12 @@ import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { jobs, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, services } from "../../drizzle/schema";
+import { jobs, idealCustomerProfiles, offers, heroMechanisms, hvcoTitles, services, campaignKits } from "../../drizzle/schema";
 import { eq, and, or, sql } from "drizzle-orm";
-import { runOrchestration, runOrchestrationStep, ORCHESTRATION_STEP_NAMES, type OrchestrationStepName } from "../_core/orchestration";
+import { runOrchestration, runOrchestrationStep, ORCHESTRATION_STEP_NAMES, kitFieldForStep, type OrchestrationStepName } from "../_core/orchestration";
+import { enforceQuota, enforceTrialAdImageBatchLimit, enforceTrialActive, countTrialUsage } from "../lib/quotaEnforcement";
+import { usageLimitError } from "../lib/tierAccess";
+import type { GeneratorType } from "../quotaLimits";
 import { autoSelectBest } from "./campaignKits";
 import { complianceFilter, filterRecord } from "../lib/complianceFilter";
 import { invokeLLM } from "../_core/llm";
@@ -85,6 +88,55 @@ export function isAutoModeTierAllowed(user: {
     reason:
       "Auto Mode is a Pro feature. Upgrade your subscription to unlock the 1-click campaign builder.",
   };
+}
+
+/**
+ * TRIAL ON THE TRAIL (Arfeen, option (b), 2026-09-24 — D1, D4). A trial user may run the Trail node by node on a
+ * manual or imported kit, rationed by the same quotas the per-node routers use. Auto Mode (kit.path === 'auto') stays
+ * Pro-only. Pro, agency and staff never reach this code (isAutoModeTierAllowed passes them first).
+ */
+/** The nine Trail steps. `init` / `finalize` are progress labels, never a step a client can request. */
+export const TRIAL_STEP_QUOTA: Partial<Record<OrchestrationStepName, GeneratorType | "adCreatives">> = {
+  offer: "offers",
+  mechanism: "heroMechanisms",
+  hvco: "hvco",
+  headlines: "headlines",
+  adCopy: "adCopy",
+  landingPage: "landingPages",
+  emailSequence: "email",
+  whatsappSequence: "whatsapp",
+  adCreatives: "adCreatives",
+};
+
+/** Pure: the kit paths a trial user may drive step by step. `auto` is Auto Mode (Pro-only); null is not a Trail kit. */
+export function trialStepPathAllowed(path: string | null | undefined): boolean {
+  return path === "manual" || path === "has_assets";
+}
+
+/**
+ * The trial gate for one Trail step, run BEFORE the job is created so the refusal reaches the client directly.
+ * The kit is read server-side — a client flag can never unlock Auto Mode. A node that is already filled is let
+ * through without a quota check: the step will skip and generate nothing, and refusing it would stop a trial coach
+ * reopening a campaign after using their allowance. Charging happens after a successful generation (the generator
+ * cores and countTrialUsage), never here.
+ */
+export async function enforceTrialStepAccess(
+  userId: number,
+  role: string | null | undefined,
+  icpId: number,
+  step: OrchestrationStepName,
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+  const [kit] = await db.select().from(campaignKits)
+    .where(and(eq(campaignKits.userId, userId), eq(campaignKits.icpId, icpId)))
+    .limit(1);
+  if (!kit || !trialStepPathAllowed(kit.path)) throw usageLimitError("pro_only", "autoMode");
+  if ((kit as Record<string, unknown>)[kitFieldForStep(step)] != null) return;
+  const quota = TRIAL_STEP_QUOTA[step];
+  if (!quota) throw usageLimitError("pro_only", "autoMode"); // an unmapped step is never open to trial
+  if (quota === "adCreatives") await enforceTrialAdImageBatchLimit(userId, role);
+  else await enforceQuota(userId, quota, role);
 }
 
 /** Max concurrent active jobs (pending + running) per user. Normal trail
@@ -199,9 +251,9 @@ export const autoModeRouter = router({
         .optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tierCheck = isAutoModeTierAllowed(ctx.user);
-      if (!tierCheck.allowed) {
-        throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
+      // Pro / agency / staff: unchanged — never counted, never refused (D5). Trial: the rationed Trail (D1, D4).
+      if (!isAutoModeTierAllowed(ctx.user).allowed) {
+        await enforceTrialStepAccess(ctx.user.id, ctx.user.role, input.icpId, input.step);
       }
 
       await enforceJobConcurrency(ctx.user.id);
@@ -300,10 +352,8 @@ export const autoModeRouter = router({
       demographics: z.string().max(2000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tierCheck = isAutoModeTierAllowed(ctx.user);
-      if (!tierCheck.allowed) {
-        throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
-      }
+      // Trial may import (D4): an imported ICP draws one ICP from the trial quota. Pro / staff: unchanged (D5).
+      if (!isAutoModeTierAllowed(ctx.user).allowed) await enforceQuota(ctx.user.id, "icp", ctx.user.role);
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -336,6 +386,7 @@ export const autoModeRouter = router({
       });
 
       const icpId = result[0].insertId as number;
+      await countTrialUsage(ctx.user.id, "icp"); // trial only — the WHERE clause leaves Pro untouched
 
       // Enrich as a background job — returns immediately so the HTTP response
       // completes in <2s. The client polls the job before proceeding to kit
@@ -424,9 +475,11 @@ export const autoModeRouter = router({
       }).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tierCheck = isAutoModeTierAllowed(ctx.user);
-      if (!tierCheck.allowed) {
-        throw new TRPCError({ code: "FORBIDDEN", message: tierCheck.reason! });
+      // Trial may import (D4). An imported offer draws one offer from the trial quota (it generates two angles);
+      // an imported method or lead magnet generates nothing, so only the trial-expiry gate applies. Pro: unchanged.
+      if (!isAutoModeTierAllowed(ctx.user).allowed) {
+        if (input.offer) await enforceQuota(ctx.user.id, "offers", ctx.user.role);
+        else await enforceTrialActive(ctx.user.id, ctx.user.role, "import");
       }
 
       const db = await getDb();
@@ -495,6 +548,7 @@ export const autoModeRouter = router({
           source: "imported",
         });
         await autoSelectBest(ctx.user.id, input.icpId, "selectedOfferId", offerResult[0].insertId);
+        await countTrialUsage(ctx.user.id, "offers"); // trial only — the WHERE clause leaves Pro untouched
 
         // Enrich: generate missing offer angles from the imported godfather (non-blocking).
         // The selected offer is already set via autoSelectBest — cascade can proceed.
@@ -608,7 +662,10 @@ export const autoModeRouter = router({
         dataUrl: z.string(),
       })).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Trial (D4): gate BEFORE the LLM call, so a trial coach is never walked through upload and extraction only to
+      // be refused at import. Checks the trial is live and an ICP is still available; charges nothing (import does).
+      if (!isAutoModeTierAllowed(ctx.user).allowed) await enforceQuota(ctx.user.id, "icp", ctx.user.role);
       // Intelligent truncation: if text exceeds 100k chars, truncate at a
       // sentence boundary. Real coaching docs rarely exceed this, but
       // concatenated multi-file uploads might. The LLM extracts from whatever
@@ -817,7 +874,9 @@ Extract all marketing assets you can identify. Return JSON matching the schema.`
       docOfferValue: z.string(),
       docIcpName: z.string(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // An LLM call: an expired trial may not run it. Charges nothing.
+      if (!isAutoModeTierAllowed(ctx.user).allowed) await enforceTrialActive(ctx.user.id, ctx.user.role, "import");
       try {
         const response = await invokeLLM({
           messages: [

@@ -6,7 +6,7 @@ import { offers, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { runOfferGeneration } from "../offersGenerator";
 import { invokeLLM } from "../_core/llm";
-import { getQuotaLimit } from "../quotaLimits";
+import { enforceQuota } from "../lib/quotaEnforcement";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
@@ -88,16 +88,8 @@ export const offersRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Superusers have unlimited quota
-      if (ctx.user.role !== "superuser") {
-        const limit = getQuotaLimit(ctx.user.subscriptionTier, "offers");
-        if (ctx.user.offerGeneratedCount >= limit) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `You've reached your monthly limit of ${limit} offers. Upgrade to generate more.`,
-          });
-        }
-      }
+      // Quotas ration trial users only; Pro and staff are never counted or refused (lib/tierAccess.ts)
+      await enforceQuota(ctx.user.id, "offers", ctx.user.role);
 
       const { offerId } = await runOfferGeneration({
         userId: ctx.user.id,
@@ -127,12 +119,7 @@ export const offersRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      if (user.role !== "superuser") {
-        const limit = getQuotaLimit(user.subscriptionTier, "offers");
-        if (user.offerGeneratedCount >= limit) {
-          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} offers. Upgrade to generate more.` });
-        }
-      }
+      await enforceQuota(user.id, "offers", user.role);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

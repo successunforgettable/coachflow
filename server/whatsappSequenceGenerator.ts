@@ -1010,6 +1010,8 @@ You MUST use these exact numbers and real names. Do not fabricate.`
   const { gateBeforePersist, copyFieldsOfJson } = await import("./_core/persistenceGate");
   const __g = await gateBeforePersist("whatsappSequences", [__row as any], { textOf: (r: any) => copyFieldsOfJson(r.messages, "messages"), legacyHits: __legacySink.hits });
   const insertResult: any = await db.insert(whatsappSequences).values((__g.kept[0] ?? __row) as any);
+  // Trial quota (D5: trial only; the WHERE clause leaves Pro untouched). After the insert, so a failed run costs nothing.
+  { const { countTrialUsage } = await import("./lib/quotaEnforcement"); await countTrialUsage(input.userId, "whatsapp"); }
 
   return { id: insertResult[0].insertId };
 }
