@@ -1,3 +1,4 @@
+import { enforceTrialActive } from "../lib/quotaEnforcement";
 /**
  * Video Generation Router
  * 
@@ -296,6 +297,8 @@ export const videosRouter = router({
   regenerateSingle: protectedProcedure
     .input(z.object({ videoId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "video");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 

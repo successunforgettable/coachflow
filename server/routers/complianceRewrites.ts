@@ -1,3 +1,4 @@
+import { enforceTrialActive } from "../lib/quotaEnforcement";
 /**
  * Compliance Rewrites router (W5 Phase 1 — headlines, Phase 2 — adCopy,
  * Phase 3 — landingPages).
@@ -501,6 +502,8 @@ export const complianceRewritesRouter = router({
       { message: "sourceSubKey is required when sourceTable === 'landingPages'", path: ["sourceSubKey"] },
     ))
     .mutation(async ({ ctx, input }) => {
+      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "rewrite");
       const flagOn = isRewriteEngineEnabled();
       console.log(`[W5.generateMore] entered — user=${ctx.user.id} role=${ctx.user.role} tier=${ctx.user.subscriptionTier} sourceTable=${input.sourceTable} sourceId=${input.sourceId} sourceSubKey=${input.sourceSubKey ?? "—"} count=${input.count} flagOn=${flagOn}`);
       assertFlagOn();

@@ -905,6 +905,9 @@ export const adCreativesRouter = router({
   generate: protectedProcedure
     .input(generateAdCreativesSchema)
     .mutation(async ({ ctx, input }) => {
+      // D3: the same trial ad-image cap (and trial expiry) as generateAsync / regenerateSingle / makeVertical — this
+      // synchronous route had no gate, so a trial user could pass the one-batch cap here.
+      await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);
       const prereqs = await validateCascadePrereqs(ctx.user.id, input.serviceId, "adCopy");
       if (!prereqs.ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: prereqs.message });
 
@@ -1014,7 +1017,7 @@ export const adCreativesRouter = router({
       headlineOverrideId: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Free-tier gate — block regenerate once the user has ≥ 2 ad creatives
+      // Trial gate (D3) — one ad-image batch per trial account, plus trial expiry
       await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);
 
       const db = await getDb();
@@ -1495,7 +1498,7 @@ export const adCreativesRouter = router({
       uglyMode: z.boolean().optional().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Free-tier gate — block generate once the user has ≥ 2 ad creatives
+      // Trial gate (D3) — one ad-image batch per trial account, plus trial expiry
       await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);
 
       const db = await getDb();

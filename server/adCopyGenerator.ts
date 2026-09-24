@@ -1757,8 +1757,8 @@ Format as JSON:
     const __g = await gateBeforePersist("adCopy", gatedInserts as any[]);
     await db.insert(adCopy).values(__g.kept as any);
   }
-  // Trial quota (D5: trial only; the WHERE clause leaves Pro untouched). After the insert, so a failed run costs nothing.
-  { const { countTrialUsage } = await import("./lib/quotaEnforcement"); await countTrialUsage(input.userId, "adCopy"); }
+  // Monthly quota, every tier (the table is the source of truth). After the insert, so a failed run costs nothing.
+  { const { countUsage } = await import("./lib/quotaEnforcement"); await countUsage(input.userId, "adCopy"); }
 
   // Compliance precompute — must land before runX returns so wizard panel
   // sees ad copy + rewrites atomically. Mirrors prior async behavior.

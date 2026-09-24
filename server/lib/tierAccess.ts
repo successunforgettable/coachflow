@@ -88,6 +88,18 @@ export function usageLimitError(kind: UsageLimitKind, generator: string, limit?:
   return new TRPCError({ code: "FORBIDDEN", message, cause: new UsageLimitCause(kind, generator) });
 }
 
+/**
+ * A paid plan's monthly cap from the limits table (quotaLimits.ts, the single source of truth — Arfeen, 2026-09-24).
+ * Same machine-readable cause as a trial limit; the wording is the plan's, not the trial's.
+ */
+export function planLimitError(generator: string, limit: number): TRPCError {
+  return new TRPCError({
+    code: "FORBIDDEN",
+    message: `You've reached your monthly limit of ${limit} ${usageLabel(generator)}. Upgrade to generate more.`,
+    cause: new UsageLimitCause("quota_exceeded", generator),
+  });
+}
+
 /** D6: pushing to Meta or GoHighLevel is Pro-only. Call at the top of every push procedure. */
 export function assertCanPush(user: TierUser): void {
   if (!isPaidOrStaff(user)) throw usageLimitError("pro_only", "push");

@@ -187,6 +187,37 @@ describe("D6 — push is Pro-only, at the server", () => {
   });
 });
 
+describe("D3 — every ad-image generation route carries the trial cap", () => {
+  it("generate, generateAsync, regenerateSingle and makeVertical all call the gate as their first statement", () => {
+    const src = readFileSync(join(__dirname, "routers/adCreatives.ts"), "utf8");
+    for (const proc of ["generate", "generateAsync", "regenerateSingle", "makeVertical"]) {
+      const at = src.indexOf(`  ${proc}: protectedProcedure`);
+      expect(at, proc).toBeGreaterThan(-1);
+      const m = src.slice(at).match(/\.mutation\(async \(\{[^}]*\}\) => \{\n/);
+      const body = src.slice(at + (m!.index ?? 0) + m![0].length);
+      const first = body.split("\n").find((l) => l.trim() && !l.trim().startsWith("//"));
+      expect(first?.trim(), proc).toBe("await enforceFreeTierAdImageGate(ctx.user.id, ctx.user.subscriptionTier, ctx.user.role);");
+    }
+  });
+});
+
+describe("Tweak / regenerate — behaviour through the real procedure", () => {
+  it("an ended trial is refused before the database is touched; the check also runs for Pro (and passes there)", async () => {
+    const { headlinesRouter } = await import("./routers/headlines");
+    const { usageLimitError } = await import("./lib/tierAccess");
+    const h = (u: object) => headlinesRouter.createCaller({ user: u, req: {}, res: {} } as any);
+    quota.enforceTrialActive.mockRejectedValueOnce(usageLimitError("trial_expired", "headlines"));
+    db.getDbCalls = 0;
+    expect(await verdict(h(TRIAL).regenerateSingle({ id: 1 }))).toBe("trial_expired");
+    expect(db.getDbCalls).toBe(0);
+    expect(quota.enforceTrialActive).toHaveBeenCalledWith(TRIAL.id, TRIAL.role, "headlines");
+    quota.enforceTrialActive.mockClear();
+    const v = await verdict(h(PRO).regenerateSingle({ id: 1 }));
+    expect(v).not.toBe("trial_expired");
+    expect(quota.enforceTrialActive).toHaveBeenCalledWith(PRO.id, PRO.role, "headlines");
+  });
+});
+
 describe("source pins — the wiring the unit tests above cannot see", () => {
   const read = (p: string) => readFileSync(join(__dirname, p), "utf8");
 
@@ -194,23 +225,35 @@ describe("source pins — the wiring the unit tests above cannot see", () => {
     ["routers/offers.ts", "offers"], ["routers/adCopy.ts", "adCopy"], ["routers/icps.ts", "icp"],
     ["routers/emailSequences.ts", "email"], ["routers/whatsappSequences.ts", "whatsapp"], ["routers/hvco.ts", "hvco"],
     ["routers/heroMechanisms.ts", "heroMechanisms"], ["routers/headlines.ts", "headlines"],
-  ])("%s: trial takes enforceQuota, every other tier keeps its pre-sprint limit block, in both procedures", (file, gen) => {
+  ])("%s: both generate procedures enforce the table for every tier — no inline or hardcoded limit left", (file, gen) => {
     const src = read(file);
-    const branch = new RegExp(
-      `if \\(countsUsage\\((ctx\\.user|user)\\)\\) \\{\\n[^\\n]*\\n\\s+await enforceQuota\\(\\1\\.id, "${gen}", \\1\\.role\\);\\n\\s+\\} else if \\(\\1\\.role !== "superuser"\\) \\{`, "g");
-    expect(src.match(branch)?.length).toBe(2);
-    expect(src.match(/monthly limit of \$\{(limit|maxHeadlines)\}/g)?.length).toBe(2); // the old Pro/agency message, kept
+    expect(src.match(new RegExp(`await enforceQuota\\((ctx\\.user|user)\\.id, "${gen}", (ctx\\.user|user)\\.role\\)`, "g"))?.length).toBe(2);
+    expect(src).not.toMatch(/GeneratedCount >= /);
+    expect(src).not.toMatch(/maxHeadlines/);
+    expect(src).not.toMatch(/countsUsage/);
+    expect(src).not.toMatch(/getQuotaLimit\(/);
   });
 
-  it("headlines keep their old per-path Pro/agency numbers (6/20 sync, 20/50 async)", () => {
-    const src = read("routers/headlines.ts");
-    expect(src).toContain('const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;');
-    expect(src).toContain('const maxHeadlines = user.subscriptionTier === "agency" ? 50 : user.subscriptionTier === "pro" ? 20 : 6;');
-  });
-
-  it("landing pages keep their pre-sprint hardcoded table", () => {
+  it("landing pages: the table only — no router table, no check-before-reset", () => {
     const src = read("routers/landingPages.ts");
-    expect(src.match(/const quotaLimits = \{ trial: 2, pro: 50, agency: 500 \}/g)?.length).toBe(2);
+    expect(src).not.toMatch(/quotaLimits = \{/);
+    expect(src).not.toMatch(/checkAndResetQuotaIfNeeded/);
+    expect(src.match(/await enforceQuota\(ctx\.user\.id, "landingPages"\)/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it.each([
+    ["videos", "regenerateSingle"], ["icps", "regenerateSection"], ["adCopy", "regenerateSingle"],
+    ["complianceRewrites", "generateMore"], ["headlines", "regenerateSingle"], ["offers", "regenerateSection"],
+    ["emailSequences", "regenerateSingle"], ["hvco", "regenerateQuiz"], ["hvco", "regenerateSingle"],
+    ["heroMechanisms", "regenerateSingle"], ["whatsappSequences", "regenerateSingle"],
+  ])("Tweak / regenerate %s.%s checks the trial is live as its FIRST statement", (router, proc) => {
+    const src = read(`routers/${router}.ts`);
+    const at = src.indexOf(`  ${proc}: protectedProcedure`);
+    expect(at).toBeGreaterThan(-1);
+    const m = src.slice(at).match(/\.mutation\(async \(\{[^}]*\}\) => \{\n/);
+    const body = src.slice(at + (m!.index ?? 0) + m![0].length);
+    const first = body.split("\n").find((l) => l.trim() && !l.trim().startsWith("//"));
+    expect(first?.trim()).toMatch(/^await enforceTrialActive\(ctx\.user\.id, ctx\.user\.role, "[a-zA-Z]+"\);$/);
   });
 
   it.each([
@@ -218,10 +261,11 @@ describe("source pins — the wiring the unit tests above cannot see", () => {
     ["adCopyGenerator.ts", "adCopy", "await db.insert(adCopy).values(__g.kept as any);"],
     ["emailSequenceGenerator.ts", "email", "await db.insert(emailSequences).values("],
     ["whatsappSequenceGenerator.ts", "whatsapp", "await db.insert(whatsappSequences).values("],
-  ])("%s counts trial usage AFTER its insert — the five never-incremented counters", (file, gen, insertMarker) => {
+  ])("%s counts usage (every tier) AFTER its insert — the five formerly uncounted counters", (file, gen, insertMarker) => {
     const src = read(file);
     const ins = src.indexOf(insertMarker);
-    const cnt = src.indexOf(`countTrialUsage(input.userId, "${gen}")`);
+    const cnt = src.indexOf(`countUsage(input.userId, "${gen}")`);
+    expect(src).not.toMatch(/countTrialUsage/);
     expect(ins).toBeGreaterThan(-1);
     expect(cnt).toBeGreaterThan(ins);
   });
@@ -232,11 +276,11 @@ describe("source pins — the wiring the unit tests above cannot see", () => {
     expect(sharpen).toBeGreaterThan(-1);
     const before = src.slice(0, sharpen);
     const after = src.slice(sharpen);
-    expect(before.match(/await countTrialUsage\(ctx\.user\.id, "icp"\)/g)?.length).toBe(2);
-    expect(after).not.toMatch(/countTrialUsage/);
+    expect(before.match(/await countUsage\(ctx\.user\.id, "icp"\)/g)?.length).toBe(2);
+    expect(after).not.toMatch(/countUsage|countTrialUsage/);
   });
 
-  it("the three db.ts counters count every tier, exactly as before (D5 as corrected)", () => {
+  it("the three db.ts counters count every tier", () => {
     const src = read("db.ts");
     expect(src).not.toMatch(/trialUsageWhere/);
     for (const f of ["headlineGeneratedCount", "hvcoGeneratedCount", "heroMechanismGeneratedCount"]) {

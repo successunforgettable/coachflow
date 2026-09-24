@@ -11,9 +11,7 @@ import {
 import { getDb } from "../db";
 import { jobs, hvcoTitles } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { getQuotaLimit } from "../quotaLimits";
-import { enforceQuota } from "../lib/quotaEnforcement";
-import { countsUsage } from "../lib/tierAccess";
+import { enforceQuota, enforceTrialActive } from "../lib/quotaEnforcement";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runHvcoGeneration } from "../hvcoGenerator";
@@ -50,18 +48,7 @@ export const hvcoRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      if (countsUsage(user)) {
-        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
-        await enforceQuota(user.id, "hvco", user.role);
-      } else if (user.role !== "superuser") {
-        const limit = getQuotaLimit(user.subscriptionTier, "hvco");
-        if (user.hvcoGeneratedCount >= limit) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.`,
-          });
-        }
-      }
+      await enforceQuota(user.id, "hvco", user.role);
       return await runHvcoGeneration({
         userId: user.id,
         serviceId: input.serviceId,
@@ -88,15 +75,7 @@ export const hvcoRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      if (countsUsage(user)) {
-        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
-        await enforceQuota(user.id, "hvco", user.role);
-      } else if (user.role !== "superuser") {
-        const limit = getQuotaLimit(user.subscriptionTier, "hvco");
-        if (user.hvcoGeneratedCount >= limit) {
-          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.` });
-        }
-      }
+      await enforceQuota(user.id, "hvco", user.role);
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -256,6 +235,8 @@ export const hvcoRouter = router({
   regenerateQuiz: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "hvco");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [row] = await db.select().from(hvcoTitles)
@@ -339,6 +320,8 @@ export const hvcoRouter = router({
       promptOverride: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "hvco");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

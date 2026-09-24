@@ -156,7 +156,8 @@ the same rationing a generator gets.
 |---|---|---|
 | 1 | `65af5e2` | server: rationed trial on the Trail, five counters fixed (trial only), trial expiry everywhere, D2/D3/D4-server/D6, limit errors + Trail halt |
 | 1 fix | `8881b69` | **D5 corrected** — Pro keeps every pre-sprint limit; only the new trial rationing skips it (quotaLimits.ts, landingPages.ts, db.ts restored byte-identical to production) |
-| 2 | *(this commit)* | client: D4 trial import node by node; limit messages on every limit-capable Trail/intake step; D6 Pro-only push state |
+| 2 | `493650b` | client: D4 trial import node by node; limit messages on every limit-capable Trail/intake step; D6 Pro-only push state |
+| 3 | *(quota-table sprint, next commit)* | §7 built: the table is the single source of truth for every tier; + expired trial blocked from 11 Tweak/regenerate procedures; + the sync `adCreatives.generate` route given the D3 gate it lacked |
 
 ### Sprint 2 browser proof — local build, local throwaway DB, zero model calls
 Local MySQL `127.0.0.1:3307/zap_test` (`@@version_comment = Homebrew`), loaded with production's **schema only**
@@ -178,7 +179,7 @@ an expired trial can still use them.
 
 ---
 
-## 7. NEXT SPRINT AFTER SPRINT 2 — RECORDED, NOT BUILT (Arfeen's ruling, 2026-09-24)
+## 7. THE QUOTA-TABLE SPRINT (Arfeen's ruling, 2026-09-24) — BUILT, see §6 row 3
 
 **The limits table in `server/quotaLimits.ts` is the single source of truth** (its header: it must match the pricing
 page). Scope:
@@ -190,3 +191,15 @@ page). Scope:
 4. The monthly reset runs before the limit check for every tier (landing pages check first today).
 5. The 14 stale `quotaLimits.test.ts` tests updated to the current table — they encode the 2026-02-18 table;
    `eec6641` (03-20) and `e8860cc` (03-24) changed it deliberately and never updated them.
+
+6. *(added by Arfeen)* Expired trial users are blocked from Tweak / regenerate, as on every other generation path.
+
+**Built.** Every tier × generator hits exactly the table's cap (one under passes, at the cap refused; `Infinity` and the
+table's `999` sentinel never refuse). Generations count for every tier; imports stay a trial-only charge. Paid plans
+get *"You've reached your monthly limit of N …"*, trial users the free-trial wording.
+
+**Still ungated for an expired trial (not in this sprint's scope — flagged):** model-calling procedures outside
+generate / Tweak — `services.extractFromText`, `services.expandProfile`, `icps.sharpenWithLadder`,
+`icpAngleSuggestions.generate` / `generateICPs`, `videoScripts.generate` / `generateAsync`,
+`whatsappSequences.retoneSequence`, `compliance.rewordForAdvisory`, `landingPages.reanswerOperatorField`,
+`landing.generatePreviewAssets`, `sourceOfTruth.generate` (heuristic scan; each needs confirming before gating).

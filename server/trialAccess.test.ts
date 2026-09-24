@@ -2,15 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { TRPCError } from "@trpc/server";
 
-// Trial paywall, option (b) — sprint 1 (Arfeen D1-D6, 2026-09-24; D5 corrected the same day). The new rationing
-// applies to TRIAL users only; Pro, agency and staff keep exactly their pre-sprint limits. These tests run the real enforcement code against a fake database so the
+// Trial paywall, option (b), and the quota-table sprint (Arfeen, 2026-09-24): the limits table is the single source
+// of truth for every tier; the trial additionally has its expiry gate and the Trail rationing. These tests run the real enforcement code against a fake database so the
 // verdicts are the code's own, and every "allowed" case has a negative control that is refused.
 
 // ── fake database ─────────────────────────────────────────────────────────────────────────────────
-const state: { user: Record<string, unknown> | null; batches: number; updates: Array<{ set: unknown; where: unknown }> } = {
+const state: { user: Record<string, unknown> | null; batches: number; updates: Array<{ set: unknown; where: unknown }>; resetDue: boolean; resets: number } = {
   user: null,
   batches: 0,
   updates: [],
+  resetDue: false,
+  resets: 0,
 };
 const chain: any = {
   from: () => chain,
@@ -23,14 +25,25 @@ const fakeDb = {
   update: () => ({ set: (set: unknown) => ({ where: async (where: unknown) => { state.updates.push({ set, where }); } }) }),
 };
 vi.mock("./db", () => ({ getDb: async () => fakeDb }));
-vi.mock("./quotaReset", () => ({ checkAndResetQuotaIfNeeded: async () => undefined }));
+// The monthly reset: when due, it zeroes every counter — so a check that runs AFTER it reads 0, and one that runs
+// before it reads last month's number.
+vi.mock("./quotaReset", () => ({
+  checkAndResetQuotaIfNeeded: async () => {
+    state.resets++;
+    if (state.resetDue && state.user) {
+      for (const k of Object.keys(state.user)) if (k.endsWith("GeneratedCount")) state.user[k] = 0;
+      state.resetDue = false;
+    }
+  },
+}));
 
 import {
   isPaidOrStaff, countsUsage, trialUsageWhere, usageLimitError, assertCanPush, UsageLimitCause, TRIAL_AD_IMAGE_BATCH_LIMIT,
 } from "./lib/tierAccess";
 import {
-  enforceQuota, enforceTrialActive, enforceTrialAdImageBatchLimit, countTrialUsage, incrementQuotaCount,
+  enforceQuota, enforceTrialActive, enforceTrialAdImageBatchLimit, countTrialUsage, countUsage, incrementQuotaCount,
 } from "./lib/quotaEnforcement";
+import { QUOTA_LIMITS, getQuotaCountField, type GeneratorType } from "./quotaLimits";
 
 const FUTURE = new Date(Date.now() + 7 * 864e5);
 const PAST = new Date(Date.now() - 864e5);
@@ -49,7 +62,7 @@ async function verdict(p: Promise<unknown>): Promise<string> {
   }
 }
 
-beforeEach(() => { state.user = null; state.batches = 0; state.updates = []; });
+beforeEach(() => { state.user = null; state.batches = 0; state.updates = []; state.resetDue = false; state.resets = 0; });
 
 describe("tierAccess — who is rationed", () => {
   it("pro, agency, admin and superuser are paid-or-staff; trial and a missing tier are not", () => {
@@ -95,52 +108,87 @@ describe("tierAccess — who is rationed", () => {
   });
 });
 
-describe("enforceQuota — trial rationed; Pro keeps its pre-sprint limits", () => {
-  it("trial under quota passes; at quota is refused with quota_exceeded", async () => {
-    state.user = trialUser({ offerGeneratedCount: 1 });
-    expect(await verdict(enforceQuota(7, "offers"))).toBe("passed");
-    state.user = trialUser({ offerGeneratedCount: 2 });
-    expect(await verdict(enforceQuota(7, "offers"))).toBe("quota_exceeded");
-  });
+const GENERATORS: GeneratorType[] = ["headlines", "hvco", "heroMechanisms", "icp", "adCopy", "email", "whatsapp", "landingPages", "offers"];
 
-  it("an ended trial is refused on EVERY generator, not only landing pages — even an unlimited one", async () => {
-    for (const g of ["offers", "adCopy", "email", "whatsapp", "icp", "landingPages", "headlines", "hvco", "heroMechanisms"] as const) {
-      state.user = trialUser({ trialEndsAt: PAST });
-      expect(await verdict(enforceQuota(7, g)), g).toBe("trial_expired");
+describe("enforceQuota — the limits table is the single source of truth, for every tier", () => {
+  // For every tier × generator: one under the table's cap passes, exactly at the cap is refused — no more, no less.
+  // Unlimited entries (Infinity, and the table's 999 sentinel) are never refused.
+  it.each(["trial", "pro", "agency"] as const)("%s hits exactly the table's limit on every generator", async (tier) => {
+    for (const g of GENERATORS) {
+      const cap = QUOTA_LIMITS[tier][g];
+      const field = getQuotaCountField(g);
+      if (cap === Infinity || cap >= 999) {
+        for (const n of [0, 998, 999, 5000]) {
+          state.user = trialUser({ subscriptionTier: tier, [field]: n });
+          expect(await verdict(enforceQuota(7, g)), `${tier} ${g} @${n}`).toBe("passed");
+        }
+        continue;
+      }
+      state.user = trialUser({ subscriptionTier: tier, [field]: cap - 1 });
+      expect(await verdict(enforceQuota(7, g)), `${tier} ${g} @${cap - 1}`).toBe("passed");
+      state.user = trialUser({ subscriptionTier: tier, [field]: cap });
+      expect(await verdict(enforceQuota(7, g)), `${tier} ${g} @${cap}`).toBe("quota_exceeded");
     }
-    state.user = trialUser({ trialEndsAt: PAST });
-    expect(await verdict(enforceTrialActive(7, "user", "import"))).toBe("trial_expired");
   });
 
-  it("D2: trial headlines are unlimited", async () => {
-    state.user = trialUser({ headlineGeneratedCount: 500 });
+  it("the caps the old code overrode are now the table's: Pro headlines 50 (was 6 / 20), Pro landing pages 50, agency landing pages unlimited (was 500)", async () => {
+    state.user = trialUser({ subscriptionTier: "pro", headlineGeneratedCount: 49 });
     expect(await verdict(enforceQuota(7, "headlines"))).toBe("passed");
-  });
-
-  // D5 as corrected (2026-09-24): Pro keeps EXACTLY its pre-sprint limits outside the new Trail step. The new trial
-  // rationing (plain-English message, reset-first, UsageLimitCause) never applies to it.
-  it("Pro keeps its pre-sprint limits: under the table limit passes, at it is refused with the ORIGINAL message", async () => {
-    state.user = trialUser({ subscriptionTier: "pro", offerGeneratedCount: 49, trialEndsAt: PAST });
-    expect(await verdict(enforceQuota(7, "offers"))).toBe("passed"); // an old trial date on a paid account never matters
-    state.user = trialUser({ subscriptionTier: "pro", offerGeneratedCount: 50 });
-    const err = await enforceQuota(7, "offers").then(() => null, (e) => e);
-    expect(err).toBeInstanceOf(TRPCError);
-    expect(err.message).toBe(JSON.stringify({ message: "quota_exceeded", generator: "offers" })); // byte-identical to before
-    expect(err.cause).not.toBeInstanceOf(UsageLimitCause); // the new trial signal never reaches a Pro user
-  });
-
-  it("agency stays effectively unlimited (999), as before", async () => {
-    state.user = trialUser({ subscriptionTier: "agency", offerGeneratedCount: 998, landingPageGeneratedCount: 998 });
-    expect(await verdict(enforceQuota(7, "offers"))).toBe("passed");
+    state.user = trialUser({ subscriptionTier: "pro", headlineGeneratedCount: 50 });
+    expect(await verdict(enforceQuota(7, "headlines"))).toBe("quota_exceeded");
+    state.user = trialUser({ subscriptionTier: "agency", landingPageGeneratedCount: 600 });
     expect(await verdict(enforceQuota(7, "landingPages"))).toBe("passed");
   });
 
-  it("an admin on a trial tier: expiry-exempt and table-limited, exactly as before", async () => {
+  it("wording: a paid plan gets the plan message, a trial user the trial message", async () => {
+    state.user = trialUser({ subscriptionTier: "pro", offerGeneratedCount: 50 });
+    const pro = await enforceQuota(7, "offers").then(() => null, (e) => e);
+    expect(pro.message).toBe("You've reached your monthly limit of 50 offers. Upgrade to generate more.");
+    state.user = trialUser({ offerGeneratedCount: 2 });
+    const trial = await enforceQuota(7, "offers").then(() => null, (e) => e);
+    expect(trial.message).toBe("You've used all 2 free offers included in the free trial.");
+  });
+
+  it.each(["trial", "pro", "agency"] as const)("%s: the monthly reset runs BEFORE the check", async (tier) => {
+    const g: GeneratorType = "offers";
+    const cap = QUOTA_LIMITS[tier][g];
+    const over = cap >= 999 ? 0 : cap;
+    state.user = trialUser({ subscriptionTier: tier, offerGeneratedCount: over });
+    state.resetDue = true; // last month's count is at the cap; this month's is 0
+    expect(await verdict(enforceQuota(7, g))).toBe("passed");
+    expect(state.resets).toBe(1);
+    if (cap < 999) {
+      // NEGATIVE CONTROL: with no reset due, the same count is refused.
+      state.user = trialUser({ subscriptionTier: tier, offerGeneratedCount: over });
+      expect(await verdict(enforceQuota(7, g))).toBe("quota_exceeded");
+    }
+  });
+
+  it("an ended trial is refused on EVERY generator, even an unlimited one; a paid plan with an old trial date is not", async () => {
+    for (const g of GENERATORS) {
+      state.user = trialUser({ trialEndsAt: PAST });
+      expect(await verdict(enforceQuota(7, g)), g).toBe("trial_expired");
+      state.user = trialUser({ subscriptionTier: "pro", trialEndsAt: PAST });
+      expect(await verdict(enforceQuota(7, g)), `pro ${g}`).toBe("passed");
+    }
+  });
+
+  it("Tweak / regenerate: an ended trial is refused, a live trial and every paid plan pass", async () => {
+    state.user = trialUser({ trialEndsAt: PAST });
+    expect(await verdict(enforceTrialActive(7, "user", "headlines"))).toBe("trial_expired");
+    state.user = trialUser();
+    expect(await verdict(enforceTrialActive(7, "user", "headlines"))).toBe("passed");
+    for (const tier of ["pro", "agency"]) {
+      state.user = trialUser({ subscriptionTier: tier, trialEndsAt: PAST });
+      expect(await verdict(enforceTrialActive(7, "user", "headlines")), tier).toBe("passed");
+    }
+  });
+
+  it("an admin on a trial tier: expiry-exempt, table-limited (as before)", async () => {
     state.user = trialUser({ role: "admin", offerGeneratedCount: 1, trialEndsAt: PAST });
     expect(await verdict(enforceQuota(7, "offers"))).toBe("passed");
     state.user = trialUser({ role: "admin", offerGeneratedCount: 2, trialEndsAt: PAST });
-    const err = await enforceQuota(7, "offers").then(() => null, (e) => e);
-    expect(err?.message).toBe(JSON.stringify({ message: "quota_exceeded", generator: "offers" }));
+    expect(await verdict(enforceQuota(7, "offers"))).toBe("quota_exceeded");
   });
 });
 
@@ -159,25 +207,23 @@ describe("D3: ad images — one campaign's batch for trial", () => {
   });
 });
 
-describe("countTrialUsage — atomic, trial-only", () => {
-  it("writes `+ 1` through the trial-only WHERE clause", async () => {
-    await countTrialUsage(7, "offers");
-    expect(state.updates).toHaveLength(1);
-    const d = new MySqlDialect();
+describe("counting — generations count for every tier; imports count for trial only", () => {
+  const d = new MySqlDialect();
+  it("countUsage writes an atomic `+ 1` keyed on the user id alone — Pro and agency count", async () => {
+    await countUsage(7, "offers");
     const set = state.updates[0].set as Record<string, any>;
     expect(Object.keys(set)).toEqual(["offerGeneratedCount"]);
     expect(d.sqlToQuery(set.offerGeneratedCount).sql).toBe("`users`.`offerGeneratedCount` + 1");
+    expect(d.sqlToQuery(state.updates[0].where as any).sql).toBe("`users`.`id` = ?");
+  });
+  it("countTrialUsage (imports) goes through the trial-only WHERE clause (negative control for the above)", async () => {
+    await countTrialUsage(7, "offers");
     expect(d.sqlToQuery(state.updates[0].where as any)).toEqual(d.sqlToQuery(trialUsageWhere(7)));
   });
-});
-
-describe("incrementQuotaCount — the pre-sprint counter still counts Pro (D5 as corrected)", () => {
-  it("a Pro user's landing-page count goes up by one, keyed on the user id only", async () => {
-    state.user = trialUser({ subscriptionTier: "pro", landingPageGeneratedCount: 5 });
+  it("incrementQuotaCount (landing pages) counts every tier, atomically", async () => {
     await incrementQuotaCount(7, "landingPages");
-    expect(state.updates).toHaveLength(1);
-    expect(state.updates[0].set).toEqual({ landingPageGeneratedCount: 6 });
-    const d = new MySqlDialect();
+    const set = state.updates[0].set as Record<string, any>;
+    expect(d.sqlToQuery(set.landingPageGeneratedCount).sql).toBe("`users`.`landingPageGeneratedCount` + 1");
     expect(d.sqlToQuery(state.updates[0].where as any).sql).toBe("`users`.`id` = ?");
   });
 });

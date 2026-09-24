@@ -3,11 +3,10 @@
  * Called at the top of every generate / generateAsync / regenerate procedure, and by the Trail's
  * autoMode.orchestrateStep for trial users.
  *
- * TWO REGIMES (Arfeen, D5 as corrected 2026-09-24):
- *   - TRIAL users (tierAccess.countsUsage): the option-(b) rationing — monthly reset first, trial expiry, the table
- *     limits, a plain-English limit message carrying a UsageLimitCause (surfaced as `data.usageLimit`).
- *   - Everyone else: EXACTLY the pre-sprint behaviour of this helper — table limits, the original JSON message,
- *     no reset inside the helper (the landing-page router calls it and resets after, as it always has).
+ * THE LIMITS TABLE IS THE SINGLE SOURCE OF TRUTH (server/quotaLimits.ts — its header: it must match the pricing
+ * page; Arfeen's ruling 2026-09-24). Every tier is checked against it, after the monthly reset. Trial users also
+ * hit the trial-expiry gate and get the free-trial wording; paid plans get the plan wording. Both carry a
+ * UsageLimitCause, surfaced to clients as `data.usageLimit` by the tRPC error formatter.
  */
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
@@ -15,9 +14,9 @@ import { users, adCreatives } from "../../drizzle/schema";
 import { eq, sql } from "drizzle-orm";
 import { type GeneratorType, type SubscriptionTier, getQuotaLimit, getQuotaCountField } from "../quotaLimits";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
-import { countsUsage, trialUsageWhere, usageLimitError, TRIAL_AD_IMAGE_BATCH_LIMIT } from "./tierAccess";
+import { countsUsage, trialUsageWhere, usageLimitError, planLimitError, TRIAL_AD_IMAGE_BATCH_LIMIT } from "./tierAccess";
 
-/** Load the user after the monthly reset has run, so a check never reads last month's count. */
+/** Load the user after the monthly reset has run, so a check never reads last month's count. Every tier. */
 async function loadUserForCheck(userId: number) {
   await checkAndResetQuotaIfNeeded(userId);
   const db = await getDb();
@@ -36,34 +35,21 @@ export async function enforceQuota(
   generatorType: GeneratorType,
   userRole?: string | null,
 ): Promise<void> {
-  const db = await getDb();
-  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-  const [peek] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!peek) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
-  const trial = countsUsage({ role: userRole ?? peek.role, subscriptionTier: peek.subscriptionTier });
-  // Trial only: reset first, so a check never reads last month's count. Non-trial keeps its pre-sprint ordering.
-  const user = trial ? (await loadUserForCheck(userId)).user : peek;
-
+  const { user } = await loadUserForCheck(userId);
   const tier: SubscriptionTier = (user.subscriptionTier as SubscriptionTier) || "trial";
   const role = userRole ?? user.role ?? undefined;
+  const trial = countsUsage({ role, subscriptionTier: user.subscriptionTier });
 
-  // Trial expiry gate: if the user is on the trial tier and their trial has ended, block ALL generation.
-  // Paid users (pro/agency) and superusers/admins are unaffected.
-  if (tier === "trial" && role !== "superuser" && role !== "admin") {
-    if (isTrialExpired(user)) {
-      if (trial) throw usageLimitError("trial_expired", generatorType);
-      throw new TRPCError({ code: "FORBIDDEN", message: JSON.stringify({ message: "trial_expired", generator: generatorType }) });
-    }
-  }
+  // Trial expiry gate: an ended trial blocks ALL generation. Paid plans and staff are unaffected.
+  if (trial && isTrialExpired(user)) throw usageLimitError("trial_expired", generatorType);
 
   const limit = getQuotaLimit(tier, generatorType, role ?? undefined);
-  // Infinity means unlimited — skip the count check entirely
+  // Infinity, and the table's 999 sentinel, mean unlimited — skip the count check entirely
   if (limit === Infinity || limit >= 999) return;
 
   const currentCount = (user as any)[getQuotaCountField(generatorType)] ?? 0;
   if (currentCount >= limit) {
-    if (trial) throw usageLimitError("quota_exceeded", generatorType, limit);
-    throw new TRPCError({ code: "FORBIDDEN", message: JSON.stringify({ message: "quota_exceeded", generator: generatorType }) });
+    throw trial ? usageLimitError("quota_exceeded", generatorType, limit) : planLimitError(generatorType, limit);
   }
 }
 
@@ -97,10 +83,20 @@ export async function enforceTrialAdImageBatchLimit(userId: number, userRole?: s
 }
 
 /**
- * Count one successful generation against a TRIAL user's quota — the five counters (offer, adCopy, icp, email,
- * whatsapp) that were checked but never incremented. Pro, agency and staff never move (the WHERE clause excludes
- * them), which is exactly their pre-sprint behaviour: those five counters never moved for anyone. Atomic `+ 1`, so two concurrent generations cannot both read the same count. Call AFTER the
- * generation has been written, never before — a failed attempt costs nothing.
+ * Count one successful generation against the user's monthly quota — EVERY tier, so the table's caps are enforceable
+ * for paid plans too (Arfeen, 2026-09-24). Atomic `+ 1`. Call AFTER the generation has been written, never before —
+ * a failed attempt costs nothing.
+ */
+export async function countUsage(userId: number, generatorType: GeneratorType): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const col = (users as any)[getQuotaCountField(generatorType)];
+  await db.update(users).set({ [getQuotaCountField(generatorType)]: sql`${col} + 1` } as any).where(eq(users.id, userId));
+}
+
+/**
+ * Count an IMPORT against a TRIAL user's quota (D4: a trial user importing an ICP or offer draws one of each). An
+ * import is not a generation, so paid plans are not charged for it (the WHERE clause excludes them).
  */
 export async function countTrialUsage(userId: number, generatorType: GeneratorType): Promise<void> {
   const db = await getDb();
@@ -110,23 +106,14 @@ export async function countTrialUsage(userId: number, generatorType: GeneratorTy
 }
 
 /**
- * Increment the generation count for a user after a successful generation.
- * Call this AFTER the generation completes (not before). Unchanged from before this sprint.
+ * Increment the generation count for a user after a successful generation, and record the product event.
+ * Call this AFTER the generation completes (not before). Every tier.
  */
 export async function incrementQuotaCount(
   userId: number,
   generatorType: GeneratorType,
 ): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-
-  // Counts every tier, exactly as before this sprint (D5 as corrected: the old counters are untouched).
-  const countField = getQuotaCountField(generatorType);
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user) return;
-
-  const currentCount = (user as any)[countField] ?? 0;
-  await db.update(users).set({ [countField]: currentCount + 1 } as any).where(eq(users.id, userId));
+  await countUsage(userId, generatorType);
 
   // Track product event (non-blocking)
   try {
