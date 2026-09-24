@@ -20,6 +20,8 @@
  * story without repeated-spam.
  */
 import { useMemo, useRef, useState, useEffect } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { usageLimitOf, isTrialUser } from "./lib/usageLimit";
 import { useParams, useLocation } from "wouter";
 import V2Layout from "./V2Layout";
 import TrailBar, { type TrailStop, type StopState } from "./components/TrailBar";
@@ -309,6 +311,11 @@ export default function V2Trail() {
   const liveRef = useRef<ChatMessage[]>([]);
   useEffect(() => { liveRef.current = live; }, [live]);
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
+  // D4 (trial paywall): a trial user fills an import's gaps node by node, never automatically. Display routing only —
+  // the server gate (autoMode.orchestrateStep) is the ground truth.
+  const { user: authUser, loading: authLoading } = useAuth();
+  const trialUserRef = useRef(isTrialUser(authUser));
+  trialUserRef.current = isTrialUser(authUser);
   const liveNarrationTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const liveCounter = useRef(0);
   const addLive = (m: Omit<ChatMessage, "id">): ChatMessage => {
@@ -385,14 +392,17 @@ export default function V2Trail() {
   // The server marks them with data.usageLimit (server/_core/trpc.ts errorFormatter). They are final: a retry cannot
   // succeed, so instead of "Hm — that one fizzled" and a "Still stuck… Try again" loop the Trail stops narrating,
   // puts back any selection it cleared to regenerate, and states the limit once in plain words.
-  const haltOnUsageLimit = async (err: unknown, restore?: () => Promise<unknown>): Promise<boolean> => {
-    const usageLimit = (err as { data?: { usageLimit?: unknown } } | null)?.data?.usageLimit;
-    if (!usageLimit) return false;
+  const usageLimitHalted = useRef(false);
+  const haltOnUsageLimit = async (err: unknown, restore?: () => Promise<unknown>, final = true): Promise<boolean> => {
+    const limit = usageLimitOf(err);
+    if (!limit) return false;
+    // A final limit ends the drive: the node stays where it is instead of being offered again.
+    if (final) usageLimitHalted.current = true;
     liveNarrationTimers.current.forEach(clearTimeout);
     liveNarrationTimers.current.clear();
     if (restore) { try { await restore(); } catch { /* non-fatal — the kit keeps whatever it has */ } }
     setGeneratingKey(null);
-    addLive({ type: "zappy-bubble", mood: "idle", text: err instanceof Error ? err.message : String(err) });
+    addLive({ type: "zappy-bubble", mood: "idle", text: limit.message });
     return true;
   };
 
@@ -605,12 +615,12 @@ export default function V2Trail() {
         await trailState.refetch();
         walkthroughEmit.zappy("Here's your method, rebuilt from what you told me.", "celebrating");
       } catch (e) {
-        const usageLimit = (e as { data?: { usageLimit?: unknown } } | null)?.data?.usageLimit;
-        if (usageLimit) {
+        const methodLimit = usageLimitOf(e);
+        if (methodLimit) {
           // A trial limit: put back the method this rebuild cleared, and say the limit plainly.
           try { await updateSelection.mutateAsync({ kitId, selectedMechanismId: priorMechanismId } as any); } catch { /* non-fatal */ }
           await trailState.refetch();
-          walkthroughEmit.zappy(e instanceof Error ? e.message : String(e), "idle");
+          walkthroughEmit.zappy(methodLimit.message, "idle");
         } else {
           walkthroughEmit.zappy(
             `Your method is saved, but the rebuild didn't take (${e instanceof Error ? e.message : "please try again"}). Tap Tweak whenever you want another run.`,
@@ -2100,7 +2110,8 @@ export default function V2Trail() {
             ok2 = true;
           } catch (err2) {
             // A trial limit: the current options stay, the selection that was cleared to regenerate is put back.
-            if (await haltOnUsageLimit(err2, () => updateSelection.mutateAsync({ kitId, [stepDef.field]: priorSelectedId } as any))) {
+            // Not final: the deck the coach already has stays live, so they can still lock one in.
+            if (await haltOnUsageLimit(err2, () => updateSelection.mutateAsync({ kitId, [stepDef.field]: priorSelectedId } as any), false)) {
               narration2.stop();
               await quotaStatus.refetch();
               continue;
@@ -2186,15 +2197,16 @@ export default function V2Trail() {
       const hasPending = AUTO_STEPS.some(s => kit[s.field] == null);
       if (!hasPending) break;
       if (cancelled.current) return;
-      if (path === "manual") {
+      if (path === "manual" || (path === "has_assets" && trialUserRef.current)) {
+        // Manual, and a TRIAL user's import (D4): node by node. Imported nodes are skipped structurally
+        // (selected*Id populated) in either loop.
         await runManualLoop();
       } else {
-        // auto AND has_assets both run the auto loop — imported nodes
-        // skipped structurally (selected*Id populated).
+        // auto, and a Pro user's import: the auto loop, exactly as before.
         await runAutoLoop();
       }
-      // After a loop exits (possibly due to a path switch), re-check
-      if (cancelled.current) return;
+      // After a loop exits (possibly due to a path switch), re-check. A trial limit ends the drive.
+      if (cancelled.current || usageLimitHalted.current) return;
       const recheck = await trailState.refetch();
       const recheckKit = (recheck.data?.kit ?? {}) as Record<string, unknown>;
       const stillPending = AUTO_STEPS.some(s => recheckKit[s.field] == null);
@@ -2206,6 +2218,8 @@ export default function V2Trail() {
   useEffect(() => {
     if (driverStarted.current) return;
     if (!trailState.data || persisted === null) return;
+    // The loop choice for an import depends on the tier (D4) — never start the driver on an unresolved user.
+    if (authLoading) return;
     const kit = trailState.data.kit as Record<string, unknown>;
     const path = kit.path as string | null;
     if (path !== null && path !== "auto" && path !== "manual" && path !== "has_assets") return;
@@ -2310,7 +2324,7 @@ export default function V2Trail() {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trailState.data, persisted]);
+  }, [trailState.data, persisted, authLoading]);
 
   // ── Return-visit stale chips: re-offer "Update the rest" when stale rows exist ──
   // Guard: useRef resets on every mount (page load / navigation), so chips are

@@ -16,6 +16,8 @@ import V2OperatorIntake from "./components/V2OperatorIntake";
 import { detectPlaceholders } from "./lib/placeholderDetector";
 import { resolveTokensInObject, resolveTokensInText } from "./lib/resolveTokens";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { isTrialUser, PUSH_PRO_ONLY_NOTE } from "./lib/usageLimit";
 import { downloadCampaignBrief, formatIcpTxt, downloadPdf } from "./lib/exportUtils";
 import { isIcpRich } from "./lib/icpRichness";
 import { downloadRemoteFile, adCreativeFilename } from "./lib/downloadImage";
@@ -637,7 +639,11 @@ export default function V2CampaignKit() {
   // partial-failure recovery via Promise.allSettled, and post-push result
   // rendering. See PushKitModal.tsx for the full UX spec.
   const [showPushModal, setShowPushModal] = useState(false);
-  const handlePush = () => setShowPushModal(true);
+  // D6 (trial paywall): push is Pro-only. A trial user sees why, in place of a button that could only be refused.
+  // Display only — the server's push procedures refuse trial regardless.
+  const { user: authUser } = useAuth();
+  const trialUser = isTrialUser(authUser);
+  const handlePush = () => { if (!trialUser) setShowPushModal(true); };
 
   const handleDownloadBrief = () => {
     const icp = icpData as any;
@@ -841,8 +847,27 @@ export default function V2CampaignKit() {
                 marginRight: "auto",
               }}
             >
-              All {TOTAL_KIT_ASSETS} assets generated and ready. Take a look around — or push live now.
+              {trialUser
+                ? <>All {TOTAL_KIT_ASSETS} assets generated and ready. Take a look around, or download your campaign brief.</>
+                : <>All {TOTAL_KIT_ASSETS} assets generated and ready. Take a look around — or push live now.</>}
             </p>
+            {trialUser ? (
+              <p
+                data-testid="push-pro-only-note"
+                style={{
+                  fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+                  fontSize: "13px",
+                  color: "#555",
+                  lineHeight: 1.5,
+                  background: "rgba(26,22,36,0.04)",
+                  borderRadius: "16px",
+                  padding: "12px 16px",
+                  margin: "0 0 12px",
+                }}
+              >
+                {PUSH_PRO_ONLY_NOTE}
+              </p>
+            ) : (
             <button
               onClick={() => { dismissOverlay(); handlePush(); }}
               style={{
@@ -862,6 +887,7 @@ export default function V2CampaignKit() {
             >
               Push Live to Meta + GHL →
             </button>
+            )}
             <button
               onClick={dismissOverlay}
               style={{
@@ -1208,6 +1234,24 @@ export default function V2CampaignKit() {
         >
           📑 Download Campaign Brief
         </button>
+        {trialUser ? (
+          <span
+            data-testid="push-pro-only-pill"
+            title={PUSH_PRO_ONLY_NOTE}
+            style={{
+              padding: "10px 24px",
+              borderRadius: "var(--v2-border-radius-pill, 9999px)",
+              border: "2px dashed #e5e0d8",
+              background: "transparent",
+              color: "#777",
+              fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+              fontWeight: 700,
+              fontSize: "14px",
+            }}
+          >
+            Push to Meta / GHL · Pro
+          </span>
+        ) : (
         <button
           disabled={!isComplete}
           onClick={handlePush}
@@ -1225,7 +1269,29 @@ export default function V2CampaignKit() {
         >
           Push to Meta / GHL
         </button>
+        )}
       </div>
+      {trialUser && (
+        <p
+          data-testid="push-pro-only-bar-note"
+          style={{
+            position: "fixed",
+            bottom: "64px",
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            margin: 0,
+            padding: "8px 16px",
+            background: "rgba(255,255,255,0.96)",
+            fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
+            fontSize: "12px",
+            color: "#555",
+            zIndex: 100,
+          }}
+        >
+          {PUSH_PRO_ONLY_NOTE}
+        </p>
+      )}
 
       {/* Phase C C3: unified push modal — Meta + GHL, OAuth-at-click-time.
           Phase D Sprint 3: passes placeholderReport so the modal can render

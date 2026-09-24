@@ -1,9 +1,10 @@
-# TRIAL PAYWALL — OPTION (b), PROPOSAL (not built) — 2026-09-24
+# TRIAL PAYWALL — OPTION (b): PROPOSAL AND BUILD RECORD — 2026-09-24
 
 **Arfeen's decision:** option (b), the original design — the manual path open to trial users, rationed by quotas;
 Auto Mode ("Build it all for me") Pro-only and unchanged; **Pro users not limited on the Trail**.
 
-**Status: investigated, proposed, NOTHING BUILT.** Read-only: code at production `87596d7`, the production DB through
+**Status: BUILT on the held branch (sprints 1, 1-fix and 2 — see §6), NOT deployed.** D5 was later corrected: Pro keeps every
+pre-sprint limit; only the new trial rationing skips it. Sections 1–5 are the original proposal, kept as written. Original investigation, read-only: code at production `87596d7`, the production DB through
 the guarded SELECT-only runner. Context: `END_TO_END_READINESS_2026-09-24.md` §7a.
 
 ---
@@ -146,3 +147,46 @@ the same rationing a generator gets.
 - **A live proof needs a trial account on production** — creating one, or temporarily setting a test account to
   `trial`, is a **production write** and needs Arfeen's explicit go-ahead.
 - No migration: every counter and `trialEndsAt` column already exists.
+
+---
+
+## 6. BUILD RECORD (2026-09-24)
+
+| sprint | commit | what |
+|---|---|---|
+| 1 | `65af5e2` | server: rationed trial on the Trail, five counters fixed (trial only), trial expiry everywhere, D2/D3/D4-server/D6, limit errors + Trail halt |
+| 1 fix | `8881b69` | **D5 corrected** — Pro keeps every pre-sprint limit; only the new trial rationing skips it (quotaLimits.ts, landingPages.ts, db.ts restored byte-identical to production) |
+| 2 | *(this commit)* | client: D4 trial import node by node; limit messages on every limit-capable Trail/intake step; D6 Pro-only push state |
+
+### Sprint 2 browser proof — local build, local throwaway DB, zero model calls
+Local MySQL `127.0.0.1:3307/zap_test` (`@@version_comment = Homebrew`), loaded with production's **schema only**
+(`mysqldump --no-data`: 59 tables, 0 INSERT lines). Seeded two accounts identical except tier (trial / pro), each
+with offer count 2 and the same three campaigns. Server run with `ANTHROPIC_API_KEY` blank — no model call possible;
+no Cloudflare / Cloudinary keys — no publish possible. Screenshots: `docs/screenshots/sprint2-trial-paywall/`.
+
+| # | case | trial | Pro (control) |
+|---|---|---|---|
+| 01 / 02 | imported offer + ICP | stops at Method: "Show me options / Skip" — node by node | "I'll build the missing 8…" — auto-fills, as before |
+| 03 / 04 | Show me options on Offer at count 2 | *"You've used all 2 free offers included in the free trial."* — drive ends; **no job created** | job created (fails only on the blank model key, as designed for this harness) — not refused |
+| 05 / 06 | completed kit | "Push to Meta / GHL · Pro" + note; overlay swaps its push CTA for the note; no push button exists | 07 / 08: both push buttons; the push modal opens, unchanged |
+
+Local DB after: 4 jobs, all Pro's; the trial user created none; neither counter moved.
+
+**Not browser-proven:** the three intake exits (a trial ICP limit needs `services.extractFromText`, a model call) —
+pinned by `trialClient.test.ts` instead. Tweak / regenerate procedures were never quota-gated and still are not;
+an expired trial can still use them.
+
+---
+
+## 7. NEXT SPRINT AFTER SPRINT 2 — RECORDED, NOT BUILT (Arfeen's ruling, 2026-09-24)
+
+**The limits table in `server/quotaLimits.ts` is the single source of truth** (its header: it must match the pricing
+page). Scope:
+1. Both headline routes read the table instead of hard-coding 6/20 (sync) and 20/50 (async).
+2. Landing pages enforce the table's limit only — the router's separate `{ trial 2, pro 50, agency 500 }` removed
+   (agency is effectively capped at 500 today).
+3. Pro's five uncounted counters (offers, ad copy, ICPs, emails, WhatsApp) start counting, so the table's Pro caps
+   are enforced (today they can never fire).
+4. The monthly reset runs before the limit check for every tier (landing pages check first today).
+5. The 14 stale `quotaLimits.test.ts` tests updated to the current table — they encode the 2026-02-18 table;
+   `eec6641` (03-20) and `e8860cc` (03-24) changed it deliberately and never updated them.
