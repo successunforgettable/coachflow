@@ -4,7 +4,9 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { emailSequences, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { getQuotaLimit } from "../quotaLimits";
 import { enforceQuota } from "../lib/quotaEnforcement";
+import { countsUsage } from "../lib/tierAccess";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
@@ -123,7 +125,18 @@ export const emailSequencesRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      await enforceQuota(ctx.user.id, "email", ctx.user.role);
+      if (countsUsage(ctx.user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(ctx.user.id, "email", ctx.user.role);
+      } else if (ctx.user.role !== "superuser") {
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "email");
+        if (ctx.user.emailSeqGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.`,
+          });
+        }
+      }
 
       const { id } = await runEmailSequenceGeneration({
         userId: ctx.user.id,
@@ -155,7 +168,15 @@ export const emailSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "email", user.role);
+      if (countsUsage(user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(user.id, "email", user.role);
+      } else if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "email");
+        if (user.emailSeqGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.` });
+        }
+      }
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");

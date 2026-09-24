@@ -194,17 +194,23 @@ describe("source pins — the wiring the unit tests above cannot see", () => {
     ["routers/offers.ts", "offers"], ["routers/adCopy.ts", "adCopy"], ["routers/icps.ts", "icp"],
     ["routers/emailSequences.ts", "email"], ["routers/whatsappSequences.ts", "whatsapp"], ["routers/hvco.ts", "hvco"],
     ["routers/heroMechanisms.ts", "heroMechanisms"], ["routers/headlines.ts", "headlines"],
-  ])("%s enforces its quota through enforceQuota in both generate procedures, with no inline limit left", (file, gen) => {
+  ])("%s: trial takes enforceQuota, every other tier keeps its pre-sprint limit block, in both procedures", (file, gen) => {
     const src = read(file);
-    expect(src.match(new RegExp(`await enforceQuota\\((ctx\\.user|user)\\.id, "${gen}", (ctx\\.user|user)\\.role\\)`, "g"))?.length).toBe(2);
-    expect(src).not.toMatch(/monthly limit/);
-    expect(src).not.toMatch(/GeneratedCount >= /);
+    const branch = new RegExp(
+      `if \\(countsUsage\\((ctx\\.user|user)\\)\\) \\{\\n[^\\n]*\\n\\s+await enforceQuota\\(\\1\\.id, "${gen}", \\1\\.role\\);\\n\\s+\\} else if \\(\\1\\.role !== "superuser"\\) \\{`, "g");
+    expect(src.match(branch)?.length).toBe(2);
+    expect(src.match(/monthly limit of \$\{(limit|maxHeadlines)\}/g)?.length).toBe(2); // the old Pro/agency message, kept
   });
 
-  it("landing pages: no second hardcoded limit table", () => {
+  it("headlines keep their old per-path Pro/agency numbers (6/20 sync, 20/50 async)", () => {
+    const src = read("routers/headlines.ts");
+    expect(src).toContain('const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;');
+    expect(src).toContain('const maxHeadlines = user.subscriptionTier === "agency" ? 50 : user.subscriptionTier === "pro" ? 20 : 6;');
+  });
+
+  it("landing pages keep their pre-sprint hardcoded table", () => {
     const src = read("routers/landingPages.ts");
-    expect(src).not.toMatch(/const quotaLimits = \{ trial: 2/);
-    expect(src.match(/await enforceQuota\(ctx\.user\.id, "landingPages"\)/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(src.match(/const quotaLimits = \{ trial: 2, pro: 50, agency: 500 \}/g)?.length).toBe(2);
   });
 
   it.each([
@@ -230,12 +236,13 @@ describe("source pins — the wiring the unit tests above cannot see", () => {
     expect(after).not.toMatch(/countTrialUsage/);
   });
 
-  it("the three db.ts counters go through the trial-only WHERE clause", () => {
+  it("the three db.ts counters count every tier, exactly as before (D5 as corrected)", () => {
     const src = read("db.ts");
+    expect(src).not.toMatch(/trialUsageWhere/);
     for (const f of ["headlineGeneratedCount", "hvcoGeneratedCount", "heroMechanismGeneratedCount"]) {
       const i = src.indexOf(`.set({ ${f}: sql\``);
       expect(i, f).toBeGreaterThan(-1);
-      expect(src.slice(i, i + 250), f).toMatch(/\.where\(trialUsageWhere\(userId\)\)/);
+      expect(src.slice(i, i + 200), f).toMatch(/\.where\(eq\(users\.id, userId\)\);/);
     }
   });
 

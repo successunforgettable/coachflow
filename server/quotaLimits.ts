@@ -59,22 +59,19 @@ export const QUOTA_LIMITS: Record<SubscriptionTier, Record<GeneratorType, number
  * @param tier - Subscription tier or null/undefined
  * @param generatorType - Type of generator
  * @param userRole - User role (optional, for superuser check)
- * @returns Quota limit (Infinity for anyone quotas do not apply to)
+ * @returns Quota limit (Infinity for superuser)
  */
 export function getQuotaLimit(
-  tier: SubscriptionTier | null | undefined,
+  tier: SubscriptionTier | null | undefined, 
   generatorType: GeneratorType,
   userRole?: string
 ): number {
-  // Staff roles have unlimited quota
-  if (userRole === "superuser" || userRole === "admin") {
+  // Superusers have unlimited quota
+  if (userRole === "superuser") {
     return Infinity;
   }
-
+  
   const effectiveTier = tier || "trial";
-  // Quotas ration TRIAL users only — Pro and agency are never counted or refused (Arfeen, D5, 2026-09-24). The pro
-  // and agency rows above are kept as the pricing-page record; nothing enforces them.
-  if (effectiveTier !== "trial") return Infinity;
   return QUOTA_LIMITS[effectiveTier][generatorType];
 }
 

@@ -4,7 +4,9 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { whatsappSequences, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { getQuotaLimit } from "../quotaLimits";
 import { enforceQuota } from "../lib/quotaEnforcement";
+import { countsUsage } from "../lib/tierAccess";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runWhatsappSequenceGeneration, buildWhatsappRules } from "../whatsappSequenceGenerator";
@@ -124,7 +126,18 @@ export const whatsappSequencesRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      await enforceQuota(ctx.user.id, "whatsapp", ctx.user.role);
+      if (countsUsage(ctx.user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(ctx.user.id, "whatsapp", ctx.user.role);
+      } else if (ctx.user.role !== "superuser") {
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "whatsapp");
+        if (ctx.user.whatsappSeqGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} WhatsApp sequences. Upgrade to generate more.`,
+          });
+        }
+      }
 
       const { id } = await runWhatsappSequenceGeneration({
         userId: ctx.user.id,
@@ -158,7 +171,15 @@ export const whatsappSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "whatsapp", user.role);
+      if (countsUsage(user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(user.id, "whatsapp", user.role);
+      } else if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "whatsapp");
+        if (user.whatsappSeqGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} WhatsApp sequences. Upgrade to generate more.` });
+        }
+      }
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");

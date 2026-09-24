@@ -11,7 +11,9 @@ import { ICP_SYSTEM_PROMPT, hasLadderContent, type ICPLadderAnswers, type ICPSer
 import { runIcpGeneration } from "../_core/icpGenerate";
 import { normalizeDemographics } from "../_core/icpGrounding";
 import { stripObjectionScaffolding } from "../_core/icpSanitize";
+import { getQuotaLimit } from "../quotaLimits";
 import { enforceQuota, countTrialUsage } from "../lib/quotaEnforcement";
+import { countsUsage } from "../lib/tierAccess";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
@@ -127,8 +129,20 @@ export const icpsRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // Quotas ration trial users only; Pro and staff are never counted or refused (lib/tierAccess.ts)
-      await enforceQuota(ctx.user.id, "icp", ctx.user.role);
+      // Superusers have unlimited quota
+      if (countsUsage(ctx.user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(ctx.user.id, "icp", ctx.user.role);
+      } else if (ctx.user.role !== "superuser") {
+        // Check quota limit
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "icp");
+        if (ctx.user.icpGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.`,
+          });
+        }
+      }
 
       // Get service details
       const [service] = await db
@@ -217,7 +231,15 @@ export const icpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "icp", user.role);
+      if (countsUsage(user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(user.id, "icp", user.role);
+      } else if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "icp");
+        if (user.icpGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.` });
+        }
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const [service] = await db.select().from(services)

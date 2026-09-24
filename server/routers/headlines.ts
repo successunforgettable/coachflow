@@ -1,4 +1,5 @@
 import { enforceQuota } from "../lib/quotaEnforcement";
+import { countsUsage } from "../lib/tierAccess";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -141,7 +142,18 @@ export const headlinesRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      await enforceQuota(ctx.user.id, "headlines", ctx.user.role);
+      if (countsUsage(ctx.user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(ctx.user.id, "headlines", ctx.user.role);
+      } else if (ctx.user.role !== "superuser") {
+        const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;
+        if (ctx.user.headlineGeneratedCount >= maxHeadlines) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.`,
+          });
+        }
+      }
 
       return await runHeadlinesGeneration({
         userId: ctx.user.id,
@@ -177,7 +189,15 @@ export const headlinesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "headlines", user.role);
+      if (countsUsage(user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(user.id, "headlines", user.role);
+      } else if (user.role !== "superuser") {
+        const maxHeadlines = user.subscriptionTier === "agency" ? 50 : user.subscriptionTier === "pro" ? 20 : 6;
+        if (user.headlineGeneratedCount >= maxHeadlines) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.` });
+        }
+      }
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");

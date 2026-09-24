@@ -4,7 +4,9 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { adCopy, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { getQuotaLimit } from "../quotaLimits";
 import { enforceQuota } from "../lib/quotaEnforcement";
+import { countsUsage } from "../lib/tierAccess";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runAdCopyGeneration } from "../adCopyGenerator";
@@ -205,7 +207,18 @@ export const adCopyRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      await enforceQuota(ctx.user.id, "adCopy", ctx.user.role);
+      if (countsUsage(ctx.user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(ctx.user.id, "adCopy", ctx.user.role);
+      } else if (ctx.user.role !== "superuser") {
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "adCopy");
+        if (ctx.user.adCopyGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} ad copy sets. Upgrade to generate more.`,
+          });
+        }
+      }
 
       return await runAdCopyGeneration({
         userId: ctx.user.id,
@@ -246,7 +259,15 @@ export const adCopyRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "adCopy", user.role);
+      if (countsUsage(user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(user.id, "adCopy", user.role);
+      } else if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "adCopy");
+        if (user.adCopyGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} ad copy sets. Upgrade to generate more.` });
+        }
+      }
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");

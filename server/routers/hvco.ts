@@ -11,7 +11,9 @@ import {
 import { getDb } from "../db";
 import { jobs, hvcoTitles } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { getQuotaLimit } from "../quotaLimits";
 import { enforceQuota } from "../lib/quotaEnforcement";
+import { countsUsage } from "../lib/tierAccess";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runHvcoGeneration } from "../hvcoGenerator";
@@ -48,7 +50,18 @@ export const hvcoRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "hvco", user.role);
+      if (countsUsage(user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(user.id, "hvco", user.role);
+      } else if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "hvco");
+        if (user.hvcoGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.`,
+          });
+        }
+      }
       return await runHvcoGeneration({
         userId: user.id,
         serviceId: input.serviceId,
@@ -75,7 +88,15 @@ export const hvcoRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "hvco", user.role);
+      if (countsUsage(user)) {
+        // Trial: the option-(b) rationing (lib/quotaEnforcement.ts). Every other tier: the pre-sprint check, verbatim.
+        await enforceQuota(user.id, "hvco", user.role);
+      } else if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "hvco");
+        if (user.hvcoGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} HVCO title sets. Upgrade to generate more.` });
+        }
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
