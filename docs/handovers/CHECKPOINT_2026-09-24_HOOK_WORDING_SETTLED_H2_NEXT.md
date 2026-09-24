@@ -1,4 +1,6 @@
-# 🟢 RESUME POINT — 2026-09-24: hook wording settled, a same-day baseline, H2 next
+> 🗄️ **SUPERSEDED 2026-09-24 (late) — NOT THE ENTRY POINT.** Resume from `CHECKPOINT_2026-09-24_TRIAL_QUOTA_GHL_DEPLOY_PLAN.md`.
+
+# 🗄️ RESUME POINT (SUPERSEDED) — 2026-09-24: hook wording settled, a same-day baseline, H2 next
 
 **Supersedes `CHECKPOINT_2026-09-22_F5_HOOK_AND_SPRINT4.md`**, which is retained and marked superseded.
 Written so a cold terminal resumes from exactly this point.

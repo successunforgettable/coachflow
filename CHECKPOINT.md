@@ -1,4 +1,29 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-24
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-24 (late)
+
+### supersedes the 2026-09-24 (early) block below, which is retained and marked, not deleted
+
+> ## 👉 THE FULL RESUME POINT IS ITS OWN FILE:
+> ## **`docs/handovers/CHECKPOINT_2026-09-24_TRIAL_QUOTA_GHL_DEPLOY_PLAN.md`**
+> It supersedes `CHECKPOINT_2026-09-24_HOOK_WORDING_SETTLED_H2_NEXT.md`. Every figure measured at write time.
+
+| | |
+|---|---|
+| production | **`87596d7`**. **Untouched all session** — no push, no merge, **zero production writes** |
+| held branch | 53 commits ahead at `33d2b10` (54 with the checkpoint commit). GitHub backup pushed to match local HEAD |
+| scenes fix | `fix/scenes-array-guard` = `94ae237`, unmerged, not deployed |
+| migrations | **0112 written, NOT applied**; 0111 already applied (verified) |
+| built today | trial paywall (sprints 1+2) · D5 correction · quota table as single source of truth · trial-expiry gating · GHL renewal + truthful push · walkthrough checklist · first-deploy plan |
+| not started | hook-wording hold-back commit · sprint 8 before/after comparison · honest completion (the complete-without-ad-images count not measured) |
+| waiting on Arfeen | Pro caps · applying 0112 · the trial test account · deploy timing · Skip button — **open, not approved** |
+| 🔴 deadline | **Meta login expires 2026-10-05** — deploy and walkthrough before then |
+| gates | tsc **34** · **827 tests / 20 suites** · NUL clean · 0 production writes · 0 pushes to `railway-build` |
+
+🔴 **PUSHING `railway-build` IS THE DEPLOY.** If Arfeen says he is starting the walkthrough, stop anything deploy-related.
+
+---
+
+# 🗄️ SUPERSEDED RESTART BLOCK — written 2026-09-24 (early), retained not deleted
+### ⚠️ NOT THE ENTRY POINT. The live block is the **2026-09-24 (late) RESTART BLOCK at the top of this file**.
 
 ### supersedes the 2026-09-22 block below, which is retained and marked, not deleted
 
