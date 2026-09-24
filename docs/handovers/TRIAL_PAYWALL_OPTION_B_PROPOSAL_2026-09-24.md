@@ -198,7 +198,16 @@ page). Scope:
 table's `999` sentinel never refuse). Generations count for every tier; imports stay a trial-only charge. Paid plans
 get *"You've reached your monthly limit of N …"*, trial users the free-trial wording.
 
-**Still ungated for an expired trial (not in this sprint's scope — flagged):** model-calling procedures outside
+**Remaining AI routes — CLOSED 2026-09-24 (next commit).** Each candidate was read before gating:
+- **Gated (confirmed: calls the model, had no gate), expiry only, no quota:** `services.extractFromText`,
+  `services.expandProfile`, `icps.sharpenWithLadder`, `icpAngleSuggestions.generate`, `icpAngleSuggestions.generateICPs`,
+  `videoScripts.generate`, `videoScripts.generateAsync`, `whatsappSequences.retoneSequence`,
+  `compliance.rewordForAdvisory`, `sourceOfTruth.generate`.
+- **Dropped — the scan was wrong:** `landingPages.reanswerOperatorField` makes no model call (it saves the coach's
+  answer); `landing.generatePreviewAssets` is the public homepage demo for logged-out visitors (IP rate-limited, no
+  account — an expired trial would get the same demo by logging out).
+
+The original flagged list, for the record: model-calling procedures outside
 generate / Tweak — `services.extractFromText`, `services.expandProfile`, `icps.sharpenWithLadder`,
 `icpAngleSuggestions.generate` / `generateICPs`, `videoScripts.generate` / `generateAsync`,
 `whatsappSequences.retoneSequence`, `compliance.rewordForAdvisory`, `landingPages.reanswerOperatorField`,

@@ -63,6 +63,10 @@ describe("limit messages on every Trail step that can hit a limit", () => {
     expect(trail).toMatch(/priorSelectedId \} as any\), false\)\) \{/);
   });
 
+  it("intake: the first step (reading the coach's description) says a limit instead of 'send it again'", () => {
+    expect(intake).toMatch(/const ex = await extractMutation\.mutateAsync\(\{ rawText \}\);[\s\S]{0,160}\} catch \(err\) \{\n\s+if \(sayUsageLimit\(err\)\) return;/);
+  });
+
   it("intake: all three campaign-setup exits say the limit instead of 'fizzled — one more go?'", () => {
     const exits = intake.match(/\} catch \(err\) \{\n\s+if \(sayUsageLimit\(err\)\) return;\n\s+const msg = err instanceof Error \? err\.message : "Could not set up your campaign\.";/g) ?? [];
     expect(exits.length).toBe(3);

@@ -249,7 +249,8 @@ export default function V2TrailIntake() {
       const ex = await extractMutation.mutateAsync({ rawText });
       extraction.current = ex as Extraction;
       showEcho(ex as Extraction);
-    } catch {
+    } catch (err) {
+      if (sayUsageLimit(err)) return;
       addMsg({
         type: "zappy-bubble",
         mood: "idle",

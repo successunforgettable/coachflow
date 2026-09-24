@@ -1,3 +1,4 @@
+import { enforceTrialActive } from "../lib/quotaEnforcement";
 // server/routers/videoScripts.ts
 // Generates AI scripts for video ads — FREE, no credits consumed
 // Credit is only consumed when the user hits Generate Video
@@ -899,6 +900,8 @@ export const videoScriptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "video");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -1083,6 +1086,8 @@ export const videoScriptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "video");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       // Pre-fetch service data synchronously before setImmediate

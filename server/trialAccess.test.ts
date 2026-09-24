@@ -182,6 +182,14 @@ describe("enforceQuota — the limits table is the single source of truth, for e
       state.user = trialUser({ subscriptionTier: tier, trialEndsAt: PAST });
       expect(await verdict(enforceTrialActive(7, "user", "headlines")), tier).toBe("passed");
     }
+    // Staff on a trial tier with an ended trial: never blocked.
+    for (const role of ["admin", "superuser"]) {
+      state.user = trialUser({ role, trialEndsAt: PAST });
+      expect(await verdict(enforceTrialActive(7, role, "intake")), role).toBe("passed");
+    }
+    // The expiry check adds no quota: a live trial far over every counter still passes it.
+    state.user = trialUser({ offerGeneratedCount: 999, icpGeneratedCount: 999, headlineGeneratedCount: 999 });
+    expect(await verdict(enforceTrialActive(7, "user", "intake"))).toBe("passed");
   });
 
   it("an admin on a trial tier: expiry-exempt, table-limited (as before)", async () => {

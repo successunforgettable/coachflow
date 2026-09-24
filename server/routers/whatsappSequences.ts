@@ -336,6 +336,8 @@ export const whatsappSequencesRouter = router({
       tone: z.enum(["conversational", "professional", "urgent", "authoritative"]),
     }))
     .mutation(async ({ ctx, input }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "whatsapp");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

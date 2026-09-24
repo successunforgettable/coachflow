@@ -1,3 +1,4 @@
+import { enforceTrialActive } from "../lib/quotaEnforcement";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -119,6 +120,8 @@ export const complianceRouter = router({
   rewordForAdvisory: protectedProcedure
     .input(z.object({ campaignKitId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "rewrite");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const { campaignKits, adCopy } = await import("../../drizzle/schema");

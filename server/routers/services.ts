@@ -1,3 +1,4 @@
+import { enforceTrialActive } from "../lib/quotaEnforcement";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
@@ -322,6 +323,8 @@ export const servicesRouter = router({
   expandProfile: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "profile");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -726,7 +729,9 @@ Return JSON with these exact fields:
     .input(z.object({
       rawText: z.string().min(120, "Need at least 120 characters to extract a useful profile.").max(4000),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "intake");
       const systemPrompt = `You analyze raw business descriptions from coaches, speakers, and consultants and extract a structured business profile. Your output is JSON conforming to a strict schema. The user will review and edit your extraction on a confirmation screen — your job is to be accurate about what's actually present in the input, not to fabricate plausible-sounding fields where information is missing.
 
 OUTPUT FIELDS:

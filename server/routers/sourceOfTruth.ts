@@ -1,3 +1,4 @@
+import { enforceTrialActive } from "../lib/quotaEnforcement";
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
@@ -26,6 +27,8 @@ export const sourceOfTruthRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "sourceOfTruth");
       const prompt = `Create a Source of Truth profile for the following coaching/consulting programme. Every field must pass the product-swap test — if the same output could have been generated for a different coaching programme in a different niche, rewrite it until it could not.
 
 Programme Name: ${input.programName}

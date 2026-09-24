@@ -201,6 +201,48 @@ describe("D3 — every ad-image generation route carries the trial cap", () => {
   });
 });
 
+describe("the remaining AI routes — an ended trial is blocked, expiry only (confirmed 2026-09-24)", () => {
+  it.each([
+    ["services", "extractFromText"], ["services", "expandProfile"], ["icps", "sharpenWithLadder"],
+    ["icpAngleSuggestions", "generate"], ["icpAngleSuggestions", "generateICPs"], ["videoScripts", "generate"],
+    ["videoScripts", "generateAsync"], ["whatsappSequences", "retoneSequence"], ["compliance", "rewordForAdvisory"],
+    ["sourceOfTruth", "generate"],
+  ])("%s.%s checks the trial is live as its FIRST statement, and adds no quota", (router, proc) => {
+    const src = readFileSync(join(__dirname, `routers/${router}.ts`), "utf8");
+    const at = src.indexOf(`\n  ${proc}: protectedProcedure`);
+    expect(at).toBeGreaterThan(-1);
+    const nextProc = src.slice(at + 5).search(/\n  [a-zA-Z]+: (protectedProcedure|publicProcedure|adminProcedure)/);
+    const proc_body = nextProc === -1 ? src.slice(at) : src.slice(at, at + 5 + nextProc);
+    const m = proc_body.match(/\.mutation\(async \(\{[^}]*\}[^)]*\) => \{\n/);
+    const body = proc_body.slice((m!.index ?? 0) + m![0].length);
+    const first = body.split("\n").find((l) => l.trim() && !l.trim().startsWith("//"));
+    expect(first?.trim()).toMatch(/^await enforceTrialActive\(ctx\.user\.id, ctx\.user\.role, "[a-zA-Z]+"\);$/);
+    expect(proc_body).not.toMatch(/enforceQuota|countUsage|countTrialUsage/); // expiry only — no new quota
+  });
+
+  it("through the real procedure: an ended trial is refused before the model is called; Pro reaches the model call", async () => {
+    const { servicesRouter } = await import("./routers/services");
+    const { usageLimitError } = await import("./lib/tierAccess");
+    const svc = (u: object) => servicesRouter.createCaller({ user: u, req: {}, res: {} } as any);
+    // ≥ 120 characters: the procedure's own input minimum — a shorter text is refused by validation before any gate,
+    // which would make this test prove nothing.
+    const rawText = "I help women who left professional careers to raise their children get back into work they love, with a clear six week plan and weekly calls.";
+    expect(rawText.length).toBeGreaterThanOrEqual(120);
+    quota.enforceTrialActive.mockRejectedValueOnce(usageLimitError("trial_expired", "intake"));
+    expect(await verdict(svc(TRIAL).extractFromText({ rawText }))).toBe("trial_expired");
+    expect(quota.enforceTrialActive).toHaveBeenCalledWith(TRIAL.id, TRIAL.role, "intake");
+    // Pro: the (real, in trialAccess) check passes for paid plans; here the spy lets it through and the procedure goes
+    // on to the model — whose mock throws, proving the call was reached and nothing before it refused.
+    for (const u of [PRO, AGENCY, ADMIN]) {
+      quota.enforceTrialActive.mockClear();
+      const v = await verdict(svc(u).extractFromText({ rawText }));
+      expect(v).toContain("LLM_NOT_CALLED_IN_TESTS"); // it reached the model call — nothing before it refused
+      expect(v).not.toBe("trial_expired");
+      expect(quota.enforceTrialActive).toHaveBeenCalledTimes(1);
+    }
+  });
+});
+
 describe("Tweak / regenerate — behaviour through the real procedure", () => {
   it("an ended trial is refused before the database is touched; the check also runs for Pro (and passes there)", async () => {
     const { headlinesRouter } = await import("./routers/headlines");

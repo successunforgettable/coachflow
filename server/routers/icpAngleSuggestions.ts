@@ -1,3 +1,4 @@
+import { enforceTrialActive } from "../lib/quotaEnforcement";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
@@ -23,6 +24,8 @@ export const icpAngleSuggestionsRouter = router({
   generate: protectedProcedure
     .input(z.object({ serviceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "icp");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -188,6 +191,8 @@ Return valid JSON only. No markdown. No explanation.`;
   generateICPs: protectedProcedure
     .input(z.object({ suggestionIds: z.array(z.number()).min(1).max(3) }))
     .mutation(async ({ ctx, input }) => {
+      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
+      await enforceTrialActive(ctx.user.id, ctx.user.role, "icp");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
