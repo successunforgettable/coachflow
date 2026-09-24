@@ -60,10 +60,11 @@ and is itself the test the launch bar asks for.**
 (passes the tier gate), already Meta-connected, and already GHL-linked to the master location. Nothing to create in
 the DB.
 
-⚠️ **Tier gate, found tonight and in no doc:** every Trail node — **manual too** — runs through
-`autoMode.orchestrateStep`, which rejects anyone not pro/agency/admin/superuser (`autoMode.ts:76-88, 202-205` ✔). A
-**trial** coach on the manual path gets "Still stuck on Offer (Auto Mode is a Pro feature…)" on the first node. Not a
-walkthrough blocker (Arfeen is pro); a launch blocker for trial signups.
+⚠️ **Tier gate — CORRECTED 2026-09-24 (see §7).** The Pro gate is an **intentional paywall, not a bug.** What §7
+records is where it sits today versus where it was designed to sit: every Trail node — **manual too** — runs through
+`autoMode.orchestrateStep`, which rejects anyone not pro/agency/admin/superuser (`autoMode.ts:76-88, 202-205` ✔), so
+a **trial** coach on the manual path is stopped at the first node. Not a walkthrough blocker (Arfeen is pro). **Where
+the paywall should sit is Arfeen's decision; nothing here proposes removing it.**
 
 ### What the manual walkthrough actually is
 Dashboard → **Start New Campaign** → `/v2-dashboard/trail/new` (the Trail, not the legacy wizard).
@@ -90,8 +91,9 @@ when the kit is `complete`) → `PushKitModal` with Push to GHL / Push to Meta /
 - **Snapshot detection** counts workflows named `zap…` (≥12 = installed), cached 1 h, **not cleared on reconnect**; any
   error — including an expired token — reads as "not installed". `GHL_MASTER_SNAPSHOT_ID` **unset** ✔.
 - **Gate is client-only and bypassable:** "Push to both" fires GHL even when the GHL button is disabled.
-- **Last live GHL push on record: 2026-05-13** (`878a911`) 📄. Every GHL change since (the gate, creative slots, the
-  lead-magnet URL) has **never been pushed live**.
+- **CORRECTED 2026-09-24 (see §7): there is NO record of a successful GHL push, ever.** The only recorded live GHL
+  push attempt is 2026-05-12/13 ("Frame (c)", `878a911`), and what that commit records is two FAILURES (templates
+  401, funnels 404). Whether any Custom Value landed is not recorded anywhere. No GHL change since has been pushed.
 
 ### Meta — **pushable, image ads only, own account**
 - `publishToMeta` (`meta.ts:473-767`): budget floor → token → **compliance gate** (fails closed; blocks Tier-1 hits;
@@ -101,13 +103,15 @@ when the kit is `complete`) → `PushKitModal` with Push to GHL / Push to Meta /
   `asset_feed_spec` path has never run live 📄.
 - OAuth **auto-picks** the first active ad account and first page — the coach cannot choose.
 - Errors: generic messages to the user, detail only in Railway logs; a partial failure leaves orphan PAUSED objects.
-- **Last full end-to-end Meta push: August 2026** (`64f5dc8`) — one real PAUSED image ad on Arfeen's account, read
-  back and deleted 📄. `meta_published_ads` ✔ shows the latest row **2026-09-04** ("ZZ-GATE-POSITIVE-ARM", PAUSED).
+- **Meta publishes on record (CORRECTED 2026-09-24, see §7):** 2026-05-12 two PAUSED "Auto Campaign Kit" app-review
+  dummies (still in the account) plus three orphans from failed attempts · 2026-08-09 one PAUSED throwaway test ad
+  published by a **script** calling the server directly, read back and deleted · 2026-09-04 one PAUSED gate-test ad,
+  still in the account awaiting Arfeen's deletion. **None was ever ACTIVE, none spent, none was a coach's campaign.**
 - The multi-ad path (`publishAssembledAds`) is built, **not wired**, never proven.
 - App Review Advanced Access for other coaches' accounts: **not started** 📄.
 
 **Has either been verified end-to-end recently? No — only in pieces.** Meta's single-ad path was proven in August on
-a script-driven call, not from the Campaign Kit page. GHL has not pushed live since May. **The two have never been
+a script-driven call, not from the Campaign Kit page. **GHL has never been shown to push successfully.** **The two have never been
 pushed together from one kit through the UI.** That is exactly what the walkthrough would prove.
 
 ---
@@ -127,7 +131,7 @@ pushed together from one kit through the UI.** That is exactly what the walkthro
 2. **Dashboard** → "Have Zappy Build It For You" → Trail intake — works.
 3. **Single-text intake** — works (three of six extracted fields are never shown to the coach 📄).
 4. **Campaign type → "Build it all for me ⚡" → 🛑 A TRIAL USER STOPS HERE**: *"Building it for you is a Pro
-   feature"*, with no upgrade path in the chat. (The manual chip fails one step later — see §1.)
+   feature"* — the intended paywall for Auto Mode (§7). (The manual chip is stopped one node later — see §7.)
 5. **Pro user**: profile expand → ICP → kit (`path='auto'`) → the Trail — works.
 6. **Cascade** — works one node at a time, 2 automatic tries per step then a manual "Try again". **Breaks when:**
    - **no campaign facts are ever asked in auto mode** ✔ — webinar, event and sales pages generate but cannot publish
@@ -211,7 +215,8 @@ visible there).
 
 ### After the walkthrough — the build queue this investigation points to (priority order)
 1. **GHL token refresh** — without it GHL push works for one day per connection, for every coach.
-2. **Tier gate on the manual path + an upgrade path in chat** — a trial signup cannot generate a single node.
+2. **~~Tier gate on the manual path + an upgrade path in chat~~ — WITHDRAWN 2026-09-24.** The gate is an intentional
+   paywall. §7 records where it sits versus the design; where it should sit is Arfeen's decision, not a fix.
 3. **Honest completion** — stop "11 of 11" when the page did not publish or a node was skipped; fix skip.
 4. **Campaign facts in Auto Mode** — the only reason non-lead-magnet Auto kits cannot publish.
 5. **GHL push truthfulness** — real per-asset results; server-side snapshot gate; fix the "Push to both" bypass.
@@ -238,3 +243,85 @@ visible there).
 
 ⚠️ Historical row counts in older documents (e.g. `hvcoTitles` 6,749, `landingPages` 92) no longer match production
 (467 and 8 today). Production data has been pruned since; never compute a delta against an old document (§15f).
+
+---
+
+## 7. CORRECTIONS AND EVIDENCE — added 2026-09-24 on Arfeen's questions
+
+### 7a. The trial gate — intended design vs today (a decision for Arfeen, not a fix)
+
+**Intended design (two separate mechanisms, both in the code):**
+1. **Per-asset quotas for trial users** — `server/quotaLimits.ts` (*"must match the promises on the pricing page"*),
+   enforced in each per-node router (e.g. `icps.generateAsync` checks `getQuotaLimit(tier, "icp")`, monthly reset):
+
+   | generator | trial | pro | agency |
+   |---|---|---|---|
+   | headlines · lead magnet (hvco) · method | unlimited | 50 | 999 |
+   | ICP · offers · emails · WhatsApp · landing pages | **2** each | 50 | 999 |
+   | ad copy | **5** | 100 | 999 |
+
+2. **Auto Mode (the one-click build) is paid-only** — `75ff795`, 2026-05-11. The commit's own reasoning: Auto Mode's
+   generator cores **bypass the per-asset quotas**, so a trial user would burn ~8 quota slots in one cascade; *"gating
+   mid-flow is worse UX than gating at intake"*. `8879fb0` (2026-05-24) added the trial upsell screen and an admin
+   bypass. **The manual path was meant to stay open to trial users, rationed by the quotas above.**
+
+**What changed:** on **2026-06-13** (`c6c975c`, "manual mode in chat"), the Trail's **"I'll pick as we go"** stopped
+navigating to the quota-gated wizard and began running every node through `autoMode.orchestrateStep` — the Auto
+Mode job, which carries the Pro gate and **no quota check** (`orchestrateStep` → `runOrchestrationStep` never calls
+`getQuotaLimit`). The commit message does not mention tier, trial or quota. **Nothing records this as a decision.**
+
+**What a trial user gets today** (✔ code at `87596d7`):
+- **Trail → "Build it all for me ⚡":** blocked at the fork, *before any generation* — only their service
+  description has been extracted. The client warns first ("Pro feature"); the server gate backs it.
+- **Trail → "I'll pick as we go":** gets their **service extracted, profile expanded and ONE ICP generated**
+  (`icps.generateAsync`, trial quota 2), a kit is created — then the **first cascade node (Offer) is FORBIDDEN**
+  (*"Still stuck on Offer (Auto Mode is a Pro feature…)"*). **Zero campaign assets.**
+- **Trail → "I have some — use mine":** runs the whole upload, extraction (an LLM call with no gate), confirm cards
+  and quick-fill, then **FORBIDDEN at import** (*"that one fizzled"*). Zero assets.
+- **The legacy wizard** (`/v2-dashboard/wizard/:step`, reached by clicking dashboard path nodes) still calls the
+  per-node routers **with** the quotas (`V2GeneratorWizard.tsx:1578-1582`). So the designed trial experience still
+  exists — on a surface the dashboard's main button no longer sends anyone to. 📄 reachability per the wizard audit.
+
+**The gap, plainly:** the design gave trial users a rationed manual build (2 offers, 5 ad copy sets, 2 landing pages,
+unlimited headlines…). Today the main path gives them **one ICP and then a paywall**, and the rationed build survives
+only on the legacy wizard. The block fires **earlier than designed** on the manual Trail, and the per-asset quotas are
+**not enforced anywhere on the Trail for any tier** — pro users are not rationed there either.
+
+**Decision needed from Arfeen (options, not a recommendation to remove anything):** where the paywall sits —
+(a) as today: the Trail is Pro-only, trial sees one ICP; (b) as designed: manual Trail open to trial, rationed by the
+existing quotas, Auto Mode Pro-only; (c) a different line (e.g. first N nodes free). Separately: whether pro users
+should be quota-limited on the Trail, as the pricing-page quotas imply.
+
+### 7b. GHL — "last pushed in May" does NOT hold up. Corrected: no successful GHL push is on record.
+
+What the evidence actually shows:
+- **`878a911` (2026-05-13 02:07 IST)** — the "Frame (c) verification" push. The commit records **two failures** at the
+  byte level: email templates → *HTTP 401 "The token is not authorized for this scope"*; funnel → *HTTP 404 "Cannot
+  POST /locations/{id}/funnels"*. It then describes the push as reshaped from "8/10" to "8/8" — **an architecture
+  description, not an observation that 8 Custom Values landed.** No response code, no GHL screenshot, no read-back of a
+  Custom Value is recorded, in that commit or `3aad948` (the next one).
+- **No later live push is recorded anywhere.** Searched: every commit message mentioning GHL/Custom Values since
+  (`9d24ba3` 06-06, `1dfd804` 06-04, `5449416` 07-08 …), `CHECKPOINT.md`, `docs/handovers/`, and the session memory.
+  The closest is memory 2026-06-29b: *"PUSH ✅ evidenced via reconstruction (**not fired**)"* — explicitly not a push.
+- `WIPE_2026-09-12_PRELAUNCH_DUMMY_DATA.md:22` lists *"custom values previously pushed to the master location"* as an
+  external inventory item — **an unverified assertion, with no source cited.**
+- **There is no database record either way**: ZAP keeps no per-push log for GHL (the table does not exist).
+- The GHL token row was last written **2026-07-09 13:33** (a reconnect) and expired a day later; nothing records a push
+  in that window.
+
+**So: Arfeen's recollection is consistent with the record. There is no evidence GHL has ever pushed successfully.**
+The walkthrough would be the first proven GHL push — and must be verified inside GHL itself (blocker 7).
+
+### 7c. Meta — exactly what "worked" means
+
+| date | what | how | created | state now |
+|---|---|---|---|---|
+| **2026-05-12** (20:15 and 21:02 UTC) | two app-review campaigns named "Auto Campaign Kit" | publishes right after the payload fixes `f7accd5` / `c9a35c9` / `a71efc1`; the name is the kit default from `campaignKits.ts` — consistent with the Campaign Kit page's push (wired that day, `cb23ce0`), but **how they were fired is not recorded** | campaign + ad set + creative + ad, **PAUSED** (`meta_published_ads` rows 1–2 ✔ carry all four ids) | still in the account (`metaSafety.ts` TRACKED ids `120246733556760626`, `120246734574720626`) |
+| 2026-05-12 | **three orphan campaigns**, same name | failed attempts that got past campaign creation | campaign only | still in the account (`KNOWN_ORPHAN_CAMPAIGN_IDS`) |
+| **2026-08-09** | "ZZ-CONTROL-REROUTE — throwaway test publish, safe to delete" | **script** `server/scripts/reroute-live-publish-v2.ts`, calling `appRouter.createCaller(…).meta.publishToMeta` directly — **not the app UI**. Reused existing copy (adCopy 5889 headline / 5902 body) and creative 482; US targeting; $20/day | **one real PAUSED ad** on Arfeen's real ad account "KS 1" (AED, ~200 real campaigns) — read back by id: headline, body and baked image headline matched the gated copy | **deleted** after the read-back (commit `64f5dc8`) |
+| **2026-09-04** | "ZZ-GATE-POSITIVE-ARM — paused, safe to delete" | the compliance-gate proof around `61c2908` | PAUSED ad (`meta_published_ads` row 5 ✔) | **still in the account, awaiting Arfeen's deletion** (CHECKPOINT 2026-09-05 §5, campaign `120251702758030626`) |
+
+**What "Meta worked once" means, precisely:** the server's publish path has created real ad objects on Arfeen's own
+ad account, **always PAUSED, never ACTIVE, never spending, never for a real coach's campaign**, and the only run with a
+verified read-back (August) was **a test fired by a script, not by a person pressing Push in the app**. A push from
+the Campaign Kit page with a real campaign's assets has not been verified.
