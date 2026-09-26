@@ -1,4 +1,29 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-24 (late)
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-27
+
+### supersedes the 2026-09-24 (late) block below, which is retained and marked, not deleted
+
+> ## 👉 NEXT ACTION: the 9/29 first deploy — **`docs/handovers/RUNBOOK_2026-09-29_FIRST_DEPLOY.md`**
+> Session record: `docs/handovers/SESSION_2026-09-27_DECISIONS_HONEST_COMPLETION.md`. Figures measured 2026-09-27;
+> re-measure at run time (§15f).
+
+| | |
+|---|---|
+| production | **`87596d7`** — untouched. No production writes, no migration applied |
+| deploy candidate | held branch `docs/held-2026-09-12`; runtime candidate **`32785ee`** (anything above is docs only), on GitHub |
+| held back | trial paywall / quota table / expiry gates — hold-back commit **`49c0d17`**; second deploy = `git revert 49c0d17` |
+| ships | scenes fix · GHL renewal + truthful push (needs **0112 first**) · sprint 8 (comparison PASSED) · inert grounding · hook-wording hold-back · honest completion + Skip change + welcome-line fix |
+| migrations | **0112 NOT applied** (guarded apply: `docs/handovers/deploy-2026-09-29/0112-apply.mjs`); 0111 applied |
+| gates | tsc 34 · 22 suites green · quotaLimits 14/33 failing = identical to production · NUL clean |
+| decisions | ✅ 2 (0112), 4 (deploy then walkthrough), 5 (Skip). **OPEN: 1 Pro caps** (`PRO_CAPS_AND_CAMPAIGN_COST_2026-09-27.md`), **3 + 8 trial decisions** (`TRIAL_MARCH_DESIGN_VS_CODE_2026-09-27.md` §5c) — don't act on either |
+| deadline | 🔴 Arfeen's Meta login expires **2026-10-05** |
+
+🔴 Three production actions, each needing Arfeen's go-ahead in the message immediately before: **apply 0112**, **push
+`railway-build`** (explicit sha, fast-forward, never force), **any rollback**. If Arfeen starts the walkthrough, stop
+everything deploy-related until he says he's done.
+
+---
+
+# ⚪ SUPERSEDED RESTART BLOCK (2026-09-24 late) — NOT THE ENTRY POINT; see the 2026-09-27 block above
 
 ### supersedes the 2026-09-24 (early) block below, which is retained and marked, not deleted
 
