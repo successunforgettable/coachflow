@@ -55,6 +55,8 @@ const NODE_META: Record<(typeof KIT_COMPLETION_FIELDS)[number], { node: string; 
 export type KitBlocker = {
   /** Trail stop key — the client uses it to link straight to the node. */
   node: string;
+  /** What kind of problem: a piece not built (or skipped), or a built piece that still stops a push. */
+  kind: "not_built" | "skipped" | "not_published" | "no_images" | "no_service";
   label: string;
   /** One plain sentence: what is wrong. */
   reason: string;
@@ -92,6 +94,7 @@ export function computeKitReadiness(input: KitReadinessInput): KitReadiness {
   if (!input.hasService) {
     blockers.push({
       node: "service",
+      kind: "no_service",
       label: "Service",
       reason: "This campaign isn't linked to one of your services, so it can't be pushed.",
       action: "Start the campaign again from your service on the dashboard.",
@@ -106,6 +109,7 @@ export function computeKitReadiness(input: KitReadinessInput): KitReadiness {
     if (!built) {
       blockers.push({
         node: meta.node,
+        kind: skipped.has(meta.node) ? "skipped" : "not_built",
         label: meta.label,
         reason: skipped.has(meta.node)
           ? `You skipped your ${meta.label.toLowerCase()}, so it isn't in this campaign — and ${meta.needed}.`
@@ -122,6 +126,7 @@ export function computeKitReadiness(input: KitReadinessInput): KitReadiness {
         const n = lp?.leftoverTokens ?? 0;
         blockers.push({
           node: meta.node,
+          kind: "not_published",
           label: meta.label,
           reason: n > 0
             ? `Your landing page hasn't been published — ${n} details are still missing, and your ad needs a live page to send people to.`
@@ -134,6 +139,7 @@ export function computeKitReadiness(input: KitReadinessInput): KitReadiness {
     if (field === "selectedAdCreativeBatchId" && (input.adImageCount ?? 0) < 1) {
       blockers.push({
         node: meta.node,
+        kind: "no_images",
         label: meta.label,
         reason: "Your ad images didn't come through, and Meta needs an image for the ad.",
         action: "Make your ad images again.",

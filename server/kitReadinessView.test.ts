@@ -71,3 +71,58 @@ describe("the Trail and the kit page read readiness (§15d — a server value wi
     expect((trail.match(/await runCompletionBeat\(\);/g) ?? []).length).toBe(2);
   });
 });
+
+// ─── The Trail's welcome-back line (2026-09-27): same readiness answer, no stronger claim than it makes ───
+import { welcomeBackLine } from "../client/src/v2/kitReadinessView";
+
+describe("the Trail's welcome-back line", () => {
+  const STOPS = ["service", "icp", "offer", "uniqueMethod", "freeOptIn", "headlines", "adCopy", "landingPage", "emailSequence", "whatsappSequence", "adCreatives"];
+  const stops = (pending: string[] = []) =>
+    STOPS.map((key) => ({ key, label: key === "landingPage" ? "Landing Page" : key === "adCreatives" ? "Ad Images" : key === "adCopy" ? "Ad Copy" : key, state: pending.includes(key) ? "pending" : "done" }));
+
+  it("a built-but-unpublished page is NOT 'up next' — it says what's actually wrong and what to do", () => {
+    const line = welcomeBackLine(stops(["landingPage"]), unpublished);
+    expect(line).not.toMatch(/up next/);
+    expect(line).toMatch(/10 of 11/);
+    expect(line).toMatch(/landing page is built but hasn't been published/i);
+    expect(line).toMatch(/2 missing details/);
+  });
+
+  it("a genuinely unbuilt next node still reads 'up next' (today's behaviour)", () => {
+    expect(welcomeBackLine(stops(["adCopy"]), partial)).toBe("Welcome back. We're 10 of 11 — Ad Copy is up next.");
+  });
+
+  it("before readiness loads, an unbuilt next node reads exactly as today", () => {
+    expect(welcomeBackLine(stops(["adCopy"]), null)).toBe("Welcome back. We're 10 of 11 — Ad Copy is up next.");
+  });
+
+  it("everything done and ready ⇒ says ready to push", () => {
+    expect(welcomeBackLine(stops(), ready)).toMatch(/ready to push/i);
+  });
+
+  it("every stop done but something blocks a push ⇒ never 'This campaign is complete'", () => {
+    const noImages = computeKitReadiness({ kit: FULL, hasService: true, landingPage: { publicUrl: "https://x/p/y", leftoverTokens: 0, needsPublish: false }, adImageCount: 0, skippedNodes: [] });
+    const line = welcomeBackLine(stops(), noImages);
+    expect(line).not.toMatch(/complete/i);
+    expect(line).toMatch(/ad images didn't come through/i);
+  });
+
+  it("every stop done, readiness not loaded yet ⇒ no completion claim", () => {
+    const line = welcomeBackLine(stops(), null);
+    expect(line).not.toMatch(/complete|ready to push/i);
+  });
+
+  it("the Trail builds its welcome line from readiness", () => {
+    const trail = readFileSync(join(__dirname, "..", "client", "src", "v2", "V2Trail.tsx"), "utf8");
+    expect(trail).toMatch(/welcomeBackBubble\(stops, trailReadiness\.data/);
+    expect(trail).toMatch(/text: welcomeBackLine\(stops, readiness\)/);
+    expect(trail).not.toMatch(/This campaign is complete\./);
+  });
+});
+
+describe("blocker kinds", () => {
+  it("each blocker carries the kind the welcome line reads", () => {
+    expect(unpublished.blockers[0].kind).toBe("not_published");
+    expect(partial.blockers[0].kind).toBe("not_built");
+  });
+});

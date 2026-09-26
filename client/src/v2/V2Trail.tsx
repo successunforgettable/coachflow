@@ -32,7 +32,7 @@ import { getEarlyLines, getRevealLine, resetBuild } from "./lib/zappyWaitLines";
 import { pickHvcoLongTitles, flattenHeadlineGroups, resolveDeckSourceId } from "@shared/deckCards";
 import { humanizeUnresolvedTokens } from "@shared/placeholderLabels";
 import { resolveTokensInText } from "./lib/resolveTokens";
-import { completionBeat, type Readiness } from "./kitReadinessView";
+import { completionBeat, welcomeBackLine, type Readiness } from "./kitReadinessView";
 import { dealChipsFor, zeroCardChipsFor, IMPORT_CHIP, buildImportPayload } from "./importPolicy";
 import { lazy, Suspense } from "react";
 
@@ -187,17 +187,14 @@ const parseMaybeJson = (v: unknown): Record<string, unknown> | null => {
   return null;
 };
 
-// §10.4 resume beat — built from real kit state, no history required.
-function welcomeBackBubble(stops: TrailStop[]): ChatMessage {
-  const doneCount = stops.filter(s => s.state === "done" || s.state === "imported" || s.state === "stale").length;
-  const next = stops.find(s => s.state === "pending" || s.state === "generating");
+// §10.4 resume beat — built from real kit state, no history required. Reads readiness (honest completion), so a
+// built-but-unpublished page is never "up next" and a blocked campaign is never called complete.
+function welcomeBackBubble(stops: TrailStop[], readiness: Readiness | null | undefined): ChatMessage {
   return {
     id: "trail-welcome-back",
     type: "zappy-bubble",
     mood: "idle",
-    text: next
-      ? `Welcome back. We're ${doneCount} of ${stops.length} — ${next.label} is up next.`
-      : `Welcome back — all ${stops.length} pieces are done. This campaign is complete.`,
+    text: welcomeBackLine(stops, readiness),
   };
 }
 
@@ -209,6 +206,11 @@ export default function V2Trail() {
 
   const trailState = trpc.trail.getTrailState.useQuery(
     { campaignKitId: campaignKitId! },
+    { enabled: validId },
+  );
+  // Honest completion: the welcome-back line reads the same readiness answer as the kit page and the end beat.
+  const trailReadiness = trpc.campaignKits.getReadiness.useQuery(
+    { kitId: campaignKitId! },
     { enabled: validId },
   );
   const transcript = trpc.trail.getTranscript.useQuery(
@@ -2354,9 +2356,9 @@ export default function V2Trail() {
   // ── Thread: restored transcript (+ welcome-back on genuine resume) + live ──
   const messages: ChatMessage[] = useMemo(() => {
     const saved = persisted ?? [];
-    const withWelcome = freshHandoff.current ? saved : [...saved, welcomeBackBubble(stops)];
+    const withWelcome = freshHandoff.current ? saved : [...saved, welcomeBackBubble(stops, trailReadiness.data as Readiness | undefined)];
     return [...withWelcome, ...live];
-  }, [persisted, stops, live]);
+  }, [persisted, stops, live, trailReadiness.data]);
 
   const [icpPanelOpen, setIcpPanelOpen] = useState(false);
 
