@@ -616,8 +616,6 @@ export async function runOfferGeneration(input: {
   const __og = await gateBeforePersist("offers", [__offerRow as any], { legacyHits: __offerSink.hits });
   const insertResult: any = await db.insert(offers).values((__og.kept[0] ?? __offerRow) as any);
   const offerId = insertResult[0].insertId;
-  // Monthly quota, every tier (the table is the source of truth). After the insert, so a failed run costs nothing.
-  { const { countUsage } = await import("./lib/quotaEnforcement"); await countUsage(input.userId, "offers"); }
 
   // Auto-select into campaign kit (creates kit if needed) — mirrors orchestrator pattern
   try {

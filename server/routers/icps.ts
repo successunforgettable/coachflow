@@ -11,7 +11,7 @@ import { ICP_SYSTEM_PROMPT, hasLadderContent, type ICPLadderAnswers, type ICPSer
 import { runIcpGeneration } from "../_core/icpGenerate";
 import { normalizeDemographics } from "../_core/icpGrounding";
 import { stripObjectionScaffolding } from "../_core/icpSanitize";
-import { enforceQuota, countUsage, enforceTrialActive } from "../lib/quotaEnforcement";
+import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
@@ -127,8 +127,17 @@ export const icpsRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // The limits table is the single source of truth, for every tier (lib/quotaEnforcement.ts)
-      await enforceQuota(ctx.user.id, "icp", ctx.user.role);
+      // Superusers have unlimited quota
+      if (ctx.user.role !== "superuser") {
+        // Check quota limit
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "icp");
+        if (ctx.user.icpGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.`,
+          });
+        }
+      }
 
       // Get service details
       const [service] = await db
@@ -201,9 +210,6 @@ export const icpsRouter = router({
         .where(eq(idealCustomerProfiles.id, insertResult[0].insertId))
         .limit(1);
 
-      // Monthly quota, every tier — counted here rather than in runIcpGeneration so a sharpen (below) never charges.
-      await countUsage(ctx.user.id, "icp");
-
       return newICP;
     }),
 
@@ -217,7 +223,12 @@ export const icpsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "icp", user.role);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "icp");
+        if (user.icpGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} ICP generations. Upgrade to generate more.` });
+        }
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const [service] = await db.select().from(services)
@@ -279,9 +290,6 @@ export const icpsRouter = router({
           const [newICP] = await bgDb.select().from(idealCustomerProfiles)
             .where(eq(idealCustomerProfiles.id, insertResult[0].insertId)).limit(1);
 
-          // Monthly quota, every tier, after the insert. Not in runIcpGeneration, so a sharpen never charges.
-          await countUsage(ctx.user.id, "icp");
-
           await bgDb.update(jobs)
             .set({ status: "complete", result: JSON.stringify({ icpId: newICP?.id }) })
             .where(eq(jobs.id, jobId));
@@ -316,15 +324,14 @@ export const icpsRouter = router({
    * produce a structurally valid profile, so a failed sharpen leaves the original
    * profile exactly as it was.
    *
-   * Deliberately does NOT touch icpGeneratedCount. That counter is now incremented by
-   * generate / generateAsync (2026-09-24, every tier); sharpening a profile the coach
-   * already has is not a new generation, so this must never charge it.
+   * Deliberately does NOT touch icpGeneratedCount — that counter is checked but never
+   * incremented anywhere (a pre-existing bug). Sharpening a profile the coach already
+   * has is not a new generation, so if that counter is ever fixed this must not
+   * double-charge.
    */
   sharpenWithLadder: protectedProcedure
     .input(z.object({ id: z.number(), ladder: ladderSchema }))
     .mutation(async ({ ctx, input }) => {
-      // An ended trial is blocked here as on every other generation path — expiry only, no quota (lib/quotaEnforcement.ts).
-      await enforceTrialActive(ctx.user.id, ctx.user.role, "icp");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -503,8 +510,6 @@ export const icpsRouter = router({
       promptOverride: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
-      await enforceTrialActive(ctx.user.id, ctx.user.role, "icp");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

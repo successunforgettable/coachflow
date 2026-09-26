@@ -4,7 +4,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { emailSequences, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { enforceQuota, enforceTrialActive } from "../lib/quotaEnforcement";
+import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 import { runEmailSequenceGeneration } from "../emailSequenceGenerator";
@@ -123,7 +123,15 @@ export const emailSequencesRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      await enforceQuota(ctx.user.id, "email", ctx.user.role);
+      if (ctx.user.role !== "superuser") {
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "email");
+        if (ctx.user.emailSeqGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.`,
+          });
+        }
+      }
 
       const { id } = await runEmailSequenceGeneration({
         userId: ctx.user.id,
@@ -155,7 +163,12 @@ export const emailSequencesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "email", user.role);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "email");
+        if (user.emailSeqGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} email sequences. Upgrade to generate more.` });
+        }
+      }
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -275,8 +288,6 @@ export const emailSequencesRouter = router({
       promptOverride: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
-      await enforceTrialActive(ctx.user.id, ctx.user.role, "email");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

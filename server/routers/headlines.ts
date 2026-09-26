@@ -1,4 +1,3 @@
-import { enforceQuota, enforceTrialActive } from "../lib/quotaEnforcement";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -141,7 +140,15 @@ export const headlinesRouter = router({
 
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      await enforceQuota(ctx.user.id, "headlines", ctx.user.role);
+      if (ctx.user.role !== "superuser") {
+        const maxHeadlines = ctx.user.subscriptionTier === "agency" ? 20 : 6;
+        if (ctx.user.headlineGeneratedCount >= maxHeadlines) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.`,
+          });
+        }
+      }
 
       return await runHeadlinesGeneration({
         userId: ctx.user.id,
@@ -177,7 +184,12 @@ export const headlinesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "headlines", user.role);
+      if (user.role !== "superuser") {
+        const maxHeadlines = user.subscriptionTier === "agency" ? 50 : user.subscriptionTier === "pro" ? 20 : 6;
+        if (user.headlineGeneratedCount >= maxHeadlines) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${maxHeadlines} headline sets. Upgrade to generate more.` });
+        }
+      }
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -325,8 +337,6 @@ export const headlinesRouter = router({
       promptOverride: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
-      await enforceTrialActive(ctx.user.id, ctx.user.role, "headlines");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

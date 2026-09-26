@@ -20,7 +20,6 @@ import ChatThread, { type ChatMessage } from "./components/ChatThread";
 import TweakBox, { type TweakBoxFields } from "./components/TweakBox";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { usageLimitOf } from "./lib/usageLimit";
 import { patienceGuard } from "./lib/patienceGuard";
 
 const MIN_DESCRIPTION_CHARS = 120; // mirrors services.extractFromText z.min(120)
@@ -211,16 +210,6 @@ export default function V2TrailIntake() {
     setMessages(prev => [...prev, full]);
   };
 
-  // Trial limits (option (b)): the server's message is already plain English and final — say it once, offer no
-  // retry chip (a retry cannot succeed), and leave the coach where they are.
-  const sayUsageLimit = (err: unknown): boolean => {
-    const limit = usageLimitOf(err);
-    if (!limit) return false;
-    addMsg({ type: "zappy-bubble", mood: "idle", text: `${limit.message} Your existing campaigns are all still on your dashboard.` });
-    setPhase("fork");
-    return true;
-  };
-
   // ── Beats 1–2: greeting ──
   useEffect(() => {
     if (didInit.current) return;
@@ -249,8 +238,7 @@ export default function V2TrailIntake() {
       const ex = await extractMutation.mutateAsync({ rawText });
       extraction.current = ex as Extraction;
       showEcho(ex as Extraction);
-    } catch (err) {
-      if (sayUsageLimit(err)) return;
+    } catch {
       addMsg({
         type: "zappy-bubble",
         mood: "idle",
@@ -617,7 +605,6 @@ export default function V2TrailIntake() {
       try { sessionStorage.setItem(`zapTrailFreshHandoff:${kitId}`, "1"); } catch { /* fine */ }
       navigate(`/v2-dashboard/trail/${kitId}`);
     } catch (err) {
-      if (sayUsageLimit(err)) return;
       const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
       addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
       addMsg({ type: "chip-row", chips: ["Build it all for me ⚡"] });
@@ -1076,7 +1063,6 @@ export default function V2TrailIntake() {
       try { sessionStorage.setItem(`zapTrailFreshHandoff:${kitId}`, "1"); } catch { /* fine */ }
       navigate(`/v2-dashboard/trail/${kitId}`);
     } catch (err) {
-      if (sayUsageLimit(err)) return;
       const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
       addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
       addMsg({ type: "chip-row", chips: ["I have some — use mine"] });
@@ -1137,7 +1123,6 @@ export default function V2TrailIntake() {
       try { sessionStorage.setItem(`zapTrailFreshHandoff:${kitId}`, "1"); } catch { /* fine */ }
       navigate(`/v2-dashboard/trail/${kitId}`);
     } catch (err) {
-      if (sayUsageLimit(err)) return;
       const msg = err instanceof Error ? err.message : "Could not set up your campaign.";
       addMsg({ type: "zappy-bubble", mood: "idle", text: `Hm — that one fizzled (${msg}). One more go?` });
       addMsg({ type: "chip-row", chips: ["I'll pick as we go"] });

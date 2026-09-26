@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { assertCanPush } from "../lib/tierAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
@@ -582,8 +581,6 @@ export const ghlRouter = router({
   pushCampaign: protectedProcedure
     .input(z.object({ kitId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      // D6: pushing to Meta / GoHighLevel is Pro-only; a trial user can generate and preview (lib/tierAccess.ts).
-      assertCanPush(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 

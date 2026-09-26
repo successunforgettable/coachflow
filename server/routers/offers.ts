@@ -6,7 +6,7 @@ import { offers, jobs } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { runOfferGeneration } from "../offersGenerator";
 import { invokeLLM } from "../_core/llm";
-import { enforceQuota, enforceTrialActive } from "../lib/quotaEnforcement";
+import { getQuotaLimit } from "../quotaLimits";
 import { TRPCError } from "@trpc/server";
 import { checkAndResetQuotaIfNeeded } from "../quotaReset";
 
@@ -88,8 +88,16 @@ export const offersRouter = router({
       // Check and reset quota if user's anniversary date has passed
       await checkAndResetQuotaIfNeeded(ctx.user.id);
 
-      // The limits table is the single source of truth, for every tier (lib/quotaEnforcement.ts)
-      await enforceQuota(ctx.user.id, "offers", ctx.user.role);
+      // Superusers have unlimited quota
+      if (ctx.user.role !== "superuser") {
+        const limit = getQuotaLimit(ctx.user.subscriptionTier, "offers");
+        if (ctx.user.offerGeneratedCount >= limit) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've reached your monthly limit of ${limit} offers. Upgrade to generate more.`,
+          });
+        }
+      }
 
       const { offerId } = await runOfferGeneration({
         userId: ctx.user.id,
@@ -119,7 +127,12 @@ export const offersRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { user } = ctx;
       await checkAndResetQuotaIfNeeded(user.id);
-      await enforceQuota(user.id, "offers", user.role);
+      if (user.role !== "superuser") {
+        const limit = getQuotaLimit(user.subscriptionTier, "offers");
+        if (user.offerGeneratedCount >= limit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: `You've reached your monthly limit of ${limit} offers. Upgrade to generate more.` });
+        }
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -265,8 +278,6 @@ export const offersRouter = router({
       promptOverride: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Tweak / regenerate: an ended trial is blocked here as on every other generation path (lib/quotaEnforcement.ts).
-      await enforceTrialActive(ctx.user.id, ctx.user.role, "offers");
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
