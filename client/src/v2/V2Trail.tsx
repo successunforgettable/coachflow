@@ -34,6 +34,8 @@ import { getEarlyLines, getRevealLine, resetBuild } from "./lib/zappyWaitLines";
 import { pickHvcoLongTitles, flattenHeadlineGroups, resolveDeckSourceId } from "@shared/deckCards";
 import { humanizeUnresolvedTokens } from "@shared/placeholderLabels";
 import { resolveTokensInText } from "./lib/resolveTokens";
+import { completionBeat, type Readiness } from "./kitReadinessView";
+import { dealChipsFor, zeroCardChipsFor, IMPORT_CHIP, buildImportPayload } from "./importPolicy";
 import { lazy, Suspense } from "react";
 
 const V2ICPResultPanel = lazy(() => import("./V2ICPResultPanel"));
@@ -228,7 +230,9 @@ export default function V2Trail() {
   // Sprint 4 C3: quota status for deal-more chips
   const quotaStatus = trpc.trail.getQuotaStatus.useQuery();
   // Sprint 4 C4: skip/import
-  const skipNodeMutation = trpc.nodeSkips.skip.useMutation();
+  // Decision 5: "I already have this — use mine" imports the coach's own version and marks the stop imported.
+  const importAssetsMutation = trpc.autoMode.importAssets.useMutation();
+  const markImportedMutation = trpc.trail.markImported.useMutation();
   // Sprint 4 C4: favourites — only mechanism + hvco have toggleFavorite
   const toggleMechanismFav = trpc.heroMechanisms.toggleFavorite.useMutation();
   const toggleHvcoFav = trpc.hvco.toggleFavorite.useMutation();
@@ -727,11 +731,11 @@ export default function V2Trail() {
     if (!target) return;
 
     // Sprint 4 C1+C3: manual-mode chips that resolve the crown/deal wait
-    if (chip === "Show me options" || chip === "Lock it in →" || chip.startsWith("Show me new options") || chip === "Skip — I already have this" || chip === "Try again") {
+    if (chip === "Show me options" || chip === "Lock it in →" || chip.startsWith("Show me new options") || chip === IMPORT_CHIP || chip === "Try again") {
       const echo = addLive({ type: "user-bubble", text: chip });
       persistMsgs([echo]);
       dealMoreChipChoice.current = chip.startsWith("Show me new options") ? "deal"
-        : chip === "Skip — I already have this" ? "skip"
+        : chip === IMPORT_CHIP ? "import"
         : chip === "Try again" ? "lock" : "lock"; // "Try again" resolves the same promise
       if (manualResolve.current) { manualResolve.current(); manualResolve.current = null; }
       return;
@@ -1228,6 +1232,83 @@ export default function V2Trail() {
   const cancelled = useRef(false);
   useEffect(() => () => { cancelled.current = true; }, []);
 
+  // ── Decision 5: "I already have this — use mine" (Offer, Unique Method, Lead Magnet only) ──
+  // Asks for the coach's own version in the chat, imports it (autoMode.importAssets fills the kit field) and marks
+  // the stop imported. Returns true once imported; false when the coach chose to see generated options instead.
+  const assetImportResolve = useRef<((r: { action: "use" | "cancel"; values: Record<string, string> }) => void) | null>(null);
+  const handleAssetImport = (_messageId: string, action: "use" | "cancel", values: Record<string, string>) => {
+    assetImportResolve.current?.({ action, values });
+    assetImportResolve.current = null;
+  };
+  const runImportMine = async (
+    stepDef: { step: string; stopKey: string; revealLabel: string },
+    kitId: number, serviceId: number, icpId: number,
+  ): Promise<boolean> => {
+    collapsePreviousChips();
+    const form = addLive({ type: "asset-import", nodeKey: stepDef.stopKey, assetImport: { step: stepDef.step } });
+    const showError = (error: string) =>
+      setLive(prev => prev.map(m => m.id === form.id ? { ...m, assetImport: { step: stepDef.step, error } } : m));
+    while (true) {
+      const { action, values } = await new Promise<{ action: "use" | "cancel"; values: Record<string, string> }>(r => { assetImportResolve.current = r; });
+      if (cancelled.current) return false;
+      if (action === "cancel") {
+        removeLive(form.id);
+        const echo = addLive({ type: "user-bubble", text: "Show me options instead" });
+        persistMsgs([echo]);
+        return false;
+      }
+      const built = buildImportPayload(stepDef.step, values);
+      if (!built.ok) { showError(built.message); continue; }
+      try {
+        await importAssetsMutation.mutateAsync({ serviceId, icpId, ...built.payload });
+        await markImportedMutation.mutateAsync({ campaignKitId: kitId, nodeType: stepDef.stopKey });
+      } catch (e) {
+        showError(e instanceof Error && e.message ? `That didn't save: ${e.message}` : "That didn't save — try again.");
+        continue;
+      }
+      removeLive(form.id);
+      const divider = addLive({ type: "system-divider", nodeKey: stepDef.stopKey, text: `${stepDef.revealLabel} — using yours` });
+      persistMsgs([divider]);
+      await trailState.refetch();
+      return true;
+    }
+  };
+
+  // ── HONEST COMPLETION: the end-of-Trail beat reads readiness (campaignKits.getReadiness). ──
+  // It used to post a CAMPAIGN COMPLETE badge claiming all eleven pieces were built whenever the loop ended, even when the
+  // landing page had not published or a node was missing. Now it celebrates only a push-ready campaign;
+  // otherwise it names each blocker and what to do. The not-ready beat is display-only (never persisted), so a
+  // reload after the coach fixes something never replays stale blockers.
+  const runCompletionBeat = async () => {
+    const kitId = (trailState.data?.kit as Record<string, unknown> | undefined)?.id as number | undefined;
+    let readiness: Readiness | null = null;
+    try {
+      if (kitId != null) readiness = (await utils.campaignKits.getReadiness.fetch({ kitId })) as Readiness;
+    } catch { /* unreadable ⇒ the honest fallback below, never the celebration */ }
+    collapsePreviousChips();
+    if (!readiness || readiness.state !== "ready") {
+      const beat = readiness ? completionBeat(readiness) : null;
+      const lines = beat?.lines ?? ["Your campaign isn't ready to push yet. Open your Campaign Kit to see what's left."];
+      for (const text of lines) addLive({ type: "zappy-bubble", mood: "idle", text });
+      addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece"] });
+      activeChips.current = null;
+      return;
+    }
+    const beat = completionBeat(readiness);
+    const doneBadge = addLive({
+      type: "milestone-badge",
+      milestone: { name: "CAMPAIGN COMPLETE", line: "Every piece built — ready to push." },
+    });
+    const doneBubbles = beat.lines.map((text) => addLive({ type: "zappy-bubble", mood: "celebrating", text }));
+    addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece", "Meet your Dream Buyer"] });
+    activeChips.current = null; // completion chips handled by name, not node
+    // B6: server dedup replaces old CAMPAIGN COMPLETE badge; the bubbles persist on first completion only.
+    const hasCompletionAlready = (persisted ?? []).some(
+      m => m.type === "milestone-badge" && m.milestone?.name === "CAMPAIGN COMPLETE"
+    );
+    await persistMsgs(hasCompletionAlready ? [doneBadge] : [doneBadge, ...doneBubbles]);
+  };
+
   const runAutoLoop = async () => {
     resetBuild(); // fresh rotation for this cascade run
     const state = trailState.data!;
@@ -1438,31 +1519,8 @@ export default function V2Trail() {
     await processTweakQueue();
     if (cancelled.current) return;
 
-    // ── C4: Tier 3 — the §5.3 completion beat + Campaign Kit handoff ──
-    const doneBadge = addLive({
-      type: "milestone-badge",
-      milestone: { name: "CAMPAIGN COMPLETE", line: "11 of 11 — every piece built and accounted for." },
-    });
-    const done1 = addLive({
-      type: "zappy-bubble",
-      mood: "celebrating",
-      text: "Done. Eleven pieces, all singing the same song.",
-    });
-    const done2 = addLive({
-      type: "zappy-bubble",
-      mood: "celebrating",
-      text: "Every piece matches your offer, your method, your voice.",
-    });
-    collapsePreviousChips();
-    const row = addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece", "Meet your Dream Buyer"] });
-    activeChips.current = null; // completion chips handled by name, not node
-    void row;
-    // B6: server dedup replaces old CAMPAIGN COMPLETE badge; done1/done2 only
-    // persist on first completion (subsequent completions show in live only).
-    const hasCompletionAlready = (persisted ?? []).some(
-      m => m.type === "milestone-badge" && m.milestone?.name === "CAMPAIGN COMPLETE"
-    );
-    await persistMsgs(hasCompletionAlready ? [doneBadge] : [doneBadge, done1, done2]);
+    // ── C4: Tier 3 — the completion beat + Campaign Kit handoff (reads readiness) ──
+    await runCompletionBeat();
   };
 
   // C4: one real-ICP insight per milestone. Pulls the first line of the
@@ -1524,7 +1582,7 @@ export default function V2Trail() {
   const waitForFactAnswer = () => new Promise<string>(r => { factAnswerResolve.current = r; });
   // Sprint 4 C3: distinguishes Lock-it-in from Deal-a-fresh-set in the same
   // chip row. Both resolve the manual proceed promise; the loop checks which.
-  const dealMoreChipChoice = useRef<"lock" | "deal" | "skip" | null>(null);
+  const dealMoreChipChoice = useRef<"lock" | "deal" | "import" | null>(null);
 
   // ── Sprint 4 C1: fetch the dealable set and build card-deck cards ──
   const fetchDeckCardsRaw = async (
@@ -1926,24 +1984,16 @@ export default function V2Trail() {
 
       // ── Dealable node: "Show me options" + "Skip" ──
       collapsePreviousChips();
-      const dealChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Show me options", "Skip — I already have this"] });
+      const dealChip = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: dealChipsFor(stepDef.step) });
       activeChips.current = { msgId: dealChip.id, step: stepDef.step };
       dealMoreChipChoice.current = null;
       await waitForManualProceed();
       if (cancelled.current) return;
-      // Sprint 4 C4: skip → mark imported, proceed to next
-      if (dealMoreChipChoice.current === "skip") {
-        try {
-          const kitId = kit.id as number;
-          // Mark as imported in nodeStatuses
-          await clearStaleMutation.mutateAsync({ campaignKitId: kitId, nodeType: stepDef.stopKey });
-          // Upsert imported status (reuse the clearStale pattern — insert imported)
-          // Actually we need a dedicated write. Use the existing nodeSkips mutation.
-          await skipNodeMutation.mutateAsync({ serviceId, nodeType: stepDef.stopKey });
-          addLive({ type: "system-divider", text: `${stepDef.revealLabel} — skipped (imported)` });
-        } catch { /* non-fatal */ }
-        await trailState.refetch();
-        continue;
+      // Decision 5: "use mine" → the coach's own version is imported into the kit and the stop marked imported.
+      // "Show me options instead" falls through to generation below.
+      if (dealMoreChipChoice.current === "import") {
+        if (await runImportMine(stepDef, kit.id as number, serviceId, icpId)) continue;
+        if (cancelled.current) return;
       }
 
       setGeneratingKey(stepDef.stopKey);
@@ -2024,20 +2074,16 @@ export default function V2Trail() {
       if (cards.length === 0) {
         addLive({ type: "zappy-bubble", mood: "idle", text: `Hm — your ${stepDef.revealLabel.toLowerCase()} options didn't come through. Want me to try again?` });
         collapsePreviousChips();
-        const zeroRetry = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: ["Try again", "Skip — I already have this"] });
+        const zeroRetry = addLive({ type: "chip-row", nodeKey: stepDef.step, chips: zeroCardChipsFor(stepDef.step) });
         activeChips.current = { msgId: zeroRetry.id, step: stepDef.step };
         dealMoreChipChoice.current = null;
         await waitForManualProceed();
         if (cancelled.current) return;
-        if (dealMoreChipChoice.current === "skip") {
-          try {
-            await clearStaleMutation.mutateAsync({ campaignKitId: kitId, nodeType: stepDef.stopKey });
-            await skipNodeMutation.mutateAsync({ serviceId, nodeType: stepDef.stopKey });
-            addLive({ type: "system-divider", text: `${stepDef.revealLabel} — skipped (imported)` });
-          } catch { /* non-fatal */ }
-          await trailState.refetch();
-          continue; // ADVANCE to the next node — skip marks it imported, so do NOT re-present it. (The
-          // shared `return` below re-entered the driver and re-dealt THIS node = the ad-copy loop.)
+        if (dealMoreChipChoice.current === "import") {
+          // ADVANCE only when the coach's version was actually imported — the field is then filled, so the
+          // node is not re-presented. (The shared `return` below re-entered the driver and re-dealt THIS node.)
+          if (await runImportMine(stepDef, kitId, serviceId, icpId)) continue;
+          if (cancelled.current) return;
         }
         return; // "Try again" only → re-enter the manual loop to retry THIS node cleanly (never bounce)
       }
@@ -2170,21 +2216,8 @@ export default function V2Trail() {
     }
 
     if (cancelled.current) return;
-    // ── Completion beat — identical to auto ──
-    const doneBadge = addLive({
-      type: "milestone-badge",
-      milestone: { name: "CAMPAIGN COMPLETE", line: "11 of 11 — every piece built and accounted for." },
-    });
-    const done1 = addLive({ type: "zappy-bubble", mood: "celebrating", text: "Done. Eleven pieces, all singing the same song." });
-    const done2 = addLive({ type: "zappy-bubble", mood: "celebrating", text: "Every piece matches your offer, your method, your voice." });
-    collapsePreviousChips();
-    addLive({ type: "chip-row", chips: ["Open my Campaign Kit", "Review piece by piece", "Meet your Dream Buyer"] });
-    activeChips.current = null;
-    // B6: same completion dedup as auto loop
-    const hasCompletionAlreadyM = (persisted ?? []).some(
-      m => m.type === "milestone-badge" && m.milestone?.name === "CAMPAIGN COMPLETE"
-    );
-    await persistMsgs(hasCompletionAlreadyM ? [doneBadge] : [doneBadge, done1, done2]);
+    // ── Completion beat — identical to auto (reads readiness) ──
+    await runCompletionBeat();
   };
 
   // ── Sprint 4 C3: unified driver with per-node path check for mid-run switching ──
@@ -2527,6 +2560,7 @@ export default function V2Trail() {
             onStyleChoose={handleStyleChoose}
             onTestimonialDone={handleTestimonialDone}
             onStructuredSubmit={handleFactStructured}
+            onAssetImport={handleAssetImport}
             onSendText={
               walkthroughMode && walkthrough.active && !walkthrough.awaitingConfirm
                 ? handleWalkthroughText

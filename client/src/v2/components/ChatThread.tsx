@@ -15,6 +15,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react"
 const StyleChooser = lazy(() => import("./StyleChooser"));
 const TestimonialPicker = lazy(() => import("./TestimonialPicker"));
 const QuickFillChatCard = lazy(() => import("./QuickFillChatCard"));
+import AssetImportForm from "./AssetImportForm";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BRAND_PRIMARY = "#FF5B1D";
@@ -68,7 +69,8 @@ export type ChatMessageType =
   | "testimonial-picker"
   | "quick-fill-card"
   | "file-upload"
-  | "structured-input";
+  | "structured-input"
+  | "asset-import";
 
 /** The intake control a structured-input message renders (Batch A / item 3 — mirrors the server registry). */
 export type OperatorInputType = "text" | "date" | "time" | "venue" | "price";
@@ -102,6 +104,8 @@ export interface ChatMessage {
   quickFill?: { serviceId: number; campaignType?: string };
   /** Structured-input message (Batch A / item 3): the operator token + its control + N/A chip branches. */
   operatorInput?: { token: string; inputType: OperatorInputType; naBranches: { sentinel: string; label: string }[] };
+  /** Asset-import form ("I already have this — use mine", decision 5): the step, and the last refusal if any. */
+  assetImport?: { step: string; error?: string };
 }
 
 export type StyleChooseCallback = (messageId: string, style: string) => void;
@@ -126,6 +130,8 @@ export interface ChatThreadProps {
    * message and routes `value` through its normal answer path.
    */
   onStructuredSubmit?: (messageId: string, token: string, value: string, echo: string) => void;
+  /** Asset-import form handler — "use" carries the typed values; "cancel" goes back to generated options. */
+  onAssetImport?: (messageId: string, action: "use" | "cancel", values: Record<string, string>) => void;
   /** Ref map for TrailBar scroll-to-node */
   nodeRefMap?: React.MutableRefObject<Map<string, HTMLDivElement>>;
   /**
@@ -781,7 +787,7 @@ function StructuredInput({ msg, onSubmit }: { msg: ChatMessage; onSubmit: (token
 }
 
 // ─── Main ChatThread ──────────────────────────────────────────────────────────
-export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onQuickFillDone, onFileSelect, onStructuredSubmit, nodeRefMap, onSendText, inputPlaceholder, inputDisabled, optionsGenerating }: ChatThreadProps) {
+export default function ChatThread({ messages, campaignStatus, onChipTap, onDeckSelect, onDeckHeart, onStyleChoose, onTestimonialDone, onQuickFillDone, onFileSelect, onStructuredSubmit, onAssetImport, nodeRefMap, onSendText, inputPlaceholder, inputDisabled, optionsGenerating }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -915,6 +921,14 @@ export default function ChatThread({ messages, campaignStatus, onChipTap, onDeck
                 {msg.type === "system-divider" && <SystemDivider msg={msg} />}
                 {msg.type === "file-upload" && <FileUploadButton msg={msg} onSelect={onFileSelect} />}
                 {msg.type === "structured-input" && <StructuredInput msg={msg} onSubmit={(token, value, echo) => onStructuredSubmit?.(msg.id, token, value, echo)} />}
+                {msg.type === "asset-import" && msg.assetImport && (
+                  <AssetImportForm
+                    step={msg.assetImport.step}
+                    error={msg.assetImport.error}
+                    onSubmit={(values) => onAssetImport?.(msg.id, "use", values)}
+                    onCancel={() => onAssetImport?.(msg.id, "cancel", {})}
+                  />
+                )}
                 {msg.type === "style-chooser" && (
                   <Suspense fallback={<SuspenseFallback label="style picker" onSkip={() => onStyleChoose?.(msg.id, "photo_ad")} />}>
                     <StyleChooser

@@ -263,7 +263,10 @@ test.describe.serial("manual wizard — free in-person event", () => {
             // would be misleading).
             const selCols = "selectedOfferId, selectedMechanismId, selectedHvcoId, selectedHeadlineId, selectedAdCopyId";
             const [before] = await dbQuery<any>(`SELECT ${selCols} FROM campaignKits WHERE id=?`, [kitId]);
-            const skipped = await clickWhenVisible(/skip\s*—?\s*i already have this|skip.*already have this/i, 15_000);
+            // 2026-09-27 (Arfeen decision 5): the bare Skip chip is gone — Headlines/Ad Copy/Landing Page offer only
+            // "Try again", and Offer/Method/Lead Magnet's "use mine" opens an import form. "Try again" is the
+            // re-sync on every node: it re-enters the loop, which passes over a node whose field is already set.
+            const skipped = await clickWhenVisible(/^try again$/i, 15_000);
             if (skipped) {
               await page.waitForTimeout(3000); // let the skip mutation + node-advance settle
               const [after] = await dbQuery<any>(`SELECT ${selCols} FROM campaignKits WHERE id=?`, [kitId]);

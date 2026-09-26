@@ -8,6 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { deriveOperatorQuestions, deriveAnsweredOperatorFields, applyOperatorAnswer, expandOperatorAnswer } from "../lib/templates/operatorFields";
 import { pageTypeForCampaign } from "../_core/orchestration";
 import { getCoachBookingUrl } from "../lib/coachBookingUrl";
+import { isKitBuilt, computeKitReadiness } from "../_core/kitReadiness";
 
 const MAX_KIT_NAME = 255;
 
@@ -265,21 +266,9 @@ export async function autoSelectBest(
     .limit(1);
 
   if (updated) {
-    const isComplete =
-      updated.selectedOfferId != null &&
-      updated.selectedMechanismId != null &&
-      updated.selectedHvcoId != null &&
-      updated.selectedHeadlineId != null &&
-      updated.selectedAdCopyId != null &&
-      updated.selectedLandingPageId != null &&
-      updated.selectedEmailSequenceId != null &&
-      updated.selectedWhatsAppSequenceId != null &&
-      // Phase C C1: ad creative batch required for new-cascade completeness.
-      // Legacy kits (id ≤ 15) that completed before C1 already have
-      // status='complete' set — this check only flips draft→complete, so
-      // they're not retroactively re-evaluated. New Auto Mode runs after
-      // C1 wait for adCreatives step 9 before flipping.
-      updated.selectedAdCreativeBatchId != null;
+    // HONEST COMPLETION: the one rule (_core/kitReadiness.ts) — the nine fields, ad images included.
+    // updateSelection uses the same function, so the two writers can no longer disagree.
+    const isComplete = isKitBuilt(updated);
 
     if (isComplete && updated.status === "draft") {
       const completionUpdate: Record<string, unknown> = { status: "complete", updatedAt: new Date() };
@@ -383,6 +372,68 @@ export const campaignKitsRouter = router({
   // (eventSchedule + price) + the coach booking column, keyed off the kit's campaignType. Booking stays
   // coach-level (users column). Read later by orchestration's email/whatsapp/LP steps so they generate
   // with REAL facts (no hardcoded sequenceLength:3, no [INSERT_*] placeholders). Wizard path only.
+  /**
+   * getReadiness — HONEST COMPLETION. The one answer to "can this campaign be pushed, and if not, why?", read by
+   * the Trail's end beat and the Campaign Kit page. Gathers the facts; `computeKitReadiness` decides.
+   * Callers: V2Trail.tsx (completion beat), V2CampaignKit.tsx (status pill + blocker list).
+   */
+  getReadiness: protectedProcedure
+    .input(z.object({ kitId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [kit] = await db.select().from(campaignKits)
+        .where(and(eq(campaignKits.id, input.kitId), eq(campaignKits.userId, ctx.user.id))).limit(1);
+      if (!kit) throw new TRPCError({ code: "NOT_FOUND", message: "Kit not found" });
+
+      const { landingPages, adCreatives, nodeSkips } = await import("../../drizzle/schema");
+      const { sql } = await import("drizzle-orm");
+
+      const [icp] = await db.select({ serviceId: idealCustomerProfiles.serviceId }).from(idealCustomerProfiles)
+        .where(eq(idealCustomerProfiles.id, kit.icpId)).limit(1);
+      const serviceId = icp?.serviceId ?? null;
+      const [svc] = serviceId != null
+        ? await db.select({ id: services.id }).from(services)
+          .where(and(eq(services.id, serviceId), eq(services.userId, ctx.user.id))).limit(1)
+        : [];
+
+      let landingPage: { publicUrl: string | null; leftoverTokens: number; needsPublish: boolean } | null = null;
+      if (kit.selectedLandingPageId != null) {
+        const [lp] = await db.select().from(landingPages)
+          .where(and(eq(landingPages.id, kit.selectedLandingPageId), eq(landingPages.userId, ctx.user.id))).limit(1);
+        const [flag] = await db.select({ status: nodeStatuses.status }).from(nodeStatuses)
+          .where(and(eq(nodeStatuses.campaignKitId, kit.id), eq(nodeStatuses.nodeType, "landingPage"))).limit(1);
+        const { activeAngleContent } = await import("../_core/landingPageActiveAngle");
+        const { findLeftoverOperatorTokens } = await import("../_core/leftoverOperatorTokens");
+        const content = lp ? activeAngleContent(lp) : null;
+        landingPage = {
+          publicUrl: (lp as { publicUrl?: string | null } | undefined)?.publicUrl ?? null,
+          leftoverTokens: content ? findLeftoverOperatorTokens(JSON.stringify(content)).length : 0,
+          needsPublish: flag?.status === "needs_publish",
+        };
+      }
+
+      let adImageCount: number | null = null;
+      if (kit.selectedAdCreativeBatchId) {
+        const [row] = await db.select({ n: sql<number>`COUNT(*)` }).from(adCreatives)
+          .where(and(eq(adCreatives.batchId, kit.selectedAdCreativeBatchId), sql`${adCreatives.imageUrl} <> ''`));
+        adImageCount = Number(row?.n ?? 0);
+      }
+
+      const skippedNodes = serviceId != null
+        ? (await db.select({ nodeType: nodeSkips.nodeType }).from(nodeSkips)
+          .where(and(eq(nodeSkips.userId, ctx.user.id), eq(nodeSkips.serviceId, serviceId)))).map((r) => r.nodeType)
+        : [];
+
+      return computeKitReadiness({
+        kit: kit as unknown as Record<string, unknown>,
+        hasService: !!svc,
+        landingPage,
+        adImageCount,
+        skippedNodes,
+      });
+    }),
+
   getCampaignFactsReadiness: protectedProcedure
     .input(z.object({ kitId: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -575,15 +626,9 @@ export const campaignKitsRouter = router({
         .where(eq(campaignKits.id, input.kitId))
         .limit(1);
 
-      const isComplete =
-        updated.selectedOfferId != null &&
-        updated.selectedMechanismId != null &&
-        updated.selectedHvcoId != null &&
-        updated.selectedHeadlineId != null &&
-        updated.selectedAdCopyId != null &&
-        updated.selectedLandingPageId != null &&
-        updated.selectedEmailSequenceId != null &&
-        updated.selectedWhatsAppSequenceId != null;
+      // HONEST COMPLETION: the same rule as autoSelectBest — it used to leave out ad images, so a kit could be
+      // `complete` here with nothing Meta could run.
+      const isComplete = isKitBuilt(updated);
 
       // Auto-update status if all slots are filled
       if (isComplete && updated.status === "draft") {

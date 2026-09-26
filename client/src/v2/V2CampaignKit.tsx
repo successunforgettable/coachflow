@@ -21,6 +21,7 @@ import { isTrialUser, PUSH_PRO_ONLY_NOTE } from "./lib/usageLimit";
 import { downloadCampaignBrief, formatIcpTxt, downloadPdf } from "./lib/exportUtils";
 import { isIcpRich } from "./lib/icpRichness";
 import { downloadRemoteFile, adCreativeFilename } from "./lib/downloadImage";
+import { readinessPill, type Readiness } from "./kitReadinessView";
 
 // Lazy — the full 17-section reader is only mounted when the user opens the modal.
 const V2ICPResultPanel = lazy(() => import("./V2ICPResultPanel"));
@@ -544,6 +545,8 @@ export default function V2CampaignKit() {
   // the kit has a selection for the respective asset.
   const { data: briefWa } = trpc.whatsappSequences.get.useQuery({ id: kit?.selectedWhatsAppSequenceId! }, { enabled: !!kit?.selectedWhatsAppSequenceId });
   const { data: briefAdCreatives } = trpc.adCreatives.getBatch.useQuery({ batchId: kit?.selectedAdCreativeBatchId! }, { enabled: !!kit?.selectedAdCreativeBatchId });
+  // HONEST COMPLETION: the one readiness answer — drives the pill, the blocker list and whether Push is enabled.
+  const { data: readinessData } = trpc.campaignKits.getReadiness.useQuery({ kitId: kitId! }, { enabled: !!kit });
 
   // B4: post-Auto-Mode greeting overlay. Shows once per kit when the user
   // arrives via /v2-dashboard/campaign-kit/<id>?from=auto-mode (the redirect
@@ -753,7 +756,14 @@ export default function V2CampaignKit() {
   const filledCount =
     SECTIONS.filter(s => kit[s.key as keyof typeof kit] != null).length +
     (kit.selectedAdCreativeBatchId != null ? 1 : 0);
-  const isComplete = kit.status === "complete";
+  // HONEST COMPLETION: Push is enabled only when readiness says nothing blocks it. Until readiness loads, the
+  // stored status is the fallback (today's behaviour), never a stronger claim.
+  const readiness = readinessData as Readiness | undefined;
+  const isComplete = readiness ? readiness.state === "ready" : kit.status === "complete";
+  const pill = readiness
+    ? readinessPill(readiness)
+    : { text: isComplete ? "Complete" : "In Progress", tone: (isComplete ? "good" : "progress") as "good" | "warn" | "progress" };
+  const PILL_COLORS = { good: ["rgba(88,204,2,0.12)", "#2E7D00"], warn: ["rgba(255,176,32,0.16)", "#8A5A00"], progress: ["rgba(255,91,29,0.12)", "#FF5B1D"] } as const;
 
   // Sprint 2: Dream Buyer Profile card gating. Keyed purely off profile richness
   // (not kit status), so it surfaces as soon as a rich ICP exists and never touches
@@ -1006,13 +1016,13 @@ export default function V2CampaignKit() {
               display: "inline-block",
               padding: "4px 12px",
               borderRadius: "var(--v2-border-radius-pill, 9999px)",
-              background: isComplete ? "rgba(88,204,2,0.12)" : "rgba(255,91,29,0.12)",
-              color: isComplete ? "#2E7D00" : "#FF5B1D",
+              background: PILL_COLORS[pill.tone][0],
+              color: PILL_COLORS[pill.tone][1],
               fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)",
               fontSize: "12px",
               fontWeight: 700,
-            }}>
-              {isComplete ? "Complete" : "In Progress"}
+            }} data-testid="kit-readiness-pill">
+              {pill.text}
             </span>
           </div>
           <p style={{
@@ -1023,6 +1033,28 @@ export default function V2CampaignKit() {
           }}>
             {(icpData as any)?.name || "Loading ICP..."} · {filledCount} of {TOTAL_KIT_ASSETS} selected
           </p>
+          {readiness && readiness.blockers.length > 0 && (
+            <div data-testid="kit-readiness-blockers" style={{
+              marginTop: 12,
+              padding: "12px 16px",
+              borderRadius: 16,
+              background: "rgba(255,176,32,0.08)",
+              border: "1px solid rgba(255,176,32,0.35)",
+              maxWidth: 640,
+            }}>
+              <p style={{ margin: "0 0 6px", fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: 13, fontWeight: 700, color: "var(--v2-text-color, #1A1624)" }}>
+                {readiness.state === "built_with_blockers" ? "Push is off until these are fixed:" : "Push is off until your campaign is finished:"}
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {readiness.blockers.map((b) => (
+                  <li key={b.node} data-testid={`kit-blocker-${b.node}`} style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)", fontSize: 13, lineHeight: 1.5, color: "var(--v2-text-color, #1A1624)" }}>
+                    <strong style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)" }}>{b.label}.</strong>{" "}
+                    <span style={{ fontFamily: "var(--v2-font-body, 'Instrument Sans', sans-serif)" }}>{b.reason} {b.action}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {(fullPlaceholderReport.allUniqueTokens?.length ?? 0) > 0 && (
             <button
               onClick={() => setShowPlaceholderEditor(true)}
