@@ -23,8 +23,7 @@ thing" — correct world.
 `;
 
 export const HOOK_RULE = `
-HOOK RULE — the FIRST SENTENCE of scene 1, the first 3 seconds. One job: make the RIGHT person stop scrolling.
-That first sentence is 10 words or fewer. The hook is the sentence that opens the script, not the whole scene.
+HOOK RULE — Scene 1 only, the first 3 seconds. One job: make the RIGHT person stop scrolling.
 - Names a specific moment the coach has lived or watched close up in this work — concrete, and
   told from their side.
 - Creates an open loop — a tension that cannot be resolved until they watch the rest.
@@ -58,7 +57,7 @@ These words appear in every ad on the internet; they trigger the part of the bra
 // (reports: "no strong signal" on Turn duration).
 export const SCRIPT_STRUCTURE_CRAFT = `
 STRUCTURE — five beats: HOOK → PROBLEM → TURN → SOLUTION → CTA.
-- HOOK — the FIRST SENTENCE of scene 1, 10 words or fewer: lead with a bold, specific statement — the one truth that stops THIS
+- HOOK (the opening, under ~10 words): lead with a bold, specific statement — the one truth that stops THIS
   person mid-scroll. (A clear, immediately-legible opener also works; a question is a weaker fallback.) Open a
   curiosity loop in the very first line, and resolve it on the very next beat.
 - PROBLEM: name the one lived situation they're in right now — one idea, one breath.

@@ -63,7 +63,10 @@ function countWords(s: string | undefined): number {
  * The hook is the FIRST SENTENCE of scene 1 — not the whole scene. The prompt used to say "the opening,
  * under ~10 words" while sizing scene 1 at 30-36 words, and the bigger number won: measured over 22 generated
  * scripts the opening sentence ran a mean of 21.0 words against the coach-voice benchmark's 8.6, with 4 of 22
- * inside 10. Both halves of that contradiction are fixed together — the wording, and this check.
+ * inside 10. Both halves of that contradiction were changed together — the wording, and this check.
+ * 🟡 WORDING HELD BACK (2026-09-27): the prompt and the retry sentence are production's again, because the new
+ * wording measured no improvement against the same-day control. This check stays, label-only.
+ * See conceptScriptPromptParity.test.ts.
  */
 export const HOOK_MAX_WORDS = 10;
 export function firstSentenceOf(line: string | undefined): string {
@@ -151,7 +154,7 @@ export function validateScriptStructure(
 
   return build(
     hits,
-    `Regenerate the full script so: there are ≥${MIN_SCENES} scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the opening SENTENCE of scene 1 is ${HOOK_MAX_WORDS} words or fewer; the top-level hookPattern is exactly "${opts.hookPattern}"; and total spoken words fit a ${opts.targetSeconds}-second read (~${budget.target} words, hard max ${budget.max}). Keep it tight — this length runs clean across Reels, Stories and Feed.`,
+    `Regenerate the full script so: there are ≥${MIN_SCENES} scenes; every scene has a non-empty spokenLine; the FIRST scene is the hook; the top-level hookPattern is exactly "${opts.hookPattern}"; and total spoken words fit a ${opts.targetSeconds}-second read (~${budget.target} words, hard max ${budget.max}). Keep it tight — this length runs clean across Reels, Stories and Feed.`,
     labels,
   );
 }
