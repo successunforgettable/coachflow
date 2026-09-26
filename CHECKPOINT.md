@@ -1,4 +1,19 @@
-# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-27
+# 🟢 RESUME HERE — RESTART BLOCK, written 2026-09-27 (after the first deploy)
+
+### supersedes the 2026-09-27 (pre-deploy) block below, which is retained and marked, not deleted
+
+| | |
+|---|---|
+| production | **`001f046` — FIRST DEPLOY LIVE AND VERIFIED** (pushed 2026-09-26 22:26 UTC, `SUCCESS`). Run record: top of `docs/handovers/RUNBOOK_2026-09-29_FIRST_DEPLOY.md` |
+| migration | **0112 APPLIED** 2026-09-26 22:20 UTC (GO-1), self-verified; 0111 applied |
+| verified | R4.1 14/14 markers · R4.2 boot clean · R4.3 sprint 8 file hash · R4.4 checks 1–3 ✅ (GHL auto-renewed the July key; kit 225 honest), check 4 deferred to the walkthrough |
+| rollback | Railway → redeploy `87596d7`; 0112 stays. Held branch = `docs/held-2026-09-12` (same tip + docs) |
+| **NEXT ACTION** | 🔴 **Arfeen's walkthrough, before 2026-10-05** — `WALKTHROUGH_CHECKLIST_2026-09-24.md`. While he runs it: **no deploy work, no production writes**, until he says he's done. R4.5 watch in progress (read-only log scans) |
+| queued after it | `docs/handovers/FOLLOWUP_QUEUE_2026-09-27.md`: **A** one small follow-up deploy (Trail bar + header read readiness · old saved completion banners hidden when not ready · takedowns set `needs_publish`) · **B** open issue: "twelve years of professional expertise" in kit 225's Method + bonus 44 — a reader figure generalised from one example in service 318; missing grounding class (see file) · **C** Pro caps (decision 1) · the 8 trial decisions · the **second deploy** (trial group: `git revert 49c0d17`) |
+
+---
+
+# ⚪ SUPERSEDED RESTART BLOCK (2026-09-27, pre-deploy) — NOT THE ENTRY POINT; see the block above
 
 ### supersedes the 2026-09-24 (late) block below, which is retained and marked, not deleted
 

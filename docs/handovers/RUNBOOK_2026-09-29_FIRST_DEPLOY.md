@@ -1,5 +1,21 @@
 # RUNBOOK — FIRST DEPLOY, 2026-09-29
 
+> ## ✅ RUN RECORD — executed 2026-09-26/27 (UTC 22:20–22:40), ahead of 9/29 — **DEPLOYED `001f046`, R4 PASSED**
+> | step | result |
+> |---|---|
+> | R0 | all 7 lines matched (railway-build `87596d7`, tip `001f046`, FF, no runtime diff vs `32785ee`, tsc 34, `SUCCESS 87596d7`) |
+> | R1 | production, read-only; 11 columns; both 0112 columns absent; **baseline row count 1** |
+> | R2 (GO-1) | applied; self-verified: 11 → 13 columns, none lost, rows 1 → 1; re-check: `timestamp:YES`, `varchar(512):YES`, 0 rows flagged |
+> | R3 (GO-2) | first attempt sent NOTHING (zsh `$TIP:r` bug, now fixed); retried → `87596d7..001f046` fast-forward; `SUCCESS 001f046` at 22:26 UTC |
+> | R4.1 | **14/14 markers match the candidate** on the live bundle `index-DuhF4wMx.js` (7 files) |
+> | R4.2 | boot clean: `Font validation OK`, `Stuck-job reaper: 0`, `Server running`; 0 error lines |
+> | R4.3 | `complianceAxis.ts` sha256 `7155e6b8688b6e79` = the comparison's file |
+> | R4.4 check 1 | ✅ GHL **Connected**, snapshot 16/16 — by **automatic renewal** of the July key: same row (id 11, `connectedAt` 2026-07-09 unchanged — a reconnect deletes and re-inserts), `tokenExpiresAt` 2026-07-10 → **2026-09-27 22:29:39** (+24 h), `updatedAt` 22:29:39 = the first GHL API call (22:29:40), `reconnectRequiredAt` NULL, `lastRenewalError` NULL. Renewal logs nothing on success — an observability gap, queued |
+> | R4.4 check 2 | ✅ kit 225: "Built — 1 thing to fix", blocker names the unpublished page, Push greyed |
+> | R4.4 check 3 | ✅ welcome line correct. Two contradictions on the same screen, both **pre-existing and NOT rollback triggers**: (a) the Trail bar + chat header show Landing Page done / "11 of 11" — the bar reads only the `needs_publish` flag (logic byte-identical in `87596d7` and `001f046`), and LP 241's address was cleared by the 2026-09-02 takedown without setting the flag; (b) the purple "CAMPAIGN COMPLETE — 11 of 11" banner + "Eleven pieces…" is **saved chat history** (kit 225 transcript msgs 72–73 of 75, last written 2026-08-30), not live code (live marker count 0) |
+> | R4.4 check 4 | ⏭ deferred to the walkthrough. CC's directions were WRONG: the Tool Library has not been rendered since `b2404b1` (2026-06-19) — `V2ToolLibrary` is imported but never mounted, and `handleNodeClick` is defined but never called. Standalone headline generation lives only at `/v2-dashboard/wizard/headlines` (async route, Pro 20) and V1 `/headlines/new` (sync, Pro 6), reachable by typed URL only (§15d). Headline code is byte-identical to `87596d7` |
+> | R4.5 | started 2026-09-27: first scan 196 lines since deploy, 0 errors / TypeError / FORBIDDEN / scenes / Unknown column. No traffic since 22:30 UTC |
+
 **Candidate:** held branch `docs/held-2026-09-12`. The runtime candidate is **`32785ee`**; anything above it on the
 branch is docs only (step R0 proves it). Production today: `railway-build` = **`87596d7`**.
 **What ships:** the scenes-crash fix, GHL renewal and truthful push (with migration 0112 first), sprint 8, the inert
@@ -62,9 +78,13 @@ Then:
    equal to the R1 baseline, and `rows with reconnectRequiredAt set: 0`.
 2. Watch the production logs for 5 minutes. The running code (`87596d7`) names its columns, so it ignores the new ones:
    ```bash
-   railway logs --service coachflow --environment production 2>&1 | grep -iE "unknown column|ER_|error" | tail -20
+   railway logs --service coachflow --environment production --lines 200 --json | python3 -c "import sys,json
+rows=[json.loads(l) for l in sys.stdin if l.strip().startswith('{')]
+print(len(rows),'lines, newest',rows[-1]['timestamp'][:19] if rows else None)
+[print(r['timestamp'][:19],r['message'][:170]) for r in rows if any(k in r.get('message','').lower() for k in ('unknown column','er_','error')) and '0.0% error rate' not in r.get('message','')]"
    ```
-   Expect nothing new.
+   Expect a line count above 0 (proves the feed works — §15-PARENT) and no error lines. `railway logs` without
+   `--lines`/`--since` STREAMS forever; and `timeout` does not exist on macOS — never use either (corrected 2026-09-27).
 
 If the script prints `ABORTED` or `VERIFY FAILED`, **STOP and report the output verbatim.**
 
@@ -76,7 +96,9 @@ Only after Arfeen's explicit go-ahead for the push in the immediately preceding 
 succeeded** (the new code reads the 0112 columns; without them every GHL read fails with "Unknown column"):
 ```bash
 TIP=$(git rev-parse origin/docs/held-2026-09-12)
-git merge-base --is-ancestor 87596d7 $TIP && git push origin $TIP:refs/heads/railway-build   # explicit sha; fast-forward only; NEVER --force
+git merge-base --is-ancestor 87596d7 "${TIP}" && git push origin "${TIP}:refs/heads/railway-build"   # explicit sha; fast-forward only; NEVER --force
+# ⚠️ BRACES REQUIRED: in zsh `$TIP:r` is the ":r" (remove-extension) modifier — the unbraced form mangled the refspec
+# and the push failed with "src refspec … does not match any" on 2026-09-27 (nothing was sent). Corrected.
 ```
 Watch until the tip is live (about 2–3 minutes; never pipe raw `--json` into context):
 ```bash
@@ -119,7 +141,9 @@ isn't what's being served. Wait 2 minutes and re-fetch once; if it's still wrong
 
 **R4.2 Boot.** Search the logs since the deploy for `Unknown column`, `TypeError`, `Cannot find module` and `validateFontAtBoot`:
 ```bash
-railway logs --service coachflow --environment production 2>&1 | grep -iE "unknown column|typeerror|cannot find module|validateFontAtBoot|reapStuckJobs" | tail -20
+railway logs --service coachflow --environment production --lines 300 --json | python3 -c "import sys,json
+rows=[json.loads(l) for l in sys.stdin if l.strip().startswith('{')]
+[print(r['timestamp'][:19],r['message'][:170]) for r in rows if any(k in r.get('message','').lower() for k in ('unknown column','typeerror','cannot find module','[boot]','server running'))]"
 ```
 Expect the font-validation and reaper lines as normal, and no errors.
 
@@ -144,9 +168,11 @@ The walkthrough's own steps (the push read-back of *"Saved to GoHighLevel — N 
 Magnet "use mine", no Skip on Headlines/Ad Copy/Landing Page, a video script completing) are in
 `WALKTHROUGH_CHECKLIST_2026-09-24.md`. They are done **after** R4, as decision 4 requires.
 
-**R4.5 A 24–48 hour read-only watch.** Watch the compliance block rate against the week before. Expect a small drop
-(7 false alarms released) and **no new blocks** on copy that was previously allowed. Watch for no `scenes` TypeError
-in the logs, and for no `FORBIDDEN` on a Pro account below the old limits.
+**R4.5 A 24–48 hour read-only watch.** ⚠️ Corrected 2026-09-27: there is **no `complianceTelemetry` table** — compliance
+blocks exist only as log lines (`… compliance gate: blocked N/M …`). With 3 test accounts and no traffic, a block-RATE
+comparison against the prior week measures nothing (§15-PARENT). The watch is: log scans (with the `--lines`/`--since`
+form above, line count > 0 each time) for `Unknown column`, `TypeError`, `scenes`, `FORBIDDEN`, `compliance gate:
+blocked`; the walkthrough's own generations are the real exercise of sprint 8 and the scenes fix.
 
 ⏸ **STOP. Report R4 to Arfeen. The deploy is done. The walkthrough is his to start.**
 
